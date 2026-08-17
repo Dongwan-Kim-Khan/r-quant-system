@@ -18,6 +18,8 @@ import yfinance as yf
 
 HISTORY_CSV = "trade_history.csv"
 REPORTS_DIR = "daily_reports"
+DEFAULT_EMAIL_RECEIVER = "kdw58170425@gmail.com"
+DASHBOARD_JSON = "dashboard_data.json"
 os.makedirs(REPORTS_DIR, exist_ok=True)
 
 # NASDAQ 100 & Key Growth Universe
@@ -429,10 +431,15 @@ def print_markdown_briefing(today_str, bull_picks, neutral_picks, bear_picks, po
 
     print(md)
 
+import db_manager
+
 def main():
     today_str = datetime.now().strftime("%Y-%m-%d")
     bull_picks, neutral_picks, bear_picks = scan_and_select_2x2x2()
     history_df, position_alerts, health_status = evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, today_str)
+    
+    # Save into SQLite Recommendation Matrix
+    db_manager.save_recommendation_matrix_record(today_str, bull_picks, neutral_picks, bear_picks)
     
     html_content = generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, position_alerts, health_status)
     
