@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏛️ 알상무 퀀트 터미널 (Al-Sangmoo Quant Terminal)</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <!-- Lightweight Charts v4 -->
+    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        :root {
+            --bg-base: #090d16;
+            --bg-surface: #0f172a;
+            --bg-card: #1e293b;
+            --border: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --accent-yellow: #f59e0b;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --kijun-gold: #fbbf24;
+            --tenkan-blue: #38bdf8;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* Top Header */
+        header {
+            background: var(--bg-surface);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .brand h1 {
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            color: #ffffff;
+        }
+        .live-tag {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            color: var(--accent-green);
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-size: 11px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .live-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--accent-green);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.3); opacity: 1; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+        .header-meta {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* KPI Stat Bar */
+        .kpi-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            padding: 16px 24px;
+        }
+        .kpi-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px 18px;
+        }
+        .kpi-title {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+        .kpi-val {
+            font-size: 22px;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Main Content Grid */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 460px 1fr;
+            gap: 16px;
+            padding: 0 24px 24px 24px;
+            flex: 1;
+        }
+
+        /* Left Column: Trade Log & Signals */
+        .left-pane {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .panel {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .panel-header {
+            padding: 12px 16px;
+            background: rgba(30, 41, 59, 0.5);
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+            font-weight: 700;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .panel-body {
+            padding: 12px;
+            overflow-y: auto;
+            max-height: 580px;
+        }
+
+        /* Signal Alert Card */
+        .alert-card {
+            background: #1e1e2e;
+            border-left: 4px solid var(--accent-blue);
+            border-radius: 6px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+        .alert-card.stop { border-left-color: var(--accent-red); background: rgba(239, 68, 68, 0.08); }
+        .alert-card.profit { border-left-color: var(--accent-green); background: rgba(16, 185, 129, 0.08); }
+        .alert-head {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        /* Trade History Table */
+        .trade-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .trade-item:hover, .trade-item.active {
+            border-color: var(--accent-blue);
+            background: #1e2945;
+            transform: translateX(2px);
+        }
+        .trade-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+        .badge {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+        }
+        .badge.BULL { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
+        .badge.NEUTRAL { background: rgba(245, 158, 11, 0.2); color: var(--accent-yellow); }
+        .badge.BEAR { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
+        .trade-sub {
+            font-size: 11px;
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: space-between;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Right Column: Chart & Indicator Suite */
+        .right-pane {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .chart-header {
+            padding: 14px 18px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .ticker-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .ticker-name {
+            font-size: 20px;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .ticker-price {
+            font-size: 18px;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .indicator-toggles {
+            display: flex;
+            gap: 6px;
+        }
+        .toggle-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .toggle-btn.active {
+            background: var(--accent-blue);
+            color: #ffffff;
+            border-color: var(--accent-blue);
+        }
+
+        #chartContainer {
+            width: 100%;
+            height: 480px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-top: none;
+            position: relative;
+        }
+        #volumeContainer {
+            width: 100%;
+            height: 120px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+        }
+
+        /* Formula Info Box */
+        .formula-box {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px 18px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+        .formula-item strong {
+            color: var(--text-primary);
+            display: block;
+            margin-bottom: 3px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="brand">
+            <h1>🏛️ 알상무 퀀트 터미널 (Al-Sangmoo Quant Terminal)</h1>
+            <div class="live-tag"><div class="live-dot"></div> 실시간 추적 중</div>
+        </div>
+        <div class="header-meta" id="lastUpdated">업데이트: 로딩 중...</div>
+    </header>
+
+    <!-- KPI Metrics -->
+    <div class="kpi-container">
+        <div class="kpi-card">
+            <div class="kpi-title">총 추천 종목수</div>
+            <div class="kpi-val" id="kpiTotal">-</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">현재 보유 중인 포지션</div>
+            <div class="kpi-val" id="kpiActive" style="color:var(--accent-blue);">-</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">실전 승률 (Win Rate)</div>
+            <div class="kpi-val" id="kpiWinRate" style="color:var(--accent-green);">-</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">모델 유효성 건강도</div>
+            <div class="kpi-val" id="kpiHealth" style="font-size:16px; color:#38bdf8;">데이터 누적 중</div>
+        </div>
+    </div>
+
+    <!-- Main Layout -->
+    <div class="main-layout">
+        
+        <!-- Left: Action Alerts & History Log -->
+        <div class="left-pane">
+            
+            <!-- Immediate Exit Signals -->
+            <div class="panel">
+                <div class="panel-header" style="color:#38bdf8;">
+                    <span>🔔 실시간 매도/익절/손절 지침</span>
+                    <span style="font-size:11px; font-weight:normal;">Action Signals</span>
+                </div>
+                <div class="panel-body" id="alertsList" style="max-height: 220px;">
+                    <!-- Injected by JS -->
+                </div>
+            </div>
+
+            <!-- Historical Recommendations Table -->
+            <div class="panel" style="flex:1;">
+                <div class="panel-header">
+                    <span>📋 추천 종목 히스토리 & 트래커</span>
+                    <span style="font-size:11px; color:var(--text-secondary);">클릭 시 차트 로드</span>
+                </div>
+                <div class="panel-body" id="tradesList">
+                    <!-- Injected by JS -->
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right: Interactive Chart & Formulas -->
+        <div class="right-pane">
+            
+            <!-- Chart Controls Header -->
+            <div class="chart-header">
+                <div class="ticker-info">
+                    <span class="ticker-name" id="curTicker">AMZN</span>
+                    <span class="ticker-price" id="curPrice">$261.05</span>
+                    <span class="badge BULL" id="curDiagnosis">🟢 구름대 상단 안착 + 기준선 지지</span>
+                </div>
+                <div class="indicator-toggles">
+                    <button class="toggle-btn active" id="btnKijun">26일 기준선</button>
+                    <button class="toggle-btn active" id="btnTenkan">9일 전환선</button>
+                    <button class="toggle-btn active" id="btnSpan">일목 구름대</button>
+                    <button class="toggle-btn active" id="btnSma">20/60일선</button>
+                </div>
+            </div>
+
+            <!-- Chart Canvas -->
+            <div id="chartContainer"></div>
+            <div id="volumeContainer"></div>
+
+            <!-- Formula Reference -->
+            <div class="formula-box">
+                <div class="formula-item">
+                    <strong>1. 26일 기준선 (생명선)</strong>
+                    <code>(26일 최고 + 26일 최저) / 2</code><br>
+                    기준선 이탈 시 이유 불문 -3% 칼손절.
+                </div>
+                <div class="formula-item">
+                    <strong>2. 거래량 마름 (VDU)</strong>
+                    <code>당일 거래량 < 20일 평균 * 0.70</code><br>
+                    개미 투매 종료 확인 후 1차 선취매.
+                </div>
+                <div class="formula-item">
+                    <strong>3. 3개월 스윙 손익비</strong>
+                    <code>손실 -3% : 익절 +15~20%</code><br>
+                    손익비 1:5의 비대칭 우위 확보.
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        let dashboardData = null;
+        let mainChart = null;
+        let volumeChart = null;
+        let candleSeries = null;
+        let kijunSeries = null;
+        let tenkanSeries = null;
+        let spanASeries = null;
+        let spanBSeries = null;
+        let sma20Series = null;
+        let sma60Series = null;
+        let volumeSeries = null;
+        let currentSelectedTicker = "AMZN";
+
+        // Initialize Lightweight Charts
+        function initCharts() {
+            const chartElem = document.getElementById('chartContainer');
+            const volElem = document.getElementById('volumeContainer');
+
+            mainChart = LightweightCharts.createChart(chartElem, {
+                layout: { background: { color: '#0f172a' }, textColor: '#94a3b8' },
+                grid: { vertLines: { color: '#1e293b' }, horzLines: { color: '#1e293b' } },
+                crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+                rightPriceScale: { borderColor: '#334155' },
+                timeScale: { borderColor: '#334155', timeVisible: true }
+            });
+
+            candleSeries = mainChart.addCandlestickSeries({
+                upColor: '#10b981', downColor: '#ef4444',
+                borderUpColor: '#10b981', borderDownColor: '#ef4444',
+                wickUpColor: '#10b981', wickDownColor: '#ef4444'
+            });
+
+            // Indicators
+            kijunSeries = mainChart.addLineSeries({ color: '#fbbf24', lineWidth: 2, title: '기준선(26)' });
+            tenkanSeries = mainChart.addLineSeries({ color: '#38bdf8', lineWidth: 1, title: '전환선(9)' });
+            spanASeries = mainChart.addLineSeries({ color: 'rgba(16, 185, 129, 0.4)', lineWidth: 1, title: '선행스팬1' });
+            spanBSeries = mainChart.addLineSeries({ color: 'rgba(239, 68, 68, 0.4)', lineWidth: 1, title: '선행스팬2' });
+            sma20Series = mainChart.addLineSeries({ color: '#a855f7', lineWidth: 1, title: '20 SMA' });
+            sma60Series = mainChart.addLineSeries({ color: '#64748b', lineWidth: 1, title: '60 SMA' });
+
+            // Volume
+            volumeChart = LightweightCharts.createChart(volElem, {
+                layout: { background: { color: '#0f172a' }, textColor: '#64748b' },
+                grid: { vertLines: { color: '#1e293b' }, horzLines: { color: '#1e293b' } },
+                rightPriceScale: { borderColor: '#334155' },
+                timeScale: { borderColor: '#334155' }
+            });
+            volumeSeries = volumeChart.addHistogramSeries({ priceFormat: { type: 'volume' } });
+
+            // Sync scales
+            mainChart.timeScale().subscribeVisibleTimeRangeChange(range => {
+                if (range) volumeChart.timeScale().setVisibleRange(range);
+            });
+            volumeChart.timeScale().subscribeVisibleTimeRangeChange(range => {
+                if (range) mainChart.timeScale().setVisibleRange(range);
+            });
+            
+            window.addEventListener('resize', () => {
+                mainChart.applyOptions({ width: chartElem.clientWidth });
+                volumeChart.applyOptions({ width: volElem.clientWidth });
+            });
+        }
+
+        // Load ticker into chart
+        function loadTickerChart(ticker) {
+            if (!dashboardData || !dashboardData.charts[ticker]) return;
+            currentSelectedTicker = ticker;
+            const c = dashboardData.charts[ticker];
+
+            document.getElementById('curTicker').innerText = ticker;
+            document.getElementById('curPrice').innerText = `$${c.latest_close.toLocaleString()}`;
+            document.getElementById('curDiagnosis').innerText = c.status_text;
+
+            candleSeries.setData(c.candles);
+            kijunSeries.setData(c.kijun_line);
+            tenkanSeries.setData(c.tenkan_line);
+            spanASeries.setData(c.span_a);
+            spanBSeries.setData(c.span_b);
+            sma20Series.setData(c.sma20);
+            sma60Series.setData(c.sma60);
+            volumeSeries.setData(c.volume);
+
+            mainChart.timeScale().fitContent();
+            volumeChart.timeScale().fitContent();
+
+            // Highlight active in list
+            document.querySelectorAll('.trade-item').forEach(el => {
+                if (el.dataset.ticker === ticker) el.classList.add('active');
+                else el.classList.remove('active');
+            });
+        }
+
+        // Render UI from JSON
+        function renderDashboard(data) {
+            dashboardData = data;
+            document.getElementById('lastUpdated').innerText = `최종 갱신: ${data.kpis.last_updated}`;
+            document.getElementById('kpiTotal').innerText = `${data.kpis.total_recommendations}건`;
+            document.getElementById('kpiActive').innerText = `${data.kpis.active_positions}건`;
+            document.getElementById('kpiWinRate').innerText = data.kpis.win_rate;
+
+            // Render Exit Alerts
+            const alertsList = document.getElementById('alertsList');
+            alertsList.innerHTML = '';
+            
+            data.trades.forEach(t => {
+                const pnl = parseFloat(t.pnl_pct || 0);
+                const advice = t.exit_advice || "보유 지속";
+                const isStop = pnl <= -3.0 || advice.includes("손절");
+                const isProfit = pnl >= 15.0 || advice.includes("익절");
+                
+                const card = document.createElement('div');
+                card.className = `alert-card ${isStop ? 'stop' : (isProfit ? 'profit' : '')}`;
+                card.innerHTML = `
+                    <div class="alert-head">
+                        <span>${t.ticker} (${t.type})</span>
+                        <span style="color:${pnl >= 0 ? '#10b981' : '#ef4444'}; font-family:monospace;">${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}%</span>
+                    </div>
+                    <div style="color:#cbd5e1; font-size:11px;">📢 ${advice}</div>
+                `;
+                alertsList.appendChild(card);
+            });
+
+            // Render Trade History
+            const tradesList = document.getElementById('tradesList');
+            tradesList.innerHTML = '';
+            data.trades.forEach(t => {
+                const item = document.createElement('div');
+                item.className = 'trade-item';
+                item.dataset.ticker = t.ticker;
+                const pnl = parseFloat(t.pnl_pct || 0);
+                item.innerHTML = `
+                    <div class="trade-top">
+                        <span style="font-weight:700; font-size:13px;">${t.ticker}</span>
+                        <span class="badge ${t.type}">${t.type}</span>
+                        <span style="font-family:monospace; font-weight:700; color:${pnl >= 0 ? '#10b981' : '#ef4444'};">${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}%</span>
+                    </div>
+                    <div class="trade-sub">
+                        <span>진입일: ${t.date} ($${parseFloat(t.entry_price).toFixed(2)})</span>
+                        <span>현재: $${parseFloat(t.current_price).toFixed(2)}</span>
+                    </div>
+                `;
+                item.onclick = () => loadTickerChart(t.ticker);
+                tradesList.appendChild(item);
+            });
+
+            // Load initial ticker
+            loadTickerChart(currentSelectedTicker);
+        }
+
+        // Fetch data
+        async function loadData() {
+            try {
+                const res = await fetch('dashboard_data.json?t=' + new Date().getTime());
+                const data = await res.json();
+                renderDashboard(data);
+            } catch (err) {
+                console.error("Failed to load dashboard_data.json:", err);
+            }
+        }
+
+        // Toggle buttons
+        document.getElementById('btnKijun').onclick = function() {
+            this.classList.toggle('active');
+            kijunSeries.applyOptions({ visible: this.classList.contains('active') });
+        };
+        document.getElementById('btnTenkan').onclick = function() {
+            this.classList.toggle('active');
+            tenkanSeries.applyOptions({ visible: this.classList.contains('active') });
+        };
+        document.getElementById('btnSpan').onclick = function() {
+            this.classList.toggle('active');
+            const vis = this.classList.contains('active');
+            spanASeries.applyOptions({ visible: vis });
+            spanBSeries.applyOptions({ visible: vis });
+        };
+        document.getElementById('btnSma').onclick = function() {
+            this.classList.toggle('active');
+            const vis = this.classList.contains('active');
+            sma20Series.applyOptions({ visible: vis });
+            sma60Series.applyOptions({ visible: vis });
+        };
+
+        // Start
+        initCharts();
+        loadData();
+    </script>
+</body>
+</html>
