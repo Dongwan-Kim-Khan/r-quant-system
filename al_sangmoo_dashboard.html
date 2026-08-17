@@ -22,7 +22,6 @@
             --accent-red: #ef4444;
             --accent-yellow: #f59e0b;
             --accent-blue: #3b82f6;
-            --accent-purple: #8b5cf6;
             --kijun-gold: #fbbf24;
             --tenkan-blue: #38bdf8;
         }
@@ -41,156 +40,150 @@
         header {
             background: var(--bg-surface);
             border-bottom: 1px solid var(--border);
-            padding: 14px 24px;
+            padding: 12px 24px;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
         .brand { display: flex; align-items: center; gap: 12px; }
-        .brand h1 { font-size: 18px; font-weight: 800; color: #ffffff; }
+        .brand h1 { font-size: 17px; font-weight: 800; color: #ffffff; letter-spacing: -0.3px; }
         .live-tag {
-            background: rgba(16, 185, 129, 0.15);
-            border: 1px solid rgba(16, 185, 129, 0.4);
+            background: rgba(16, 185, 129, 0.12);
+            border: 1px solid rgba(16, 185, 129, 0.3);
             color: var(--accent-green);
-            padding: 2px 8px;
-            border-radius: 9999px;
-            font-size: 11px;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 5px;
+            padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 700;
+            display: flex; align-items: center; gap: 5px;
         }
-        .live-dot {
-            width: 6px; height: 6px; background: var(--accent-green); border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
+        .live-dot { width: 6px; height: 6px; background: var(--accent-green); border-radius: 50%; animation: pulse 2s infinite; }
         @keyframes pulse { 0%, 100% { opacity: 0.8; transform: scale(0.95); } 50% { opacity: 1; transform: scale(1.2); } }
 
-        /* KPI Cards */
+        .btn-refresh {
+            background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary);
+            padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer;
+            transition: all 0.15s; display: flex; align-items: center; gap: 4px;
+        }
+        .btn-refresh:hover { color: #fff; border-color: var(--accent-blue); }
+
+        /* KPI Bar */
         .kpi-container {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 14px;
-            padding: 16px 24px;
+            gap: 12px;
+            padding: 14px 24px;
         }
         .kpi-card {
-            background: var(--bg-surface);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 14px 18px;
+            background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px;
         }
         .kpi-title {
             font-size: 11px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;
             letter-spacing: 0.5px; margin-bottom: 4px;
         }
-        .kpi-val {
-            font-size: 22px; font-weight: 800; font-family: 'JetBrains Mono', monospace;
-        }
+        .kpi-val { font-size: 20px; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
 
-        /* 2-Column Layout */
+        /* Today's 6 Recommended Banner */
+        .today-section {
+            padding: 0 24px 14px 24px;
+        }
+        .today-banner {
+            background: #131d31; border: 1px solid #233554; border-radius: 8px; padding: 14px 18px;
+        }
+        .today-title {
+            font-size: 13px; font-weight: 700; color: #94a3b8; margin-bottom: 10px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .today-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+        .rec-card-group {
+            background: var(--bg-surface); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px;
+        }
+        .group-header {
+            font-size: 11px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 5px;
+        }
+        .rec-item {
+            display: flex; justify-content: space-between; align-items: center; background: var(--bg-card);
+            border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; margin-bottom: 6px;
+            cursor: pointer; transition: all 0.15s;
+        }
+        .rec-item:hover, .rec-item.active { border-color: var(--accent-blue); background: #1e294b; transform: translateY(-1px); }
+        .rec-item-title { font-weight: 800; font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+        .rec-item-price { font-family: 'JetBrains Mono', monospace; color: var(--text-secondary); font-size: 12px; }
+
+        /* Main 2-Column Layout */
         .main-layout {
             display: grid;
             grid-template-columns: 580px 1fr;
-            gap: 18px;
+            gap: 16px;
             padding: 0 24px 24px 24px;
             flex: 1;
         }
 
         .panel {
-            background: var(--bg-surface);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            margin-bottom: 16px;
+            background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px;
+            overflow: hidden; display: flex; flex-direction: column; margin-bottom: 14px;
         }
         .panel-header {
-            padding: 12px 16px;
-            background: rgba(30, 41, 59, 0.6);
-            border-bottom: 1px solid var(--border);
-            font-size: 13px; font-weight: 700;
-            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 14px; background: rgba(30, 41, 59, 0.6); border-bottom: 1px solid var(--border);
+            font-size: 12px; font-weight: 700; display: flex; justify-content: space-between; align-items: center;
         }
-        .btn-primary {
-            background: var(--accent-blue); color: #fff; border: none; padding: 5px 12px;
-            border-radius: 4px; font-size: 11px; font-weight: 700; cursor: pointer;
-            transition: all 0.15s;
-        }
-        .btn-primary:hover { background: #2563eb; }
 
         /* Tables */
-        table {
-            width: 100%; border-collapse: collapse; font-size: 12px;
-        }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
         th {
-            background: #151e2e; color: var(--text-secondary); font-weight: 600;
-            text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border);
+            background: #151e2e; color: var(--text-secondary); font-weight: 600; text-align: left;
+            padding: 8px 12px; border-bottom: 1px solid var(--border);
         }
-        td {
-            padding: 10px 12px; border-bottom: 1px solid rgba(51, 65, 85, 0.5);
-            font-family: 'Inter', sans-serif;
-        }
+        td { padding: 9px 12px; border-bottom: 1px solid rgba(51, 65, 85, 0.5); }
         tr:hover { background: rgba(30, 41, 59, 0.4); }
 
-        .ticker-badge {
-            background: var(--bg-card); border: 1px solid var(--border);
-            padding: 3px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace;
-            font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
-            transition: all 0.15s;
+        .ticker-pill {
+            background: var(--bg-card); border: 1px solid var(--border); padding: 3px 6px; border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
         }
-        .ticker-badge:hover { border-color: var(--accent-blue); background: #1e294b; }
-        .ticker-badge.bull { color: var(--accent-green); border-color: rgba(16, 185, 129, 0.3); }
-        .ticker-badge.neutral { color: var(--accent-yellow); border-color: rgba(245, 158, 11, 0.3); }
-        .ticker-badge.bear { color: var(--accent-red); border-color: rgba(239, 68, 68, 0.3); }
+        .ticker-pill:hover { border-color: var(--accent-blue); background: #1e294b; }
+        .ticker-pill.bull { color: var(--accent-green); border-color: rgba(16, 185, 129, 0.3); }
+        .ticker-pill.neutral { color: var(--accent-yellow); border-color: rgba(245, 158, 11, 0.3); }
+        .ticker-pill.bear { color: var(--accent-red); border-color: rgba(239, 68, 68, 0.3); }
 
         .btn-sell {
             background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4);
-            color: var(--accent-red); padding: 3px 8px; border-radius: 4px; font-size: 11px;
-            font-weight: 700; cursor: pointer;
+            color: var(--accent-red); padding: 2px 7px; border-radius: 4px; font-size: 11px; font-weight: 700; cursor: pointer;
         }
         .btn-sell:hover { background: var(--accent-red); color: #fff; }
 
-        .btn-buy-mini {
-            background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4);
-            color: var(--accent-green); padding: 2px 6px; border-radius: 3px; font-size: 10px;
-            font-weight: 700; cursor: pointer; margin-left: 4px;
+        .btn-buy-action {
+            background: var(--accent-green); color: #000; border: none; padding: 2px 8px; border-radius: 3px;
+            font-size: 11px; font-weight: 800; cursor: pointer; margin-left: 6px;
         }
-        .btn-buy-mini:hover { background: var(--accent-green); color: #fff; }
+        .btn-buy-action:hover { background: #34d399; }
 
-        /* Chart Pane */
+        /* Chart Canvas */
         .chart-header {
-            padding: 14px 18px; background: var(--bg-surface); border: 1px solid var(--border);
+            padding: 12px 16px; background: var(--bg-surface); border: 1px solid var(--border);
             border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center;
         }
-        .ticker-title { font-size: 20px; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
-        .ticker-price { font-size: 18px; font-weight: 700; font-family: 'JetBrains Mono', monospace; margin-left: 8px; }
+        .ticker-title { font-size: 18px; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
+        .ticker-price { font-size: 17px; font-weight: 700; font-family: 'JetBrains Mono', monospace; margin-left: 8px; }
         .toggle-btn {
             background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary);
-            padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer;
+            padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer;
         }
         .toggle-btn.active { background: var(--accent-blue); color: #fff; border-color: var(--accent-blue); }
 
-        #chartContainer { width: 100%; height: 480px; background: var(--bg-surface); border: 1px solid var(--border); border-top: none; }
-        #volumeContainer { width: 100%; height: 120px; background: var(--bg-surface); border: 1px solid var(--border); border-top: none; border-radius: 0 0 8px 8px; }
+        #chartContainer { width: 100%; height: 460px; background: var(--bg-surface); border: 1px solid var(--border); border-top: none; }
+        #volumeContainer { width: 100%; height: 110px; background: var(--bg-surface); border: 1px solid var(--border); border-top: none; border-radius: 0 0 8px 8px; }
 
-        /* Modal Dialog */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0, 0, 0, 0.7); display: none; align-items: center; justify-content: center; z-index: 100;
+        /* Quick Buy Popover / Box */
+        .quick-buy-box {
+            background: #172339; border: 1px solid var(--accent-blue); border-radius: 6px;
+            padding: 12px 16px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;
         }
-        .modal {
-            background: var(--bg-surface); border: 1px solid var(--border); border-radius: 10px;
-            width: 400px; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+        .quick-buy-input {
+            width: 70px; background: var(--bg-base); border: 1px solid var(--border); color: #fff;
+            padding: 4px 8px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 12px; text-align: center;
         }
-        .modal-title { font-size: 16px; font-weight: 800; margin-bottom: 16px; }
-        .form-group { margin-bottom: 14px; }
-        .form-group label { display: block; font-size: 11px; color: var(--text-secondary); margin-bottom: 4px; font-weight: 600; }
-        .form-input {
-            width: 100%; padding: 8px 12px; background: var(--bg-card); border: 1px solid var(--border);
-            border-radius: 6px; color: #fff; font-family: 'JetBrains Mono', monospace; font-size: 13px;
-        }
-        .form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
     </style>
 </head>
 <body>
@@ -199,9 +192,12 @@
     <header>
         <div class="brand">
             <h1>🏛️ 알상무 퀀트 실전 포트폴리오 터미널</h1>
-            <div class="live-tag"><div class="live-dot"></div> 실시간 가동 중</div>
+            <div class="live-tag"><div class="live-dot"></div> 1분봉/스윙 모드 가동 중</div>
         </div>
-        <div style="font-size:12px; color:var(--text-secondary); font-family:'JetBrains Mono';" id="lastUpdated">갱신: 로딩 중...</div>
+        <div style="display:flex; align-items:center; gap:12px;">
+            <div style="font-size:11px; color:var(--text-secondary); font-family:'JetBrains Mono';" id="lastUpdated">갱신: 로딩 중...</div>
+            <button class="btn-refresh" onclick="loadDashboard()">🔄 즉시 새로고침</button>
+        </div>
     </header>
 
     <!-- KPI Metrics (실제 내 포트폴리오 기준) -->
@@ -224,17 +220,61 @@
         </div>
     </div>
 
-    <!-- Main Grid -->
+    <!-- Today's 6 Recommendations (2+2+2) Interactive Quick Bar -->
+    <div class="today-section">
+        <div class="today-banner">
+            <div class="today-title">
+                <span>🎯 오늘자 알상무 2+2+2 자동 추천 6종목 (클릭 시 차트 확인 & 원클릭 매수)</span>
+                <span style="font-size:11px; color:#38bdf8;">💡 종목 클릭 시 차트 로드 및 매수창 자동 오픈</span>
+            </div>
+            <div class="today-grid">
+                
+                <!-- Bull 2 -->
+                <div class="rec-card-group" style="border-left: 3px solid var(--accent-green);">
+                    <div class="group-header" style="color:var(--accent-green);">🟢 추천 2선 (알상무 Pick / 눌림목 1차 매수)</div>
+                    <div id="todayBullCards">로딩 중...</div>
+                </div>
+
+                <!-- Neutral 2 -->
+                <div class="rec-card-group" style="border-left: 3px solid var(--accent-yellow);">
+                    <div class="group-header" style="color:var(--accent-yellow);">🟡 애매 2선 (중립 / 박스권 에너지 응축)</div>
+                    <div id="todayNeutralCards">로딩 중...</div>
+                </div>
+
+                <!-- Bear 2 -->
+                <div class="rec-card-group" style="border-left: 3px solid var(--accent-red);">
+                    <div class="group-header" style="color:var(--accent-red);">🔴 반대 2선 (숏돌이 경보 / 생명선 붕괴)</div>
+                    <div id="todayBearCards">로딩 중...</div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Layout -->
     <div class="main-layout">
         
-        <!-- Left: Real Portfolio & Date Matrix -->
+        <!-- Left: Quick Buy & Real Portfolio & Matrix -->
         <div class="left-pane">
             
+            <!-- Quick Buy Box (Triggered when stock is selected) -->
+            <div class="quick-buy-box" id="quickBuyBox">
+                <div>
+                    <span style="font-size:13px; font-weight:800; color:#fff;" id="qbTicker">AMZN</span>
+                    <span style="font-size:12px; color:var(--text-secondary); margin-left:6px;" id="qbPrice">$261.05</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-size:11px; color:#94a3b8;">수량:</span>
+                    <input type="number" id="qbQty" class="quick-buy-input" value="10" min="1" />
+                    <button class="btn-buy-action" onclick="submitQuickBuy()">📥 포트폴리오 매수 담기</button>
+                </div>
+            </div>
+
             <!-- 1. My Actual Portfolio -->
             <div class="panel">
                 <div class="panel-header">
                     <span>💼 내 실제 보유 계좌 포트폴리오 (Real Holdings)</span>
-                    <button class="btn-primary" onclick="openBuyModal()">+ 직접 매수 등록</button>
+                    <span style="font-size:11px; color:var(--text-secondary);">실제 매수한 종목만 실시간 추적</span>
                 </div>
                 <div style="overflow-x: auto;">
                     <table>
@@ -249,7 +289,7 @@
                             </tr>
                         </thead>
                         <tbody id="portfolioTableBody">
-                            <tr><td colspan="6" style="text-align:center; color:var(--text-secondary); padding:20px;">보유 중인 포지션이 없습니다. 아래 추천 매트릭스에서 [+매수] 버튼을 눌러보세요!</td></tr>
+                            <tr><td colspan="6" style="text-align:center; color:var(--text-secondary); padding:16px;">보유 중인 포지션이 없습니다. 상단 추천 카드에서 종목을 클릭해보세요!</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -259,9 +299,9 @@
             <div class="panel">
                 <div class="panel-header">
                     <span>📅 일자별 추천 2+2+2 히스토리 매트릭스</span>
-                    <span style="font-size:11px; color:var(--text-secondary);">클릭 시 차트 로드</span>
+                    <span style="font-size:11px; color:var(--text-secondary);">날짜별 6종목 전수 기록</span>
                 </div>
-                <div style="overflow-x: auto; max-height: 420px;">
+                <div style="overflow-x: auto; max-height: 380px;">
                     <table>
                         <thead>
                             <tr>
@@ -301,37 +341,11 @@
 
     </div>
 
-    <!-- Buy Modal -->
-    <div class="modal-overlay" id="buyModal">
-        <div class="modal">
-            <div class="modal-title">📥 포트폴리오 매수 등록</div>
-            <div class="form-group">
-                <label>종목 티커 (Ticker)</label>
-                <input type="text" id="buyTickerInput" class="form-input" placeholder="예: AMZN, NVDA" />
-            </div>
-            <div class="form-group">
-                <label>매수 단가 ($)</label>
-                <input type="number" step="0.01" id="buyPriceInput" class="form-input" placeholder="261.05" />
-            </div>
-            <div class="form-group">
-                <label>매수 수량 (주)</label>
-                <input type="number" step="0.01" id="buyQtyInput" class="form-input" placeholder="10" />
-            </div>
-            <div class="form-group">
-                <label>매수 일자</label>
-                <input type="date" id="buyDateInput" class="form-input" />
-            </div>
-            <div class="form-actions">
-                <button class="toggle-btn" onclick="closeBuyModal()">취소</button>
-                <button class="btn-primary" onclick="submitBuyOrder()">매수 저장</button>
-            </div>
-        </div>
-    </div>
-
     <script>
         let mainChart, volumeChart;
         let candleSeries, kijunSeries, tenkanSeries, spanASeries, spanBSeries, sma20Series, sma60Series, volumeSeries;
-        let currentTicker = "AMZN";
+        let currentSelectedTicker = "AMZN";
+        let currentSelectedPrice = 261.05;
 
         function initCharts() {
             const chartElem = document.getElementById('chartContainer');
@@ -373,14 +387,23 @@
             });
         }
 
+        function selectStock(ticker, price) {
+            currentSelectedTicker = ticker;
+            currentSelectedPrice = price || currentSelectedPrice;
+            document.getElementById('qbTicker').innerText = ticker;
+            document.getElementById('qbPrice').innerText = `$${parseFloat(currentSelectedPrice).toFixed(2)}`;
+            fetchChart(ticker);
+        }
+
         async function fetchChart(ticker) {
             try {
-                currentTicker = ticker;
                 document.getElementById('curTicker').innerText = ticker;
                 const res = await fetch(`/api/chart/${ticker}`);
                 if (!res.ok) return;
                 const c = await res.json();
+                currentSelectedPrice = c.latest_close;
                 document.getElementById('curPrice').innerText = `$${c.latest_close.toLocaleString()}`;
+                document.getElementById('qbPrice').innerText = `$${c.latest_close.toLocaleString()}`;
 
                 candleSeries.setData(c.candles);
                 kijunSeries.setData(c.kijun_line);
@@ -417,14 +440,14 @@
 
                 const portTbody = document.getElementById('portfolioTableBody');
                 if (p.holdings.length === 0) {
-                    portTbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-secondary); padding:20px;">보유 중인 포지션이 없습니다. 아래 매트릭스에서 [+매수]를 눌러 등록해보세요!</td></tr>';
+                    portTbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-secondary); padding:16px;">보유 중인 포지션이 없습니다. 상단 추천 카드에서 종목을 클릭해보세요!</td></tr>';
                 } else {
                     portTbody.innerHTML = '';
                     p.holdings.forEach(h => {
                         const tr = document.createElement('tr');
                         const retColor = h.pnl_pct >= 0 ? '#10b981' : '#ef4444';
                         tr.innerHTML = `
-                            <td><span class="ticker-badge" onclick="fetchChart('${h.ticker}')">${h.ticker}</span></td>
+                            <td><span class="ticker-pill" onclick="selectStock('${h.ticker}', ${h.current_price})">${h.ticker}</span></td>
                             <td style="font-family:'JetBrains Mono';">$${parseFloat(h.buy_price).toFixed(2)}</td>
                             <td style="font-family:'JetBrains Mono';">${h.quantity}주</td>
                             <td style="font-family:'JetBrains Mono';">$${parseFloat(h.current_price).toFixed(2)}</td>
@@ -438,69 +461,94 @@
                     });
                 }
 
-                // 2. Render Matrix
-                const matrixTbody = document.getElementById('matrixTableBody');
-                matrixTbody.innerHTML = '';
-                data.matrix.forEach(m => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td style="font-family:'JetBrains Mono'; font-weight:700;">${m.date}</td>
-                        <td>
-                            <span class="ticker-badge bull" onclick="fetchChart('${m.bull_1}')">${m.bull_1} ($${m.bull_1_price})</span>
-                            <button class="btn-buy-mini" onclick="quickBuyModal('${m.bull_1}', ${m.bull_1_price})">+매수</button>
-                            <span class="ticker-badge bull" onclick="fetchChart('${m.bull_2}')" style="margin-left:4px;">${m.bull_2} ($${m.bull_2_price})</span>
-                            <button class="btn-buy-mini" onclick="quickBuyModal('${m.bull_2}', ${m.bull_2_price})">+매수</button>
-                        </td>
-                        <td>
-                            <span class="ticker-badge neutral" onclick="fetchChart('${m.neutral_1}')">${m.neutral_1} ($${m.neutral_1_price})</span>
-                            <span class="ticker-badge neutral" onclick="fetchChart('${m.neutral_2}')" style="margin-left:4px;">${m.neutral_2} ($${m.neutral_2_price})</span>
-                        </td>
-                        <td>
-                            <span class="ticker-badge bear" onclick="fetchChart('${m.bear_1}')">${m.bear_1} ($${m.bear_1_price})</span>
-                            <span class="ticker-badge bear" onclick="fetchChart('${m.bear_2}')" style="margin-left:4px;">${m.bear_2} ($${m.bear_2_price})</span>
-                        </td>
+                // 2. Render Today's 6 Cards & Matrix
+                const matrixList = Array.isArray(data.matrix) ? data.matrix : [data.matrix];
+                if (matrixList.length > 0) {
+                    const today = matrixList[0];
+                    
+                    // Render Today Cards
+                    document.getElementById('todayBullCards').innerHTML = `
+                        <div class="rec-item" onclick="selectStock('${today.bull_1}', ${today.bull_1_price})">
+                            <span class="rec-item-title" style="color:var(--accent-green);">${today.bull_1}</span>
+                            <span class="rec-item-price">$${today.bull_1_price}</span>
+                        </div>
+                        <div class="rec-item" onclick="selectStock('${today.bull_2}', ${today.bull_2_price})">
+                            <span class="rec-item-title" style="color:var(--accent-green);">${today.bull_2}</span>
+                            <span class="rec-item-price">$${today.bull_2_price}</span>
+                        </div>
                     `;
-                    matrixTbody.appendChild(tr);
-                });
+
+                    document.getElementById('todayNeutralCards').innerHTML = `
+                        <div class="rec-item" onclick="selectStock('${today.neutral_1}', ${today.neutral_1_price})">
+                            <span class="rec-item-title" style="color:var(--accent-yellow);">${today.neutral_1}</span>
+                            <span class="rec-item-price">$${today.neutral_1_price}</span>
+                        </div>
+                        <div class="rec-item" onclick="selectStock('${today.neutral_2}', ${today.neutral_2_price})">
+                            <span class="rec-item-title" style="color:var(--accent-yellow);">${today.neutral_2}</span>
+                            <span class="rec-item-price">$${today.neutral_2_price}</span>
+                        </div>
+                    `;
+
+                    document.getElementById('todayBearCards').innerHTML = `
+                        <div class="rec-item" onclick="selectStock('${today.bear_1}', ${today.bear_1_price})">
+                            <span class="rec-item-title" style="color:var(--accent-red);">${today.bear_1}</span>
+                            <span class="rec-item-price">$${today.bear_1_price}</span>
+                        </div>
+                        <div class="rec-item" onclick="selectStock('${today.bear_2}', ${today.bear_2_price})">
+                            <span class="rec-item-title" style="color:var(--accent-red);">${today.bear_2}</span>
+                            <span class="rec-item-price">$${today.bear_2_price}</span>
+                        </div>
+                    `;
+
+                    // Render Matrix Table
+                    const matrixTbody = document.getElementById('matrixTableBody');
+                    matrixTbody.innerHTML = '';
+                    matrixList.forEach(m => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td style="font-family:'JetBrains Mono'; font-weight:700;">${m.date}</td>
+                            <td>
+                                <span class="ticker-pill bull" onclick="selectStock('${m.bull_1}', ${m.bull_1_price})">${m.bull_1} ($${m.bull_1_price})</span>
+                                <span class="ticker-pill bull" onclick="selectStock('${m.bull_2}', ${m.bull_2_price})" style="margin-left:4px;">${m.bull_2} ($${m.bull_2_price})</span>
+                            </td>
+                            <td>
+                                <span class="ticker-pill neutral" onclick="selectStock('${m.neutral_1}', ${m.neutral_1_price})">${m.neutral_1} ($${m.neutral_1_price})</span>
+                                <span class="ticker-pill neutral" onclick="selectStock('${m.neutral_2}', ${m.neutral_2_price})" style="margin-left:4px;">${m.neutral_2} ($${m.neutral_2_price})</span>
+                            </td>
+                            <td>
+                                <span class="ticker-pill bear" onclick="selectStock('${m.bear_1}', ${m.bear_1_price})">${m.bear_1} ($${m.bear_1_price})</span>
+                                <span class="ticker-pill bear" onclick="selectStock('${m.bear_2}', ${m.bear_2_price})" style="margin-left:4px;">${m.bear_2} ($${m.bear_2_price})</span>
+                            </td>
+                        `;
+                        matrixTbody.appendChild(tr);
+                    });
+                }
 
             } catch (e) {
                 console.error("Dashboard refresh error:", e);
             }
         }
 
-        // Modal operations
-        function openBuyModal() {
-            document.getElementById('buyDateInput').value = new Date().toISOString().split('T')[0];
-            document.getElementById('buyModal').style.display = 'flex';
-        }
-        function closeBuyModal() { document.getElementById('buyModal').style.display = 'none'; }
-        
-        function quickBuyModal(ticker, price) {
-            document.getElementById('buyTickerInput').value = ticker;
-            document.getElementById('buyPriceInput').value = price;
-            document.getElementById('buyQtyInput').value = 10;
-            openBuyModal();
-        }
-
-        async function submitBuyOrder() {
-            const ticker = document.getElementById('buyTickerInput').value;
-            const price = parseFloat(document.getElementById('buyPriceInput').value);
-            const qty = parseFloat(document.getElementById('buyQtyInput').value);
-            const date = document.getElementById('buyDateInput').value;
-
-            if (!ticker || !price || !qty) {
-                alert("티커, 가격, 수량을 모두 입력해주세요!");
+        async function submitQuickBuy() {
+            const qty = parseFloat(document.getElementById('qbQty').value);
+            if (!qty || qty <= 0) {
+                alert("수량을 1주 이상 입력해주세요!");
                 return;
             }
 
             const res = await fetch('/api/portfolio/buy', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ticker, buy_price: price, quantity: qty, buy_date: date })
+                body: JSON.stringify({
+                    ticker: currentSelectedTicker,
+                    buy_price: currentSelectedPrice,
+                    quantity: qty,
+                    buy_date: new Date().toISOString().split('T')[0]
+                })
             });
             if (res.ok) {
-                closeBuyModal();
                 loadDashboard();
+                alert(`✅ [${currentSelectedTicker}] ${qty}주 ($${(currentSelectedPrice * qty).toFixed(2)}) 매수 등록 완료!`);
             }
         }
 
@@ -509,7 +557,7 @@
             const res = await fetch(`/api/portfolio/sell/${id}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sell_price: curPrice, reason: "TARGET_PROFIT" })
+                body: JSON.stringify({ sell_price: curPrice, reason: "MANUAL_PROFIT" })
             });
             if (res.ok) loadDashboard();
         }
@@ -521,9 +569,9 @@
         document.getElementById('btnSma').onclick = function() { this.classList.toggle('active'); sma20Series.applyOptions({ visible: this.classList.contains('active') }); sma60Series.applyOptions({ visible: this.classList.contains('active') }); };
 
         initCharts();
-        fetchChart("AMZN");
+        selectStock("AMZN", 261.05);
         loadDashboard();
-        setInterval(loadDashboard, 15000); // 15초 자동 갱신
+        setInterval(loadDashboard, 60000); // 60초 (1분) 주기 자동 리프레시
     </script>
 </body>
 </html>
