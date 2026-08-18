@@ -2,8 +2,8 @@ name: Daily Al-Sangmoo Quant Briefing & Forward Tracker
 
 on:
   schedule:
-    # Runs at 23:30 UTC every Sunday-Thursday (08:30 KST Monday-Friday)
-    - cron: '30 23 * * 0-4'
+    # Runs at 03:30 UTC every Monday-Friday (12:30 KST Lunchtime)
+    - cron: '30 3 * * 1-5'
   workflow_dispatch: # Allows manual trigger from GitHub UI anytime
 
 permissions:

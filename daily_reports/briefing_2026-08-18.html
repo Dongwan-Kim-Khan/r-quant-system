@@ -11,6 +11,8 @@
             .sub-title { font-size: 13px; color: #94a3b8; margin-top: 6px; }
             .section { padding: 20px; border-bottom: 1px solid #e2e8f0; }
             .section-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+            .stream-box { background: #fdf4ff; border: 1px solid #f0abfc; border-radius: 8px; padding: 14px; margin-bottom: 12px; }
+            .stream-box a { color: #a21caf; text-decoration: none; font-weight: bold; }
             .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-bottom: 10px; }
             .card-alert { background: #fef2f2; border: 1px solid #fecaca; border-left: 4px solid #ef4444; }
             .card-profit { background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 4px solid #10b981; }
@@ -27,87 +29,34 @@
     <body>
         <div class="container">
             <div class="header">
-                <h1>🏛️ 알상무 퀀트 모닝 브리핑 & 매매 알림</h1>
-                <div class="sub-title">2026-08-18 (오전 8:30 KST 기준 분석 리포트)</div>
+                <h1>🏛️ 알상무 퀀트 점심 브리핑 & 매매 알림</h1>
+                <div class="sub-title">2026-08-18 (바이킹스 라이브 방송 분석 기반)</div>
             </div>
             
-            <!-- Model Health Status -->
+            <!-- YouTube Stream Analysis -->
             <div class="section">
+                <div class="stream-box">
+                    <div style="font-size: 14px; font-weight: 700; color: #86198f; margin-bottom: 6px;">🎬 오늘자 바이킹스/알상무 라이브 분석 완료</div>
+                    <div style="font-size: 13px; margin-bottom: 4px;"><strong>방송 제목:</strong> <a href="https://www.youtube.com/watch?v=uu2scQ-AsfM" target="_blank">Interest Rates and Oil Prices Reaching a Tipping Point | Growth vs. Interest Rate Burden Battle ↗</a></div>
+                    <div style="font-size: 12px; color: #701a75;">
+                        • <strong>포착된 시장 사이클:</strong> 거시 경제 / 미장 주도주 사이클<br>
+                        • <strong>방송 연계 후보 종목:</strong> 주요 성장주 유니버스 기반
+                    </div>
+                </div>
                 <div class="health-box">
-                    📊 실전 모델 유효성 검증 상태: 🌱 데이터 누적 중 (초기 모델 가동 단계)
+                    📊 실전 퀀트 모델 검증 상태: 🌱 데이터 누적 중 (초기 모델 가동 단계)
                 </div>
             </div>
 
-            <!-- 🚨 0. 기존 보유 종목 매도/익절/손절 알림 -->
+            <!-- 🚨 0. 내 실제 보유 종목 매도/익절/손절 알림 (Real Portfolio Exits) -->
             <div class="section">
-                <div class="section-title" style="color:#2563eb;">🔔 0. 기존 추천 종목 매도/익절/손절 알림 (Actionable Exit Signals)</div>
+                <div class="section-title" style="color:#2563eb;">🔔 0. 내 실제 보유 종목 매도/익절/손절 알림 (Real Portfolio)</div>
     
-                <div class="card card">
-                    <div class="ticker-head">
-                        <span>AMZN [⏳ 보유 지속]</span>
-                        <span class="price" style="color:#10b981;">+0.10%</span>
-                    </div>
-                    <div class="details">
-                        • <strong>진입일:</strong> 2026-08-18 ($261.05) ➔ <strong>현재가:</strong> $261.31<br>
-                        • <strong>📢 실전 대응 지침:</strong> <strong>⏳ [보유 지속] 기준선 지지 유효 (현재 +0.1%). 손절가 $256.68 유지</strong>
-                    </div>
-                </div>
-            
-                <div class="card card">
-                    <div class="ticker-head">
-                        <span>LLY [⏳ 보유 지속]</span>
-                        <span class="price" style="color:#ef4444;">-1.20%</span>
-                    </div>
-                    <div class="details">
-                        • <strong>진입일:</strong> 2026-08-18 ($1,197.58) ➔ <strong>현재가:</strong> $1,183.16<br>
-                        • <strong>📢 실전 대응 지침:</strong> <strong>⏳ [보유 지속] 기준선 지지 유효 (현재 -1.2%). 손절가 $1,172.94 유지</strong>
-                    </div>
-                </div>
-            
-                <div class="card card">
-                    <div class="ticker-head">
-                        <span>AVGO [⏳ 보유 지속]</span>
-                        <span class="price" style="color:#10b981;">+0.47%</span>
-                    </div>
-                    <div class="details">
-                        • <strong>진입일:</strong> 2026-08-18 ($394.27) ➔ <strong>현재가:</strong> $392.43<br>
-                        • <strong>📢 실전 대응 지침:</strong> <strong>⏳ [보유 지속] 기준선 지지 유효 (현재 +0.5%). 손절가 $395.26 유지</strong>
-                    </div>
-                </div>
-            
-                <div class="card card">
-                    <div class="ticker-head">
-                        <span>COST [⏳ 보유 지속]</span>
-                        <span class="price" style="color:#ef4444;">-0.29%</span>
-                    </div>
-                    <div class="details">
-                        • <strong>진입일:</strong> 2026-08-18 ($950.77) ➔ <strong>현재가:</strong> $953.50<br>
-                        • <strong>📢 실전 대응 지침:</strong> <strong>⏳ [보유 지속] 기준선 지지 유효 (현재 -0.3%). 손절가 $948.30 유지</strong>
-                    </div>
-                </div>
-            
-                <div class="card card">
-                    <div class="ticker-head">
-                        <span>META [⏳ 보유 지속]</span>
-                        <span class="price" style="color:#10b981;">+0.86%</span>
-                    </div>
-                    <div class="details">
-                        • <strong>진입일:</strong> 2026-08-18 ($573.88) ➔ <strong>현재가:</strong> $568.97<br>
-                        • <strong>📢 실전 대응 지침:</strong> <strong>⏳ [보유 지속] 기준선 지지 유효 (현재 +0.9%). 손절가 $605.29 유지</strong>
-                    </div>
-                </div>
-            
-                <div class="card card">
-                    <div class="ticker-head">
-                        <span>TSLA [⏳ 보유 지속]</span>
-                        <span class="price" style="color:#10b981;">+0.08%</span>
-                    </div>
-                    <div class="details">
-                        • <strong>진입일:</strong> 2026-08-18 ($339.58) ➔ <strong>현재가:</strong> $339.30<br>
-                        • <strong>📢 실전 대응 지침:</strong> <strong>⏳ [보유 지속] 기준선 지지 유효 (현재 +0.1%). 손절가 $351.99 유지</strong>
-                    </div>
-                </div>
-            
+            <div class="card" style="background:#f8fafc; border:1px dashed #cbd5e1; text-align:center; padding:16px;">
+                <div style="font-size:13px; font-weight:600; color:#475569;">💼 현재 내 계좌에 담긴 보유 종목이 없습니다.</div>
+                <div style="font-size:11px; color:#94a3b8; margin-top:4px;">웹 대시보드(http://localhost:8000)에서 신규 매수 시 실시간 목표가(+15%)/손절가(-3%) 자동 감시 알림이 여기에 전송됩니다.</div>
+            </div>
+        
             </div>
 
             <!-- 1. 신규 추천 2선 -->
@@ -197,7 +146,7 @@
             </div>
             
             <div class="footer">
-                알상무 17년 퀀트 엔진 자동 발송 시스템 • 매일 아침 8:30 자동 검증 & 포워드 트래킹 기록 저장
+                알상무 17년 퀀트 엔진 자동 발송 시스템 • 매일 점심 12:30 유튜브 라이브 분석 & 포워드 트래킹
             </div>
         </div>
     </body>

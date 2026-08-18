@@ -15,6 +15,9 @@ from email.mime.text import MIMEText
 from datetime import datetime, timedelta
 import pandas as pd
 import yfinance as yf
+import youtube_stream_scanner
+import db_manager
+import generate_dashboard_feed
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 HISTORY_CSV = os.path.join(BASE_DIR, "trade_history.csv")
@@ -98,10 +101,22 @@ def calculate_indicators(df):
     df['Vol_Ratio'] = df['Volume'] / df['Vol_SMA20']
     return df
 
-def scan_and_select_2x2x2():
+def scan_and_select_2x2x2(priority_tickers=None):
+    if priority_tickers is None:
+        priority_tickers = []
+        
+    # Combine priority stream tickers at the front
+    scan_list = []
+    for t in priority_tickers:
+        if t not in scan_list:
+            scan_list.append(t)
+    for t in UNIVERSE:
+        if t not in scan_list:
+            scan_list.append(t)
+            
     candidates = []
     
-    for ticker in UNIVERSE:
+    for ticker in scan_list:
         try:
             df = yf.download(ticker, period="6mo", interval="1d", progress=False)
             if df.empty or len(df) < 55:
@@ -111,16 +126,14 @@ def scan_and_select_2x2x2():
                 
             df = calculate_indicators(df)
             last = df.iloc[-1]
-            prev = df.iloc[-2]
             
             close = float(last['Close'])
             kijun = float(last['Kijun'])
             tenkan = float(last['Tenkan'])
-            sma20 = float(last['SMA20'])
             vol_ratio = float(last['Vol_Ratio'])
             
-            span_a = float(last['SpanA']) if not pd.isna(last['SpanA']) else sma20
-            span_b = float(last['SpanB']) if not pd.isna(last['SpanB']) else sma20
+            span_a = float(last['SpanA']) if not pd.isna(last['SpanA']) else float(last['SMA20'])
+            span_b = float(last['SpanB']) if not pd.isna(last['SpanB']) else float(last['SMA20'])
             cloud_top = max(span_a, span_b)
             cloud_bottom = min(span_a, span_b)
             
@@ -138,10 +151,9 @@ def scan_and_select_2x2x2():
             if close < kijun: bear_score += 40
             if close < cloud_bottom: bear_score += 35
             if kijun_gap < -2.0: bear_score += 15
-            if vol_ratio >= 1.2: bear_score += 10
             
-            # Neutral Indicator
-            neutral_score = abs(kijun_gap) <= 2.0 and abs(bull_score - bear_score) <= 20
+            # Neutral score
+            neutral_score = 100 - max(bull_score, bear_score)
             
             candidates.append({
                 "ticker": ticker,
@@ -155,7 +167,7 @@ def scan_and_select_2x2x2():
                 "bear_score": bear_score,
                 "neutral_score": neutral_score
             })
-        except Exception as e:
+        except Exception:
             continue
             
     # Sort strictly: Pick Top 2 Bull, Top 2 Bear, Top 2 Neutral
@@ -168,12 +180,62 @@ def scan_and_select_2x2x2():
     
     return bull_picks, neutral_picks, bear_picks
 
+def evaluate_user_portfolio_positions():
+    """
+    Evaluates ONLY the user's active holdings in my_portfolio:
+    - Triggers TAKE-PROFIT SELL if target (+15%) reached.
+    - Triggers HARD STOP-LOSS SELL if -3% or Kijun-sen broken.
+    - Triggers PARTIAL TAKE-PROFIT if +8~15%.
+    - Triggers HOLD if trend intact.
+    """
+    portfolio_data = db_manager.get_live_portfolio()
+    holdings = portfolio_data.get("holdings", [])
+    
+    portfolio_alerts = []
+    for h in holdings:
+        ticker = h['ticker']
+        buy_price = float(h['buy_price'])
+        cur_price = float(h['current_price'])
+        pnl_pct = float(h['pnl_pct'])
+        qty = float(h['quantity'])
+        target_p = float(h.get('target_price', round(buy_price * 1.15, 2)))
+        stop_p = float(h.get('stop_loss_price', round(buy_price * 0.97, 2)))
+        
+        is_take_profit = cur_price >= target_p or pnl_pct >= 15.0
+        is_stop_loss = cur_price <= stop_p or pnl_pct <= -3.0
+        is_partial_tp = 8.0 <= pnl_pct < 15.0
+        
+        if is_take_profit:
+            badge = "💰 전량 익절 매도"
+            advice = f"🚨 [전량 익절 매도] +15% 목표가(${target_p:,.2f}) 도달! 전량 차익 실현 권고 (수익률 {pnl_pct:+.1f}%)"
+        elif is_stop_loss:
+            badge = "🛡️ 칼손절 긴급 매도"
+            advice = f"🚨 [칼손절 긴급 매도] -3% 손절가(${stop_p:,.2f}) 터치! 즉시 전량 매도 권고 (손실률 {pnl_pct:+.1f}%)"
+        elif is_partial_tp:
+            badge = "📈 50% 분할 익절"
+            advice = f"💰 [50% 분할 익절] 현재 수익률 {pnl_pct:+.1f}%. 절반 챙기고 스탑 본절가 상향 권고"
+        else:
+            badge = "⏳ 보유 지속"
+            advice = f"⏳ [보유 지속] 지지선 방어 중. 손절가 ${stop_p:,.2f} 유지 / 목표가 ${target_p:,.2f}"
+            
+        portfolio_alerts.append({
+            "ticker": ticker,
+            "quantity": qty,
+            "buy_date": h['buy_date'],
+            "buy_price": buy_price,
+            "cur_price": cur_price,
+            "pnl_pct": pnl_pct,
+            "target_price": target_p,
+            "stop_loss_price": stop_p,
+            "badge": badge,
+            "advice": advice
+        })
+        
+    return portfolio_alerts
+
 def evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, today_str):
     """
-    Evaluates EXISTING active recommended positions:
-    - Triggers TAKE-PROFIT SELL if target (+15~20%) reached.
-    - Triggers HARD STOP-LOSS SELL if -3% or Kijun-sen broken.
-    - Triggers HOLD if trend intact.
+    Maintains background forward tracking database for recommended history.
     """
     if os.path.exists(HISTORY_CSV):
         history_df = pd.read_csv(HISTORY_CSV)
@@ -186,10 +248,10 @@ def evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, 
     if "exit_advice" not in history_df.columns:
         history_df["exit_advice"] = "HOLD"
         
+    # Evaluate open recommendation rows in background
+    open_trades = history_df[history_df['status'] == 'OPEN'].copy()
     position_alerts = []
     
-    # 1. Evaluate open positions
-    open_trades = history_df[history_df['status'] == 'OPEN'].copy()
     for idx, row in open_trades.iterrows():
         ticker = row['ticker']
         entry_price = float(row['entry_price'])
@@ -210,7 +272,6 @@ def evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, 
                 new_max = max(prev_max, pnl_pct)
                 days_active = (datetime.now() - datetime.strptime(row['date'], "%Y-%m-%d")).days
                 
-                # Check Exit Signals
                 is_stop_loss = pnl_pct <= -3.0 or (pos_type == 'BULL' and cur_price < kijun)
                 is_take_profit = pnl_pct >= 15.0
                 is_partial_tp = 8.0 <= pnl_pct < 15.0
@@ -218,24 +279,19 @@ def evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, 
                 
                 if is_take_profit:
                     status = 'CLOSED_PROFIT'
-                    advice = f"🚨 [전량 익절 매도] 목표가 달성 (+{pnl_pct:.1f}%)! 전량 차익 실현 후 현금화 권고"
-                    badge = "💰 익절 매도"
+                    advice = f"🚨 [전량 익절 매도] 목표가 달성 (+{pnl_pct:.1f}%)"
                 elif is_stop_loss:
                     status = 'CLOSED_STOP'
-                    advice = f"🚨 [칼손절 긴급 매도] 손절선 터치 ({pnl_pct:.1f}%) / 기준선 붕괴! 즉시 전량 매도 권고"
-                    badge = "🛡️ 칼손절 매도"
+                    advice = f"🚨 [칼손절 긴급 매도] 손절선 터치 ({pnl_pct:.1f}%)"
                 elif is_partial_tp:
                     status = 'OPEN'
-                    advice = f"💰 [50% 분할 익절] 현재 수익률 +{pnl_pct:.1f}%. 절반 챙기고 본절 스탑 상향 권고"
-                    badge = "📈 부분 익절"
+                    advice = f"💰 [50% 분할 익절] 현재 수익률 +{pnl_pct:.1f}%"
                 elif is_expired:
                     status = 'CLOSED_EXPIRED'
-                    advice = f"⏱️ [3개월 만기 청산] 현재 수익률 {pnl_pct:+.1f}%. 포지션 종료 및 자금 회전"
-                    badge = "⏱️ 만기 청산"
+                    advice = f"⏱️ [3개월 만기 청산] 현재 수익률 {pnl_pct:+.1f}%"
                 else:
                     status = 'OPEN'
-                    advice = f"⏳ [보유 지속] 기준선 지지 유효 (현재 {pnl_pct:+.1f}%). 손절가 ${kijun:,.2f} 유지"
-                    badge = "⏳ 보유 지속"
+                    advice = f"⏳ [보유 지속] 손절가 ${kijun:,.2f} 유지"
                     
                 history_df.loc[idx, 'current_price'] = cur_price
                 history_df.loc[idx, 'pnl_pct'] = pnl_pct
@@ -322,7 +378,17 @@ def evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, 
         
     return history_df, position_alerts, health_status
 
-def generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, position_alerts, health_status):
+def generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, portfolio_alerts, health_status, stream_info=None):
+    if stream_info is None:
+        stream_info = {}
+        
+    stream_title = stream_info.get("title", "바이킹스 라이브 스트리밍")
+    stream_url = stream_info.get("url", "https://www.youtube.com/@wepoll_original/streams")
+    cycles = stream_info.get("cycle_keywords", [])
+    cycle_str = ", ".join(cycles) if cycles else "거시 경제 / 미장 주도주 사이클"
+    stream_tickers = stream_info.get("extracted_tickers", [])
+    ticker_str = ", ".join(stream_tickers) if stream_tickers else "주요 성장주 유니버스 기반"
+
     html = f"""
     <!DOCTYPE html>
     <html>
@@ -336,6 +402,8 @@ def generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, pos
             .sub-title {{ font-size: 13px; color: #94a3b8; margin-top: 6px; }}
             .section {{ padding: 20px; border-bottom: 1px solid #e2e8f0; }}
             .section-title {{ font-size: 16px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }}
+            .stream-box {{ background: #fdf4ff; border: 1px solid #f0abfc; border-radius: 8px; padding: 14px; margin-bottom: 12px; }}
+            .stream-box a {{ color: #a21caf; text-decoration: none; font-weight: bold; }}
             .card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-bottom: 10px; }}
             .card-alert {{ background: #fef2f2; border: 1px solid #fecaca; border-left: 4px solid #ef4444; }}
             .card-profit {{ background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 4px solid #10b981; }}
@@ -352,39 +420,53 @@ def generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, pos
     <body>
         <div class="container">
             <div class="header">
-                <h1>🏛️ 알상무 퀀트 모닝 브리핑 & 매매 알림</h1>
-                <div class="sub-title">{today_str} (오전 8:30 KST 기준 분석 리포트)</div>
+                <h1>🏛️ 알상무 퀀트 점심 브리핑 & 매매 알림</h1>
+                <div class="sub-title">{today_str} (바이킹스 라이브 방송 분석 기반)</div>
             </div>
             
-            <!-- Model Health Status -->
+            <!-- YouTube Stream Analysis -->
             <div class="section">
+                <div class="stream-box">
+                    <div style="font-size: 14px; font-weight: 700; color: #86198f; margin-bottom: 6px;">🎬 오늘자 바이킹스/알상무 라이브 분석 완료</div>
+                    <div style="font-size: 13px; margin-bottom: 4px;"><strong>방송 제목:</strong> <a href="{stream_url}" target="_blank">{stream_title} ↗</a></div>
+                    <div style="font-size: 12px; color: #701a75;">
+                        • <strong>포착된 시장 사이클:</strong> {cycle_str}<br>
+                        • <strong>방송 연계 후보 종목:</strong> {ticker_str}
+                    </div>
+                </div>
                 <div class="health-box">
-                    📊 실전 모델 유효성 검증 상태: {health_status}
+                    📊 실전 퀀트 모델 검증 상태: {health_status}
                 </div>
             </div>
 
-            <!-- 🚨 0. 기존 보유 종목 매도/익절/손절 알림 -->
+            <!-- 🚨 0. 내 실제 보유 종목 매도/익절/손절 알림 (Real Portfolio Exits) -->
             <div class="section">
-                <div class="section-title" style="color:#2563eb;">🔔 0. 기존 추천 종목 매도/익절/손절 알림 (Actionable Exit Signals)</div>
+                <div class="section-title" style="color:#2563eb;">🔔 0. 내 실제 보유 종목 매도/익절/손절 알림 (Real Portfolio)</div>
     """
-    if position_alerts:
-        for p in position_alerts:
+    if portfolio_alerts:
+        for p in portfolio_alerts:
             card_class = "card-profit" if "익절" in p['badge'] else ("card-alert" if "손절" in p['badge'] else "card")
             pnl_color = "#10b981" if p['pnl_pct'] > 0 else "#ef4444"
             html += f"""
                 <div class="card {card_class}">
                     <div class="ticker-head">
-                        <span>{p['ticker']} [{p['badge']}]</span>
+                        <span>{p['ticker']} ({p['quantity']}주) [{p['badge']}]</span>
                         <span class="price" style="color:{pnl_color};">{p['pnl_pct']:+.2f}%</span>
                     </div>
                     <div class="details">
-                        • <strong>진입일:</strong> {p['entry_date']} (${p['entry_price']:,.2f}) ➔ <strong>현재가:</strong> ${p['cur_price']:,.2f}<br>
+                        • <strong>매수일:</strong> {p['buy_date']} (${p['buy_price']:,.2f}) ➔ <strong>현재가:</strong> ${p['cur_price']:,.2f}<br>
+                        • <strong>목표가:</strong> ${p['target_price']:,.2f} (+15%) | <strong>손절가:</strong> ${p['stop_loss_price']:,.2f} (-3%)<br>
                         • <strong>📢 실전 대응 지침:</strong> <strong>{p['advice']}</strong>
                     </div>
                 </div>
             """
     else:
-        html += "<div class='details' style='color:#64748b; text-align:center;'>현재 추적 중인 이전 포지션이 없습니다. (오늘부터 신규 기록 시작)</div>"
+        html += """
+            <div class="card" style="background:#f8fafc; border:1px dashed #cbd5e1; text-align:center; padding:16px;">
+                <div style="font-size:13px; font-weight:600; color:#475569;">💼 현재 내 계좌에 담긴 보유 종목이 없습니다.</div>
+                <div style="font-size:11px; color:#94a3b8; margin-top:4px;">웹 대시보드(http://localhost:8000)에서 신규 매수 시 실시간 목표가(+15%)/손절가(-3%) 자동 감시 알림이 여기에 전송됩니다.</div>
+            </div>
+        """
 
     html += """
             </div>
@@ -456,7 +538,7 @@ def generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, pos
             </div>
             
             <div class="footer">
-                알상무 17년 퀀트 엔진 자동 발송 시스템 • 매일 아침 8:30 자동 검증 & 포워드 트래킹 기록 저장
+                알상무 17년 퀀트 엔진 자동 발송 시스템 • 매일 점심 12:30 유튜브 라이브 분석 & 포워드 트래킹
             </div>
         </div>
     </body>
@@ -464,24 +546,37 @@ def generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, pos
     """
     return html
 
-def print_markdown_briefing(today_str, bull_picks, neutral_picks, bear_picks, position_alerts, health_status):
-    md = f"""
-# 🏛️ 알상무 퀀트 모닝 브리핑 & 매매 알림 ({today_str})
+def print_markdown_briefing(today_str, bull_picks, neutral_picks, bear_picks, portfolio_alerts, health_status, stream_info=None):
+    if stream_info is None:
+        stream_info = {}
+        
+    stream_title = stream_info.get("title", "바이킹스 라이브 스트리밍")
+    stream_url = stream_info.get("url", "https://www.youtube.com/@wepoll_original/streams")
+    cycles = stream_info.get("cycle_keywords", [])
+    cycle_str = ", ".join(cycles) if cycles else "거시 경제 / 미장 주도주 사이클"
+    stream_tickers = stream_info.get("extracted_tickers", [])
+    ticker_str = ", ".join(stream_tickers) if stream_tickers else "주요 성장주 유니버스"
 
-> 📊 **실전 모델 유효성 검증 상태**: `{health_status}`
+    md = f"""
+# 🏛️ 알상무 퀀트 점심 브리핑 & 매매 알림 ({today_str})
+
+> 🎬 **오늘자 라이브 분석**: [{stream_title}]({stream_url})
+> 🔍 **포착 사이클**: `{cycle_str}` | **후보 종목군**: `{ticker_str}`
+> 📊 **실전 퀀트 모델 상태**: `{health_status}`
 
 ---
 
-## 🔔 0. 기존 추천 종목 매도/익절/손절 알림 (Actionable Exit Signals)
+## 🔔 0. 내 실제 보유 계좌 매매/익절/손절 알림 (Real Portfolio)
 
 """
-    if position_alerts:
-        for p in position_alerts:
-            md += f"* **`{p['ticker']}`** [{p['badge']}] (수익률 `{p['pnl_pct']:+.2f}%`)\n"
-            md += f"  - 진입: `${p['entry_price']:,.2f}` ➔ 현재: `${p['cur_price']:,.2f}`\n"
+    if portfolio_alerts:
+        for p in portfolio_alerts:
+            md += f"* **`{p['ticker']}`** ({p['quantity']}주) [{p['badge']}] (수익률 `{p['pnl_pct']:+.2f}%`)\n"
+            md += f"  - 매수가: `${p['buy_price']:,.2f}` ➔ 현재가: `${p['cur_price']:,.2f}`\n"
+            md += f"  - 🎯 목표가: `${p['target_price']:,.2f}` (+15%) | 🛡️ 손절가: `${p['stop_loss_price']:,.2f}` (-3%)\n"
             md += f"  - **📢 대응 지침**: {p['advice']}\n\n"
     else:
-        md += "*현재 추적 중인 이전 포지션이 없습니다. (오늘부터 신규 기록 시작)*\n\n"
+        md += "*💼 현재 내 계좌에 담긴 보유 종목이 없습니다. (웹 대시보드에서 매수 등록 시 실시간 손절/익절 자동 감시 시작)*\n\n"
 
     md += """---
 
@@ -515,40 +610,47 @@ def print_markdown_briefing(today_str, bull_picks, neutral_picks, bear_picks, po
 
     print(md)
 
-import db_manager
-import generate_dashboard_feed
-
 def main():
     today_str = datetime.now().strftime("%Y-%m-%d")
-    print(f"🚀 [알상무 봇] {today_str} 2+2+2 퀀트 스캔 및 포지션 검증 가동...")
+    print(f"🚀 [알상무 봇] {today_str} 유튜브 라이브 파싱 ➔ 2+2+2 퀀트 계산 ➔ 내 계좌 알림 실행...")
     
-    bull_picks, neutral_picks, bear_picks = scan_and_select_2x2x2()
-    history_df, position_alerts, health_status = evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, today_str)
+    # 1. Fetch latest YouTube live stream from @wepoll_original/streams
+    stream_info = youtube_stream_scanner.fetch_latest_wepoll_stream()
+    priority_tickers = stream_info.get("extracted_tickers", [])
     
-    # 1. Save into SQLite Recommendation Matrix
+    # 2. Run Al-Sangmoo 2+2+2 Quant Screening Formula
+    bull_picks, neutral_picks, bear_picks = scan_and_select_2x2x2(priority_tickers=priority_tickers)
+    
+    # 3. Evaluate User's Real Holdings for Stop-loss/Take-profit Alerts
+    portfolio_alerts = evaluate_user_portfolio_positions()
+    
+    # 4. Update Background Forward Tracking History
+    history_df, _, health_status = evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, today_str)
+    
+    # 5. Save into SQLite Recommendation Matrix
     db_manager.save_recommendation_matrix_record(today_str, bull_picks, neutral_picks, bear_picks)
     print("✅ [DB 저장] recommendation_matrix 및 포트폴리오 업데이트 완료.")
     
-    # 2. Build Dashboard Charts Feed
+    # 6. Build Dashboard Charts Feed
     try:
         generate_dashboard_feed.build_dashboard_data()
         print("✅ [대시보드 피드] dashboard_data.json 최신화 완료.")
     except Exception as e:
         print(f"⚠️ [대시보드 피드 오류] {e}")
     
-    # 3. Generate HTML & Send Email Report
-    html_content = generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, position_alerts, health_status)
+    # 7. Generate HTML & Send Email Report
+    html_content = generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, portfolio_alerts, health_status, stream_info)
     out_html_path = os.path.join(REPORTS_DIR, f"briefing_{today_str}.html")
     with open(out_html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
     print(f"✅ [리포트 파일] {out_html_path} 저장 완료.")
     
     # Send Email
-    subject = f"🏛️ [알상무 퀀트 모닝 브리핑] {today_str} 추천 2+2+2 종목 및 매매 알림"
+    subject = f"🏛️ [알상무 퀀트 점심 브리핑] {today_str} (바이킹스 라이브 기반 2+2+2 추천 & 보유 종목 알림)"
     send_email_report(subject, html_content)
     
-    # 4. Print Markdown briefing
-    print_markdown_briefing(today_str, bull_picks, neutral_picks, bear_picks, position_alerts, health_status)
+    # 8. Print Markdown briefing
+    print_markdown_briefing(today_str, bull_picks, neutral_picks, bear_picks, portfolio_alerts, health_status, stream_info)
 
 if __name__ == "__main__":
     main()
