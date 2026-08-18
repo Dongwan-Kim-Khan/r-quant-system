@@ -634,24 +634,34 @@
                         <div class="indicator-desc" id="sigTenkanDesc">Short-term 9-day momentum is positioned above 26-day baseline, indicating positive momentum.</div>
                     </div>
 
-                    <!-- 3. Ichimoku Cloud -->
+                    <!-- 3. Current Ichimoku Cloud -->
                     <div class="indicator-item">
                         <div class="indicator-head">
-                            <span class="indicator-name">3. Ichimoku Cloud (Span A/B)</span>
+                            <span class="indicator-name">3. 현재 구름대 위치 (Current Cloud)</span>
                             <span class="status-badge status-good" id="sigCloudBadge">ABOVE CLOUD</span>
                         </div>
-                        <div class="indicator-val" id="sigCloudVal">Clear Span A/B Support</div>
-                        <div class="indicator-desc" id="sigCloudDesc">Price is anchored above the Span A/B forward cloud, maintaining primary defense shield.</div>
+                        <div class="indicator-val" id="sigCloudVal">구름대 상단 안착 (지지선 유효)</div>
+                        <div class="indicator-desc" id="sigCloudDesc">현재 주가가 일목 선행스팬 구름대 상단 위에 안착하여 강력한 방어벽을 형성하고 있습니다.</div>
                     </div>
 
-                    <!-- 4. Volume Dry-Up -->
+                    <!-- 4. 26-Day Future Forward Cloud (향후 26일 미래 구름대) -->
                     <div class="indicator-item">
                         <div class="indicator-head">
-                            <span class="indicator-name">4. Volume Dry-Up Ratio</span>
+                            <span class="indicator-name">4. 향후 26일 미래 구름대 (Forward Horizon)</span>
+                            <span class="status-badge status-good" id="sigFutureCloudBadge">BULL CLOUD (양운)</span>
+                        </div>
+                        <div class="indicator-val" id="sigFutureCloudVal">+26일 선행스팬1 $213.51 > 선행스팬2 $210.90</div>
+                        <div class="indicator-desc" id="sigFutureCloudDesc">향후 26거래일 미래 구름대가 양운(상승 구름)으로 확장되어 중기 상승 추세 지지력이 유지됩니다.</div>
+                    </div>
+
+                    <!-- 5. Volume Dry-Up -->
+                    <div class="indicator-item">
+                        <div class="indicator-head">
+                            <span class="indicator-name">5. 20일 거래량 마름 (Volume Dry-Up)</span>
                             <span class="status-badge status-good" id="sigVolBadge">OPTIMAL DRY-UP</span>
                         </div>
-                        <div class="indicator-val" id="sigVolVal">48% of 20-Day Average Volume</div>
-                        <div class="indicator-desc" id="sigVolDesc">Pullback volume contracted below 50%, confirming selling exhaustion before trend continuation.</div>
+                        <div class="indicator-val" id="sigVolVal">20일 평균 대비 63% (수급 마름)</div>
+                        <div class="indicator-desc" id="sigVolDesc">눌림목 구간에서 거래량이 75% 이하로 건조되어 매도 압력 소진 및 반등 타점 형성.</div>
                     </div>
 
                 </div>
@@ -743,7 +753,7 @@
                 timeScale: {
                     timeVisible: true,
                     borderColor: '#334155',
-                    rightOffset: 12,
+                    rightOffset: 32, // 32 bars space for 26-day forward cloud
                     barSpacing: 9,
                     minBarSpacing: 0.5,
                     fixLeftEdge: false,
@@ -759,10 +769,10 @@
                 wickUpColor: '#10b981', wickDownColor: '#ef4444'
             });
 
-            kijunSeries = mainChart.addLineSeries({ color: '#fbbf24', lineWidth: 2, title: '26D Kijun' });
-            tenkanSeries = mainChart.addLineSeries({ color: '#38bdf8', lineWidth: 2, title: '9D Tenkan' });
-            spanASeries = mainChart.addLineSeries({ color: 'rgba(16, 185, 129, 0.4)', lineWidth: 1, title: 'Span A' });
-            spanBSeries = mainChart.addLineSeries({ color: 'rgba(239, 68, 68, 0.4)', lineWidth: 1, title: 'Span B' });
+            kijunSeries = mainChart.addLineSeries({ color: '#fbbf24', lineWidth: 2, title: '26D Kijun (기준선)' });
+            tenkanSeries = mainChart.addLineSeries({ color: '#38bdf8', lineWidth: 2, title: '9D Tenkan (전환선)' });
+            spanASeries = mainChart.addLineSeries({ color: '#10b981', lineWidth: 2, title: '선행스팬1 (Span A)' });
+            spanBSeries = mainChart.addLineSeries({ color: '#ef4444', lineWidth: 2, title: '선행스팬2 (Span B)' });
             sma20Series = mainChart.addLineSeries({ color: '#f43f5e', lineWidth: 1, title: 'SMA 20' });
             sma60Series = mainChart.addLineSeries({ color: '#a855f7', lineWidth: 1, title: 'SMA 60' });
 
@@ -772,7 +782,7 @@
                 timeScale: {
                     timeVisible: true,
                     borderColor: '#334155',
-                    rightOffset: 12,
+                    rightOffset: 32,
                     barSpacing: 9,
                     minBarSpacing: 0.5,
                     fixLeftEdge: false,
@@ -893,20 +903,40 @@
                     candleSeries.setData(chartObj.candles);
                     kijunSeries.setData(chartObj.kijun_line || []);
                     tenkanSeries.setData(chartObj.tenkan_line || []);
-                    spanASeries.setData(chartObj.span_a || []);
-                    spanBSeries.setData(chartObj.span_b || []);
+                    spanASeries.setData(chartObj.span_a_line || chartObj.span_a || []);
+                    spanBSeries.setData(chartObj.span_b_line || chartObj.span_b || []);
                     sma20Series.setData(chartObj.sma20 || []);
                     sma60Series.setData(chartObj.sma60 || []);
                     volumeSeries.setData(chartObj.volume || []);
 
+                    // Update 26-Day Future Forward Cloud Decoder
+                    if (chartObj.future_cloud_type) {
+                        const isBull = chartObj.future_cloud_type.includes("양운");
+                        const fcBadge = document.getElementById("sigFutureCloudBadge");
+                        if (fcBadge) {
+                            fcBadge.textContent = chartObj.future_cloud_type;
+                            fcBadge.className = `status-badge ${isBull ? 'status-good' : 'status-bad'}`;
+                        }
+                        const fcVal = document.getElementById("sigFutureCloudVal");
+                        if (fcVal) {
+                            fcVal.textContent = `+26일 선행스팬1 $${chartObj.future_span_a_latest} | 선행스팬2 $${chartObj.future_span_b_latest} (구름 두께 $${chartObj.future_cloud_gap})`;
+                        }
+                        const fcDesc = document.getElementById("sigFutureCloudDesc");
+                        if (fcDesc) {
+                            fcDesc.textContent = isBull 
+                                ? `향후 26거래일 미래 선행스팬1이 선행스팬2 위에 위치(양운)하여 하방 지지 매물대를 형성 중입니다.`
+                                : `향후 26거래일 미래 선행스팬2가 선행스팬1 위에 위치(음운)하여 상방 저항 매물대를 형성 중입니다.`;
+                        }
+                    }
+
                     const totalBars = chartObj.candles.length;
                     mainChart.timeScale().setVisibleLogicalRange({
                         from: Math.max(0, totalBars - 90),
-                        to: totalBars
+                        to: totalBars + 26
                     });
                     volumeChart.timeScale().setVisibleLogicalRange({
                         from: Math.max(0, totalBars - 90),
-                        to: totalBars
+                        to: totalBars + 26
                     });
                 } else {
                     renderSyntheticChart(ticker, currentSelectedPrice);
