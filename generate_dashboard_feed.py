@@ -68,22 +68,29 @@ def compute_all_indicators(ticker):
             time_str = idx.strftime("%Y-%m-%d")
             candles.append({
                 "time": time_str,
-                "open": float(row['Open']),
-                "high": float(row['High']),
-                "low": float(row['Low']),
-                "close": float(row['Close'])
+                "open": round(float(row['Open']), 2),
+                "high": round(float(row['High']), 2),
+                "low": round(float(row['Low']), 2),
+                "close": round(float(row['Close']), 2)
             })
-            tenkan_pts.append({"time": time_str, "value": float(row['Tenkan'])})
-            kijun_pts.append({"time": time_str, "value": float(row['Kijun'])})
-            span_a_pts.append({"time": time_str, "value": float(row['SpanA'])})
-            span_b_pts.append({"time": time_str, "value": float(row['SpanB'])})
-            sma20_pts.append({"time": time_str, "value": float(row['SMA20'])})
-            sma60_pts.append({"time": time_str, "value": float(row['SMA60'])})
-            vol_pts.append({
-                "time": time_str,
-                "value": float(row['Volume']),
-                "color": "#059669" if row['Close'] >= row['Open'] else "#dc2626"
-            })
+            if not pd.isna(row['Tenkan']):
+                tenkan_pts.append({"time": time_str, "value": round(float(row['Tenkan']), 2)})
+            if not pd.isna(row['Kijun']):
+                kijun_pts.append({"time": time_str, "value": round(float(row['Kijun']), 2)})
+            if not pd.isna(row['SpanA']):
+                span_a_pts.append({"time": time_str, "value": round(float(row['SpanA']), 2)})
+            if not pd.isna(row['SpanB']):
+                span_b_pts.append({"time": time_str, "value": round(float(row['SpanB']), 2)})
+            if not pd.isna(row['SMA20']):
+                sma20_pts.append({"time": time_str, "value": round(float(row['SMA20']), 2)})
+            if not pd.isna(row['SMA60']):
+                sma60_pts.append({"time": time_str, "value": round(float(row['SMA60']), 2)})
+            if not pd.isna(row['Volume']):
+                vol_pts.append({
+                    "time": time_str,
+                    "value": float(row['Volume']),
+                    "color": "#059669" if row['Close'] >= row['Open'] else "#dc2626"
+                })
             
         last = df_clean.iloc[-1]
         close = float(last['Close'])
