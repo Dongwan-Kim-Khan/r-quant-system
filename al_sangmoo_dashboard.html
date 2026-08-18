@@ -291,19 +291,54 @@
         </div>
     </header>
 
-    <!-- Macro Regime & Target Focus Sectors -->
-    <div class="macro-strip" id="macroStrip">
-        <div class="macro-col">
-            <strong>Macro Narrative (거시 흐름 진단)</strong>
-            <span id="macroNarrative">금리 경로 및 통화정책 영향권 / 인플레이션 및 원자재 변동성</span>
+    <!-- Gate-0 Macro Climate & Real-Time Financial Gauges Bar -->
+    <div style="background:#0f172a; border-bottom:1px solid var(--border); padding:12px 28px;">
+        <div style="background:#1e293b; border:1px solid #d97706; border-left:5px solid #f59e0b; padding:10px 16px; border-radius:2px; margin-bottom:10px;">
+            <div style="font-size:13px; font-weight:800; color:#fbbf24; display:flex; justify-content:space-between; align-items:center;">
+                <span id="macroHeadline">[거시 게이트 0단계: 이번 주 신규 매수 보류 / 관망·현금 유지 권고]</span>
+                <span id="macroStanceBadge" style="background:rgba(245,158,11,0.2); color:#fbbf24; font-size:11px; padding:2px 8px; border-radius:2px; font-family:'JetBrains Mono';">DEFENSE HOLD</span>
+            </div>
+            <div style="font-size:12px; color:#cbd5e1; margin-top:4px;" id="macroDirectiveText">
+                거시 지표(10년물 금리 4.42%, VIX 15.8, 유가 $78.5) 및 방송 지침상, 적어도 이번 주는 무리한 신규 매수를 쉬어가고 현금을 지키는 관망 주간입니다. 다만 거시 리스크 진정 시 즉시 공략할 최우선 1순위 후보 종목을 사전 선별합니다.
+            </div>
         </div>
-        <div class="macro-col">
-            <strong>Target Focus Sectors (핵심 주목 섹터)</strong>
-            <span id="focusSectors">전력 인프라 및 에너지/원전 | 빅테크 클라우드 | AI 반도체</span>
-        </div>
-        <div class="macro-col">
-            <strong>Live Reference (바이킹스 분석 연동)</strong>
-            <span id="liveRef"><a href="https://www.youtube.com/@wepoll_original/streams" target="_blank" id="streamLink">Interest Rates and Oil Prices Reaching a Tipping Point</a></span>
+
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr) 2fr; gap:12px; align-items:center;">
+            <!-- Gauge 1: VIX -->
+            <div style="background:#111827; border:1px solid var(--border); border-radius:2px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div style="font-size:10px; color:#9ca3af; text-transform:uppercase; font-weight:600;">VIX 공포지수</div>
+                    <div style="font-size:15px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6;" id="gaugeVixVal">15.80</div>
+                </div>
+                <span id="gaugeVixBadge" style="background:rgba(16,185,129,0.15); color:#34d399; font-size:10px; padding:2px 6px; border-radius:2px; font-weight:700;">NORMAL</span>
+            </div>
+
+            <!-- Gauge 2: US 10Y -->
+            <div style="background:#111827; border:1px solid var(--border); border-radius:2px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div style="font-size:10px; color:#9ca3af; text-transform:uppercase; font-weight:600;">미국채 10년물 금리</div>
+                    <div style="font-size:15px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6;" id="gaugeUs10yVal">4.420%</div>
+                </div>
+                <span id="gaugeUs10yBadge" style="background:rgba(245,158,11,0.15); color:#fbbf24; font-size:10px; padding:2px 6px; border-radius:2px; font-weight:700;">BURDEN</span>
+            </div>
+
+            <!-- Gauge 3: WTI -->
+            <div style="background:#111827; border:1px solid var(--border); border-radius:2px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div style="font-size:10px; color:#9ca3af; text-transform:uppercase; font-weight:600;">WTI 국제유가</div>
+                    <div style="font-size:15px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6;" id="gaugeWtiVal">$78.50</div>
+                </div>
+                <span id="gaugeWtiBadge" style="background:rgba(16,185,129,0.15); color:#34d399; font-size:10px; padding:2px 6px; border-radius:2px; font-weight:700;">STABLE</span>
+            </div>
+
+            <!-- Live Stream & Narrative -->
+            <div style="background:#111827; border:1px solid var(--border); border-radius:2px; padding:8px 12px; font-size:11px;">
+                <div style="color:#9ca3af; font-weight:600;">LIVE BROADCAST & EXTERNAL RISKS:</div>
+                <div style="margin-top:2px;">
+                    <a href="https://www.youtube.com/@wepoll_original/streams" target="_blank" id="streamLink" style="color:#60a5fa; text-decoration:none; font-weight:700;">Interest Rates & Oil Prices Tipping Point</a>
+                    <span style="color:#9ca3af; margin-left:6px;" id="macroNarrative">| 지정학적 리스크 / 인플레이션 변동성</span>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -888,12 +923,34 @@
         function renderDashboardData(data) {
             document.getElementById("lastUpdated").textContent = `Updated: ${data.kpis?.last_updated || new Date().toLocaleString()}`;
 
-            // Macro Strip
+            // Dynamic Macro Gauges & Gate-0 Climate Strip
             if (data.macro) {
-                if (data.macro.macro_narrative) document.getElementById("macroNarrative").textContent = data.macro.macro_narrative;
-                if (data.macro.focus_sectors && data.macro.focus_sectors.length > 0) {
-                    document.getElementById("focusSectors").textContent = data.macro.focus_sectors.join(" | ");
+                if (data.macro.macro_climate) {
+                    const mc = data.macro.macro_climate;
+                    if (mc.macro_headline) document.getElementById("macroHeadline").textContent = mc.macro_headline;
+                    if (mc.macro_action_directive) document.getElementById("macroDirectiveText").textContent = mc.macro_action_directive;
+                    if (mc.macro_stance) {
+                        const badge = document.getElementById("macroStanceBadge");
+                        badge.textContent = mc.macro_stance.replace('_', ' ');
+                        badge.style.color = mc.macro_stance === 'DEFENSE_HOLD' ? '#fbbf24' : '#34d399';
+                    }
                 }
+                if (data.macro.macro_gauges) {
+                    const mg = data.macro.macro_gauges;
+                    if (mg.vix) {
+                        document.getElementById("gaugeVixVal").textContent = Number(mg.vix.val).toFixed(2);
+                        document.getElementById("gaugeVixBadge").textContent = mg.vix.status || 'NORMAL';
+                    }
+                    if (mg.us10y) {
+                        document.getElementById("gaugeUs10yVal").textContent = Number(mg.us10y.val).toFixed(3) + '%';
+                        document.getElementById("gaugeUs10yBadge").textContent = mg.us10y.status || 'BURDEN';
+                    }
+                    if (mg.wti) {
+                        document.getElementById("gaugeWtiVal").textContent = '$' + Number(mg.wti.val).toFixed(2);
+                        document.getElementById("gaugeWtiBadge").textContent = mg.wti.status || 'STABLE';
+                    }
+                }
+                if (data.macro.macro_narrative) document.getElementById("macroNarrative").textContent = "| " + data.macro.macro_narrative;
                 if (data.macro.title) {
                     const sLink = document.getElementById("streamLink");
                     sLink.textContent = data.macro.title;

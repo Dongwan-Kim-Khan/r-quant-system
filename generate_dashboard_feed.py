@@ -25,10 +25,14 @@ WATCHLIST = [
 def compute_all_indicators(ticker):
     try:
         df = yf.download(ticker, period="1y", interval="1d", progress=False)
-        if df.empty or len(df) < 60:
+        if df.empty:
             return None
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
+            
+        df = df.dropna(subset=['Close', 'High', 'Low', 'Volume']).copy()
+        if len(df) < 60:
+            return None
             
         high_9 = df['High'].rolling(window=9).max()
         low_9 = df['Low'].rolling(window=9).min()
@@ -57,7 +61,7 @@ def compute_all_indicators(ticker):
         sma60_pts = []
         vol_pts = []
         
-        df_clean = df.dropna().tail(120)
+        df_clean = df.dropna(subset=['Close', 'High', 'Low', 'Kijun', 'Tenkan']).tail(120)
         
         for idx, row in df_clean.iterrows():
             time_str = idx.strftime("%Y-%m-%d")

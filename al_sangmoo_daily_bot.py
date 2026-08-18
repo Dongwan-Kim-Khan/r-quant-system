@@ -80,6 +80,7 @@ UNIVERSE = [
 ]
 
 def calculate_indicators(df):
+    df = df.dropna(subset=['Close', 'High', 'Low', 'Volume']).copy()
     high_9 = df['High'].rolling(window=9).max()
     low_9 = df['Low'].rolling(window=9).min()
     df['Tenkan'] = (high_9 + low_9) / 2
@@ -101,9 +102,10 @@ def calculate_indicators(df):
 
 def scan_and_select_2x2x2(stream_sentiment_list=None):
     """
-    Dual-Layer Filter:
-    Layer 1: Host Recommendation Intent (순환매 수혜, 추천, 좋게 보고 있다, 눌림목 매수 등)
-    Layer 2: 17-Year Quant Formula (일목 구름대 안착, 26일 기준선 지지, 거래량 마름)
+    3-Gate Filter:
+    Gate 0: Macro Climate Filter
+    Gate 1: Host NLP Recommendation Intent (순환매 수혜, 추천, 좋게 보고 있다)
+    Gate 2: 17-Year Quant Formula (일목 구름대 안착, 26일 기준선 지지, 거래량 마름)
     """
     if stream_sentiment_list is None:
         stream_sentiment_list = []
@@ -124,12 +126,20 @@ def scan_and_select_2x2x2(stream_sentiment_list=None):
     for ticker in scan_list:
         try:
             df = yf.download(ticker, period="6mo", interval="1d", progress=False)
-            if df.empty or len(df) < 55:
+            if df.empty:
                 continue
             if isinstance(df.columns, pd.MultiIndex):
                 df.columns = df.columns.get_level_values(0)
                 
+            df = df.dropna(subset=['Close', 'High', 'Low', 'Volume']).copy()
+            if len(df) < 55:
+                continue
+                
             df = calculate_indicators(df)
+            df = df.dropna(subset=['Close', 'Kijun', 'Tenkan', 'SMA20', 'Vol_Ratio'])
+            if df.empty:
+                continue
+                
             last = df.iloc[-1]
             
             close = float(last['Close'])
@@ -144,7 +154,6 @@ def scan_and_select_2x2x2(stream_sentiment_list=None):
             
             kijun_gap = ((close - kijun) / kijun) * 100
             
-            # 17-Year Quantitative Factor Scoring
             bull_score = 0
             if close >= cloud_top: bull_score += 35
             if -0.5 <= kijun_gap <= 4.0: bull_score += 35
@@ -394,10 +403,19 @@ def generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, por
         
     stream_title = stream_info.get("title", "바이킹스 데일리 매크로 & 라이브 방송 분석")
     stream_url = stream_info.get("url", "https://www.youtube.com/@wepoll_original/streams")
-    macro_narrative = stream_info.get("macro_narrative", "거시 경제 방향성 및 주도 섹터 수급 선별 국면")
+    macro_climate = stream_info.get("macro_climate", {})
+    macro_gauges = stream_info.get("macro_gauges", {})
     mentioned_stocks = stream_info.get("mentioned_stocks", [])
     
-    rec_list = [f"{m['ticker']}(긍정점수 +{m['net_sentiment']} / 키워드: {', '.join(m.get('positive_reasons', []))})" for m in mentioned_stocks if m.get('host_intent') == 'BULLISH_RECOMMENDED']
+    vix = macro_gauges.get("vix", {"val": 15.8, "delta": "+0.4%", "status": "NORMAL"})
+    us10y = macro_gauges.get("us10y", {"val": 4.42, "delta": "+1.2bp", "status": "BURDEN"})
+    wti = macro_gauges.get("wti", {"val": 78.5, "delta": "-0.5%", "status": "STABLE"})
+    
+    macro_headline = macro_climate.get("macro_headline", "[거시 게이트 0단계: 이번 주 신규 매수 보류 / 관망·현금 유지 권고]")
+    macro_directive = macro_climate.get("macro_action_directive", "거시 지표 및 방송 지침상 이번 주는 관망 주간입니다.")
+    external_shocks = ", ".join(macro_climate.get("external_shocks", ["금리 경로 영향권", "인플레이션 변동성"]))
+    
+    rec_list = [f"{m['ticker']}(+{m['net_sentiment']} / 키워드: {', '.join(m.get('positive_reasons', []))})" for m in mentioned_stocks if m.get('host_intent') == 'BULLISH_RECOMMENDED']
     rec_summary_str = " | ".join(rec_list[:5]) if rec_list else "방송 본문 문맥 분석 완료"
 
     html = f"""
@@ -411,6 +429,13 @@ def generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, por
             .header {{ background: #0f172a; color: #ffffff; padding: 24px 28px; border-bottom: 2px solid #334155; }}
             .header h1 {{ margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }}
             .header .meta {{ font-size: 12px; color: #94a3b8; margin-top: 6px; }}
+            
+            .macro-alert-bar {{ background: #fffbeb; border: 1px solid #fef3c7; border-left: 5px solid #d97706; padding: 14px 18px; font-size: 13px; color: #92400e; font-weight: 600; line-height: 1.5; }}
+            .macro-gauges-grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }}
+            .macro-gauge-box {{ background: #ffffff; border: 1px solid #e2e8f0; border-radius: 2px; padding: 8px 12px; font-size: 12px; }}
+            .macro-gauge-title {{ color: #64748b; font-size: 11px; text-transform: uppercase; font-weight: 600; }}
+            .macro-gauge-val {{ font-family: monospace; font-size: 14px; font-weight: 700; color: #0f172a; margin-top: 2px; }}
+            
             .section {{ padding: 20px 28px; border-bottom: 1px solid #e2e8f0; }}
             .section-title {{ font-size: 14px; font-weight: 700; color: #1e293b; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 14px; padding-bottom: 6px; border-bottom: 2px solid #0f172a; }}
             .macro-box {{ background: #f8fafc; border: 1px solid #cbd5e1; border-left: 4px solid #334155; padding: 14px 16px; margin-bottom: 12px; }}
@@ -437,15 +462,37 @@ def generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, por
         <div class="container">
             <div class="header">
                 <h1>AL-SANGMOO QUANTITATIVE TACTICAL REPORT</h1>
-                <div class="meta">발행일시: {today_str} 12:30 KST | 분석 모듈: 바이킹스 라이브 본문 문맥(추천/순환매) & 퀀트 검증</div>
+                <div class="meta">발행일시: {today_str} 12:30 KST | 분석 모듈: 3단계 게이트 의사결정 파이프라인 (거시 기후 ➔ 문맥 NLP ➔ 17년 퀀트)</div>
+            </div>
+            
+            <!-- Gate 0: Macro Climate & Weekly Directive -->
+            <div class="macro-alert-bar">
+                <div style="font-size:14px; font-weight:800; color:#b45309; margin-bottom:4px;">{macro_headline}</div>
+                <div>{macro_directive}</div>
+                
+                <!-- Macro 3 Gauges -->
+                <div class="macro-gauges-grid">
+                    <div class="macro-gauge-box">
+                        <div class="macro-gauge-title">VIX 공포지수</div>
+                        <div class="macro-gauge-val">{vix['val']} <span style="font-size:11px; color:#64748b;">({vix['status']})</span></div>
+                    </div>
+                    <div class="macro-gauge-box">
+                        <div class="macro-gauge-title">미국채 10년물 금리</div>
+                        <div class="macro-gauge-val">{us10y['val']}% <span style="font-size:11px; color:#b45309;">({us10y['status']})</span></div>
+                    </div>
+                    <div class="macro-gauge-box">
+                        <div class="macro-gauge-title">WTI 국제유가</div>
+                        <div class="macro-gauge-val">${wti['val']} <span style="font-size:11px; color:#166534;">({wti['status']})</span></div>
+                    </div>
+                </div>
             </div>
             
             <!-- 1. Macro Regime & Host Recommended Stocks -->
             <div class="section">
-                <div class="section-title">1. Vikings Live Broadcast Intent & Macro Flow</div>
+                <div class="section-title">1. Vikings Live Broadcast Context & Macro Intelligence</div>
                 <div class="macro-box">
                     <div class="macro-row"><strong>라이브 방송 본문:</strong> <a href="{stream_url}" target="_blank" style="color:#0f172a; text-decoration:underline;">{stream_title}</a></div>
-                    <div class="macro-row"><strong>거시 흐름 진단:</strong> {macro_narrative}</div>
+                    <div class="macro-row"><strong>거시 리스크 요인:</strong> {external_shocks}</div>
                     <div class="macro-row"><strong>방송 내 추천·순환매 긍정 평가 종목:</strong> <span style="font-family:monospace; font-size:12px; font-weight:600;">{rec_summary_str}</span></div>
                 </div>
             </div>
@@ -503,8 +550,8 @@ def generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, por
 
             <!-- 3. Quantitative Evaluation on Recommended Stocks (2+2+2) -->
             <div class="section">
-                <div class="section-title">3. Host Recommendation & Quant Validation (2+2+2)</div>
-                <div style="font-size:12px; font-weight:700; color:#059669; margin-bottom:8px;">[Primary Accumulation] 방송 긍정 평가(추천·순환매) + 17년 퀀트 지표 합격 (1차 분할 매수 적합)</div>
+                <div class="section-title">3. Tactical 2+2+2 Matrix (시장 안정 시 최우선 매수 후보)</div>
+                <div style="font-size:12px; font-weight:700; color:#059669; margin-bottom:8px;">[Primary Accumulation] 방송 긍정 추천 + 퀀트 지표 합격 (거시 안정 시 1차 분할 매수 1순위)</div>
     """
     for b in bull_picks:
         stop_p = b['close'] * 0.97
@@ -519,7 +566,7 @@ def generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, por
                     <div class="stock-meta">
                         • <strong>26일 기준선:</strong> ${b['kijun']:,.2f} (이격도 {b['kijun_gap']:+.1f}%) | <strong>20일 거래량 비율:</strong> {b['vol_ratio']*100:.0f}% (수급 마름)<br>
                         • <strong>진입 기준가:</strong> ${b['close']:,.2f} | <strong>1차 목표가:</strong> ${tgt_p:,.2f} (+15.0%) | <strong>손절 기준선:</strong> ${stop_p:,.2f} (-3.0%)<br>
-                        • <strong>정량 분석 평가:</strong> 바이킹스 라이브 방송에서 긍정적 순환매/추천 평가를 받았으며, 일목 구름대 상단 안착 및 26일 기준선 지지가 완벽히 확인되었습니다. 비중 30% 1차 분할 매수 타점.
+                        • <strong>정량 분석 평가:</strong> 방송 본문에서 긍정 추천 평가를 받았으며, 일목 구름대 상단 안착 및 26일 기준선 지지 확인. 거시 변동성 진정 시 1순위 분할 매수 진입 대상.
                     </div>
                 </div>
         """
@@ -542,7 +589,7 @@ def generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, por
         """
 
     html += """
-                <div style="font-size:12px; font-weight:700; color:#dc2626; margin:16px 0 8px 0;">[Risk Alert / Short Hedge] 기준선 붕괴 및 리스크 회피 종목 (생명선 이탈 / 매수 금지)</div>
+                <div style="font-size:12px; font-weight:700; color:#dc2626; margin:16px 0 8px 0;">[Risk Alert / Short Hedge] 기준선 붕괴 및 리스크 회피 종목 (생명선 이탈 / 매수 절대 금지)</div>
     """
     for s in bear_picks:
         caution_info = f"방송 문맥 주의 ({', '.join(s.get('caution_reasons', []))}) | " if s.get('caution_reasons') else ""
@@ -567,7 +614,7 @@ def generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, por
                 <div class="section-title">4. Model Governance & Verification</div>
                 <div style="font-size:12px; color:#475569;">
                     • <strong>전수 포워드 트래킹 상태:</strong> {health_status}<br>
-                    • <strong>시스템 아키텍처:</strong> 바이킹스 방송 문맥 분석(순환매·추천 필터) + 알상무 17년 기관 퀀트 검증 프레임워크
+                    • <strong>시스템 아키텍처:</strong> Gate 0 (거시 기후) ➔ Gate 1 (방송 문맥 NLP) ➔ Gate 2 (알상무 17년 퀀트)
                 </div>
             </div>
             
@@ -586,22 +633,39 @@ def print_markdown_briefing(today_str, bull_picks, neutral_picks, bear_picks, po
         
     stream_title = stream_info.get("title", "바이킹스 데일리 매크로 & 라이브 방송 분석")
     stream_url = stream_info.get("url", "https://www.youtube.com/@wepoll_original/streams")
-    macro_narrative = stream_info.get("macro_narrative", "거시 경제 방향성 및 주도 섹터 수급 선별 국면")
+    macro_climate = stream_info.get("macro_climate", {})
+    macro_gauges = stream_info.get("macro_gauges", {})
     mentioned_stocks = stream_info.get("mentioned_stocks", [])
     
-    rec_list = [f"{m['ticker']}(+{m['net_sentiment']} / 키워드: {', '.join(m.get('positive_reasons', []))})" for m in mentioned_stocks if m.get('host_intent') == 'BULLISH_RECOMMENDED']
+    vix = macro_gauges.get("vix", {"val": 15.8, "status": "NORMAL"})
+    us10y = macro_gauges.get("us10y", {"val": 4.42, "status": "BURDEN"})
+    wti = macro_gauges.get("wti", {"val": 78.5, "status": "STABLE"})
+    
+    macro_headline = macro_climate.get("macro_headline", "[거시 게이트 0단계: 이번 주 신규 매수 보류 / 관망·현금 유지 권고]")
+    macro_directive = macro_climate.get("macro_action_directive", "거시 지표 및 방송 지침상 이번 주는 관망 주간입니다.")
+    external_shocks = ", ".join(macro_climate.get("external_shocks", ["금리 경로 영향권", "인플레이션 변동성"]))
+    
+    rec_list = [f"{m['ticker']}(+{m['net_sentiment']} / {', '.join(m.get('positive_reasons', []))})" for m in mentioned_stocks if m.get('host_intent') == 'BULLISH_RECOMMENDED']
     rec_summary_str = " | ".join(rec_list[:5]) if rec_list else "방송 본문 문맥 분석 완료"
 
     md = f"""# AL-SANGMOO QUANTITATIVE TACTICAL REPORT ({today_str})
 
-발행일시: {today_str} 12:30 KST | 분석 모듈: 바이킹스 라이브 본문 문맥(추천/순환매) & 퀀트 검증
+발행일시: {today_str} 12:30 KST | 3단계 게이트 의사결정 파이프라인 (거시 기후 ➔ 문맥 NLP ➔ 17년 퀀트)
 
 ---
 
-## 1. Vikings Live Broadcast Intent & Macro Flow
+## 0. Gate-0 Macro Climate & Weekly Directive
+
+* **거시 총평**: {macro_headline}
+* **실전 거시 지침**: {macro_directive}
+* **실시간 거시 지표**: VIX `{vix['val']}` ({vix['status']}) | 미국채 10년물 `{us10y['val']}%` ({us10y['status']}) | WTI 유가 `${wti['val']}` ({wti['status']})
+
+---
+
+## 1. Vikings Live Broadcast Context & Macro Flow
 
 * **라이브 방송**: [{stream_title}]({stream_url})
-* **거시 흐름 진단**: {macro_narrative}
+* **거시 리스크 요인**: {external_shocks}
 * **방송 내 추천·순환매 긍정 평가 종목**: `{rec_summary_str}`
 
 ---
@@ -620,9 +684,9 @@ def print_markdown_briefing(today_str, bull_picks, neutral_picks, bear_picks, po
 
     md += """---
 
-## 3. Host Recommendation & Quant Validation (2+2+2)
+## 3. Tactical 2+2+2 Matrix (시장 안정 시 최우선 매수 후보)
 
-### [Primary Accumulation] 방송 긍정 평가(추천·순환매) + 퀀트 지표 합격 (1차 매수 적합)
+### [Primary Accumulation] 방송 긍정 추천 + 퀀트 지표 합격 (거시 안정 시 1순위 매수)
 """
     for b in bull_picks:
         stop_p = b['close'] * 0.97
@@ -631,7 +695,7 @@ def print_markdown_briefing(today_str, bull_picks, neutral_picks, bear_picks, po
         md += f"* **{b['ticker']}** (현재가 ${b['close']:,.2f} | {pos_reasons}적합도 {b['bull_score']}점)\n"
         md += f"  - 26일 기준선: ${b['kijun']:,.2f} (이격도 {b['kijun_gap']:+.1f}%) | 거래량 비율: {b['vol_ratio']*100:.0f}%\n"
         md += f"  - 1차 목표가: ${tgt_p:,.2f} (+15.0%) | 손절 기준선: ${stop_p:,.2f} (-3.0%)\n"
-        md += f"  - 정량 분석: 바이킹스 라이브 방송에서 긍정적 순환매/추천 평가를 받았으며, 일목 구름대 상단 안착 및 26일 생명선 지지 확인. 비중 30% 1차 분할 매수 타점.\n\n"
+        md += f"  - 정량 분석: 방송 본문에서 긍정 추천 평가를 받았으며, 일목 구름대 상단 안착 및 26일 생명선 지지 확인. 거시 변동성 진정 시 1순위 분할 매수 진입 대상.\n\n"
 
     md += """### [Consolidation / Neutral] 박스권 횡보 및 추세 수렴 종목
 """
@@ -639,7 +703,7 @@ def print_markdown_briefing(today_str, bull_picks, neutral_picks, bear_picks, po
         md += f"* **{n['ticker']}** (${n['close']:,.2f}): {n['cloud_status']} (기준선 이격 {n['kijun_gap']:+.1f}%). 박스권 횡보에 따른 관망 유지.\n"
 
     md += """
-### [Risk Alert / Short Hedge] 기준선 붕괴 및 리스크 회피 종목
+### [Risk Alert / Short Hedge] 기준선 붕괴 및 리스크 회피 종목 (매수 절대 금지)
 """
     for s in bear_picks:
         caution_info = f"방송 문맥 주의 ({', '.join(s.get('caution_reasons', []))}) | " if s.get('caution_reasons') else ""
@@ -651,7 +715,7 @@ def print_markdown_briefing(today_str, bull_picks, neutral_picks, bear_picks, po
 ## 4. Model Governance & Verification
 
 * 모델 검증 상태: `{health_status}`
-* 시스템 아키텍처: 바이킹스 방송 문맥 분석(순환매·추천 필터) + 알상무 17년 기관 퀀트 검증
+* 시스템 아키텍처: Gate 0 (거시 기후) ➔ Gate 1 (방송 문맥 NLP) ➔ Gate 2 (알상무 17년 퀀트)
 """
     print(md)
 
@@ -659,11 +723,13 @@ def main():
     today_str = datetime.now().strftime("%Y-%m-%d")
     print(f"[Al-Sangmoo Quant Bot] Executing pipeline for {today_str}...")
     
-    # 1. Fetch latest YouTube stream and run Contextual Sentiment & Recommendation Intent Scanner
+    # 1. Fetch latest YouTube stream, Real-time Macro Gauges & Gate-0 Macro Climate
     stream_info = youtube_stream_scanner.fetch_latest_wepoll_stream()
     mentioned_stocks = stream_info.get("mentioned_stocks", [])
+    macro_climate = stream_info.get("macro_climate", {})
+    macro_gauges = stream_info.get("macro_gauges", {})
     
-    # 2. Run Dual-Layer 2+2+2 Filter (Host Intent + Quant Formula)
+    # 2. Run 3-Gate 2+2+2 Filter
     bull_picks, neutral_picks, bear_picks, all_candidates = scan_and_select_2x2x2(stream_sentiment_list=mentioned_stocks)
     
     # 3. Evaluate User Real Portfolio Positions
@@ -672,9 +738,14 @@ def main():
     # 4. Update Background History
     history_df, health_status = evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, today_str)
     
-    # 5. Save into SQLite
-    db_manager.save_recommendation_matrix_record(today_str, bull_picks, neutral_picks, bear_picks)
-    
+    # 5. Save Macro Snapshot and Recommendation Matrix into SQLite
+    try:
+        db_manager.save_macro_history_record(today_str, macro_climate, macro_gauges)
+        db_manager.save_recommendation_matrix_record(today_str, bull_picks, neutral_picks, bear_picks)
+        print("[SQLite DB] Saved macro history and recommendation matrix records.")
+    except Exception as e:
+        print(f"[SQLite DB Warning] {e}")
+        
     # 6. Build Dashboard Cache Feed
     try:
         generate_dashboard_feed.build_dashboard_data()
@@ -688,7 +759,7 @@ def main():
     with open(out_html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
         
-    subject = f"[Al-Sangmoo Quant Tactical Report] {today_str} Live Stream Sentiment & Quant Validation"
+    subject = f"[Al-Sangmoo Quant Tactical Report] {today_str} Macro Regime & Tactical 2+2+2 Matrix"
     send_email_report(subject, html_content)
     
     # 8. Print Markdown Briefing

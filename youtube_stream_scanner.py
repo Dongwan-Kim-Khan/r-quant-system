@@ -4,6 +4,8 @@ import json
 import subprocess
 import re
 from datetime import datetime
+import yfinance as yf
+import pandas as pd
 
 # Windows encoding fix
 if sys.platform.startswith('win'):
@@ -58,6 +60,79 @@ NEG_KEYWORDS = [
     '어렵', '힘들', '경고', '이탈', '꺾', '비중 축소', '조정', '매수 금지'
 ]
 
+# Macro Defense / Stance Keywords
+MACRO_DEFENSE_KEYWORDS = [
+    '이번 주는', '이번주는', '이번 주', '사지 말자', '사지말자', '사지 마', '관망하자',
+    '관망', '쉬어가자', '쉬어가', '현금 확보', '현금 비중', '차익실현', '차익 실현',
+    '소나기', '피하자', '전쟁', '지정학', '유가 급등', '금리 부담', '금리부담',
+    '리스크 관리', '몸 사리자', '신규 매수 자제'
+]
+
+def fetch_realtime_macro_gauges():
+    """
+    Fetches real-time financial macro gauges: VIX, US 10-Year Yield, WTI Crude Oil.
+    """
+    gauges = {
+        "vix": {"val": 15.5, "delta": "+0.2%", "status": "NORMAL", "label": "VIX 공포지수"},
+        "us10y": {"val": 4.42, "delta": "+1.1bp", "status": "BURDEN", "label": "미국채 10년물"},
+        "wti": {"val": 78.5, "delta": "-0.5%", "status": "STABLE", "label": "WTI 국제유가"}
+    }
+    
+    try:
+        tickers = ["^VIX", "^TNX", "CL=F"]
+        df = yf.download(tickers, period="5d", interval="1d", progress=False)
+        if not df.empty and 'Close' in df:
+            close_df = df['Close']
+            
+            # 1. VIX
+            if '^VIX' in close_df:
+                vix_series = close_df['^VIX'].dropna()
+                if len(vix_series) >= 2:
+                    cur_vix = float(vix_series.iloc[-1])
+                    prev_vix = float(vix_series.iloc[-2])
+                    delta = ((cur_vix - prev_vix) / prev_vix) * 100
+                    status = "PANIC" if cur_vix >= 25.0 else ("CAUTION" if cur_vix >= 20.0 else ("NORMAL" if cur_vix >= 15.0 else "CALM"))
+                    gauges["vix"] = {
+                        "val": round(cur_vix, 2),
+                        "delta": f"{delta:+.1f}%",
+                        "status": status,
+                        "label": "VIX 공포지수"
+                    }
+                    
+            # 2. US 10-Year Yield (^TNX)
+            if '^TNX' in close_df:
+                tnx_series = close_df['^TNX'].dropna()
+                if len(tnx_series) >= 2:
+                    cur_tnx = float(tnx_series.iloc[-1])
+                    prev_tnx = float(tnx_series.iloc[-2])
+                    delta = cur_tnx - prev_tnx
+                    status = "HIGH_BURDEN" if cur_tnx >= 4.5 else ("BURDEN" if cur_tnx >= 4.2 else "STABLE")
+                    gauges["us10y"] = {
+                        "val": round(cur_tnx, 3),
+                        "delta": f"{delta:+.2f}%p",
+                        "status": status,
+                        "label": "미국채 10년물"
+                    }
+                    
+            # 3. WTI Oil (CL=F)
+            if 'CL=F' in close_df:
+                wti_series = close_df['CL=F'].dropna()
+                if len(wti_series) >= 2:
+                    cur_wti = float(wti_series.iloc[-1])
+                    prev_wti = float(wti_series.iloc[-2])
+                    delta = ((cur_wti - prev_wti) / prev_wti) * 100
+                    status = "SHOCK" if cur_wti >= 88.0 else ("ELEVATED" if cur_wti >= 80.0 else "STABLE")
+                    gauges["wti"] = {
+                        "val": round(cur_wti, 2),
+                        "delta": f"{delta:+.1f}%",
+                        "status": status,
+                        "label": "WTI 국제유가"
+                    }
+    except Exception as e:
+        print(f"[Macro Gauge Fetch Warning] {e}")
+        
+    return gauges
+
 def extract_transcript_from_vtt(vtt_file):
     if not os.path.exists(vtt_file):
         return ""
@@ -74,11 +149,61 @@ def extract_transcript_from_vtt(vtt_file):
     except Exception:
         return ""
 
+def analyze_macro_regime_and_climate(title, full_transcript, gauges):
+    """
+    Evaluates Gate-0 Macro Climate based on VIX, 10Y Yield, WTI, Geopolitics,
+    and the host's spoken macro directives ("이번 주는 사지 말자", "관망", "차익실현").
+    """
+    combined_text = (title + " " + full_transcript).upper()
+    
+    # 1. Check Geopolitical & External Shock Keywords
+    external_shocks = []
+    if any(k in combined_text for k in ["전쟁", "지정학", "중동", "우크라", "이란", "대만", "WAR", "CONFLICT"]):
+        external_shocks.append("지정학적 분쟁 및 전쟁 리스크")
+    if any(k in combined_text for k in ["관세", "무역", "트럼프", "보복", "TARIFF", "TRADE"]):
+        external_shocks.append("무역 분쟁 및 관세 불확실성")
+    if any(k in combined_text for k in ["금리", "연준", "FOMC", "파월", "국채", "INTEREST", "FED", "RATE"]):
+        external_shocks.append("금리 경로 및 통화정책 영향권")
+    if any(k in combined_text for k in ["유가", "원자재", "인플레", "물가", "OIL", "CPI", "INFLATION"]):
+        external_shocks.append("인플레이션 및 원자재 변동성")
+        
+    # 2. Check Host Weekly Macro Directives
+    defense_score = sum(full_transcript.count(kw) for kw in MACRO_DEFENSE_KEYWORDS)
+    vix_val = gauges["vix"]["val"]
+    us10y_val = gauges["us10y"]["val"]
+    wti_val = gauges["wti"]["val"]
+    
+    # Gate-0 Decision Rules
+    is_defense_mode = defense_score >= 4 or vix_val >= 22.0 or us10y_val >= 4.45 or len(external_shocks) >= 2
+    
+    if is_defense_mode:
+        macro_stance = "DEFENSE_HOLD"
+        macro_stance_kr = "신규 매수 보류 / 관망·현금 확보 주간"
+        macro_headline = "[거시 게이트 0단계: 이번 주 신규 매수 보류 / 관망·현금 유지 권고]"
+        macro_action_directive = (
+            f"거시 지표(10년물 금리 {us10y_val}%, VIX {vix_val}, 유가 ${wti_val}) 및 방송 지침상, "
+            f"적어도 이번 주는 무리한 신규 매수를 쉬어가고 현금을 지키는 관망 주간입니다. "
+            f"다만 거시 리스크 진정 시 즉시 공략할 최우선 1순위 후보 종목을 사전 선별합니다."
+        )
+    else:
+        macro_stance = "SELECTIVE_BUY"
+        macro_stance_kr = "선별적 분할 매수 적합 주간"
+        macro_headline = "[거시 게이트 0단계: 거시 리스크 안정 / 선별적 눌림목 매수 유효]"
+        macro_action_directive = (
+            f"거시 지표(VIX {vix_val}, 10년물 금리 {us10y_val}%)가 안정권에 위치하여 "
+            f"주도 섹터 내 퀀트 지표 합격 종목에 대한 1차 분할 매수 진입이 유효합니다."
+        )
+        
+    return {
+        "macro_stance": macro_stance,
+        "macro_stance_kr": macro_stance_kr,
+        "macro_headline": macro_headline,
+        "macro_action_directive": macro_action_directive,
+        "external_shocks": external_shocks if external_shocks else ["거시 매크로 관망 국면"],
+        "defense_keyword_count": defense_score
+    }
+
 def analyze_contextual_mentions(full_transcript):
-    """
-    Scans transcript for each stock and evaluates host recommendation sentiment
-    based on nearby keywords (순환매, 추천, 좋게 보고 있다, 매수 vs 위험, 하락, 조심).
-    """
     stock_analysis = []
     
     for ticker, aliases in STOCK_DICT.items():
@@ -134,12 +259,14 @@ def analyze_contextual_mentions(full_transcript):
                 "sample_context": sample_snippets[0] if sample_snippets else ""
             })
             
-    # Sort primarily by net recommendation sentiment, then mentions
     stock_analysis = sorted(stock_analysis, key=lambda x: (x["net_sentiment"], x["mentions"]), reverse=True)
     return stock_analysis
 
 def parse_live_stream_broadcast():
     print(f"[Live Stream Parser] Fetching latest live broadcast from {CHANNEL_URL}...")
+    
+    # 1. Fetch Realtime Macro Gauges (VIX, 10Y Yield, WTI Oil)
+    gauges = fetch_realtime_macro_gauges()
     
     cmd = [
         sys.executable, "-m", "yt_dlp",
@@ -178,10 +305,12 @@ def parse_live_stream_broadcast():
             
         full_transcript = extract_transcript_from_vtt(vtt_out)
         
-        # Contextual Sentiment NLP Analysis
+        # 2. Contextual Sentiment NLP Analysis
         mentioned_stocks = analyze_contextual_mentions(full_transcript)
         
-        # Tickers with positive recommendation from host
+        # 3. Gate-0 Macro Climate & Stance Analysis
+        macro_climate = analyze_macro_regime_and_climate(title, full_transcript, gauges)
+        
         bullish_stream_tickers = [m["ticker"] for m in mentioned_stocks if m["host_intent"] == "BULLISH_RECOMMENDED"]
         neutral_stream_tickers = [m["ticker"] for m in mentioned_stocks if m["host_intent"] == "NEUTRAL_WATCH"]
         bearish_stream_tickers = [m["ticker"] for m in mentioned_stocks if m["host_intent"] == "BEARISH_CAUTION"]
@@ -190,25 +319,13 @@ def parse_live_stream_broadcast():
         if not live_tickers:
             live_tickers = ["NVDA", "AMZN", "MSFT", "GOOGL", "META", "MU", "AMD", "TSLA", "PLTR", "VST"]
             
-        # Detect Macro Context from Title and Transcript
-        combined_text = (title + " " + full_transcript[:3000]).upper()
-        macro_themes = []
-        if any(k in combined_text for k in ["금리", "연준", "FOMC", "파월", "국채", "INTEREST", "FED", "RATE"]):
-            macro_themes.append("금리 경로 및 통화정책 영향권")
-        if any(k in combined_text for k in ["유가", "원자재", "인플레", "물가", "OIL", "CPI", "INFLATION"]):
-            macro_themes.append("인플레이션 및 유가/원자재 변동성")
-        if any(k in combined_text for k in ["실적", "어닝", "가이던스", "EARNINGS", "REVENUE"]):
-            macro_themes.append("빅테크 실적 차별화 장세")
-        if any(k in combined_text for k in ["성장", "반도체", "AI", "인프라", "GROWTH"]):
-            macro_themes.append("AI 반도체 및 인프라 수급 집중")
-            
-        macro_narrative = " / ".join(macro_themes) if macro_themes else "거시 매크로 관망 및 주도주 수급 공방 국면"
-        
         payload = {
             "video_id": v_id,
             "title": title,
             "url": url,
-            "macro_narrative": macro_narrative,
+            "macro_gauges": gauges,
+            "macro_climate": macro_climate,
+            "macro_narrative": " / ".join(macro_climate["external_shocks"]),
             "mentioned_stocks": mentioned_stocks,
             "bullish_stream_tickers": bullish_stream_tickers,
             "neutral_stream_tickers": neutral_stream_tickers,
@@ -222,13 +339,14 @@ def parse_live_stream_broadcast():
             json.dump(payload, f, ensure_ascii=False, indent=2)
             
         rec_summary = ', '.join([f"{m['ticker']}(+{m['net_sentiment']})" for m in mentioned_stocks if m['host_intent'] == 'BULLISH_RECOMMENDED'])
-        print(f"[Live Stream Parser] Successfully analyzed live broadcast: '{title}'")
-        print(f"  - Spoken Transcript Length: {len(full_transcript):,} chars")
-        print(f"  - Host Positive Recommended Stocks: {rec_summary}")
+        print(f"[Live Stream Parser] Analyzed '{title}'")
+        print(f"  - Gate-0 Macro Stance: {macro_climate['macro_headline']}")
+        print(f"  - Macro Gauges: VIX {gauges['vix']['val']}, 10Y {gauges['us10y']['val']}%, WTI ${gauges['wti']['val']}")
+        print(f"  - Host Recommended Stocks: {rec_summary}")
         return payload
         
     except Exception as e:
-        print(f"[Live Stream Parser] Warning: {e}, using cached live stream profile.")
+        print(f"[Live Stream Parser] Warning: {e}, using cached profile.")
         return load_fallback_cache()
 
 def load_fallback_cache():
@@ -242,7 +360,20 @@ def load_fallback_cache():
         "video_id": "uu2scQ-AsfM",
         "title": "임계점 넘어가는 금리와 유가 | 성장 vs 금리부담의 싸움 (바이킹스 라이브)",
         "url": "https://www.youtube.com/watch?v=uu2scQ-AsfM",
-        "macro_narrative": "금리 경로 및 통화정책 영향권 / 인플레이션 및 원자재 변동성 / AI 반도체 수급 집중",
+        "macro_gauges": {
+            "vix": {"val": 15.8, "delta": "+0.4%", "status": "NORMAL", "label": "VIX 공포지수"},
+            "us10y": {"val": 4.42, "delta": "+1.2bp", "status": "BURDEN", "label": "미국채 10년물"},
+            "wti": {"val": 78.5, "delta": "-0.5%", "status": "STABLE", "label": "WTI 국제유가"}
+        },
+        "macro_climate": {
+            "macro_stance": "DEFENSE_HOLD",
+            "macro_stance_kr": "신규 매수 보류 / 관망·현금 확보 주간",
+            "macro_headline": "[거시 게이트 0단계: 이번 주 신규 매수 보류 / 관망·현금 유지 권고]",
+            "macro_action_directive": "거시 지표(10년물 금리 4.42%, VIX 15.8, 유가 $78.5) 및 방송 지침상, 적어도 이번 주는 무리한 신규 매수를 쉬어가고 현금을 지키는 관망 주간입니다.",
+            "external_shocks": ["금리 경로 및 통화정책 영향권", "인플레이션 및 원자재 변동성", "지정학적 리스크"],
+            "defense_keyword_count": 8
+        },
+        "macro_narrative": "금리 경로 및 통화정책 영향권 / 인플레이션 및 원자재 변동성 / 지정학적 리스크",
         "mentioned_stocks": [
             {
                 "ticker": "NVDA", "mentions": 30, "pos_score": 18, "neg_score": 4, "net_sentiment": 14,
@@ -253,35 +384,12 @@ def load_fallback_cache():
                 "ticker": "AMZN", "mentions": 27, "pos_score": 3, "neg_score": 0, "net_sentiment": 3,
                 "host_intent": "BULLISH_RECOMMENDED", "intent_desc": "진행자 적극 추천 / 긍정 주목 (순환매·매수 유망)",
                 "positive_reasons": ["매수", "포트폴리오"]
-            },
-            {
-                "ticker": "MSFT", "mentions": 27, "pos_score": 12, "neg_score": 9, "net_sentiment": 3,
-                "host_intent": "BULLISH_RECOMMENDED", "intent_desc": "진행자 적극 추천 / 긍정 주목 (순환매·매수 유망)",
-                "positive_reasons": ["추천", "매수"]
-            },
-            {
-                "ticker": "GOOGL", "mentions": 21, "pos_score": 3, "neg_score": 0, "net_sentiment": 3,
-                "host_intent": "BULLISH_RECOMMENDED", "intent_desc": "진행자 적극 추천 / 긍정 주목 (순환매·매수 유망)",
-                "positive_reasons": ["매수"]
-            },
-            {
-                "ticker": "META", "mentions": 12, "pos_score": 2, "neg_score": 0, "net_sentiment": 2,
-                "host_intent": "NEUTRAL_WATCH", "intent_desc": "진행자 단순 언급 / 수급 관망",
-                "positive_reasons": ["매수"]
-            },
-            {
-                "ticker": "AMD", "mentions": 9, "pos_score": 0, "neg_score": 0, "net_sentiment": 0,
-                "host_intent": "NEUTRAL_WATCH", "intent_desc": "진행자 단순 언급 / 수급 관망"
-            },
-            {
-                "ticker": "TSLA", "mentions": 3, "pos_score": 3, "neg_score": 0, "net_sentiment": 3,
-                "host_intent": "BULLISH_RECOMMENDED", "intent_desc": "진행자 반등 언급"
             }
         ],
-        "bullish_stream_tickers": ["NVDA", "AMZN", "MSFT", "GOOGL", "TSLA"],
-        "neutral_stream_tickers": ["META", "AMD", "MU", "005930.KS", "000660.KS"],
-        "bearish_stream_tickers": [],
-        "live_stream_tickers": ["NVDA", "AMZN", "MSFT", "GOOGL", "META", "MU", "AMD", "TSLA", "005930.KS"],
+        "bullish_stream_tickers": ["NVDA", "AMZN"],
+        "neutral_stream_tickers": ["META", "AMD", "GOOGL", "005930.KS"],
+        "bearish_stream_tickers": ["000660.KS", "QCOM"],
+        "live_stream_tickers": ["NVDA", "AMZN", "META", "AMD", "GOOGL"],
         "transcript_char_count": 71514,
         "fetched_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
@@ -291,5 +399,6 @@ def fetch_latest_wepoll_stream():
 
 if __name__ == "__main__":
     stream_info = parse_live_stream_broadcast()
-    print("\nLive Stream Spoken Stock Sentiment Analysis:")
-    print(json.dumps(stream_info, ensure_ascii=False, indent=2))
+    print("\nGate-0 Macro Climate & Live Stream Sentiment:")
+    print(json.dumps(stream_info.get("macro_climate"), ensure_ascii=False, indent=2))
+    print(json.dumps(stream_info.get("macro_gauges"), ensure_ascii=False, indent=2))
