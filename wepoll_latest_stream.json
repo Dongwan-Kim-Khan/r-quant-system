@@ -1,0 +1,77 @@
+{
+  "video_id": "uu2scQ-AsfM",
+  "title": "Interest Rates and Oil Prices Reaching a Tipping Point | Growth vs. Interest Rate Burden Battle",
+  "url": "https://www.youtube.com/watch?v=uu2scQ-AsfM",
+  "macro_narrative": "금리 경로 및 통화정책 영향권 / 인플레이션 및 유가/원자재 변동성 / AI 반도체 및 인프라 수급 집중",
+  "mentioned_stocks": [
+    {
+      "ticker": "NVDA",
+      "count": 30
+    },
+    {
+      "ticker": "MSFT",
+      "count": 27
+    },
+    {
+      "ticker": "AMZN",
+      "count": 27
+    },
+    {
+      "ticker": "GOOGL",
+      "count": 21
+    },
+    {
+      "ticker": "META",
+      "count": 12
+    },
+    {
+      "ticker": "MU",
+      "count": 12
+    },
+    {
+      "ticker": "AMD",
+      "count": 9
+    },
+    {
+      "ticker": "005930.KS",
+      "count": 6
+    },
+    {
+      "ticker": "TSLA",
+      "count": 3
+    },
+    {
+      "ticker": "AAPL",
+      "count": 3
+    },
+    {
+      "ticker": "PLTR",
+      "count": 3
+    },
+    {
+      "ticker": "VST",
+      "count": 3
+    },
+    {
+      "ticker": "000660.KS",
+      "count": 3
+    }
+  ],
+  "live_stream_tickers": [
+    "NVDA",
+    "MSFT",
+    "AMZN",
+    "GOOGL",
+    "META",
+    "MU",
+    "AMD",
+    "005930.KS",
+    "TSLA",
+    "AAPL",
+    "PLTR",
+    "VST",
+    "000660.KS"
+  ],
+  "transcript_char_count": 71514,
+  "fetched_at": "2026-08-18 12:43:14"
+}
