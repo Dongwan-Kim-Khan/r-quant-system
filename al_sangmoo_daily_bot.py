@@ -2,14 +2,6 @@ import os
 import sys
 import json
 import smtplib
-
-# Fix Windows cp949 terminal encoding
-if sys.platform.startswith('win'):
-    try:
-        sys.stdout.reconfigure(encoding='utf-8')
-    except Exception:
-        pass
-
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from datetime import datetime, timedelta
@@ -18,6 +10,13 @@ import yfinance as yf
 import youtube_stream_scanner
 import db_manager
 import generate_dashboard_feed
+
+# Windows cp949 terminal encoding fix
+if sys.platform.startswith('win'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 HISTORY_CSV = os.path.join(BASE_DIR, "trade_history.csv")
@@ -51,13 +50,13 @@ def send_email_report(subject, html_body, receiver=None):
     gmail_password = os.environ.get("GMAIL_APP_PASSWORD") or os.environ.get("EMAIL_PASSWORD")
     
     if not gmail_user or not gmail_password:
-        print(f"📧 [안내] GMAIL_USER 및 GMAIL_APP_PASSWORD (.env) 설정이 필요합니다. (HTML 리포트는 로컬 {REPORTS_DIR}에 정상 보관됨)")
+        print(f"[Email Dispatch] GMAIL_USER / GMAIL_APP_PASSWORD not set in .env. Report saved at {REPORTS_DIR}.")
         return False
         
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"] = f"알상무 퀀트 봇 <{gmail_user}>"
+        msg["From"] = f"Al-Sangmoo Quant Engine <{gmail_user}>"
         msg["To"] = receiver
         
         part = MIMEText(html_body, "html", "utf-8")
@@ -67,18 +66,18 @@ def send_email_report(subject, html_body, receiver=None):
             server.login(gmail_user, gmail_password)
             server.sendmail(gmail_user, receiver, msg.as_string())
             
-        print(f"✅ [이메일 발송 성공] {receiver}에게 모닝 브리핑 이메일을 성공적으로 전송했습니다!")
+        print(f"[Email Dispatch] Briefing sent successfully to {receiver}.")
         return True
     except Exception as e:
-        print(f"❌ [이메일 발송 실패] {e}")
+        print(f"[Email Dispatch Error] {e}")
         return False
 
-# NASDAQ 100 & Key Growth Universe
+# Base Institutional Growth Universe
 UNIVERSE = [
     "QQQ", "NVDA", "AAPL", "MSFT", "AMZN", "GOOGL", "META", "TSLA",
     "AVGO", "AMD", "NFLX", "COST", "ASML", "QCOM", "PLTR", "COIN",
     "ARM", "SMCI", "MU", "PANW", "CRWD", "NOW", "UBER", "ABNB",
-    "ISRG", "LLY", "VRTX", "005930.KS", "000660.KS", "012450.KS"
+    "ISRG", "LLY", "VRTX", "VST", "CEG", "GEV", "ETN", "005930.KS", "000660.KS", "012450.KS"
 ]
 
 def calculate_indicators(df):
@@ -105,7 +104,6 @@ def scan_and_select_2x2x2(priority_tickers=None):
     if priority_tickers is None:
         priority_tickers = []
         
-    # Combine priority stream tickers at the front
     scan_list = []
     for t in priority_tickers:
         if t not in scan_list:
@@ -139,21 +137,21 @@ def scan_and_select_2x2x2(priority_tickers=None):
             
             kijun_gap = ((close - kijun) / kijun) * 100
             
-            # Score Bull (0 to 100)
+            # Quantitative Factor Scoring
             bull_score = 0
             if close >= cloud_top: bull_score += 35
             if -0.5 <= kijun_gap <= 4.0: bull_score += 35
             if vol_ratio <= 0.75: bull_score += 20
             if tenkan >= kijun: bull_score += 10
             
-            # Score Bear (0 to 100)
             bear_score = 0
             if close < kijun: bear_score += 40
             if close < cloud_bottom: bear_score += 35
             if kijun_gap < -2.0: bear_score += 15
             
-            # Neutral score
             neutral_score = 100 - max(bull_score, bear_score)
+            
+            cloud_status = "구름대 상단 안착" if close >= cloud_top else ("구름대 하단 붕괴" if close < cloud_bottom else "구름대 내부 횡보")
             
             candidates.append({
                 "ticker": ticker,
@@ -162,7 +160,7 @@ def scan_and_select_2x2x2(priority_tickers=None):
                 "tenkan": tenkan,
                 "kijun_gap": kijun_gap,
                 "vol_ratio": vol_ratio,
-                "cloud_status": "구름대 위" if close >= cloud_top else ("구름대 아래" if close < cloud_bottom else "구름대 내부"),
+                "cloud_status": cloud_status,
                 "bull_score": bull_score,
                 "bear_score": bear_score,
                 "neutral_score": neutral_score
@@ -170,7 +168,6 @@ def scan_and_select_2x2x2(priority_tickers=None):
         except Exception:
             continue
             
-    # Sort strictly: Pick Top 2 Bull, Top 2 Bear, Top 2 Neutral
     bull_picks = sorted([c for c in candidates if c['bull_score'] >= 60], key=lambda x: x['bull_score'], reverse=True)[:2]
     bear_picks = sorted([c for c in candidates if c['bear_score'] >= 50], key=lambda x: x['bear_score'], reverse=True)[:2]
     
@@ -182,11 +179,7 @@ def scan_and_select_2x2x2(priority_tickers=None):
 
 def evaluate_user_portfolio_positions():
     """
-    Evaluates ONLY the user's active holdings in my_portfolio:
-    - Triggers TAKE-PROFIT SELL if target (+15%) reached.
-    - Triggers HARD STOP-LOSS SELL if -3% or Kijun-sen broken.
-    - Triggers PARTIAL TAKE-PROFIT if +8~15%.
-    - Triggers HOLD if trend intact.
+    Evaluates real open positions in user's portfolio.
     """
     portfolio_data = db_manager.get_live_portfolio()
     holdings = portfolio_data.get("holdings", [])
@@ -206,17 +199,17 @@ def evaluate_user_portfolio_positions():
         is_partial_tp = 8.0 <= pnl_pct < 15.0
         
         if is_take_profit:
-            badge = "💰 전량 익절 매도"
-            advice = f"🚨 [전량 익절 매도] +15% 목표가(${target_p:,.2f}) 도달! 전량 차익 실현 권고 (수익률 {pnl_pct:+.1f}%)"
+            badge = "전량 익절 매도"
+            advice = f"목표 수익률(+15%) 달성에 따른 전량 차익 실현 권고 (수익률 {pnl_pct:+.2f}%)"
         elif is_stop_loss:
-            badge = "🛡️ 칼손절 긴급 매도"
-            advice = f"🚨 [칼손절 긴급 매도] -3% 손절가(${stop_p:,.2f}) 터치! 즉시 전량 매도 권고 (손실률 {pnl_pct:+.1f}%)"
+            badge = "칼손절 긴급 매도"
+            advice = f"손절 기준선(-3%) 이탈에 따른 전량 리스크 청산 권고 (손실률 {pnl_pct:+.2f}%)"
         elif is_partial_tp:
-            badge = "📈 50% 분할 익절"
-            advice = f"💰 [50% 분할 익절] 현재 수익률 {pnl_pct:+.1f}%. 절반 챙기고 스탑 본절가 상향 권고"
+            badge = "50% 분할 익절"
+            advice = f"1차 분할 익절 구간 진입 (+{pnl_pct:.1f}%). 50% 차익 실현 후 스탑 본절가 상향"
         else:
-            badge = "⏳ 보유 지속"
-            advice = f"⏳ [보유 지속] 지지선 방어 중. 손절가 ${stop_p:,.2f} 유지 / 목표가 ${target_p:,.2f}"
+            badge = "보유 지속"
+            advice = f"26일 기준선 지지 유효. 손절선 ${stop_p:,.2f} 유지 / 목표가 ${target_p:,.2f}"
             
         portfolio_alerts.append({
             "ticker": ticker,
@@ -234,9 +227,6 @@ def evaluate_user_portfolio_positions():
     return portfolio_alerts
 
 def evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, today_str):
-    """
-    Maintains background forward tracking database for recommended history.
-    """
     if os.path.exists(HISTORY_CSV):
         history_df = pd.read_csv(HISTORY_CSV)
     else:
@@ -248,9 +238,7 @@ def evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, 
     if "exit_advice" not in history_df.columns:
         history_df["exit_advice"] = "HOLD"
         
-    # Evaluate open recommendation rows in background
     open_trades = history_df[history_df['status'] == 'OPEN'].copy()
-    position_alerts = []
     
     for idx, row in open_trades.iterrows():
         ticker = row['ticker']
@@ -279,19 +267,19 @@ def evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, 
                 
                 if is_take_profit:
                     status = 'CLOSED_PROFIT'
-                    advice = f"🚨 [전량 익절 매도] 목표가 달성 (+{pnl_pct:.1f}%)"
+                    advice = f"목표 수익률(+15%) 달성 (+{pnl_pct:.1f}%)"
                 elif is_stop_loss:
                     status = 'CLOSED_STOP'
-                    advice = f"🚨 [칼손절 긴급 매도] 손절선 터치 ({pnl_pct:.1f}%)"
+                    advice = f"손절선(-3%) 이탈 ({pnl_pct:.1f}%)"
                 elif is_partial_tp:
                     status = 'OPEN'
-                    advice = f"💰 [50% 분할 익절] 현재 수익률 +{pnl_pct:.1f}%"
+                    advice = f"50% 분할 익절 구간 (+{pnl_pct:.1f}%)"
                 elif is_expired:
                     status = 'CLOSED_EXPIRED'
-                    advice = f"⏱️ [3개월 만기 청산] 현재 수익률 {pnl_pct:+.1f}%"
+                    advice = f"3개월 만기 도달 포지션 종료 ({pnl_pct:+.1f}%)"
                 else:
                     status = 'OPEN'
-                    advice = f"⏳ [보유 지속] 손절가 ${kijun:,.2f} 유지"
+                    advice = f"보유 지속 (손절선 ${kijun:,.2f})"
                     
                 history_df.loc[idx, 'current_price'] = cur_price
                 history_df.loc[idx, 'pnl_pct'] = pnl_pct
@@ -299,37 +287,25 @@ def evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, 
                 history_df.loc[idx, 'status'] = status
                 history_df.loc[idx, 'days_active'] = days_active
                 history_df.loc[idx, 'exit_advice'] = advice
-                
-                position_alerts.append({
-                    "ticker": ticker,
-                    "type": pos_type,
-                    "entry_date": row['date'],
-                    "entry_price": entry_price,
-                    "cur_price": cur_price,
-                    "pnl_pct": pnl_pct,
-                    "badge": badge,
-                    "advice": advice
-                })
         except Exception:
             pass
             
-    # 2. Add today's 6 stocks (2 Bull / 2 Neutral / 2 Bear)
     existing_today = history_df[history_df['date'] == today_str]
     if existing_today.empty:
         new_rows = []
         for b in bull_picks:
             new_rows.append({"date": today_str, "ticker": b['ticker'], "type": "BULL", "entry_price": b['close'], "current_price": b['close'], "pnl_pct": 0.0, "max_gain_pct": 0.0, "status": "OPEN", "days_active": 0, "exit_advice": "신규 진입 (목표가 +15%, 손절가 -3%)"})
         for n in neutral_picks:
-            new_rows.append({"date": today_str, "ticker": n['ticker'], "type": "NEUTRAL", "entry_price": n['close'], "current_price": n['close'], "pnl_pct": 0.0, "max_gain_pct": 0.0, "status": "OPEN", "days_active": 0, "exit_advice": "관망"})
+            new_rows.append({"date": today_str, "ticker": n['ticker'], "type": "NEUTRAL", "entry_price": n['close'], "current_price": n['close'], "pnl_pct": 0.0, "max_gain_pct": 0.0, "status": "OPEN", "days_active": 0, "exit_advice": "중립 관망"})
         for s in bear_picks:
-            new_rows.append({"date": today_str, "ticker": s['ticker'], "type": "BEAR", "entry_price": s['close'], "current_price": s['close'], "pnl_pct": 0.0, "max_gain_pct": 0.0, "status": "OPEN", "days_active": 0, "exit_advice": "숏 헤지"})
+            new_rows.append({"date": today_str, "ticker": s['ticker'], "type": "BEAR", "entry_price": s['close'], "current_price": s['close'], "pnl_pct": 0.0, "max_gain_pct": 0.0, "status": "OPEN", "days_active": 0, "exit_advice": "리스크 회피 / 숏"})
             
         if new_rows:
             history_df = pd.concat([history_df, pd.DataFrame(new_rows)], ignore_index=True)
             
     history_df.to_csv(HISTORY_CSV, index=False)
     
-    # 2-1. Sync with SQLite `trades` table
+    # Sync with SQLite trades table
     try:
         db_manager.init_db()
         conn = db_manager.get_db()
@@ -363,182 +339,204 @@ def evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, 
         conn.commit()
         conn.close()
     except Exception as e:
-        print(f"⚠️ [SQLite trades 동기화 경고] {e}")
-    
-    # 3. Model Health Analysis
+        print(f"[SQLite Sync Warning] {e}")
+        
     closed = history_df[history_df['status'].str.startswith('CLOSED')]
     if len(closed) >= 4:
         bull_closed = closed[closed['type'] == 'BULL']
         win_count = len(bull_closed[bull_closed['pnl_pct'] > 0])
         total_bull = len(bull_closed)
         win_rate = (win_count / total_bull * 100) if total_bull > 0 else 0
-        health_status = f"🟢 모델 정상 작동 (실전 승률: {win_rate:.1f}%)" if win_rate >= 50 else f"⚠️ 모델 재점검 경보 (실전 승률: {win_rate:.1f}%)"
+        health_status = f"검증 정상 가동 (실전 누적 승률: {win_rate:.1f}%)" if win_rate >= 50 else f"모형 재점검 기준 도달 (승률: {win_rate:.1f}%)"
     else:
-        health_status = "🌱 데이터 누적 중 (초기 모델 가동 단계)"
+        health_status = "데이터 누적 단계 (초기 전수 포워드 트래킹 중)"
         
-    return history_df, position_alerts, health_status
+    return history_df, health_status
 
 def generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, portfolio_alerts, health_status, stream_info=None):
     if stream_info is None:
         stream_info = {}
         
-    stream_title = stream_info.get("title", "바이킹스 라이브 스트리밍")
+    stream_title = stream_info.get("title", "바이킹스 데일리 매크로 & 섹터 브리핑")
     stream_url = stream_info.get("url", "https://www.youtube.com/@wepoll_original/streams")
-    cycles = stream_info.get("cycle_keywords", [])
-    cycle_str = ", ".join(cycles) if cycles else "거시 경제 / 미장 주도주 사이클"
-    stream_tickers = stream_info.get("extracted_tickers", [])
-    ticker_str = ", ".join(stream_tickers) if stream_tickers else "주요 성장주 유니버스 기반"
+    macro_narrative = stream_info.get("macro_narrative", "거시 경제 방향성 및 주도 섹터 수급 선별 국면")
+    focus_sectors = stream_info.get("focus_sectors", ["AI 반도체 / 인프라", "빅테크 클라우드", "헬스케어"])
+    sector_str = " | ".join(focus_sectors)
+    screen_candidates = stream_info.get("screen_candidates", [])
+    candidate_str = ", ".join(screen_candidates) if screen_candidates else "주요 대표 섹터 대장주 풀"
 
     html = f"""
     <!DOCTYPE html>
-    <html>
+    <html lang="ko">
     <head>
         <meta charset="utf-8">
         <style>
-            body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f4f6f8; color: #1e293b; padding: 20px; }}
-            .container {{ max-width: 680px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.06); }}
-            .header {{ background: #0f172a; color: #ffffff; padding: 24px; text-align: center; }}
-            .header h1 {{ margin: 0; font-size: 20px; font-weight: 800; }}
-            .sub-title {{ font-size: 13px; color: #94a3b8; margin-top: 6px; }}
-            .section {{ padding: 20px; border-bottom: 1px solid #e2e8f0; }}
-            .section-title {{ font-size: 16px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }}
-            .stream-box {{ background: #fdf4ff; border: 1px solid #f0abfc; border-radius: 8px; padding: 14px; margin-bottom: 12px; }}
-            .stream-box a {{ color: #a21caf; text-decoration: none; font-weight: bold; }}
-            .card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-bottom: 10px; }}
-            .card-alert {{ background: #fef2f2; border: 1px solid #fecaca; border-left: 4px solid #ef4444; }}
-            .card-profit {{ background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 4px solid #10b981; }}
-            .card-bull {{ border-left: 4px solid #10b981; }}
-            .card-neutral {{ border-left: 4px solid #f59e0b; }}
-            .card-bear {{ border-left: 4px solid #ef4444; }}
-            .ticker-head {{ display: flex; justify-content: space-between; font-weight: 700; font-size: 15px; margin-bottom: 4px; }}
-            .price {{ color: #0f172a; font-family: monospace; font-size: 14px; }}
-            .details {{ font-size: 12px; color: #64748b; line-height: 1.5; }}
-            .health-box {{ background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; padding: 12px; border-radius: 8px; font-size: 13px; font-weight: 600; text-align: center; }}
-            .footer {{ padding: 16px; font-size: 11px; color: #94a3b8; text-align: center; background: #f8fafc; }}
+            body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #f1f5f9; color: #0f172a; margin: 0; padding: 24px; line-height: 1.5; }}
+            .container {{ max-width: 720px; margin: 0 auto; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; overflow: hidden; }}
+            .header {{ background: #0f172a; color: #ffffff; padding: 24px 28px; border-bottom: 2px solid #334155; }}
+            .header h1 {{ margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }}
+            .header .meta {{ font-size: 12px; color: #94a3b8; margin-top: 6px; }}
+            .section {{ padding: 20px 28px; border-bottom: 1px solid #e2e8f0; }}
+            .section-title {{ font-size: 14px; font-weight: 700; color: #1e293b; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 14px; padding-bottom: 6px; border-bottom: 2px solid #0f172a; }}
+            .macro-box {{ background: #f8fafc; border: 1px solid #cbd5e1; border-left: 4px solid #334155; padding: 14px 16px; margin-bottom: 12px; }}
+            .macro-row {{ font-size: 13px; margin-bottom: 6px; }}
+            .macro-row strong {{ color: #0f172a; }}
+            .table {{ width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }}
+            .table th {{ background: #f1f5f9; color: #475569; font-weight: 600; text-align: left; padding: 8px 10px; border: 1px solid #e2e8f0; }}
+            .table td {{ padding: 8px 10px; border: 1px solid #e2e8f0; color: #1e293b; }}
+            .stock-card {{ background: #ffffff; border: 1px solid #cbd5e1; border-left: 4px solid #0f172a; padding: 14px 16px; margin-bottom: 10px; }}
+            .stock-card-bull {{ border-left-color: #059669; }}
+            .stock-card-neutral {{ border-left-color: #d97706; }}
+            .stock-card-bear {{ border-left-color: #dc2626; }}
+            .stock-head {{ display: flex; justify-content: space-between; font-weight: 700; font-size: 14px; margin-bottom: 6px; }}
+            .stock-meta {{ font-size: 12px; color: #475569; line-height: 1.6; }}
+            .badge {{ display: inline-block; padding: 2px 6px; font-size: 11px; font-weight: 600; border-radius: 2px; }}
+            .badge-bull {{ background: #dcfce7; color: #166534; }}
+            .badge-neutral {{ background: #fef3c7; color: #92400e; }}
+            .badge-bear {{ background: #fee2e2; color: #991b1b; }}
+            .badge-hold {{ background: #e0f2fe; color: #075985; }}
+            .footer {{ padding: 16px 28px; font-size: 11px; color: #64748b; background: #f8fafc; text-align: center; border-top: 1px solid #e2e8f0; }}
         </style>
     </head>
     <body>
         <div class="container">
             <div class="header">
-                <h1>🏛️ 알상무 퀀트 점심 브리핑 & 매매 알림</h1>
-                <div class="sub-title">{today_str} (바이킹스 라이브 방송 분석 기반)</div>
+                <h1>AL-SANGMOO QUANTITATIVE TACTICAL REPORT</h1>
+                <div class="meta">발행일시: {today_str} 12:30 KST | 분석 모듈: 바이킹스 라이브 매크로 연계 퀀트 엔진</div>
             </div>
             
-            <!-- YouTube Stream Analysis -->
+            <!-- 1. Macro Regime & Target Sectors -->
             <div class="section">
-                <div class="stream-box">
-                    <div style="font-size: 14px; font-weight: 700; color: #86198f; margin-bottom: 6px;">🎬 오늘자 바이킹스/알상무 라이브 분석 완료</div>
-                    <div style="font-size: 13px; margin-bottom: 4px;"><strong>방송 제목:</strong> <a href="{stream_url}" target="_blank">{stream_title} ↗</a></div>
-                    <div style="font-size: 12px; color: #701a75;">
-                        • <strong>포착된 시장 사이클:</strong> {cycle_str}<br>
-                        • <strong>방송 연계 후보 종목:</strong> {ticker_str}
-                    </div>
-                </div>
-                <div class="health-box">
-                    📊 실전 퀀트 모델 검증 상태: {health_status}
+                <div class="section-title">1. Macro Flow & Target Focus Sectors</div>
+                <div class="macro-box">
+                    <div class="macro-row"><strong>라이브 방송:</strong> <a href="{stream_url}" target="_blank" style="color:#0f172a; text-decoration:underline;">{stream_title}</a></div>
+                    <div class="macro-row"><strong>거시 흐름 진단:</strong> {macro_narrative}</div>
+                    <div class="macro-row"><strong>금일 핵심 주목 섹터:</strong> {sector_str}</div>
+                    <div class="macro-row"><strong>섹터 대표주 스크리닝 풀:</strong> <span style="font-family:monospace; font-size:12px;">{candidate_str}</span></div>
                 </div>
             </div>
 
-            <!-- 🚨 0. 내 실제 보유 종목 매도/익절/손절 알림 (Real Portfolio Exits) -->
+            <!-- 2. Real Portfolio Risk & Execution Monitor -->
             <div class="section">
-                <div class="section-title" style="color:#2563eb;">🔔 0. 내 실제 보유 종목 매도/익절/손절 알림 (Real Portfolio)</div>
+                <div class="section-title">2. Real Portfolio Risk & Execution Monitor</div>
     """
     if portfolio_alerts:
+        html += """
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>종목</th>
+                            <th>보유수량</th>
+                            <th>매수가</th>
+                            <th>현재가</th>
+                            <th>수익률</th>
+                            <th>목표가(+15%)</th>
+                            <th>손절가(-3%)</th>
+                            <th>실전 대응 지침</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        """
         for p in portfolio_alerts:
-            card_class = "card-profit" if "익절" in p['badge'] else ("card-alert" if "손절" in p['badge'] else "card")
-            pnl_color = "#10b981" if p['pnl_pct'] > 0 else "#ef4444"
+            pnl_color = "#059669" if p['pnl_pct'] > 0 else "#dc2626"
+            badge_class = "badge-bull" if "익절" in p['badge'] else ("badge-bear" if "손절" in p['badge'] else "badge-hold")
             html += f"""
-                <div class="card {card_class}">
-                    <div class="ticker-head">
-                        <span>{p['ticker']} ({p['quantity']}주) [{p['badge']}]</span>
-                        <span class="price" style="color:{pnl_color};">{p['pnl_pct']:+.2f}%</span>
-                    </div>
-                    <div class="details">
-                        • <strong>매수일:</strong> {p['buy_date']} (${p['buy_price']:,.2f}) ➔ <strong>현재가:</strong> ${p['cur_price']:,.2f}<br>
-                        • <strong>목표가:</strong> ${p['target_price']:,.2f} (+15%) | <strong>손절가:</strong> ${p['stop_loss_price']:,.2f} (-3%)<br>
-                        • <strong>📢 실전 대응 지침:</strong> <strong>{p['advice']}</strong>
-                    </div>
-                </div>
+                        <tr>
+                            <td><strong>{p['ticker']}</strong></td>
+                            <td>{p['quantity']:.0f}주</td>
+                            <td>${p['buy_price']:,.2f}</td>
+                            <td>${p['cur_price']:,.2f}</td>
+                            <td style="color:{pnl_color}; font-weight:700;">{p['pnl_pct']:+.2f}%</td>
+                            <td>${p['target_price']:,.2f}</td>
+                            <td>${p['stop_loss_price']:,.2f}</td>
+                            <td><span class="badge {badge_class}">{p['badge']}</span> {p['advice']}</td>
+                        </tr>
             """
+        html += """
+                    </tbody>
+                </table>
+        """
     else:
         html += """
-            <div class="card" style="background:#f8fafc; border:1px dashed #cbd5e1; text-align:center; padding:16px;">
-                <div style="font-size:13px; font-weight:600; color:#475569;">💼 현재 내 계좌에 담긴 보유 종목이 없습니다.</div>
-                <div style="font-size:11px; color:#94a3b8; margin-top:4px;">웹 대시보드(http://localhost:8000)에서 신규 매수 시 실시간 목표가(+15%)/손절가(-3%) 자동 감시 알림이 여기에 전송됩니다.</div>
-            </div>
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:14px; font-size:12px; color:#64748b; text-align:center;">
+                    [실계좌 보유 현황: 0 종목] 현재 실제 포트폴리오에 등록된 보유 종목이 없습니다.<br>
+                    웹 대시보드(http://localhost:8000)에서 포지션 진입 시 실시간 손절(-3%) 및 목표가(+15%) 추적 모니터링이 자동 개시됩니다.
+                </div>
         """
 
     html += """
             </div>
 
-            <!-- 1. 신규 추천 2선 -->
+            <!-- 3. Quantitative Sector Selection (2+2+2) -->
             <div class="section">
-                <div class="section-title" style="color:#10b981;">🟢 1. 오늘 신규 추천 2선 (알상무 Pick / 빈집 선점 눌림목)</div>
+                <div class="section-title">3. Quantitative Sector Leaders Screening (2+2+2)</div>
+                <div style="font-size:12px; font-weight:700; color:#059669; margin-bottom:8px;">[Primary Accumulation] 1차 분할 매수 적합 종목 (일목 구름대 안착 + 기준선 지지 + 거래량 마름)</div>
     """
     for b in bull_picks:
         stop_p = b['close'] * 0.97
         tgt_p = b['close'] * 1.15
         html += f"""
-                <div class="card card-bull">
-                    <div class="ticker-head">
-                        <span>{b['ticker']} (적합도 {b['bull_score']}점)</span>
-                        <span class="price">${b['close']:,.2f}</span>
+                <div class="stock-card stock-card-bull">
+                    <div class="stock-head">
+                        <span>{b['ticker']} &nbsp;<span class="badge badge-bull">적합도 {b['bull_score']}점</span></span>
+                        <span style="font-family:monospace;">${b['close']:,.2f}</span>
                     </div>
-                    <div class="details">
-                        • <strong>26일 기준선:</strong> ${b['kijun']:,.2f} (이격도 {b['kijun_gap']:+.1f}%) | <strong>거래량 비율:</strong> {b['vol_ratio']*100:.0f}% (마름)<br>
-                        • <strong>진입가:</strong> ${b['close']:,.2f} | <strong>칼손절:</strong> ${stop_p:,.2f} (-3%) | <strong>1차 목표가:</strong> ${tgt_p:,.2f} (+15%)<br>
-                        • <strong>알상무 뷰:</strong> 일목 구름대 상단 안착 + 기준선 지지 양봉 확인. 1차 30% 분할 매수 타점.
+                    <div class="stock-meta">
+                        • <strong>26일 기준선:</strong> ${b['kijun']:,.2f} (이격도 {b['kijun_gap']:+.1f}%) | <strong>20일 거래량 비율:</strong> {b['vol_ratio']*100:.0f}% (수급 마름)<br>
+                        • <strong>진입 기준가:</strong> ${b['close']:,.2f} | <strong>1차 목표가:</strong> ${tgt_p:,.2f} (+15.0%) | <strong>손절 기준선:</strong> ${stop_p:,.2f} (-3.0%)<br>
+                        • <strong>정량 분석 평가:</strong> 일목 구름대 상단 안착 및 26일 생명선 지지 확인. 비중 30% 이내 1차 분할 진입 타점.
                     </div>
                 </div>
         """
-        
-    html += """
-            </div>
 
-            <!-- 2. 애매 2선 -->
-            <div class="section">
-                <div class="section-title" style="color:#f59e0b;">🟡 2. 오늘 애매 2선 (중립 / 박스권 에너지 응축)</div>
+    html += """
+                <div style="font-size:12px; font-weight:700; color:#d97706; margin:16px 0 8px 0;">[Consolidation / Neutral] 박스권 관망 종목 (에너지 응축 / 방향성 탐색 국면)</div>
     """
     for n in neutral_picks:
         html += f"""
-                <div class="card card-neutral">
-                    <div class="ticker-head">
-                        <span>{n['ticker']} (관망 대상)</span>
-                        <span class="price">${n['close']:,.2f}</span>
+                <div class="stock-card stock-card-neutral">
+                    <div class="stock-head">
+                        <span>{n['ticker']} &nbsp;<span class="badge badge-neutral">관망 대상</span></span>
+                        <span style="font-family:monospace;">${n['close']:,.2f}</span>
                     </div>
-                    <div class="details">
-                        • <strong>위치:</strong> {n['cloud_status']} | <strong>기준선 이격:</strong> {n['kijun_gap']:+.1f}%<br>
-                        • <strong>알상무 뷰:</strong> 방향성이 모호한 횡보 구간. 추세 돌파나 명확한 지지선 반등 확인 전까지 관망.
+                    <div class="stock-meta">
+                        • <strong>위치 상태:</strong> {n['cloud_status']} | <strong>기준선 이격도:</strong> {n['kijun_gap']:+.1f}%<br>
+                        • <strong>정량 분석 평가:</strong> 단기 추세 수렴 및 박스권 횡보 구간. 상방 돌파 또는 확정적 지지 확인 전까지 신규 진입 보류.
                     </div>
                 </div>
         """
 
     html += """
-            </div>
-
-            <!-- 3. 반대 2선 -->
-            <div class="section">
-                <div class="section-title" style="color:#ef4444;">🔴 3. 오늘 반대 2선 (숏돌이 경보 / 기준선 붕괴)</div>
+                <div style="font-size:12px; font-weight:700; color:#dc2626; margin:16px 0 8px 0;">[Risk Alert / Short Hedge] 기준선 붕괴 및 리스크 회피 종목 (생명선 이탈)</div>
     """
     for s in bear_picks:
         html += f"""
-                <div class="card card-bear">
-                    <div class="ticker-head">
-                        <span>{s['ticker']} (위험도 {s['bear_score']}점)</span>
-                        <span class="price">${s['close']:,.2f}</span>
+                <div class="stock-card stock-card-bear">
+                    <div class="stock-head">
+                        <span>{s['ticker']} &nbsp;<span class="badge badge-bear">위험도 {s['bear_score']}점</span></span>
+                        <span style="font-family:monospace;">${s['close']:,.2f}</span>
                     </div>
-                    <div class="details">
-                        • <strong>위치:</strong> {s['cloud_status']} | <strong>기준선 이탈:</strong> {s['kijun_gap']:+.1f}%<br>
-                        • <strong>알상무 뷰:</strong> 26일 기준선(생명선) 붕괴. 물타기 금지 및 숏 헤지 포지션 구축 권고.
+                    <div class="stock-meta">
+                        • <strong>위치 상태:</strong> {s['cloud_status']} | <strong>기준선 이탈도:</strong> {s['kijun_gap']:+.1f}%<br>
+                        • <strong>정량 분석 평가:</strong> 26일 기준선(생명선) 하향 붕괴. 추가 낙폭 리스크 존재하므로 매수 금지 및 숏 헤지 포지션 우위.
                     </div>
                 </div>
         """
 
-    html += """
+    html += f"""
+            </div>
+
+            <!-- 4. Model Verification -->
+            <div class="section">
+                <div class="section-title">4. Model Governance & Verification</div>
+                <div style="font-size:12px; color:#475569;">
+                    • <strong>전수 포워드 트래킹 상태:</strong> {health_status}<br>
+                    • <strong>시스템 아키텍처:</strong> 알상무 17년 기관 퀀트 프레임워크 (일목균형표 26일 기준선 / 9일 전환선 / 선행스팬 구름대 / 20일 거래량 건조 비율)
+                </div>
             </div>
             
             <div class="footer">
-                알상무 17년 퀀트 엔진 자동 발송 시스템 • 매일 점심 12:30 유튜브 라이브 분석 & 포워드 트래킹
+                Al-Sangmoo Quantitative Risk Engine • Confidential Portfolio Report • Generated Daily at 12:30 KST
             </div>
         </div>
     </body>
@@ -550,106 +548,113 @@ def print_markdown_briefing(today_str, bull_picks, neutral_picks, bear_picks, po
     if stream_info is None:
         stream_info = {}
         
-    stream_title = stream_info.get("title", "바이킹스 라이브 스트리밍")
+    stream_title = stream_info.get("title", "바이킹스 라이브 매크로 & 섹터 브리핑")
     stream_url = stream_info.get("url", "https://www.youtube.com/@wepoll_original/streams")
-    cycles = stream_info.get("cycle_keywords", [])
-    cycle_str = ", ".join(cycles) if cycles else "거시 경제 / 미장 주도주 사이클"
-    stream_tickers = stream_info.get("extracted_tickers", [])
-    ticker_str = ", ".join(stream_tickers) if stream_tickers else "주요 성장주 유니버스"
+    macro_narrative = stream_info.get("macro_narrative", "거시 경제 방향성 및 주도 섹터 수급 선별 국면")
+    focus_sectors = stream_info.get("focus_sectors", ["AI 반도체 / 인프라", "빅테크 클라우드", "헬스케어"])
+    sector_str = " | ".join(focus_sectors)
+    screen_candidates = stream_info.get("screen_candidates", [])
+    candidate_str = ", ".join(screen_candidates) if screen_candidates else "주요 대표 섹터 대장주 풀"
 
-    md = f"""
-# 🏛️ 알상무 퀀트 점심 브리핑 & 매매 알림 ({today_str})
+    md = f"""# AL-SANGMOO QUANTITATIVE TACTICAL REPORT ({today_str})
 
-> 🎬 **오늘자 라이브 분석**: [{stream_title}]({stream_url})
-> 🔍 **포착 사이클**: `{cycle_str}` | **후보 종목군**: `{ticker_str}`
-> 📊 **실전 퀀트 모델 상태**: `{health_status}`
+발행일시: {today_str} 12:30 KST | 분석 모듈: 바이킹스 라이브 매크로 연계 퀀트 엔진
 
 ---
 
-## 🔔 0. 내 실제 보유 계좌 매매/익절/손절 알림 (Real Portfolio)
+## 1. Macro Flow & Target Focus Sectors
+
+* **라이브 방송**: [{stream_title}]({stream_url})
+* **거시 흐름 진단**: {macro_narrative}
+* **금일 핵심 주목 섹터**: {sector_str}
+* **섹터 대표주 스크리닝 풀**: `{candidate_str}`
+
+---
+
+## 2. Real Portfolio Risk & Execution Monitor
 
 """
     if portfolio_alerts:
         for p in portfolio_alerts:
-            md += f"* **`{p['ticker']}`** ({p['quantity']}주) [{p['badge']}] (수익률 `{p['pnl_pct']:+.2f}%`)\n"
-            md += f"  - 매수가: `${p['buy_price']:,.2f}` ➔ 현재가: `${p['cur_price']:,.2f}`\n"
-            md += f"  - 🎯 목표가: `${p['target_price']:,.2f}` (+15%) | 🛡️ 손절가: `${p['stop_loss_price']:,.2f}` (-3%)\n"
-            md += f"  - **📢 대응 지침**: {p['advice']}\n\n"
+            md += f"* **{p['ticker']}** ({p['quantity']:.0f}주) [{p['badge']}] (수익률 {p['pnl_pct']:+.2f}%)\n"
+            md += f"  - 매수가: ${p['buy_price']:,.2f} | 현재가: ${p['cur_price']:,.2f}\n"
+            md += f"  - 목표가(+15%): ${p['target_price']:,.2f} | 손절가(-3%): ${p['stop_loss_price']:,.2f}\n"
+            md += f"  - 대응 지침: {p['advice']}\n\n"
     else:
-        md += "*💼 현재 내 계좌에 담긴 보유 종목이 없습니다. (웹 대시보드에서 매수 등록 시 실시간 손절/익절 자동 감시 시작)*\n\n"
+        md += "*[실계좌 보유 현황: 0 종목] 현재 실제 포트폴리오에 등록된 보유 종목이 없습니다.*\n\n"
 
     md += """---
 
-## 🟢 1. 오늘 신규 추천 2선 (알상무 Pick / 빈집 선점)
+## 3. Quantitative Sector Leaders Screening (2+2+2)
 
+### [Primary Accumulation] 1차 분할 매수 적합 종목
 """
     for b in bull_picks:
         stop_p = b['close'] * 0.97
         tgt_p = b['close'] * 1.15
-        md += f"### 🟢 {b['ticker']} (현재가 `${b['close']:,.2f}` | 적합도 `{b['bull_score']}점`)\n"
-        md += f"* 📍 **기준선 이격도**: `{b['kijun_gap']:+.1f}%` (${b['kijun']:,.2f}) | **거래량 비율**: `{b['vol_ratio']*100:.0f}%` (마름)\n"
-        md += f"* 🛡️ **칼손절가**: `${stop_p:,.2f} (-3.0%)` | 🎯 **1차 목표가**: `${tgt_p:,.2f} (+15.0%)`\n"
-        md += f"* 💬 **알상무 코멘트**: 일목 구름대 상단 안착 + 기준선 지지 양봉 확인. 1차 30% 분할 매수 타점.\n\n"
+        md += f"* **{b['ticker']}** (현재가 ${b['close']:,.2f} | 적합도 {b['bull_score']}점)\n"
+        md += f"  - 26일 기준선: ${b['kijun']:,.2f} (이격도 {b['kijun_gap']:+.1f}%) | 거래량 비율: {b['vol_ratio']*100:.0f}%\n"
+        md += f"  - 1차 목표가: ${tgt_p:,.2f} (+15.0%) | 손절 기준선: ${stop_p:,.2f} (-3.0%)\n"
+        md += f"  - 정량 분석: 일목 구름대 상단 안착 및 26일 생명선 지지 확인. 비중 30% 1차 분할 매수 타점.\n\n"
 
-    md += """---
-
-## 🟡 2. 오늘 애매 2선 (관망 대상)
-
+    md += """### [Consolidation / Neutral] 박스권 관망 종목
 """
     for n in neutral_picks:
-        md += f"* **`{n['ticker']}`** (`${n['close']:,.2f}`): 기준선 이격 `{n['kijun_gap']:+.1f}%` / {n['cloud_status']} (박스권 횡보 중)\n"
+        md += f"* **{n['ticker']}** (${n['close']:,.2f}): {n['cloud_status']} (기준선 이격 {n['kijun_gap']:+.1f}%). 박스권 횡보에 따른 관망 유지.\n"
 
     md += """
----
-
-## 🔴 3. 오늘 반대 2선 (숏/손절 경보)
-
+### [Risk Alert / Short Hedge] 기준선 붕괴 및 리스크 회피 종목
 """
     for s in bear_picks:
-        md += f"* **`{s['ticker']}`** (`${s['close']:,.2f}`): 기준선 대비 `{s['kijun_gap']:+.1f}%` 이탈 (26일 생명선 붕괴 -> 물타기 금지)\n"
+        md += f"* **{s['ticker']}** (${s['close']:,.2f}): {s['cloud_status']} (기준선 대비 {s['kijun_gap']:+.1f}% 이탈). 생명선 붕괴에 따른 물타기 금지 및 숏 우위.\n"
 
+    md += f"""
+---
+
+## 4. Model Governance & Verification
+
+* 모델 검증 상태: `{health_status}`
+* 알상무 17년 기관 퀀트 엔진 자동화 시스템
+"""
     print(md)
 
 def main():
     today_str = datetime.now().strftime("%Y-%m-%d")
-    print(f"🚀 [알상무 봇] {today_str} 유튜브 라이브 파싱 ➔ 2+2+2 퀀트 계산 ➔ 내 계좌 알림 실행...")
+    print(f"[Al-Sangmoo Quant Bot] Executing pipeline for {today_str}...")
     
-    # 1. Fetch latest YouTube live stream from @wepoll_original/streams
+    # 1. Fetch latest YouTube stream macro and sector candidates
     stream_info = youtube_stream_scanner.fetch_latest_wepoll_stream()
-    priority_tickers = stream_info.get("extracted_tickers", [])
+    priority_tickers = stream_info.get("screen_candidates", [])
     
-    # 2. Run Al-Sangmoo 2+2+2 Quant Screening Formula
+    # 2. Run 2+2+2 Quantitative Formula
     bull_picks, neutral_picks, bear_picks = scan_and_select_2x2x2(priority_tickers=priority_tickers)
     
-    # 3. Evaluate User's Real Holdings for Stop-loss/Take-profit Alerts
+    # 3. Evaluate User Real Portfolio Positions
     portfolio_alerts = evaluate_user_portfolio_positions()
     
-    # 4. Update Background Forward Tracking History
-    history_df, _, health_status = evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, today_str)
+    # 4. Update Background History
+    history_df, health_status = evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, today_str)
     
-    # 5. Save into SQLite Recommendation Matrix
+    # 5. Save into SQLite
     db_manager.save_recommendation_matrix_record(today_str, bull_picks, neutral_picks, bear_picks)
-    print("✅ [DB 저장] recommendation_matrix 및 포트폴리오 업데이트 완료.")
     
-    # 6. Build Dashboard Charts Feed
+    # 6. Build Dashboard Cache Feed
     try:
         generate_dashboard_feed.build_dashboard_data()
-        print("✅ [대시보드 피드] dashboard_data.json 최신화 완료.")
+        print("[Dashboard Feed] Updated dashboard_data.json.")
     except Exception as e:
-        print(f"⚠️ [대시보드 피드 오류] {e}")
-    
-    # 7. Generate HTML & Send Email Report
+        print(f"[Dashboard Feed Error] {e}")
+        
+    # 7. Generate HTML & Send Email
     html_content = generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, portfolio_alerts, health_status, stream_info)
     out_html_path = os.path.join(REPORTS_DIR, f"briefing_{today_str}.html")
     with open(out_html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
-    print(f"✅ [리포트 파일] {out_html_path} 저장 완료.")
-    
-    # Send Email
-    subject = f"🏛️ [알상무 퀀트 점심 브리핑] {today_str} (바이킹스 라이브 기반 2+2+2 추천 & 보유 종목 알림)"
+        
+    subject = f"[Al-Sangmoo Quant Tactical Report] {today_str} Macro Flow & Sector Leaders Analysis"
     send_email_report(subject, html_content)
     
-    # 8. Print Markdown briefing
+    # 8. Print Markdown Briefing
     print_markdown_briefing(today_str, bull_picks, neutral_picks, bear_picks, portfolio_alerts, health_status, stream_info)
 
 if __name__ == "__main__":

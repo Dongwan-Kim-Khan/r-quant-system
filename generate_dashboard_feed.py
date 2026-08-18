@@ -15,10 +15,11 @@ if sys.platform.startswith('win'):
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 HISTORY_CSV = os.path.join(BASE_DIR, "trade_history.csv")
 OUTPUT_JSON = os.path.join(BASE_DIR, "dashboard_data.json")
+STREAM_CACHE = os.path.join(BASE_DIR, "wepoll_latest_stream.json")
 
 WATCHLIST = [
     "QQQ", "NVDA", "AMZN", "LLY", "AAPL", "MSFT", "TSLA", "META",
-    "AVGO", "COST", "AMD", "QCOM", "PLTR", "005930.KS", "000660.KS"
+    "AVGO", "COST", "AMD", "QCOM", "PLTR", "VST", "CEG", "005930.KS", "000660.KS"
 ]
 
 def compute_all_indicators(ticker):
@@ -47,7 +48,6 @@ def compute_all_indicators(ticker):
         df['Vol_SMA20'] = df['Volume'].rolling(window=20).mean()
         df['Vol_Ratio'] = df['Volume'] / df['Vol_SMA20']
         
-        # Format candlestick data for Lightweight Charts
         candles = []
         tenkan_pts = []
         kijun_pts = []
@@ -57,51 +57,50 @@ def compute_all_indicators(ticker):
         sma60_pts = []
         vol_pts = []
         
-        df_clean = df.dropna().tail(120) # last 120 trading days
+        df_clean = df.dropna().tail(120)
+        
         for idx, row in df_clean.iterrows():
             time_str = idx.strftime("%Y-%m-%d")
             candles.append({
                 "time": time_str,
-                "open": round(float(row['Open']), 2),
-                "high": round(float(row['High']), 2),
-                "low": round(float(row['Low']), 2),
-                "close": round(float(row['Close']), 2)
+                "open": float(row['Open']),
+                "high": float(row['High']),
+                "low": float(row['Low']),
+                "close": float(row['Close'])
             })
-            tenkan_pts.append({"time": time_str, "value": round(float(row['Tenkan']), 2)})
-            kijun_pts.append({"time": time_str, "value": round(float(row['Kijun']), 2)})
-            if not pd.isna(row['SpanA']):
-                span_a_pts.append({"time": time_str, "value": round(float(row['SpanA']), 2)})
-            if not pd.isna(row['SpanB']):
-                span_b_pts.append({"time": time_str, "value": round(float(row['SpanB']), 2)})
-            sma20_pts.append({"time": time_str, "value": round(float(row['SMA20']), 2)})
-            sma60_pts.append({"time": time_str, "value": round(float(row['SMA60']), 2)})
+            tenkan_pts.append({"time": time_str, "value": float(row['Tenkan'])})
+            kijun_pts.append({"time": time_str, "value": float(row['Kijun'])})
+            span_a_pts.append({"time": time_str, "value": float(row['SpanA'])})
+            span_b_pts.append({"time": time_str, "value": float(row['SpanB'])})
+            sma20_pts.append({"time": time_str, "value": float(row['SMA20'])})
+            sma60_pts.append({"time": time_str, "value": float(row['SMA60'])})
             vol_pts.append({
                 "time": time_str,
-                "value": int(row['Volume']),
-                "color": "#ef4444" if row['Close'] < row['Open'] else "#10b981"
+                "value": float(row['Volume']),
+                "color": "#059669" if row['Close'] >= row['Open'] else "#dc2626"
             })
             
         last = df_clean.iloc[-1]
-        prev = df_clean.iloc[-2]
         close = float(last['Close'])
         kijun = float(last['Kijun'])
         tenkan = float(last['Tenkan'])
         vol_ratio = float(last['Vol_Ratio'])
+        span_a = float(last['SpanA'])
+        span_b = float(last['SpanB'])
         
-        # Diagnosis
-        cloud_top = max(float(last['SpanA']), float(last['SpanB'])) if not pd.isna(last['SpanA']) else float(last['SMA60'])
-        is_dry = vol_ratio <= 0.75
+        cloud_top = max(span_a, span_b)
+        cloud_bottom = min(span_a, span_b)
         kijun_gap = ((close - kijun) / kijun) * 100
         
-        if close >= cloud_top and close >= kijun and is_dry and -0.5 <= kijun_gap <= 4.0:
+        if close >= cloud_top and -0.5 <= kijun_gap <= 4.0:
             status_tag = "BULL_ACCUMULATION"
-            status_text = "🟢 알상무 1차 매수 타점 (구름대 위 + 기준선 지지 + 거래량 마름)"
-        elif close < kijun:
+            status_text = "26일 기준선 지지 및 일목 구름대 상단 안착 (1차 분할 매수 적합)"
+        elif close < kijun or close < cloud_bottom:
             status_tag = "BEAR_BREAKDOWN"
-            status_text = "🔴 26일 기준선(생명선) 이탈 붕괴 (숏 경보 / 물타기 금지)"
+            status_text = "26일 기준선(생명선) 이탈 붕괴 (리스크 경보 / 물타기 금지)"
         else:
             status_tag = "NEUTRAL"
-            status_text = "🟡 박스권 에너지 응축 중 (추세 돌파 대기)"
+            status_text = "박스권 에너지 응축 및 추세 수렴 구간 (관망 유지)"
             
         return {
             "ticker": ticker,
@@ -128,7 +127,6 @@ def compute_all_indicators(ticker):
 def build_dashboard_data():
     print("Building full dashboard data feed...")
     
-    # 1. Read trade history
     trades = []
     if os.path.exists(HISTORY_CSV):
         try:
@@ -137,14 +135,21 @@ def build_dashboard_data():
         except Exception:
             pass
             
-    # 2. Build Ticker Charts
+    # Macro context from YouTube stream cache
+    macro_info = {}
+    if os.path.exists(STREAM_CACHE):
+        try:
+            with open(STREAM_CACHE, "r", encoding="utf-8") as f:
+                macro_info = json.load(f)
+        except Exception:
+            pass
+            
     chart_data = {}
     for t in WATCHLIST:
         data = compute_all_indicators(t)
         if data:
             chart_data[t] = data
             
-    # 3. Calculate Performance Metrics
     total_trades = len(trades)
     closed = [t for t in trades if str(t.get('status', '')).startswith('CLOSED')]
     wins = [t for t in closed if float(t.get('pnl_pct', 0)) > 0]
@@ -159,12 +164,13 @@ def build_dashboard_data():
     }
     
     payload = {
+        "macro": macro_info,
         "kpis": kpis,
         "trades": trades,
         "charts": chart_data
     }
     
-    out_path = os.path.join(r"D:\코딩\Playground\al_sangmoo_project", OUTPUT_JSON)
+    out_path = os.path.join(BASE_DIR, OUTPUT_JSON)
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
         

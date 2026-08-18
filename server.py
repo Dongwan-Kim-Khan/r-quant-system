@@ -86,6 +86,18 @@ def get_dashboard_summary():
     portfolio = db_manager.get_live_portfolio()
     matrix = db_manager.get_recommendations_matrix()
     
+    # Read latest macro & KPI feed from dashboard_data.json
+    macro_info = {}
+    kpis = {}
+    if os.path.exists(DASHBOARD_JSON):
+        try:
+            with open(DASHBOARD_JSON, "r", encoding="utf-8") as f:
+                feed = json.load(f)
+                macro_info = feed.get("macro", {})
+                kpis = feed.get("kpis", {})
+        except Exception:
+            pass
+            
     # Ensure holdings is always a list
     if not isinstance(portfolio.get("holdings"), list):
         portfolio["holdings"] = [portfolio["holdings"]] if portfolio.get("holdings") else []
@@ -95,6 +107,8 @@ def get_dashboard_summary():
         matrix = [matrix] if matrix else []
         
     return {
+        "macro": macro_info,
+        "kpis": kpis,
         "portfolio": portfolio,
         "matrix": matrix,
         "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
