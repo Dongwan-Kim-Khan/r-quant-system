@@ -1,11 +1,12 @@
 import os
 import sys
+import re
 import json
 import sqlite3
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import uvicorn
 import pandas as pd
 import yfinance as yf
@@ -21,7 +22,7 @@ if sys.platform.startswith('win'):
     except Exception:
         pass
 
-app = FastAPI(title="Al-Sangmoo Quant Portfolio Backend", version="2.5")
+app = FastAPI(title="Al-Sangmoo Quant Portfolio Backend", version="2.6")
 
 app.add_middleware(
     CORSMiddleware,
@@ -38,14 +39,16 @@ DASHBOARD_JSON = os.path.join(BASE_DIR, "dashboard_data.json")
 # In-Memory Fast Cache for Charts (instant responses)
 CHART_CACHE = {}
 
+TICKER_REGEX = re.compile(r'^[A-Za-z0-9.\^=-]{1,15}$')
+
 class BuyOrder(BaseModel):
-    ticker: str
-    buy_price: float
-    quantity: float
+    ticker: str = Field(..., min_length=1, max_length=15)
+    buy_price: float = Field(..., gt=0)
+    quantity: float = Field(..., gt=0)
     buy_date: str = None
 
 class SellOrder(BaseModel):
-    sell_price: float
+    sell_price: float = Field(..., gt=0)
     sell_date: str = None
     reason: str = "MANUAL_SELL"
 
@@ -58,9 +61,9 @@ def startup_event():
     if not matrix:
         db_manager.save_recommendation_matrix_record(
             "2026-08-18",
-            [{"ticker": "AMZN", "close": 261.05}, {"ticker": "LLY", "close": 1197.58}],
-            [{"ticker": "AVGO", "close": 394.27}, {"ticker": "COST", "close": 950.77}],
-            [{"ticker": "META", "close": 573.88}, {"ticker": "TSLA", "close": 339.58}]
+            [{"ticker": "NVDA", "close": 225.16}, {"ticker": "AMZN", "close": 262.65}],
+            [{"ticker": "AVGO", "close": 392.99}, {"ticker": "COST", "close": 948.10}],
+            [{"ticker": "META", "close": 568.97}, {"ticker": "TSLA", "close": 342.27}]
         )
         
     # Pre-warm chart cache from dashboard_data.json
@@ -72,14 +75,15 @@ def startup_event():
                 CHART_CACHE = feed.get("charts", {})
         except Exception:
             pass
-    print("Al-Sangmoo Quant Portfolio Server Ready on http://localhost:8000")
+    print("Al-Sangmoo Quant Portfolio Server Ready on http://0.0.0.0:8000 (Local & LAN Access Available)")
 
 @app.get("/", response_class=HTMLResponse)
 def serve_dashboard():
     if os.path.exists(DASHBOARD_HTML):
         with open(DASHBOARD_HTML, "r", encoding="utf-8") as f:
-            return f.read()
-    return "<h1>Dashboard HTML Not Found</h1>"
+            content = f.read()
+            return HTMLResponse(content=content, status_code=200, media_type="text/html; charset=utf-8")
+    return HTMLResponse(content="<h1>Dashboard HTML Not Found</h1>", status_code=404)
 
 @app.get("/api/dashboard")
 def get_dashboard_summary():
@@ -120,16 +124,23 @@ def get_portfolio():
 
 @app.post("/api/portfolio/buy")
 def buy_stock(order: BuyOrder):
+    ticker_clean = order.ticker.strip().upper()
+    if not TICKER_REGEX.match(ticker_clean):
+        raise HTTPException(status_code=400, detail="유효하지 않은 티커 심볼 형식입니다.")
+        
     inserted_id = db_manager.add_portfolio_buy(
-        ticker=order.ticker,
+        ticker=ticker_clean,
         buy_price=order.buy_price,
         quantity=order.quantity,
         buy_date=order.buy_date
     )
-    return {"status": "success", "id": inserted_id, "message": f"{order.ticker} {order.quantity}주 매수 등록 완료!"}
+    return {"status": "success", "id": inserted_id, "message": f"{ticker_clean} {order.quantity}주 매수 등록 완료!"}
 
 @app.post("/api/portfolio/sell/{position_id}")
 def sell_stock(position_id: int, order: SellOrder):
+    if position_id <= 0:
+        raise HTTPException(status_code=400, detail="유효하지 않은 포지션 ID입니다.")
+        
     success = db_manager.close_portfolio_position(
         position_id=position_id,
         sell_price=order.sell_price,
@@ -154,7 +165,10 @@ def get_recommendation_matrix():
 
 @app.get("/api/chart/{ticker}")
 def get_ticker_chart(ticker: str):
-    ticker_upper = ticker.upper()
+    ticker_upper = ticker.strip().upper()
+    if not TICKER_REGEX.match(ticker_upper):
+        raise HTTPException(status_code=400, detail="유효하지 않은 티커 심볼 형식입니다.")
+        
     # 1. Return from memory cache if available for instant load
     if ticker_upper in CHART_CACHE:
         return CHART_CACHE[ticker_upper]
@@ -181,4 +195,4 @@ def trigger_scan_now():
         return {"status": "error", "message": str(e)}
 
 if __name__ == "__main__":
-    uvicorn.run("server:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)
