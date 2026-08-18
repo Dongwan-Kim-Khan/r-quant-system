@@ -12,8 +12,9 @@ if sys.platform.startswith('win'):
     except Exception:
         pass
 
-HISTORY_CSV = "trade_history.csv"
-OUTPUT_JSON = "dashboard_data.json"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+HISTORY_CSV = os.path.join(BASE_DIR, "trade_history.csv")
+OUTPUT_JSON = os.path.join(BASE_DIR, "dashboard_data.json")
 
 WATCHLIST = [
     "QQQ", "NVDA", "AMZN", "LLY", "AAPL", "MSFT", "TSLA", "META",

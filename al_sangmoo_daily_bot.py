@@ -16,11 +16,59 @@ from datetime import datetime, timedelta
 import pandas as pd
 import yfinance as yf
 
-HISTORY_CSV = "trade_history.csv"
-REPORTS_DIR = "daily_reports"
-DEFAULT_EMAIL_RECEIVER = "kdw58170425@gmail.com"
-DASHBOARD_JSON = "dashboard_data.json"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+HISTORY_CSV = os.path.join(BASE_DIR, "trade_history.csv")
+REPORTS_DIR = os.path.join(BASE_DIR, "daily_reports")
+DASHBOARD_JSON = os.path.join(BASE_DIR, "dashboard_data.json")
+DASHBOARD_HTML = os.path.join(BASE_DIR, "al_sangmoo_dashboard.html")
 os.makedirs(REPORTS_DIR, exist_ok=True)
+
+def load_env_file():
+    env_path = os.path.join(BASE_DIR, ".env")
+    if os.path.exists(env_path):
+        try:
+            with open(env_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        k, v = line.split("=", 1)
+                        os.environ.setdefault(k.strip(), v.strip().strip("\"'"))
+        except Exception:
+            pass
+
+load_env_file()
+DEFAULT_EMAIL_RECEIVER = os.environ.get("ALERT_EMAIL_RECEIVER") or os.environ.get("EMAIL_RECEIVER") or "kdw58170425@gmail.com"
+
+def send_email_report(subject, html_body, receiver=None):
+    load_env_file()
+    if not receiver:
+        receiver = os.environ.get("ALERT_EMAIL_RECEIVER") or os.environ.get("EMAIL_RECEIVER") or DEFAULT_EMAIL_RECEIVER
+        
+    gmail_user = os.environ.get("GMAIL_USER") or os.environ.get("EMAIL_SENDER")
+    gmail_password = os.environ.get("GMAIL_APP_PASSWORD") or os.environ.get("EMAIL_PASSWORD")
+    
+    if not gmail_user or not gmail_password:
+        print(f"📧 [안내] GMAIL_USER 및 GMAIL_APP_PASSWORD (.env) 설정이 필요합니다. (HTML 리포트는 로컬 {REPORTS_DIR}에 정상 보관됨)")
+        return False
+        
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = f"알상무 퀀트 봇 <{gmail_user}>"
+        msg["To"] = receiver
+        
+        part = MIMEText(html_body, "html", "utf-8")
+        msg.attach(part)
+        
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(gmail_user, gmail_password)
+            server.sendmail(gmail_user, receiver, msg.as_string())
+            
+        print(f"✅ [이메일 발송 성공] {receiver}에게 모닝 브리핑 이메일을 성공적으로 전송했습니다!")
+        return True
+    except Exception as e:
+        print(f"❌ [이메일 발송 실패] {e}")
+        return False
 
 # NASDAQ 100 & Key Growth Universe
 UNIVERSE = [
@@ -224,6 +272,42 @@ def evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, 
             history_df = pd.concat([history_df, pd.DataFrame(new_rows)], ignore_index=True)
             
     history_df.to_csv(HISTORY_CSV, index=False)
+    
+    # 2-1. Sync with SQLite `trades` table
+    try:
+        db_manager.init_db()
+        conn = db_manager.get_db()
+        cursor = conn.cursor()
+        for idx, row in history_df.iterrows():
+            e_price = float(row['entry_price'])
+            tgt_p = round(e_price * 1.15, 2)
+            stop_p = round(e_price * 0.97, 2)
+            part_p = round(e_price * 1.08, 2)
+            now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            cursor.execute("""
+            INSERT OR REPLACE INTO trades (
+                id, date, ticker, type, entry_price, current_price,
+                target_price, partial_tp_price, stop_loss_price,
+                pnl_pct, max_gain_pct, status, days_active, exit_advice, updated_at
+            )
+            VALUES (
+                (SELECT id FROM trades WHERE date = ? AND ticker = ?),
+                ?, ?, ?, ?, ?,
+                ?, ?, ?,
+                ?, ?, ?, ?, ?, ?
+            )
+            """, (
+                row['date'], row['ticker'],
+                row['date'], row['ticker'], row['type'], e_price, float(row.get('current_price', e_price)),
+                tgt_p, part_p, stop_p,
+                float(row.get('pnl_pct', 0.0)), float(row.get('max_gain_pct', 0.0)),
+                str(row.get('status', 'OPEN')), int(row.get('days_active', 0)),
+                str(row.get('exit_advice', '보유 지속')), now_str
+            ))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"⚠️ [SQLite trades 동기화 경고] {e}")
     
     # 3. Model Health Analysis
     closed = history_df[history_df['status'].str.startswith('CLOSED')]
@@ -432,22 +516,38 @@ def print_markdown_briefing(today_str, bull_picks, neutral_picks, bear_picks, po
     print(md)
 
 import db_manager
+import generate_dashboard_feed
 
 def main():
     today_str = datetime.now().strftime("%Y-%m-%d")
+    print(f"🚀 [알상무 봇] {today_str} 2+2+2 퀀트 스캔 및 포지션 검증 가동...")
+    
     bull_picks, neutral_picks, bear_picks = scan_and_select_2x2x2()
     history_df, position_alerts, health_status = evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, today_str)
     
-    # Save into SQLite Recommendation Matrix
+    # 1. Save into SQLite Recommendation Matrix
     db_manager.save_recommendation_matrix_record(today_str, bull_picks, neutral_picks, bear_picks)
+    print("✅ [DB 저장] recommendation_matrix 및 포트폴리오 업데이트 완료.")
     
+    # 2. Build Dashboard Charts Feed
+    try:
+        generate_dashboard_feed.build_dashboard_data()
+        print("✅ [대시보드 피드] dashboard_data.json 최신화 완료.")
+    except Exception as e:
+        print(f"⚠️ [대시보드 피드 오류] {e}")
+    
+    # 3. Generate HTML & Send Email Report
     html_content = generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, position_alerts, health_status)
-    
-    # Save local copy
     out_html_path = os.path.join(REPORTS_DIR, f"briefing_{today_str}.html")
     with open(out_html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
-        
+    print(f"✅ [리포트 파일] {out_html_path} 저장 완료.")
+    
+    # Send Email
+    subject = f"🏛️ [알상무 퀀트 모닝 브리핑] {today_str} 추천 2+2+2 종목 및 매매 알림"
+    send_email_report(subject, html_content)
+    
+    # 4. Print Markdown briefing
     print_markdown_briefing(today_str, bull_picks, neutral_picks, bear_picks, position_alerts, health_status)
 
 if __name__ == "__main__":

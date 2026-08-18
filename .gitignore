@@ -1,0 +1,12 @@
+# Environment variables & secrets (CRITICAL: Do not commit)
+.env
+*.env
+.env.*
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+
+# Local Database
+*.db-journal

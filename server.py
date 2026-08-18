@@ -2,7 +2,7 @@ import os
 import sys
 import json
 import sqlite3
-from fastapi import FastAPI, HTTPException, Body
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -21,7 +21,7 @@ if sys.platform.startswith('win'):
     except Exception:
         pass
 
-app = FastAPI(title="Al-Sangmoo Quant Portfolio Backend", version="2.0")
+app = FastAPI(title="Al-Sangmoo Quant Portfolio Backend", version="2.5")
 
 app.add_middleware(
     CORSMiddleware,
@@ -31,8 +31,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DASHBOARD_HTML = os.path.join(os.path.dirname(__file__), "al_sangmoo_dashboard.html")
-DASHBOARD_JSON = os.path.join(os.path.dirname(__file__), "dashboard_data.json")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DASHBOARD_HTML = os.path.join(BASE_DIR, "al_sangmoo_dashboard.html")
+DASHBOARD_JSON = os.path.join(BASE_DIR, "dashboard_data.json")
+
+# In-Memory Fast Cache for Charts (instant responses)
+CHART_CACHE = {}
 
 class BuyOrder(BaseModel):
     ticker: str
@@ -48,7 +52,8 @@ class SellOrder(BaseModel):
 @app.on_event("startup")
 def startup_event():
     db_manager.init_db()
-    # Populate initial matrix if empty
+    
+    # Load initial matrix if empty
     matrix = db_manager.get_recommendations_matrix()
     if not matrix:
         db_manager.save_recommendation_matrix_record(
@@ -57,6 +62,16 @@ def startup_event():
             [{"ticker": "AVGO", "close": 394.27}, {"ticker": "COST", "close": 950.77}],
             [{"ticker": "META", "close": 573.88}, {"ticker": "TSLA", "close": 339.58}]
         )
+        
+    # Pre-warm chart cache from dashboard_data.json
+    global CHART_CACHE
+    if os.path.exists(DASHBOARD_JSON):
+        try:
+            with open(DASHBOARD_JSON, "r", encoding="utf-8") as f:
+                feed = json.load(f)
+                CHART_CACHE = feed.get("charts", {})
+        except Exception:
+            pass
     print("Al-Sangmoo Quant Portfolio Server Ready on http://localhost:8000")
 
 @app.get("/", response_class=HTMLResponse)
@@ -71,17 +86,17 @@ def get_dashboard_summary():
     portfolio = db_manager.get_live_portfolio()
     matrix = db_manager.get_recommendations_matrix()
     
-    # Load chart base
-    charts = {}
-    if os.path.exists(DASHBOARD_JSON):
-        with open(DASHBOARD_JSON, "r", encoding="utf-8") as f:
-            feed = json.load(f)
-            charts = feed.get("charts", {})
-            
+    # Ensure holdings is always a list
+    if not isinstance(portfolio.get("holdings"), list):
+        portfolio["holdings"] = [portfolio["holdings"]] if portfolio.get("holdings") else []
+        
+    # Ensure matrix is always a list
+    if not isinstance(matrix, list):
+        matrix = [matrix] if matrix else []
+        
     return {
         "portfolio": portfolio,
         "matrix": matrix,
-        "charts": charts,
         "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
 
@@ -111,21 +126,45 @@ def sell_stock(position_id: int, order: SellOrder):
         raise HTTPException(status_code=404, detail="포지션을 찾을 수 없습니다.")
     return {"status": "success", "message": f"포지션 #{position_id} 매도 완료 처리되었습니다."}
 
+@app.post("/api/portfolio/reset")
+def reset_portfolio():
+    db_manager.clear_portfolio()
+    return {"status": "success", "message": "포트폴리오 계좌가 성공적으로 초기화(비우기)되었습니다."}
+
 @app.get("/api/recommendations/matrix")
 def get_recommendation_matrix():
-    return db_manager.get_recommendations_matrix()
+    matrix = db_manager.get_recommendations_matrix()
+    if not isinstance(matrix, list):
+        matrix = [matrix] if matrix else []
+    return matrix
 
 @app.get("/api/chart/{ticker}")
 def get_ticker_chart(ticker: str):
-    data = compute_all_indicators(ticker.upper())
+    ticker_upper = ticker.upper()
+    # 1. Return from memory cache if available for instant load
+    if ticker_upper in CHART_CACHE:
+        return CHART_CACHE[ticker_upper]
+        
+    # 2. Otherwise compute live
+    data = compute_all_indicators(ticker_upper)
     if not data:
         raise HTTPException(status_code=404, detail="시세 데이터를 불러올 수 없습니다.")
+    CHART_CACHE[ticker_upper] = data
     return data
 
 @app.post("/api/scan_now")
 def trigger_scan_now():
-    data = build_dashboard_data()
-    return {"status": "success", "message": "실시간 스캔 완료!"}
+    try:
+        import al_sangmoo_daily_bot
+        bull_picks, neutral_picks, bear_picks = al_sangmoo_daily_bot.scan_and_select_2x2x2()
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        db_manager.save_recommendation_matrix_record(today_str, bull_picks, neutral_picks, bear_picks)
+        data = build_dashboard_data()
+        global CHART_CACHE
+        CHART_CACHE = data.get("charts", {})
+        return {"status": "success", "message": f"{today_str} 실시간 스캔 & 차트 갱신 완료!"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 if __name__ == "__main__":
     uvicorn.run("server:app", host="127.0.0.1", port=8000, reload=True)

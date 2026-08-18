@@ -4,7 +4,8 @@ import pandas as pd
 from datetime import datetime
 import yfinance as yf
 
-DB_FILE = "quant_trades.db"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_FILE = os.path.join(BASE_DIR, "quant_trades.db")
 
 def get_db():
     conn = sqlite3.connect(DB_FILE)
@@ -28,6 +29,9 @@ def init_db():
         current_value REAL DEFAULT 0,
         pnl_pct REAL DEFAULT 0,
         pnl_amount REAL DEFAULT 0,
+        target_price REAL DEFAULT 0,
+        stop_loss_price REAL DEFAULT 0,
+        partial_tp_price REAL DEFAULT 0,
         status TEXT DEFAULT 'HOLDING', -- 'HOLDING' or 'SOLD'
         sell_date TEXT,
         sell_price REAL,
@@ -35,6 +39,20 @@ def init_db():
         created_at TEXT
     )
     """)
+    
+    # Safe migration: Add target/stop columns if table already existed
+    try:
+        cursor.execute("ALTER TABLE my_portfolio ADD COLUMN target_price REAL DEFAULT 0")
+    except Exception:
+        pass
+    try:
+        cursor.execute("ALTER TABLE my_portfolio ADD COLUMN stop_loss_price REAL DEFAULT 0")
+    except Exception:
+        pass
+    try:
+        cursor.execute("ALTER TABLE my_portfolio ADD COLUMN partial_tp_price REAL DEFAULT 0")
+    except Exception:
+        pass
     
     # 2. Daily Recommendation Matrix (날짜별 추천 2+2+2 히스토리)
     cursor.execute("""
@@ -57,24 +75,69 @@ def init_db():
     )
     """)
 
+    # 3. Automated Recommended Trades Tracker (추천 종목별 목표가/손절가/수익률 전수 추적)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS trades (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL,
+        ticker TEXT NOT NULL,
+        type TEXT NOT NULL,           -- 'BULL', 'NEUTRAL', 'BEAR'
+        entry_price REAL NOT NULL,    -- 추천 진입가
+        current_price REAL DEFAULT 0, -- 현재가
+        target_price REAL NOT NULL,   -- +15% 1차 목표 익절가
+        partial_tp_price REAL NOT NULL,-- +8% 50% 분할 익절가
+        stop_loss_price REAL NOT NULL,-- -3% 칼손절가
+        pnl_pct REAL DEFAULT 0,       -- 현재 수익률 %
+        max_gain_pct REAL DEFAULT 0,  -- 최고 도달 수익률 %
+        status TEXT DEFAULT 'OPEN',   -- 'OPEN', 'CLOSED_PROFIT', 'CLOSED_STOP', 'CLOSED_EXPIRED'
+        days_active INTEGER DEFAULT 0,
+        exit_advice TEXT DEFAULT '보유 지속',
+        updated_at TEXT
+    )
+    """)
+    
+    try:
+        cursor.execute("ALTER TABLE trades ADD COLUMN target_price REAL DEFAULT 0")
+    except Exception:
+        pass
+    try:
+        cursor.execute("ALTER TABLE trades ADD COLUMN partial_tp_price REAL DEFAULT 0")
+    except Exception:
+        pass
+    try:
+        cursor.execute("ALTER TABLE trades ADD COLUMN stop_loss_price REAL DEFAULT 0")
+    except Exception:
+        pass
+
     conn.commit()
     conn.close()
-    print("Database tables initialized successfully.")
 
 def add_portfolio_buy(ticker, buy_price, quantity, buy_date=None):
     if not buy_date:
         buy_date = datetime.now().strftime("%Y-%m-%d")
-    total_cost = float(buy_price) * float(quantity)
+    b_price = float(buy_price)
+    qty = float(quantity)
+    total_cost = b_price * qty
+    target_p = round(b_price * 1.15, 2)     # +15% 1차 목표 익절가
+    stop_p = round(b_price * 0.97, 2)       # -3% 칼손절가
+    partial_p = round(b_price * 1.08, 2)    # +8% 50% 분할 익절가
     
     conn = get_db()
     cursor = conn.cursor()
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     cursor.execute("""
-    INSERT INTO my_portfolio (ticker, buy_date, buy_price, quantity, current_price, total_cost, current_value, pnl_pct, pnl_amount, status, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'HOLDING', ?)
+    INSERT INTO my_portfolio (
+        ticker, buy_date, buy_price, quantity, current_price,
+        total_cost, current_value, pnl_pct, pnl_amount,
+        target_price, stop_loss_price, partial_tp_price,
+        status, exit_advice, created_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'HOLDING', ?, ?)
     """, (
-        ticker.upper(), buy_date, float(buy_price), float(quantity),
-        float(buy_price), total_cost, total_cost, 0.0, 0.0, now_str
+        ticker.upper(), buy_date, b_price, qty,
+        b_price, total_cost, total_cost, 0.0, 0.0,
+        target_p, stop_p, partial_p,
+        f"⏳ [보유 지속] 손절선 ${stop_p:,.2f} 유지 / 목표가 ${target_p:,.2f}", now_str
     ))
     conn.commit()
     inserted_id = cursor.lastrowid
@@ -106,6 +169,14 @@ def close_portfolio_position(position_id, sell_price, sell_date=None, reason="MA
     """, (
         sell_date, float(sell_price), float(sell_price), current_value, pnl_pct, pnl_amount, f"매도 완료 ({reason})", position_id
     ))
+    conn.commit()
+    conn.close()
+    return True
+
+def clear_portfolio():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM my_portfolio")
     conn.commit()
     conn.close()
     return True
