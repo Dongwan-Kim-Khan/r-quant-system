@@ -151,56 +151,121 @@ def extract_transcript_from_vtt(vtt_file):
 
 def analyze_macro_regime_and_climate(title, full_transcript, gauges):
     """
-    Evaluates Gate-0 Macro Climate based on VIX, 10Y Yield, WTI, Geopolitics,
-    and the host's spoken macro directives ("이번 주는 사지 말자", "관망", "차익실현").
+    Evaluates Gate-0 Macro Climate & Computes Macro Stance Index (MSI: 0~100점).
+    MSI Formula:
+      MSI = M_hard (40) + M_nlp (30) + M_shock (20) + M_trend (10)
     """
     combined_text = (title + " " + full_transcript).upper()
     
-    # 1. Check Geopolitical & External Shock Keywords
+    # 1. Financial Macro Hard Gauges (M_hard: max 40 pts)
+    vix_val = gauges.get("vix", {}).get("val", 15.0)
+    us10y_val = gauges.get("us10y", {}).get("val", 4.3)
+    wti_val = gauges.get("wti", {}).get("val", 78.0)
+    
+    # VIX (15 pts)
+    if vix_val >= 25.0: vix_pts = 15.0
+    elif vix_val >= 20.0: vix_pts = 10.0
+    elif vix_val >= 15.0: vix_pts = 5.0
+    else: vix_pts = 0.0
+    
+    # US 10Y Yield (15 pts)
+    if us10y_val >= 4.45: us10y_pts = 15.0
+    elif us10y_val >= 4.20: us10y_pts = 8.0
+    else: us10y_pts = 0.0
+    
+    # WTI Oil (10 pts)
+    if wti_val >= 82.0: wti_pts = 10.0
+    elif wti_val >= 75.0: wti_pts = 5.0
+    else: wti_pts = 0.0
+    
+    m_hard = round(vix_pts + us10y_pts + wti_pts, 1)
+    
+    # 2. Host Spoken NLP Directive Sentiment (M_nlp: max 30 pts)
+    def_count = sum(full_transcript.count(kw) for kw in MACRO_DEFENSE_KEYWORDS)
+    buy_count = sum(full_transcript.count(kw) for kw in ['눌림목', '매수 기회', '담아야', '모아가야', '분할 매수', '순환매 진입', '우상향'])
+    m_nlp = round(30.0 * (def_count / (def_count + buy_count + 0.1)), 1)
+    m_nlp = min(30.0, max(0.0, m_nlp))
+    
+    # 3. Geopolitical & External Shock Factor (M_shock: max 20 pts)
     external_shocks = []
+    m_shock = 0.0
     if any(k in combined_text for k in ["전쟁", "지정학", "중동", "우크라", "이란", "대만", "WAR", "CONFLICT"]):
         external_shocks.append("지정학적 분쟁 및 전쟁 리스크")
+        m_shock += 10.0
     if any(k in combined_text for k in ["관세", "무역", "트럼프", "보복", "TARIFF", "TRADE"]):
         external_shocks.append("무역 분쟁 및 관세 불확실성")
+        m_shock += 5.0
     if any(k in combined_text for k in ["금리", "연준", "FOMC", "파월", "국채", "INTEREST", "FED", "RATE"]):
         external_shocks.append("금리 경로 및 통화정책 영향권")
+        m_shock += 3.0
     if any(k in combined_text for k in ["유가", "원자재", "인플레", "물가", "OIL", "CPI", "INFLATION"]):
         external_shocks.append("인플레이션 및 원자재 변동성")
-        
-    # 2. Check Host Weekly Macro Directives
-    defense_score = sum(full_transcript.count(kw) for kw in MACRO_DEFENSE_KEYWORDS)
-    vix_val = gauges["vix"]["val"]
-    us10y_val = gauges["us10y"]["val"]
-    wti_val = gauges["wti"]["val"]
+        m_shock += 2.0
+    m_shock = min(20.0, m_shock)
     
-    # Gate-0 Decision Rules
-    is_defense_mode = defense_score >= 4 or vix_val >= 22.0 or us10y_val >= 4.45 or len(external_shocks) >= 2
+    # 4. Market Trend / Breadth (M_trend: max 10 pts)
+    m_trend = 3.0 # Baseline stable trend
     
-    if is_defense_mode:
-        macro_stance = "DEFENSE_HOLD"
-        macro_stance_kr = "신규 매수 보류 / 관망·현금 확보 주간"
-        macro_headline = "[거시 게이트 0단계: 이번 주 신규 매수 보류 / 관망·현금 유지 권고]"
+    # Total MSI Calculation (0 ~ 100)
+    msi_score = round(m_hard + m_nlp + m_shock + m_trend, 1)
+    msi_score = min(100.0, max(0.0, msi_score))
+    
+    if msi_score >= 81.0:
+        macro_stance = "CASH_EXIT"
+        macro_stance_kr = "현금화 / 숏 헤지 주간 (Red 81~100점)"
+        macro_headline = f"[거시 게이트 0단계: 위험 경보 (MSI {msi_score}점) / 현금 비중 50% 이상 확보]"
         macro_action_directive = (
-            f"거시 지표(10년물 금리 {us10y_val}%, VIX {vix_val}, 유가 ${wti_val}) 및 방송 지침상, "
-            f"적어도 이번 주는 무리한 신규 매수를 쉬어가고 현금을 지키는 관망 주간입니다. "
+            f"거시 위험 지수(MSI {msi_score}점)가 위험 구간에 진입했습니다. "
+            f"신규 매수를 전면 중단하고 보유 종목 차익/손절 관리에 집중하십시오."
+        )
+    elif msi_score >= 61.0:
+        macro_stance = "DEFENSE_HOLD"
+        macro_stance_kr = "신규 매수 보류 / 관망·현금 유지 주간 (Orange 61~80점)"
+        macro_headline = f"[거시 게이트 0단계: 거시 위험 지수 {msi_score}점 / 이번 주 신규 매수 보류 권고]"
+        macro_action_directive = (
+            f"거시 위험 지수(MSI {msi_score}점: 10년물 금리 {us10y_val}%, 유가 ${wti_val}) 및 방송 지침상, "
+            f"적어도 이번 주는 신규 매수를 쉬어가고 관망해야 하는 장세입니다. "
             f"다만 거시 리스크 진정 시 즉시 공략할 최우선 1순위 후보 종목을 사전 선별합니다."
         )
-    else:
+    elif msi_score >= 31.0:
         macro_stance = "SELECTIVE_BUY"
-        macro_stance_kr = "선별적 분할 매수 적합 주간"
-        macro_headline = "[거시 게이트 0단계: 거시 리스크 안정 / 선별적 눌림목 매수 유효]"
+        macro_stance_kr = "선별적 눌림목 분할 매수 주간 (Yellow 31~60점)"
+        macro_headline = f"[거시 게이트 0단계: 거시 안정권 (MSI {msi_score}점) / 선별적 눌림목 매수 유효]"
         macro_action_directive = (
-            f"거시 지표(VIX {vix_val}, 10년물 금리 {us10y_val}%)가 안정권에 위치하여 "
-            f"주도 섹터 내 퀀트 지표 합격 종목에 대한 1차 분할 매수 진입이 유효합니다."
+            f"거시 위험 지수(MSI {msi_score}점)가 정상 범위에 위치합니다. "
+            f"26일 기준선 지지가 확인된 주도 종목에 대한 소액 분할 매수가 유효합니다."
+        )
+    else:
+        macro_stance = "ACTIVE_BUY"
+        macro_stance_kr = "적극 분할 매수 주간 (Green 0~30점)"
+        macro_headline = f"[거시 게이트 0단계: 최적 매수 기후 (MSI {msi_score}점) / 적극 분할 매수 가능]"
+        macro_action_directive = (
+            f"거시 지표가 매우 우호적입니다. 1차 추천 종목에 대한 적극적인 분할 매수를 권고합니다."
         )
         
     return {
+        "msi_score": msi_score,
+        "msi_breakdown": {
+            "m_hard": m_hard,
+            "m_hard_max": 40,
+            "vix_pts": vix_pts,
+            "us10y_pts": us10y_pts,
+            "wti_pts": wti_pts,
+            "m_nlp": m_nlp,
+            "m_nlp_max": 30,
+            "def_count": def_count,
+            "buy_count": buy_count,
+            "m_shock": m_shock,
+            "m_shock_max": 20,
+            "m_trend": m_trend,
+            "m_trend_max": 10
+        },
         "macro_stance": macro_stance,
         "macro_stance_kr": macro_stance_kr,
         "macro_headline": macro_headline,
         "macro_action_directive": macro_action_directive,
         "external_shocks": external_shocks if external_shocks else ["거시 매크로 관망 국면"],
-        "defense_keyword_count": defense_score
+        "defense_keyword_count": def_count
     }
 
 def analyze_contextual_mentions(full_transcript):

@@ -292,14 +292,57 @@
     </header>
 
     <!-- Gate-0 Macro Climate & Real-Time Financial Gauges Bar -->
-    <div style="background:#0f172a; border-bottom:1px solid var(--border); padding:12px 28px;">
-        <div style="background:#1e293b; border:1px solid #d97706; border-left:5px solid #f59e0b; padding:10px 16px; border-radius:2px; margin-bottom:10px;">
-            <div style="font-size:13px; font-weight:800; color:#fbbf24; display:flex; justify-content:space-between; align-items:center;">
+    <div style="background:#0f172a; border-bottom:1px solid var(--border); padding:14px 28px;">
+        
+        <!-- Macro Directive Banner -->
+        <div style="background:#1e293b; border:1px solid #d97706; border-left:5px solid #f59e0b; padding:12px 18px; border-radius:2px; margin-bottom:12px;">
+            <div style="font-size:13px; font-weight:800; color:#fbbf24; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
                 <span id="macroHeadline">[거시 게이트 0단계: 이번 주 신규 매수 보류 / 관망·현금 유지 권고]</span>
-                <span id="macroStanceBadge" style="background:rgba(245,158,11,0.2); color:#fbbf24; font-size:11px; padding:2px 8px; border-radius:2px; font-family:'JetBrains Mono';">DEFENSE HOLD</span>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-size:11px; color:#cbd5e1;">Macro Stance Index (MSI):</span>
+                    <span id="msiScoreBadge" style="background:#f59e0b; color:#0f172a; font-size:12px; font-weight:800; padding:2px 8px; border-radius:2px; font-family:'JetBrains Mono';">64.8 / 100</span>
+                    <span id="macroStanceBadge" style="background:rgba(245,158,11,0.2); color:#fbbf24; font-size:11px; padding:2px 8px; border-radius:2px; font-family:'JetBrains Mono'; font-weight:700;">DEFENSE HOLD</span>
+                </div>
             </div>
-            <div style="font-size:12px; color:#cbd5e1; margin-top:4px;" id="macroDirectiveText">
-                거시 지표(10년물 금리 4.42%, VIX 15.8, 유가 $78.5) 및 방송 지침상, 적어도 이번 주는 무리한 신규 매수를 쉬어가고 현금을 지키는 관망 주간입니다. 다만 거시 리스크 진정 시 즉시 공략할 최우선 1순위 후보 종목을 사전 선별합니다.
+            <div style="font-size:12px; color:#cbd5e1; margin-top:6px; line-height:1.5;" id="macroDirectiveText">
+                거시 위험 지수(MSI 64.8점: 10년물 금리 4.696%, 유가 $85.15) 및 방송 지침상, 적어도 이번 주는 신규 매수를 쉬어가고 관망해야 하는 장세입니다. 다만 거시 리스크 진정 시 즉시 공략할 최우선 1순위 후보 종목을 사전 선별합니다.
+            </div>
+
+            <!-- MSI 0~100 Visual Gauge Bar -->
+            <div style="margin-top:10px;">
+                <div style="display:flex; justify-content:space-between; font-size:10px; color:#94a3b8; font-weight:600; text-transform:uppercase; margin-bottom:3px;">
+                    <span>Active Buy (0~30)</span>
+                    <span>Selective Buy (31~60)</span>
+                    <span style="color:#fbbf24; font-weight:800;">Defense Hold (61~80) [현재]</span>
+                    <span>Cash Exit (81~100)</span>
+                </div>
+                <div style="height:6px; background:linear-gradient(to right, #10b981 0%, #10b981 30%, #eab308 31%, #eab308 60%, #f97316 61%, #f97316 80%, #ef4444 81%, #ef4444 100%); border-radius:3px; position:relative;">
+                    <div id="msiNeedle" style="position:absolute; left:64.8%; top:-4px; width:4px; height:14px; background:#ffffff; border-radius:2px; box-shadow:0 0 6px #ffffff; transform:translateX(-50%);"></div>
+                </div>
+            </div>
+
+            <!-- MSI 4-Factor Mathematical Breakdown Grid -->
+            <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; margin-top:12px; font-size:11px; background:#0f172a; padding:10px 12px; border-radius:2px; border:1px solid #334155;">
+                <div>
+                    <div style="color:#94a3b8; font-size:10px; font-weight:600;">1. 하드 지표 (M_hard: 40%)</div>
+                    <div style="font-weight:700; color:#f8fafc; font-family:'JetBrains Mono';" id="msiHardVal">25.0 / 40.0 pt</div>
+                    <div style="color:#64748b; font-size:10px;" id="msiHardSub">VIX:0 | 10Y:15 | 유가:10</div>
+                </div>
+                <div>
+                    <div style="color:#94a3b8; font-size:10px; font-weight:600;">2. 방송 NLP 지침 (M_nlp: 30%)</div>
+                    <div style="font-weight:700; color:#f8fafc; font-family:'JetBrains Mono';" id="msiNlpVal">21.8 / 30.0 pt</div>
+                    <div style="color:#64748b; font-size:10px;" id="msiNlpSub">방어 8회 vs 매수 3회</div>
+                </div>
+                <div>
+                    <div style="color:#94a3b8; font-size:10px; font-weight:600;">3. 외생 충격 (M_shock: 20%)</div>
+                    <div style="font-weight:700; color:#f8fafc; font-family:'JetBrains Mono';" id="msiShockVal">15.0 / 20.0 pt</div>
+                    <div style="color:#64748b; font-size:10px;" id="msiShockSub">지정학+10 | 관세+5</div>
+                </div>
+                <div>
+                    <div style="color:#94a3b8; font-size:10px; font-weight:600;">4. 지수 추세 (M_trend: 10%)</div>
+                    <div style="font-weight:700; color:#f8fafc; font-family:'JetBrains Mono';" id="msiTrendVal">3.0 / 10.0 pt</div>
+                    <div style="color:#64748b; font-size:10px;">구름대 상단 유지</div>
+                </div>
             </div>
         </div>
 
@@ -307,33 +350,33 @@
             <!-- Gauge 1: VIX -->
             <div style="background:#111827; border:1px solid var(--border); border-radius:2px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;">
                 <div>
-                    <div style="font-size:10px; color:#9ca3af; text-transform:uppercase; font-weight:600;">VIX 공포지수</div>
-                    <div style="font-size:15px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6;" id="gaugeVixVal">15.80</div>
+                    <div style="font-size:10px; color:#94a3af; text-transform:uppercase; font-weight:600;">VIX 공포지수</div>
+                    <div style="font-size:15px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6;" id="gaugeVixVal">14.25</div>
                 </div>
-                <span id="gaugeVixBadge" style="background:rgba(16,185,129,0.15); color:#34d399; font-size:10px; padding:2px 6px; border-radius:2px; font-weight:700;">NORMAL</span>
+                <span id="gaugeVixBadge" style="background:rgba(16,185,129,0.15); color:#34d399; font-size:10px; padding:2px 6px; border-radius:2px; font-weight:700;">CALM</span>
             </div>
 
             <!-- Gauge 2: US 10Y -->
             <div style="background:#111827; border:1px solid var(--border); border-radius:2px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;">
                 <div>
-                    <div style="font-size:10px; color:#9ca3af; text-transform:uppercase; font-weight:600;">미국채 10년물 금리</div>
-                    <div style="font-size:15px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6;" id="gaugeUs10yVal">4.420%</div>
+                    <div style="font-size:10px; color:#94a3af; text-transform:uppercase; font-weight:600;">미국채 10년물 금리</div>
+                    <div style="font-size:15px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6;" id="gaugeUs10yVal">4.696%</div>
                 </div>
-                <span id="gaugeUs10yBadge" style="background:rgba(245,158,11,0.15); color:#fbbf24; font-size:10px; padding:2px 6px; border-radius:2px; font-weight:700;">BURDEN</span>
+                <span id="gaugeUs10yBadge" style="background:rgba(239,68,68,0.15); color:#f87171; font-size:10px; padding:2px 6px; border-radius:2px; font-weight:700;">HIGH BURDEN</span>
             </div>
 
             <!-- Gauge 3: WTI -->
             <div style="background:#111827; border:1px solid var(--border); border-radius:2px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;">
                 <div>
-                    <div style="font-size:10px; color:#9ca3af; text-transform:uppercase; font-weight:600;">WTI 국제유가</div>
-                    <div style="font-size:15px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6;" id="gaugeWtiVal">$78.50</div>
+                    <div style="font-size:10px; color:#94a3af; text-transform:uppercase; font-weight:600;">WTI 국제유가</div>
+                    <div style="font-size:15px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6;" id="gaugeWtiVal">$85.15</div>
                 </div>
-                <span id="gaugeWtiBadge" style="background:rgba(16,185,129,0.15); color:#34d399; font-size:10px; padding:2px 6px; border-radius:2px; font-weight:700;">STABLE</span>
+                <span id="gaugeWtiBadge" style="background:rgba(245,158,11,0.15); color:#fbbf24; font-size:10px; padding:2px 6px; border-radius:2px; font-weight:700;">ELEVATED</span>
             </div>
 
             <!-- Live Stream & Narrative -->
             <div style="background:#111827; border:1px solid var(--border); border-radius:2px; padding:8px 12px; font-size:11px;">
-                <div style="color:#9ca3af; font-weight:600;">LIVE BROADCAST & EXTERNAL RISKS:</div>
+                <div style="color:#94a3af; font-weight:600;">LIVE BROADCAST & EXTERNAL RISKS:</div>
                 <div style="margin-top:2px;">
                     <a href="https://www.youtube.com/@wepoll_original/streams" target="_blank" id="streamLink" style="color:#60a5fa; text-decoration:none; font-weight:700;">Interest Rates & Oil Prices Tipping Point</a>
                     <span style="color:#9ca3af; margin-left:6px;" id="macroNarrative">| 지정학적 리스크 / 인플레이션 변동성</span>
@@ -539,10 +582,17 @@
         <div class="right-pane">
             <div class="chart-header">
                 <div>
-                    <span class="ticker-title" id="curTicker">LLY</span>
-                    <span class="ticker-price" id="curPrice" style="color:var(--accent-green);">$1,183.16</span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span class="ticker-title" id="curTicker">NVDA</span>
+                        <span class="ticker-price" id="curPrice" style="color:var(--accent-green);">$225.16</span>
+                        <span style="background:#1e293b; color:#38bdf8; font-size:11px; padding:2px 8px; border-radius:2px; font-weight:700; font-family:'JetBrains Mono'; border:1px solid #334155;">1D 일봉 (Daily)</span>
+                        <span style="background:#1e293b; color:#94a3b8; font-size:11px; padding:2px 8px; border-radius:2px; font-weight:700; font-family:'JetBrains Mono'; border:1px solid #334155;">최근 2개년 (500 거래일)</span>
+                    </div>
+                    <div style="font-size:11px; color:#94a3af; margin-top:3px;">
+                        지표 구성: 9일 전환선(하늘) | 26일 기준선(노랑, 생명선) | 선행스팬 구름대(초록/빨강) | 20·60 SMA | 거래량
+                    </div>
                 </div>
-                <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
                     <button class="toggle-btn active" id="btnKijun">26D Kijun</button>
                     <button class="toggle-btn active" id="btnTenkan">9D Tenkan</button>
                     <button class="toggle-btn active" id="btnSpan">Ichimoku Cloud</button>
@@ -690,8 +740,17 @@
             mainChart = LightweightCharts.createChart(chartDiv, {
                 layout: { background: { color: '#0f172a' }, textColor: '#94a3b8' },
                 grid: { vertLines: { color: '#1e293b' }, horzLines: { color: '#1e293b' } },
-                timeScale: { timeVisible: true, borderColor: '#334155' },
-                rightPriceScale: { borderColor: '#334155' }
+                timeScale: {
+                    timeVisible: true,
+                    borderColor: '#334155',
+                    rightOffset: 12,
+                    barSpacing: 9,
+                    minBarSpacing: 0.5,
+                    fixLeftEdge: false,
+                    fixRightEdge: false
+                },
+                rightPriceScale: { borderColor: '#334155', autoScale: true },
+                crosshair: { mode: LightweightCharts.CrosshairMode.Normal }
             });
 
             candleSeries = mainChart.addCandlestickSeries({
@@ -710,8 +769,16 @@
             volumeChart = LightweightCharts.createChart(volDiv, {
                 layout: { background: { color: '#0f172a' }, textColor: '#94a3b8' },
                 grid: { vertLines: { color: '#1e293b' }, horzLines: { color: '#1e293b' } },
-                timeScale: { timeVisible: true, borderColor: '#334155' },
-                rightPriceScale: { borderColor: '#334155' }
+                timeScale: {
+                    timeVisible: true,
+                    borderColor: '#334155',
+                    rightOffset: 12,
+                    barSpacing: 9,
+                    minBarSpacing: 0.5,
+                    fixLeftEdge: false,
+                    fixRightEdge: false
+                },
+                rightPriceScale: { borderColor: '#334155', autoScale: true }
             });
             volumeSeries = volumeChart.addHistogramSeries({ priceFormat: { type: 'volume' } });
 
@@ -832,8 +899,15 @@
                     sma60Series.setData(chartObj.sma60 || []);
                     volumeSeries.setData(chartObj.volume || []);
 
-                    mainChart.timeScale().fitContent();
-                    volumeChart.timeScale().fitContent();
+                    const totalBars = chartObj.candles.length;
+                    mainChart.timeScale().setVisibleLogicalRange({
+                        from: Math.max(0, totalBars - 90),
+                        to: totalBars
+                    });
+                    volumeChart.timeScale().setVisibleLogicalRange({
+                        from: Math.max(0, totalBars - 90),
+                        to: totalBars
+                    });
                 } else {
                     renderSyntheticChart(ticker, currentSelectedPrice);
                 }
@@ -933,6 +1007,20 @@
                         const badge = document.getElementById("macroStanceBadge");
                         badge.textContent = mc.macro_stance.replace('_', ' ');
                         badge.style.color = mc.macro_stance === 'DEFENSE_HOLD' ? '#fbbf24' : '#34d399';
+                    }
+                    if (mc.msi_score !== undefined) {
+                        document.getElementById("msiScoreBadge").textContent = `${mc.msi_score.toFixed(1)} / 100`;
+                        const needle = document.getElementById("msiNeedle");
+                        if (needle) needle.style.left = `${Math.min(100, Math.max(0, mc.msi_score))}%`;
+                    }
+                    if (mc.msi_breakdown) {
+                        const mb = mc.msi_breakdown;
+                        document.getElementById("msiHardVal").textContent = `${mb.m_hard.toFixed(1)} / 40.0 pt`;
+                        document.getElementById("msiHardSub").textContent = `VIX:${mb.vix_pts} | 10Y:${mb.us10y_pts} | 유가:${mb.wti_pts}`;
+                        document.getElementById("msiNlpVal").textContent = `${mb.m_nlp.toFixed(1)} / 30.0 pt`;
+                        document.getElementById("msiNlpSub").textContent = `방어 ${mb.def_count}회 vs 매수 ${mb.buy_count}회`;
+                        document.getElementById("msiShockVal").textContent = `${mb.m_shock.toFixed(1)} / 20.0 pt`;
+                        document.getElementById("msiTrendVal").textContent = `${mb.m_trend.toFixed(1)} / 10.0 pt`;
                     }
                 }
                 if (data.macro.macro_gauges) {

@@ -24,7 +24,7 @@ WATCHLIST = [
 
 def compute_all_indicators(ticker):
     try:
-        df = yf.download(ticker, period="1y", interval="1d", progress=False)
+        df = yf.download(ticker, period="2y", interval="1d", progress=False)
         if df.empty:
             return None
         if isinstance(df.columns, pd.MultiIndex):
@@ -61,7 +61,8 @@ def compute_all_indicators(ticker):
         sma60_pts = []
         vol_pts = []
         
-        df_clean = df.dropna(subset=['Close', 'High', 'Low', 'Kijun', 'Tenkan']).tail(120)
+        # 500 daily trading days (2 full years) for seamless zoom without clipping
+        df_clean = df.dropna(subset=['Close', 'High', 'Low', 'Kijun', 'Tenkan']).tail(500)
         
         for idx, row in df_clean.iterrows():
             time_str = idx.strftime("%Y-%m-%d")
