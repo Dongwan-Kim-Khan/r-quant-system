@@ -99,15 +99,20 @@ def calculate_indicators(df):
     df['Vol_Ratio'] = df['Volume'] / df['Vol_SMA20']
     return df
 
-def scan_and_select_2x2x2(stream_tickers=None, mention_map=None):
-    if stream_tickers is None:
-        stream_tickers = []
-    if mention_map is None:
-        mention_map = {}
+def scan_and_select_2x2x2(stream_sentiment_list=None):
+    """
+    Dual-Layer Filter:
+    Layer 1: Host Recommendation Intent (순환매 수혜, 추천, 좋게 보고 있다, 눌림목 매수 등)
+    Layer 2: 17-Year Quant Formula (일목 구름대 안착, 26일 기준선 지지, 거래량 마름)
+    """
+    if stream_sentiment_list is None:
+        stream_sentiment_list = []
         
-    # Put live stream broadcast tickers first
+    sentiment_map = {item["ticker"]: item for item in stream_sentiment_list}
+    priority_tickers = [item["ticker"] for item in stream_sentiment_list]
+    
     scan_list = []
-    for t in stream_tickers:
+    for t in priority_tickers:
         if t not in scan_list:
             scan_list.append(t)
     for t in UNIVERSE:
@@ -139,7 +144,7 @@ def scan_and_select_2x2x2(stream_tickers=None, mention_map=None):
             
             kijun_gap = ((close - kijun) / kijun) * 100
             
-            # Quantitative Factor Scoring
+            # 17-Year Quantitative Factor Scoring
             bull_score = 0
             if close >= cloud_top: bull_score += 35
             if -0.5 <= kijun_gap <= 4.0: bull_score += 35
@@ -152,12 +157,13 @@ def scan_and_select_2x2x2(stream_tickers=None, mention_map=None):
             if kijun_gap < -2.0: bear_score += 15
             
             neutral_score = 100 - max(bull_score, bear_score)
-            
             cloud_status = "구름대 상단 안착" if close >= cloud_top else ("구름대 하단 붕괴" if close < cloud_bottom else "구름대 내부 횡보")
             
-            # Priority boost for stocks heavily discussed in live stream
-            is_live_stream_stock = ticker in stream_tickers
-            mention_cnt = mention_map.get(ticker, 0)
+            s_data = sentiment_map.get(ticker, {
+                "mentions": 0, "pos_score": 0, "neg_score": 0, "net_sentiment": 0,
+                "host_intent": "GENERAL_UNIVERSE", "intent_desc": "일반 유니버스 종목",
+                "positive_reasons": [], "caution_reasons": []
+            })
             
             candidates.append({
                 "ticker": ticker,
@@ -170,50 +176,46 @@ def scan_and_select_2x2x2(stream_tickers=None, mention_map=None):
                 "bull_score": bull_score,
                 "bear_score": bear_score,
                 "neutral_score": neutral_score,
-                "is_live_stream": is_live_stream_stock,
-                "mention_count": mention_cnt
+                "mentions": s_data.get("mentions", 0),
+                "pos_score": s_data.get("pos_score", 0),
+                "neg_score": s_data.get("neg_score", 0),
+                "net_sentiment": s_data.get("net_sentiment", 0),
+                "host_intent": s_data.get("host_intent", "GENERAL_UNIVERSE"),
+                "intent_desc": s_data.get("intent_desc", "일반 유니버스"),
+                "positive_reasons": s_data.get("positive_reasons", []),
+                "caution_reasons": s_data.get("caution_reasons", [])
             })
         except Exception:
             continue
             
-    # Strictly select from Live Stream candidates first
-    stream_candidates = [c for c in candidates if c['is_live_stream']]
-    other_candidates = [c for c in candidates if not c['is_live_stream']]
-    
-    # 1. Bull Picks (Top 2 from stream or overall)
-    bull_pool = sorted(stream_candidates, key=lambda x: (x['bull_score'], x['mention_count']), reverse=True)
-    bull_picks = [c for c in bull_pool if c['bull_score'] >= 60][:2]
+    # 1. Bull Picks: Host Positively Recommended / Rotation Favored + Chart Validated
+    bull_pool = sorted(
+        [c for c in candidates if c['bull_score'] >= 60 and c['net_sentiment'] >= 0],
+        key=lambda x: (x['net_sentiment'], x['bull_score']),
+        reverse=True
+    )
+    bull_picks = bull_pool[:2]
     if len(bull_picks) < 2:
-        other_bull = sorted([c for c in other_candidates if c['bull_score'] >= 60], key=lambda x: x['bull_score'], reverse=True)
-        for c in other_bull:
+        for c in sorted([c for c in candidates if c['bull_score'] >= 60], key=lambda x: x['bull_score'], reverse=True):
             if len(bull_picks) < 2 and c['ticker'] not in [b['ticker'] for b in bull_picks]:
                 bull_picks.append(c)
                 
-    # 2. Bear Picks (Top 2 from stream or overall)
-    bear_pool = sorted(stream_candidates, key=lambda x: (x['bear_score'], x['mention_count']), reverse=True)
-    bear_picks = [c for c in bear_pool if c['bear_score'] >= 50][:2]
-    if len(bear_picks) < 2:
-        other_bear = sorted([c for c in other_candidates if c['bear_score'] >= 50], key=lambda x: x['bear_score'], reverse=True)
-        for c in other_bear:
-            if len(bear_picks) < 2 and c['ticker'] not in [b['ticker'] for b in bear_picks]:
-                bear_picks.append(c)
-                
-    # 3. Neutral Picks (Top 2 from stream or overall)
+    # 2. Bear Picks: Host Caution OR 26-day Kijun-sen breakdown
+    bear_pool = sorted(
+        [c for c in candidates if c['bear_score'] >= 50],
+        key=lambda x: (x['bear_score'], -x['net_sentiment']),
+        reverse=True
+    )
+    bear_picks = bear_pool[:2]
+    
+    # 3. Neutral Picks: Consolidation / Wait
     used_tickers = {c['ticker'] for c in bull_picks + bear_picks}
-    neutral_pool = [c for c in stream_candidates if c['ticker'] not in used_tickers]
-    neutral_picks = sorted(neutral_pool, key=lambda x: (abs(x['kijun_gap']), -x['mention_count']))[:2]
-    if len(neutral_picks) < 2:
-        other_neutral = [c for c in other_candidates if c['ticker'] not in used_tickers]
-        for c in sorted(other_neutral, key=lambda x: abs(x['kijun_gap'])):
-            if len(neutral_picks) < 2 and c['ticker'] not in [n['ticker'] for n in neutral_picks]:
-                neutral_picks.append(c)
-                
+    neutral_pool = [c for c in candidates if c['ticker'] not in used_tickers]
+    neutral_picks = sorted(neutral_pool, key=lambda x: abs(x['kijun_gap']))[:2]
+    
     return bull_picks, neutral_picks, bear_picks, candidates
 
 def evaluate_user_portfolio_positions():
-    """
-    Evaluates real open positions in user's portfolio.
-    """
     portfolio_data = db_manager.get_live_portfolio()
     holdings = portfolio_data.get("holdings", [])
     
@@ -338,7 +340,7 @@ def evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, 
             
     history_df.to_csv(HISTORY_CSV, index=False)
     
-    # Sync with SQLite trades table
+    # SQLite sync
     try:
         db_manager.init_db()
         conn = db_manager.get_db()
@@ -395,10 +397,8 @@ def generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, por
     macro_narrative = stream_info.get("macro_narrative", "거시 경제 방향성 및 주도 섹터 수급 선별 국면")
     mentioned_stocks = stream_info.get("mentioned_stocks", [])
     
-    if mentioned_stocks:
-        mention_str = ", ".join([f"{m['ticker']}({m['count']}회)" for m in mentioned_stocks[:10]])
-    else:
-        mention_str = "NVDA, MSFT, AMZN, GOOGL, META, MU, AMD, TSLA, PLTR, VST"
+    rec_list = [f"{m['ticker']}(긍정점수 +{m['net_sentiment']} / 키워드: {', '.join(m.get('positive_reasons', []))})" for m in mentioned_stocks if m.get('host_intent') == 'BULLISH_RECOMMENDED']
+    rec_summary_str = " | ".join(rec_list[:5]) if rec_list else "방송 본문 문맥 분석 완료"
 
     html = f"""
     <!DOCTYPE html>
@@ -437,16 +437,16 @@ def generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, por
         <div class="container">
             <div class="header">
                 <h1>AL-SANGMOO QUANTITATIVE TACTICAL REPORT</h1>
-                <div class="meta">발행일시: {today_str} 12:30 KST | 분석 모듈: 바이킹스 라이브 방송 본문 언급 종목 퀀트 진단</div>
+                <div class="meta">발행일시: {today_str} 12:30 KST | 분석 모듈: 바이킹스 라이브 본문 문맥(추천/순환매) & 퀀트 검증</div>
             </div>
             
-            <!-- 1. Macro Regime & Live Stream Mentioned Stocks -->
+            <!-- 1. Macro Regime & Host Recommended Stocks -->
             <div class="section">
-                <div class="section-title">1. Vikings Live Broadcast & Macro Intelligence</div>
+                <div class="section-title">1. Vikings Live Broadcast Intent & Macro Flow</div>
                 <div class="macro-box">
                     <div class="macro-row"><strong>라이브 방송 본문:</strong> <a href="{stream_url}" target="_blank" style="color:#0f172a; text-decoration:underline;">{stream_title}</a></div>
                     <div class="macro-row"><strong>거시 흐름 진단:</strong> {macro_narrative}</div>
-                    <div class="macro-row"><strong>방송 내 실제 언급 종목 (빈도순):</strong> <span style="font-family:monospace; font-size:12px; font-weight:600;">{mention_str}</span></div>
+                    <div class="macro-row"><strong>방송 내 추천·순환매 긍정 평가 종목:</strong> <span style="font-family:monospace; font-size:12px; font-weight:600;">{rec_summary_str}</span></div>
                 </div>
             </div>
 
@@ -501,56 +501,55 @@ def generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, por
     html += """
             </div>
 
-            <!-- 3. Quantitative Evaluation on Live Broadcast Stocks (2+2+2) -->
+            <!-- 3. Quantitative Evaluation on Recommended Stocks (2+2+2) -->
             <div class="section">
-                <div class="section-title">3. Live Broadcast Stocks Quantitative Verdict (2+2+2)</div>
-                <div style="font-size:12px; font-weight:700; color:#059669; margin-bottom:8px;">[Primary Accumulation] 방송 언급 종목 중 1차 분할 매수 적합 (구름대 상단 안착 + 기준선 지지 + 거래량 마름)</div>
+                <div class="section-title">3. Host Recommendation & Quant Validation (2+2+2)</div>
+                <div style="font-size:12px; font-weight:700; color:#059669; margin-bottom:8px;">[Primary Accumulation] 방송 긍정 평가(추천·순환매) + 17년 퀀트 지표 합격 (1차 분할 매수 적합)</div>
     """
     for b in bull_picks:
         stop_p = b['close'] * 0.97
         tgt_p = b['close'] * 1.15
-        mention_info = f"방송 내 {b['mention_count']}회 언급 | " if b.get('mention_count', 0) > 0 else ""
+        pos_reasons = f"방송 문맥 긍정 ({', '.join(b.get('positive_reasons', []))}) | " if b.get('positive_reasons') else ""
         html += f"""
                 <div class="stock-card stock-card-bull">
                     <div class="stock-head">
-                        <span>{b['ticker']} &nbsp;<span class="badge badge-bull">{mention_info}적합도 {b['bull_score']}점</span></span>
+                        <span>{b['ticker']} &nbsp;<span class="badge badge-bull">{pos_reasons}적합도 {b['bull_score']}점</span></span>
                         <span style="font-family:monospace;">${b['close']:,.2f}</span>
                     </div>
                     <div class="stock-meta">
                         • <strong>26일 기준선:</strong> ${b['kijun']:,.2f} (이격도 {b['kijun_gap']:+.1f}%) | <strong>20일 거래량 비율:</strong> {b['vol_ratio']*100:.0f}% (수급 마름)<br>
                         • <strong>진입 기준가:</strong> ${b['close']:,.2f} | <strong>1차 목표가:</strong> ${tgt_p:,.2f} (+15.0%) | <strong>손절 기준선:</strong> ${stop_p:,.2f} (-3.0%)<br>
-                        • <strong>정량 분석 평가:</strong> 라이브 방송에서 집중 다룬 핵심 종목 중, 일목 구름대 상단 안착 및 26일 기준선(생명선) 지지가 완벽히 확인된 실전 매수 타점. 비중 30% 이내 1차 진입 적합.
+                        • <strong>정량 분석 평가:</strong> 바이킹스 라이브 방송에서 긍정적 순환매/추천 평가를 받았으며, 일목 구름대 상단 안착 및 26일 기준선 지지가 완벽히 확인되었습니다. 비중 30% 1차 분할 매수 타점.
                     </div>
                 </div>
         """
 
     html += """
-                <div style="font-size:12px; font-weight:700; color:#d97706; margin:16px 0 8px 0;">[Consolidation / Neutral] 방송 언급 종목 중 박스권 관망 (에너지 응축 / 방향성 탐색 국면)</div>
+                <div style="font-size:12px; font-weight:700; color:#d97706; margin:16px 0 8px 0;">[Consolidation / Neutral] 박스권 횡보 및 추세 수렴 종목 (신규 진입 보류)</div>
     """
     for n in neutral_picks:
-        mention_info = f"방송 내 {n['mention_count']}회 언급 | " if n.get('mention_count', 0) > 0 else ""
         html += f"""
                 <div class="stock-card stock-card-neutral">
                     <div class="stock-head">
-                        <span>{n['ticker']} &nbsp;<span class="badge badge-neutral">{mention_info}관망 대상</span></span>
+                        <span>{n['ticker']} &nbsp;<span class="badge badge-neutral">관망 대상</span></span>
                         <span style="font-family:monospace;">${n['close']:,.2f}</span>
                     </div>
                     <div class="stock-meta">
                         • <strong>위치 상태:</strong> {n['cloud_status']} | <strong>기준선 이격도:</strong> {n['kijun_gap']:+.1f}%<br>
-                        • <strong>정량 분석 평가:</strong> 방송에서 거론되었으나 현재 단기 박스권 횡보 및 추세 수렴 구간. 상방 돌파 또는 확정적 지지 반등 확인 전까지 신규 진입 보류.
+                        • <strong>정량 분석 평가:</strong> 단기 박스권 횡보 및 추세 수렴 구간. 상방 돌파 또는 확정적 지지 반등 확인 전까지 신규 진입 보류.
                     </div>
                 </div>
         """
 
     html += """
-                <div style="font-size:12px; font-weight:700; color:#dc2626; margin:16px 0 8px 0;">[Risk Alert / Short Hedge] 방송 언급 종목 중 기준선 붕괴 위험 (생명선 이탈 / 매수 금지)</div>
+                <div style="font-size:12px; font-weight:700; color:#dc2626; margin:16px 0 8px 0;">[Risk Alert / Short Hedge] 기준선 붕괴 및 리스크 회피 종목 (생명선 이탈 / 매수 금지)</div>
     """
     for s in bear_picks:
-        mention_info = f"방송 내 {s['mention_count']}회 언급 | " if s.get('mention_count', 0) > 0 else ""
+        caution_info = f"방송 문맥 주의 ({', '.join(s.get('caution_reasons', []))}) | " if s.get('caution_reasons') else ""
         html += f"""
                 <div class="stock-card stock-card-bear">
                     <div class="stock-head">
-                        <span>{s['ticker']} &nbsp;<span class="badge badge-bear">{mention_info}위험도 {s['bear_score']}점</span></span>
+                        <span>{s['ticker']} &nbsp;<span class="badge badge-bear">{caution_info}위험도 {s['bear_score']}점</span></span>
                         <span style="font-family:monospace;">${s['close']:,.2f}</span>
                     </div>
                     <div class="stock-meta">
@@ -568,7 +567,7 @@ def generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, por
                 <div class="section-title">4. Model Governance & Verification</div>
                 <div style="font-size:12px; color:#475569;">
                     • <strong>전수 포워드 트래킹 상태:</strong> {health_status}<br>
-                    • <strong>시스템 아키텍처:</strong> 알상무 17년 기관 퀀트 프레임워크 (일목균형표 26일 기준선 / 9일 전환선 / 선행스팬 구름대 / 20일 거래량 건조 비율)
+                    • <strong>시스템 아키텍처:</strong> 바이킹스 방송 문맥 분석(순환매·추천 필터) + 알상무 17년 기관 퀀트 검증 프레임워크
                 </div>
             </div>
             
@@ -590,22 +589,20 @@ def print_markdown_briefing(today_str, bull_picks, neutral_picks, bear_picks, po
     macro_narrative = stream_info.get("macro_narrative", "거시 경제 방향성 및 주도 섹터 수급 선별 국면")
     mentioned_stocks = stream_info.get("mentioned_stocks", [])
     
-    if mentioned_stocks:
-        mention_str = ", ".join([f"{m['ticker']}({m['count']}회)" for m in mentioned_stocks[:10]])
-    else:
-        mention_str = "NVDA, MSFT, AMZN, GOOGL, META, MU, AMD, TSLA, PLTR, VST"
+    rec_list = [f"{m['ticker']}(+{m['net_sentiment']} / 키워드: {', '.join(m.get('positive_reasons', []))})" for m in mentioned_stocks if m.get('host_intent') == 'BULLISH_RECOMMENDED']
+    rec_summary_str = " | ".join(rec_list[:5]) if rec_list else "방송 본문 문맥 분석 완료"
 
     md = f"""# AL-SANGMOO QUANTITATIVE TACTICAL REPORT ({today_str})
 
-발행일시: {today_str} 12:30 KST | 분석 모듈: 바이킹스 라이브 방송 본문 언급 종목 퀀트 진단
+발행일시: {today_str} 12:30 KST | 분석 모듈: 바이킹스 라이브 본문 문맥(추천/순환매) & 퀀트 검증
 
 ---
 
-## 1. Vikings Live Broadcast & Macro Intelligence
+## 1. Vikings Live Broadcast Intent & Macro Flow
 
 * **라이브 방송**: [{stream_title}]({stream_url})
 * **거시 흐름 진단**: {macro_narrative}
-* **방송 내 실제 언급 종목 (빈도순)**: `{mention_str}`
+* **방송 내 추천·순환매 긍정 평가 종목**: `{rec_summary_str}`
 
 ---
 
@@ -623,31 +620,30 @@ def print_markdown_briefing(today_str, bull_picks, neutral_picks, bear_picks, po
 
     md += """---
 
-## 3. Live Broadcast Stocks Quantitative Verdict (2+2+2)
+## 3. Host Recommendation & Quant Validation (2+2+2)
 
-### [Primary Accumulation] 방송 언급 종목 중 1차 분할 매수 적합
+### [Primary Accumulation] 방송 긍정 평가(추천·순환매) + 퀀트 지표 합격 (1차 매수 적합)
 """
     for b in bull_picks:
         stop_p = b['close'] * 0.97
         tgt_p = b['close'] * 1.15
-        mention_info = f"방송 내 {b['mention_count']}회 언급 | " if b.get('mention_count', 0) > 0 else ""
-        md += f"* **{b['ticker']}** (현재가 ${b['close']:,.2f} | {mention_info}적합도 {b['bull_score']}점)\n"
+        pos_reasons = f"방송 문맥 긍정 ({', '.join(b.get('positive_reasons', []))}) | " if b.get('positive_reasons') else ""
+        md += f"* **{b['ticker']}** (현재가 ${b['close']:,.2f} | {pos_reasons}적합도 {b['bull_score']}점)\n"
         md += f"  - 26일 기준선: ${b['kijun']:,.2f} (이격도 {b['kijun_gap']:+.1f}%) | 거래량 비율: {b['vol_ratio']*100:.0f}%\n"
         md += f"  - 1차 목표가: ${tgt_p:,.2f} (+15.0%) | 손절 기준선: ${stop_p:,.2f} (-3.0%)\n"
-        md += f"  - 정량 분석: 일목 구름대 상단 안착 및 26일 생명선 지지 확인. 비중 30% 1차 분할 매수 타점.\n\n"
+        md += f"  - 정량 분석: 바이킹스 라이브 방송에서 긍정적 순환매/추천 평가를 받았으며, 일목 구름대 상단 안착 및 26일 생명선 지지 확인. 비중 30% 1차 분할 매수 타점.\n\n"
 
-    md += """### [Consolidation / Neutral] 방송 언급 종목 중 박스권 관망
+    md += """### [Consolidation / Neutral] 박스권 횡보 및 추세 수렴 종목
 """
     for n in neutral_picks:
-        mention_info = f"방송 내 {n['mention_count']}회 언급 | " if n.get('mention_count', 0) > 0 else ""
-        md += f"* **{n['ticker']}** (${n['close']:,.2f} | {mention_info}): {n['cloud_status']} (기준선 이격 {n['kijun_gap']:+.1f}%). 박스권 횡보에 따른 관망 유지.\n"
+        md += f"* **{n['ticker']}** (${n['close']:,.2f}): {n['cloud_status']} (기준선 이격 {n['kijun_gap']:+.1f}%). 박스권 횡보에 따른 관망 유지.\n"
 
     md += """
-### [Risk Alert / Short Hedge] 방송 언급 종목 중 기준선 붕괴 위험
+### [Risk Alert / Short Hedge] 기준선 붕괴 및 리스크 회피 종목
 """
     for s in bear_picks:
-        mention_info = f"방송 내 {s['mention_count']}회 언급 | " if s.get('mention_count', 0) > 0 else ""
-        md += f"* **{s['ticker']}** (${s['close']:,.2f} | {mention_info}): {s['cloud_status']} (기준선 대비 {s['kijun_gap']:+.1f}% 이탈). 생명선 붕괴에 따른 물타기 금지 및 숏 우위.\n"
+        caution_info = f"방송 문맥 주의 ({', '.join(s.get('caution_reasons', []))}) | " if s.get('caution_reasons') else ""
+        md += f"* **{s['ticker']}** (${s['close']:,.2f} | {caution_info}): {s['cloud_status']} (기준선 대비 {s['kijun_gap']:+.1f}% 이탈). 생명선 붕괴에 따른 물타기 금지 및 숏 우위.\n"
 
     md += f"""
 ---
@@ -655,7 +651,7 @@ def print_markdown_briefing(today_str, bull_picks, neutral_picks, bear_picks, po
 ## 4. Model Governance & Verification
 
 * 모델 검증 상태: `{health_status}`
-* 알상무 17년 기관 퀀트 엔진 자동화 시스템
+* 시스템 아키텍처: 바이킹스 방송 문맥 분석(순환매·추천 필터) + 알상무 17년 기관 퀀트 검증
 """
     print(md)
 
@@ -663,14 +659,12 @@ def main():
     today_str = datetime.now().strftime("%Y-%m-%d")
     print(f"[Al-Sangmoo Quant Bot] Executing pipeline for {today_str}...")
     
-    # 1. Fetch latest YouTube stream, subtitles, and exact spoken stock mentions
+    # 1. Fetch latest YouTube stream and run Contextual Sentiment & Recommendation Intent Scanner
     stream_info = youtube_stream_scanner.fetch_latest_wepoll_stream()
-    stream_tickers = stream_info.get("live_stream_tickers", [])
     mentioned_stocks = stream_info.get("mentioned_stocks", [])
-    mention_map = {m["ticker"]: m["count"] for m in mentioned_stocks}
     
-    # 2. Run 2+2+2 Quantitative Formula strictly prioritizing live stream stocks
-    bull_picks, neutral_picks, bear_picks, all_candidates = scan_and_select_2x2x2(stream_tickers=stream_tickers, mention_map=mention_map)
+    # 2. Run Dual-Layer 2+2+2 Filter (Host Intent + Quant Formula)
+    bull_picks, neutral_picks, bear_picks, all_candidates = scan_and_select_2x2x2(stream_sentiment_list=mentioned_stocks)
     
     # 3. Evaluate User Real Portfolio Positions
     portfolio_alerts = evaluate_user_portfolio_positions()
@@ -694,7 +688,7 @@ def main():
     with open(out_html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
         
-    subject = f"[Al-Sangmoo Quant Tactical Report] {today_str} Live Stream Stock Diagnostic & Macro Allocation"
+    subject = f"[Al-Sangmoo Quant Tactical Report] {today_str} Live Stream Sentiment & Quant Validation"
     send_email_report(subject, html_content)
     
     # 8. Print Markdown Briefing

@@ -6,72 +6,220 @@
   "mentioned_stocks": [
     {
       "ticker": "NVDA",
-      "count": 30
-    },
-    {
-      "ticker": "MSFT",
-      "count": 27
+      "mentions": 30,
+      "pos_score": 18,
+      "neg_score": 6,
+      "net_sentiment": 12,
+      "host_intent": "BULLISH_RECOMMENDED",
+      "intent_desc": "진행자 적극 추천 / 긍정 주목 (순환매·매수 유망)",
+      "positive_reasons": [
+        "주도",
+        "실적",
+        "좋은"
+      ],
+      "caution_reasons": [
+        "부담"
+      ],
+      "sample_context": "니까 자 그런 것들 때문에 어 시장이 오히려 부담감이 더 있을 만한 시장이 오히려 부담감이 더 있을 만한 시장이 오히려 부담감이 더 있을 만한 이벤트가 어 존재한다. 지금은 물론 이벤트가 어 존재한다. 지금은 물론 이벤트가 어 존재한다. 지금은 물론 엔비디아 실적 발표 남아 있죠. 엔비디아 실적 발표 남아 있죠. 엔비디아 실적 발표 남아 있죠. 그리고 잭스놀도 있습니다. 8월 그리고 잭스놀도 있습니다. 8월 그리고 잭스놀도 있습니다. 8월 말입니다. 자, 그렇기 때문에 말입니다. 자, 그렇기 때문에 말입"
     },
     {
       "ticker": "AMZN",
-      "count": 27
-    },
-    {
-      "ticker": "GOOGL",
-      "count": 21
+      "mentions": 27,
+      "pos_score": 4,
+      "neg_score": 0,
+      "net_sentiment": 4,
+      "host_intent": "BULLISH_RECOMMENDED",
+      "intent_desc": "진행자 적극 추천 / 긍정 주목 (순환매·매수 유망)",
+      "positive_reasons": [
+        "매수"
+      ],
+      "caution_reasons": [],
+      "sample_context": "종목들 탑 10 매수 종목들 요렇게 돼 있습니다. 마이크로소프트가 요렇게 돼 있습니다. 마이크로소프트가 요렇게 돼 있습니다. 마이크로소프트가 1위입니다. 메타가 2위, 비자가 1위입니다. 메타가 2위, 비자가 1위입니다. 메타가 2위, 비자가 3위, 아마존이 4위, 버크셔가위, 3위, 아마존이 4위, 버크셔가위, 3위, 아마존이 4위, 버크셔가위, SP 글로벌 또 6위, 알파벳 7위, SP 글로벌 또 6위, 알파벳 7위, SP 글로벌 또 6위, 알파벳 7위, 월 디즈니 어, 디즈니 어, 디즈니 월 디즈"
     },
     {
       "ticker": "META",
-      "count": 12
-    },
-    {
-      "ticker": "MU",
-      "count": 12
-    },
-    {
-      "ticker": "AMD",
-      "count": 9
-    },
-    {
-      "ticker": "005930.KS",
-      "count": 6
+      "mentions": 12,
+      "pos_score": 3,
+      "neg_score": 0,
+      "net_sentiment": 3,
+      "host_intent": "BULLISH_RECOMMENDED",
+      "intent_desc": "진행자 적극 추천 / 긍정 주목 (순환매·매수 유망)",
+      "positive_reasons": [
+        "매수"
+      ],
+      "caution_reasons": [],
+      "sample_context": "번 분기 2번 분기 때 있는데 지난 2번 분기 2번 분기 때 탑 10 매수 종목들 탑 10 매수 종목들 탑 10 매수 종목들 요렇게 돼 있습니다. 마이크로소프트가 요렇게 돼 있습니다. 마이크로소프트가 요렇게 돼 있습니다. 마이크로소프트가 1위입니다. 메타가 2위, 비자가 1위입니다. 메타가 2위, 비자가 1위입니다. 메타가 2위, 비자가 3위, 아마존이 4위, 버크셔가위, 3위, 아마존이 4위, 버크셔가위, 3위, 아마존이 4위, 버크셔가위, SP 글로벌 또 6위, 알파벳 7위, SP 글로벌 또 6위"
     },
     {
       "ticker": "TSLA",
-      "count": 3
-    },
-    {
-      "ticker": "AAPL",
-      "count": 3
-    },
-    {
-      "ticker": "PLTR",
-      "count": 3
+      "mentions": 3,
+      "pos_score": 3,
+      "neg_score": 0,
+      "net_sentiment": 3,
+      "host_intent": "BULLISH_RECOMMENDED",
+      "intent_desc": "진행자 적극 추천 / 긍정 주목 (순환매·매수 유망)",
+      "positive_reasons": [
+        "반등"
+      ],
+      "caution_reasons": [],
+      "sample_context": "리고 어 일부 종목들 장비주들 뭐 17% 12% M비디아 장비주들 뭐 17% 12% M비디아 장비주들 뭐 17% 12% M비디아 12% 자 요러한 상승을 보여 주고 12% 자 요러한 상승을 보여 주고 12% 자 요러한 상승을 보여 주고 있습니다. 뭐 테슬라도 한 9% 있습니다. 뭐 테슬라도 한 9% 있습니다. 뭐 테슬라도 한 9% 반등했네요. 8월 달에는. 자, 그 반등했네요. 8월 달에는. 자, 그 반등했네요. 8월 달에는. 자, 그 전반적으로 이렇게 좀 보시면 될 거 전반적으로 이렇게 좀 보시면 될"
     },
     {
       "ticker": "VST",
-      "count": 3
+      "mentions": 3,
+      "pos_score": 3,
+      "neg_score": 0,
+      "net_sentiment": 3,
+      "host_intent": "BULLISH_RECOMMENDED",
+      "intent_desc": "진행자 적극 추천 / 긍정 주목 (순환매·매수 유망)",
+      "positive_reasons": [
+        "좋은"
+      ],
+      "caution_reasons": [],
+      "sample_context": "아 ETF 어, MSCI 사우스 코리아 ETF MSCI 사우스코리아를 샀어. 어 MSCI 사우스코리아를 샀어. 어 MSCI 사우스코리아를 샀어. 어 역시 메타 플랫폼스 54% 그죠? 역시 메타 플랫폼스 54% 그죠? 역시 메타 플랫폼스 54% 그죠? 비스트라 아 이거 제가 좀 말씀드려 비스트라 아 이거 제가 좀 말씀드려 비스트라 아 이거 제가 좀 말씀드려 종목인데 어 하여튼 요것도 사고 종목인데 어 하여튼 요것도 사고 종목인데 어 하여튼 요것도 사고 엔비디아도 사고 뭐 하여튼 좋은 건 엔비디아도 사고 뭐"
+    },
+    {
+      "ticker": "GOOGL",
+      "mentions": 21,
+      "pos_score": 3,
+      "neg_score": 1,
+      "net_sentiment": 2,
+      "host_intent": "BULLISH_RECOMMENDED",
+      "intent_desc": "진행자 적극 추천 / 긍정 주목 (순환매·매수 유망)",
+      "positive_reasons": [
+        "매수"
+      ],
+      "caution_reasons": [
+        "힘들"
+      ],
+      "sample_context": "련 나오기는 좀 힘들고요. 제가 월련 법회 선생님 또 가지고 나왔습니다. 법회 선생님 또 가지고 나왔습니다. 법회 선생님 또 가지고 나왔습니다. 아 이제 누군가가 제가 요걸 아 이제 누군가가 제가 요걸 아 이제 누군가가 제가 요걸 말씀드리려고 했어. 구글을 요번에 말씀드리려고 했어. 구글을 요번에 말씀드리려고 했어. 구글을 요번에 샀거든요. 음. 나머지는 그래. 좀 샀거든요. 음. 나머지는 그래. 좀 샀거든요. 음. 나머지는 그래. 좀 뱅커보니까 좀 줄인 거 뭐 뱅커보니까 좀 줄인 거 뭐 뱅커보니까"
+    },
+    {
+      "ticker": "MU",
+      "mentions": 12,
+      "pos_score": 0,
+      "neg_score": 0,
+      "net_sentiment": 0,
+      "host_intent": "NEUTRAL_WATCH",
+      "intent_desc": "진행자 단순 언급 / 수급 관망",
+      "positive_reasons": [],
+      "caution_reasons": [],
+      "sample_context": ""
+    },
+    {
+      "ticker": "AMD",
+      "mentions": 9,
+      "pos_score": 0,
+      "neg_score": 0,
+      "net_sentiment": 0,
+      "host_intent": "NEUTRAL_WATCH",
+      "intent_desc": "진행자 단순 언급 / 수급 관망",
+      "positive_reasons": [],
+      "caution_reasons": [],
+      "sample_context": ""
+    },
+    {
+      "ticker": "005930.KS",
+      "mentions": 6,
+      "pos_score": 0,
+      "neg_score": 0,
+      "net_sentiment": 0,
+      "host_intent": "NEUTRAL_WATCH",
+      "intent_desc": "진행자 단순 언급 / 수급 관망",
+      "positive_reasons": [],
+      "caution_reasons": [],
+      "sample_context": ""
+    },
+    {
+      "ticker": "AAPL",
+      "mentions": 3,
+      "pos_score": 0,
+      "neg_score": 0,
+      "net_sentiment": 0,
+      "host_intent": "NEUTRAL_WATCH",
+      "intent_desc": "진행자 단순 언급 / 수급 관망",
+      "positive_reasons": [],
+      "caution_reasons": [],
+      "sample_context": ""
+    },
+    {
+      "ticker": "PLTR",
+      "mentions": 3,
+      "pos_score": 0,
+      "neg_score": 0,
+      "net_sentiment": 0,
+      "host_intent": "NEUTRAL_WATCH",
+      "intent_desc": "진행자 단순 언급 / 수급 관망",
+      "positive_reasons": [],
+      "caution_reasons": [],
+      "sample_context": ""
     },
     {
       "ticker": "000660.KS",
-      "count": 3
+      "mentions": 3,
+      "pos_score": 0,
+      "neg_score": 0,
+      "net_sentiment": 0,
+      "host_intent": "NEUTRAL_WATCH",
+      "intent_desc": "진행자 단순 언급 / 수급 관망",
+      "positive_reasons": [],
+      "caution_reasons": [],
+      "sample_context": ""
+    },
+    {
+      "ticker": "MSFT",
+      "mentions": 27,
+      "pos_score": 12,
+      "neg_score": 13,
+      "net_sentiment": -1,
+      "host_intent": "NEUTRAL_WATCH",
+      "intent_desc": "진행자 단순 언급 / 수급 관망",
+      "positive_reasons": [
+        "매수",
+        "추천"
+      ],
+      "caution_reasons": [
+        "떨어",
+        "박살",
+        "조정",
+        "하락"
+      ],
+      "sample_context": "될 거 같고요. 자, 오늘 소프트웨어들은 다 박살이 나왔어. 소프트웨어들은 다 박살이 나왔어. 소프트웨어들은 다 박살이 나왔어. 박살까지는 아닌데 준 박살. 자, 박살까지는 아닌데 준 박살. 자, 박살까지는 아닌데 준 박살. 자, 그래서 3% 5% 마이크로소프트 3% 그래서 3% 5% 마이크로소프트 3% 그래서 3% 5% 마이크로소프트 3% 정도 요러한 조정을 줬습니다. 자, 정도 요러한 조정을 줬습니다. 자, 정도 요러한 조정을 줬습니다. 자, 확인을 해 주시면 될 거 같고요. 확인을 해 주시면 될 거 같"
     }
   ],
-  "live_stream_tickers": [
+  "bullish_stream_tickers": [
     "NVDA",
-    "MSFT",
     "AMZN",
-    "GOOGL",
     "META",
+    "TSLA",
+    "VST",
+    "GOOGL"
+  ],
+  "neutral_stream_tickers": [
     "MU",
     "AMD",
     "005930.KS",
-    "TSLA",
     "AAPL",
     "PLTR",
+    "000660.KS",
+    "MSFT"
+  ],
+  "bearish_stream_tickers": [],
+  "live_stream_tickers": [
+    "NVDA",
+    "AMZN",
+    "META",
+    "TSLA",
     "VST",
-    "000660.KS"
+    "GOOGL",
+    "MU",
+    "AMD",
+    "005930.KS",
+    "AAPL",
+    "PLTR",
+    "000660.KS",
+    "MSFT"
   ],
   "transcript_char_count": 71514,
-  "fetched_at": "2026-08-18 12:43:14"
+  "fetched_at": "2026-08-18 12:48:47"
 }
