@@ -971,6 +971,38 @@
                         }
                     }
 
+                    // Dynamically calculate and update 5-Factor indicators from live data
+                    if (chartObj.kijun) {
+                        const kGap = chartObj.kijun_gap_pct !== undefined ? chartObj.kijun_gap_pct : (((chartObj.latest_close - chartObj.kijun)/chartObj.kijun)*100).toFixed(1);
+                        const kGood = kGap >= -0.5;
+                        document.getElementById("sigKijunBadge").className = `status-badge ${kGood ? 'status-good' : 'status-bad'}`;
+                        document.getElementById("sigKijunBadge").textContent = kGood ? 'SUPPORT INTACT' : 'BREAKDOWN';
+                        document.getElementById("sigKijunVal").textContent = `$${chartObj.kijun} (${kGap >= 0 ? '+' : ''}${kGap}% 이격)`;
+                        document.getElementById("sigKijunDesc").textContent = kGood ? '주가가 26일 기준선(생명선) 위에 위치하여 중기 지지선이 유효합니다.' : '주가가 26일 기준선(생명선)을 이탈하여 추세가 약화되었습니다.';
+                    }
+
+                    if (chartObj.tenkan) {
+                        const tGood = chartObj.tenkan >= chartObj.kijun;
+                        document.getElementById("sigTenkanBadge").className = `status-badge ${tGood ? 'status-good' : 'status-bad'}`;
+                        document.getElementById("sigTenkanBadge").textContent = tGood ? 'BULLISH CROSS' : 'BEARISH';
+                        document.getElementById("sigTenkanVal").textContent = `$${chartObj.tenkan} (${tGood ? '9일선 > 26일선 골든' : '9일선 < 26일선 데드'})`;
+                        document.getElementById("sigTenkanDesc").textContent = tGood ? '단기 9일 전환선이 26일 기준선 위에 위치하여 단기 모멘텀이 유지됩니다.' : '단기 9일 전환선이 하락 압력을 나타내고 있습니다.';
+                    }
+
+                    if (chartObj.vol_ratio !== undefined) {
+                        const vPct = (chartObj.vol_ratio * 100).toFixed(0);
+                        const vDry = chartObj.vol_ratio <= 0.75;
+                        document.getElementById("sigVolBadge").className = `status-badge ${vDry ? 'status-good' : 'status-neutral'}`;
+                        document.getElementById("sigVolBadge").textContent = vDry ? 'OPTIMAL DRY-UP' : 'NORMAL VOLUME';
+                        document.getElementById("sigVolVal").textContent = `20일 평균 대비 ${vPct}% (거래량 비율)`;
+                        document.getElementById("sigVolDesc").textContent = vDry ? '눌림목에서 거래량이 75% 이하로 건조되어 매도 압력 소진 및 반등 타점 형성.' : '거래량이 평균 수준을 유지하고 있습니다.';
+                    }
+
+                    if (chartObj.status_text) {
+                        document.getElementById("sigCloudVal").textContent = chartObj.status_text;
+                        document.getElementById("actionDirectiveText").textContent = chartObj.status_text + ` (목표가: $${(chartObj.latest_close * 1.15).toFixed(2)} / 손절선: $${(chartObj.latest_close * 0.97).toFixed(2)})`;
+                    }
+
                     const totalBars = chartObj.candles.length;
                     mainChart.timeScale().setVisibleLogicalRange({
                         from: Math.max(0, totalBars - 90),
@@ -1115,6 +1147,97 @@
                     const sLink = document.getElementById("streamLink");
                     sLink.textContent = data.macro.title;
                     if (data.macro.url) sLink.href = data.macro.url;
+                }
+            }
+
+            // Render Today's 2+2+2 Recommendations and Historical Matrix
+            if (data.matrix && data.matrix.length > 0) {
+                const latest = data.matrix[0]; // Today's recommendation
+                
+                // Top 2+2+2 Cards
+                const bullCards = document.getElementById("todayBullCards");
+                const neutralCards = document.getElementById("todayNeutralCards");
+                const bearCards = document.getElementById("todayBearCards");
+                
+                if (bullCards && latest.bull_1 && latest.bull_2) {
+                    bullCards.innerHTML = `
+                        <div class="rec-item ${currentSelectedTicker === latest.bull_1 ? 'active' : ''}" onclick="selectStock('${latest.bull_1}', ${latest.bull_1_price})">
+                            <div>
+                                <span class="rec-item-title" style="color:var(--accent-green);">${latest.bull_1}</span>
+                                <div class="rec-item-sub">1차 매수 적합 (구름대 상단 안착)</div>
+                            </div>
+                            <div class="rec-item-price">$${Number(latest.bull_1_price).toFixed(2)}</div>
+                        </div>
+                        <div class="rec-item ${currentSelectedTicker === latest.bull_2 ? 'active' : ''}" onclick="selectStock('${latest.bull_2}', ${latest.bull_2_price})">
+                            <div>
+                                <span class="rec-item-title" style="color:var(--accent-green);">${latest.bull_2}</span>
+                                <div class="rec-item-sub">1차 매수 적합 (26일 기준선 지지)</div>
+                            </div>
+                            <div class="rec-item-price">$${Number(latest.bull_2_price).toFixed(2)}</div>
+                        </div>
+                    `;
+                }
+                
+                if (neutralCards && latest.neutral_1 && latest.neutral_2) {
+                    neutralCards.innerHTML = `
+                        <div class="rec-item ${currentSelectedTicker === latest.neutral_1 ? 'active' : ''}" onclick="selectStock('${latest.neutral_1}', ${latest.neutral_1_price})">
+                            <div>
+                                <span class="rec-item-title" style="color:var(--accent-yellow);">${latest.neutral_1}</span>
+                                <div class="rec-item-sub">중립 관망 (박스권 수렴)</div>
+                            </div>
+                            <div class="rec-item-price">$${Number(latest.neutral_1_price).toFixed(2)}</div>
+                        </div>
+                        <div class="rec-item ${currentSelectedTicker === latest.neutral_2 ? 'active' : ''}" onclick="selectStock('${latest.neutral_2}', ${latest.neutral_2_price})">
+                            <div>
+                                <span class="rec-item-title" style="color:var(--accent-yellow);">${latest.neutral_2}</span>
+                                <div class="rec-item-sub">중립 관망 (방향성 탐색)</div>
+                            </div>
+                            <div class="rec-item-price">$${Number(latest.neutral_2_price).toFixed(2)}</div>
+                        </div>
+                    `;
+                }
+                
+                if (bearCards && latest.bear_1 && latest.bear_2) {
+                    bearCards.innerHTML = `
+                        <div class="rec-item ${currentSelectedTicker === latest.bear_1 ? 'active' : ''}" onclick="selectStock('${latest.bear_1}', ${latest.bear_1_price})">
+                            <div>
+                                <span class="rec-item-title" style="color:var(--accent-red);">${latest.bear_1}</span>
+                                <div class="rec-item-sub">생명선 붕괴 (매수 금지)</div>
+                            </div>
+                            <div class="rec-item-price">$${Number(latest.bear_1_price).toFixed(2)}</div>
+                        </div>
+                        <div class="rec-item ${currentSelectedTicker === latest.bear_2 ? 'active' : ''}" onclick="selectStock('${latest.bear_2}', ${latest.bear_2_price})">
+                            <div>
+                                <span class="rec-item-title" style="color:var(--accent-red);">${latest.bear_2}</span>
+                                <div class="rec-item-sub">구름대 하향 이탈 (숏 우위)</div>
+                            </div>
+                            <div class="rec-item-price">$${Number(latest.bear_2_price).toFixed(2)}</div>
+                        </div>
+                    `;
+                }
+                
+                // Historical Matrix Table (All days: 2026-08-20, 2026-08-19, 2026-08-18...)
+                const mBody = document.getElementById("matrixTableBody");
+                if (mBody) {
+                    mBody.innerHTML = data.matrix.map(m => {
+                        return `
+                            <tr>
+                                <td style="font-family:'JetBrains Mono'; font-weight:700; color:#cbd5e1;">${m.date}</td>
+                                <td>
+                                    <span class="ticker-pill bull" onclick="selectStock('${m.bull_1}', ${m.bull_1_price})">${m.bull_1} ($${Number(m.bull_1_price).toFixed(2)})</span>
+                                    <span class="ticker-pill bull" onclick="selectStock('${m.bull_2}', ${m.bull_2_price})" style="margin-left:4px;">${m.bull_2} ($${Number(m.bull_2_price).toFixed(2)})</span>
+                                </td>
+                                <td>
+                                    <span class="ticker-pill neutral" onclick="selectStock('${m.neutral_1}', ${m.neutral_1_price})">${m.neutral_1} ($${Number(m.neutral_1_price).toFixed(2)})</span>
+                                    <span class="ticker-pill neutral" onclick="selectStock('${m.neutral_2}', ${m.neutral_2_price})" style="margin-left:4px;">${m.neutral_2} ($${Number(m.neutral_2_price).toFixed(2)})</span>
+                                </td>
+                                <td>
+                                    <span class="ticker-pill bear" onclick="selectStock('${m.bear_1}', ${m.bear_1_price})">${m.bear_1} ($${Number(m.bear_1_price).toFixed(2)})</span>
+                                    <span class="ticker-pill bear" onclick="selectStock('${m.bear_2}', ${m.bear_2_price})" style="margin-left:4px;">${m.bear_2} ($${Number(m.bear_2_price).toFixed(2)})</span>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
                 }
             }
 

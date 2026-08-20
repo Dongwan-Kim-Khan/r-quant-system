@@ -4,6 +4,7 @@ import json
 import pandas as pd
 import yfinance as yf
 from datetime import datetime
+import db_manager
 
 # Windows encoding fix
 if sys.platform.startswith('win'):
@@ -19,7 +20,8 @@ STREAM_CACHE = os.path.join(BASE_DIR, "wepoll_latest_stream.json")
 
 WATCHLIST = [
     "QQQ", "NVDA", "AMZN", "LLY", "AAPL", "MSFT", "TSLA", "META",
-    "AVGO", "COST", "AMD", "QCOM", "PLTR", "VST", "CEG", "005930.KS", "000660.KS"
+    "AVGO", "COST", "AMD", "QCOM", "PLTR", "VST", "CEG", "ETN", "GEV",
+    "SMCI", "ARM", "MU", "005930.KS", "000660.KS", "012450.KS"
 ]
 
 def compute_all_indicators(ticker):
@@ -220,10 +222,28 @@ def build_dashboard_data():
         "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
     
+    # Load 2+2+2 Matrix and Portfolio from DB
+    matrix = db_manager.get_recommendations_matrix()
+    if not isinstance(matrix, list):
+        matrix = [matrix] if matrix else []
+        
+    portfolio = db_manager.get_live_portfolio()
+    
+    # Ensure any ticker present in matrix is computed in chart_data
+    for m in matrix:
+        for key in ["bull_1", "bull_2", "neutral_1", "neutral_2", "bear_1", "bear_2"]:
+            tk = m.get(key)
+            if tk and tk not in chart_data:
+                d = compute_all_indicators(tk)
+                if d:
+                    chart_data[tk] = d
+
     payload = {
         "macro": macro_info,
         "kpis": kpis,
         "trades": trades,
+        "matrix": matrix,
+        "portfolio": portfolio,
         "charts": chart_data
     }
     
