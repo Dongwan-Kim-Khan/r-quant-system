@@ -1,8 +1,8 @@
 @echo off
-chcp 65001 > nul
-title [알상무 퀀트 터미널] 서버 종료
+title [Al-Sangmoo Quant Terminal] Stop Server
+
 echo ======================================================================
-echo    🛑 알상무 퀀트 서버(포트 8000)를 안전하게 종료합니다...
+echo   Stopping server on port 8000...
 echo ======================================================================
 
 for /f "tokens=5" %%a in ('netstat -aon ^| findstr :8000 ^| findstr LISTENING') do (
@@ -10,5 +10,5 @@ for /f "tokens=5" %%a in ('netstat -aon ^| findstr :8000 ^| findstr LISTENING') 
 )
 
 echo.
-echo ✅ 알상무 퀀트 서버가 정상적으로 종료되었습니다.
-timeout /t 2 > nul
+echo [Done] Server stopped successfully.
+ping 127.0.0.1 -n 2 > nul
