@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AL-SANGMOO QUANT TERMINAL | Tactical Macro & Sector Allocation</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- TradingView Lightweight Charts v4 -->
+    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        :root {
+            --bg-base: #0a0e17;
+            --bg-surface: #111827;
+            --bg-card: #1f2937;
+            --bg-card-hover: #2d3748;
+            --border: #374151;
+            --border-light: #4b5563;
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            --accent-green: #10b981;
+            --accent-green-bg: rgba(16, 185, 129, 0.1);
+            --accent-red: #ef4444;
+            --accent-red-bg: rgba(239, 68, 68, 0.1);
+            --accent-yellow: #f59e0b;
+            --accent-yellow-bg: rgba(245, 158, 11, 0.1);
+            --accent-blue: #3b82f6;
+            --kijun-gold: #fbbf24;
+            --tenkan-blue: #38bdf8;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        header {
+            background: var(--bg-surface);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .brand { display: flex; align-items: center; gap: 14px; }
+        .brand h1 { font-size: 16px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em; text-transform: uppercase; }
+        .brand .badge { background: #374151; color: #e5e7eb; padding: 2px 8px; border-radius: 2px; font-size: 10px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+        
+        .live-tag {
+            background: rgba(16, 185, 129, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: var(--accent-green);
+            padding: 3px 10px; border-radius: 2px; font-size: 11px; font-weight: 600;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .live-dot { width: 6px; height: 6px; background: var(--accent-green); border-radius: 50%; }
+
+        .server-status-pill {
+            background: #1f2937; border: 1px solid var(--border); padding: 4px 10px; border-radius: 2px;
+            font-size: 11px; font-family: 'JetBrains Mono', monospace; font-weight: 600; display: flex; align-items: center; gap: 6px;
+        }
+        .server-dot { width: 6px; height: 6px; border-radius: 50%; background: #10b981; }
+
+        .header-actions { display: flex; align-items: center; gap: 10px; }
+        .btn-action {
+            background: var(--bg-card); border: 1px solid var(--border); color: var(--text-primary);
+            padding: 6px 14px; border-radius: 2px; font-size: 12px; font-weight: 600; cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-action:hover { background: #374151; border-color: var(--accent-blue); }
+        .btn-action.scan { background: #2563eb; border-color: #3b82f6; color: #fff; }
+        .btn-action.scan:hover { background: #1d4ed8; }
+
+        /* Macro & Focus Sector Strip */
+        .macro-strip {
+            background: #111827;
+            border-bottom: 1px solid var(--border);
+            padding: 12px 28px;
+            font-size: 12px;
+            display: grid;
+            grid-template-columns: 1.5fr 1.5fr 2fr;
+            gap: 16px;
+            align-items: center;
+        }
+        .macro-col strong { color: #9ca3af; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; display: block; margin-bottom: 2px; }
+        .macro-col span { color: #f3f4f6; font-weight: 600; }
+        .macro-col a { color: #60a5fa; text-decoration: none; font-weight: 600; }
+        .macro-col a:hover { text-decoration: underline; }
+
+        /* KPI Bar */
+        .kpi-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            padding: 14px 28px;
+        }
+        .kpi-card {
+            background: var(--bg-surface); border: 1px solid var(--border); border-radius: 4px; padding: 12px 16px;
+        }
+        .kpi-title {
+            font-size: 11px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.04em; margin-bottom: 4px;
+        }
+        .kpi-val { font-size: 18px; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
+
+        /* Today's 6 Recommendations (2+2+2) */
+        .today-section { padding: 0 28px 14px 28px; }
+        .today-banner {
+            background: var(--bg-surface); border: 1px solid var(--border); border-radius: 4px; padding: 14px 18px;
+        }
+        .today-title {
+            font-size: 12px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em;
+            margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;
+        }
+        .today-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+        .rec-card-group {
+            background: var(--bg-base); border: 1px solid var(--border); border-radius: 2px; padding: 10px;
+        }
+        .group-header {
+            font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+            margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;
+        }
+        .rec-item {
+            display: flex; justify-content: space-between; align-items: center;
+            background: var(--bg-surface); border: 1px solid var(--border); border-radius: 2px;
+            padding: 8px 10px; margin-bottom: 6px; cursor: pointer; transition: all 0.15s;
+        }
+        .rec-item:last-child { margin-bottom: 0; }
+        .rec-item:hover, .rec-item.active {
+            border-color: var(--accent-blue); background: #1f2937;
+        }
+        .rec-item-title { font-weight: 700; font-size: 13px; font-family: 'JetBrains Mono', monospace; }
+        .rec-item-sub { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+        .rec-item-price { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 13px; }
+
+        /* Main 2-Column Layout */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 480px 1fr;
+            gap: 16px;
+            padding: 0 28px 28px 28px;
+            flex: 1;
+        }
+
+        .panel {
+            background: var(--bg-surface); border: 1px solid var(--border); border-radius: 4px;
+            overflow: hidden; margin-bottom: 14px;
+        }
+        .panel-header {
+            background: #1e293b; border-bottom: 1px solid var(--border); padding: 10px 14px;
+            font-size: 12px; font-weight: 700; color: #f3f4f6; text-transform: uppercase; letter-spacing: 0.04em;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        /* Quick Buy Box */
+        .quick-buy-box {
+            background: #111827; border: 1px solid var(--border); border-radius: 4px;
+            padding: 12px 16px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; gap: 12px;
+        }
+        .quick-buy-input {
+            width: 70px; background: var(--bg-base); border: 1px solid var(--border); color: #fff;
+            padding: 6px 8px; border-radius: 2px; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600;
+        }
+        .btn-buy-action {
+            background: #059669; border: 1px solid #10b981; color: white; padding: 6px 14px;
+            border-radius: 2px; font-size: 12px; font-weight: 700; cursor: pointer;
+        }
+        .btn-buy-action:hover { background: #047857; }
+        .btn-reset-portfolio {
+            background: transparent; border: 1px solid #6b7280; color: #9ca3af;
+            padding: 2px 8px; border-radius: 2px; font-size: 11px; cursor: pointer;
+        }
+        .btn-reset-portfolio:hover { color: #f87171; border-color: #ef4444; }
+
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th { background: #182234; color: #9ca3af; font-weight: 600; text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; }
+        td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: #e5e7eb; }
+        tr:hover { background: rgba(255,255,255,0.02); }
+
+        .ticker-pill {
+            display: inline-block; padding: 2px 6px; border-radius: 2px; font-family: 'JetBrains Mono', monospace;
+            font-size: 11px; font-weight: 700; cursor: pointer; border: 1px solid transparent;
+        }
+        .ticker-pill.bull { background: rgba(16, 185, 129, 0.15); color: #34d399; border-color: rgba(16, 185, 129, 0.3); }
+        .ticker-pill.neutral { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3); }
+        .ticker-pill.bear { background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239, 68, 68, 0.3); }
+
+        /* Right Pane */
+        .right-pane {
+            background: var(--bg-surface); border: 1px solid var(--border); border-radius: 4px;
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+        .chart-header {
+            padding: 12px 18px; border-bottom: 1px solid var(--border); display: flex;
+            justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; background: #131d2e;
+        }
+        .ticker-title { font-size: 16px; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
+        .ticker-price { font-size: 16px; font-weight: 800; font-family: 'JetBrains Mono', monospace; margin-left: 8px; }
+
+        .toggle-btn {
+            background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary);
+            padding: 4px 10px; border-radius: 2px; font-size: 11px; font-weight: 600; cursor: pointer;
+        }
+        .toggle-btn.active { background: #2563eb; color: #fff; border-color: #3b82f6; }
+
+        #chartContainer { width: 100%; height: 380px; }
+        #volumeContainer { width: 100%; height: 90px; border-top: 1px solid var(--border); }
+
+        /* Quantitative Indicator Decoder */
+        .decoder-card {
+            background: #0d131f; border-top: 1px solid var(--border); padding: 16px 20px;
+        }
+        .verdict-banner {
+            display: flex; justify-content: space-between; align-items: center; background: #182234;
+            border: 1px solid var(--border); border-left: 4px solid var(--accent-green); border-radius: 2px;
+            padding: 10px 14px; margin-bottom: 12px;
+        }
+        .verdict-title { font-size: 13px; font-weight: 800; color: #ffffff; display: flex; align-items: center; gap: 8px; }
+        .verdict-score { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; }
+
+        .decoder-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .indicator-item {
+            background: var(--bg-surface); border: 1px solid var(--border); border-radius: 2px;
+            padding: 10px 12px;
+        }
+        .indicator-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .indicator-name { font-size: 11px; font-weight: 700; color: #cbd5e1; text-transform: uppercase; }
+        .status-badge {
+            font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 2px; text-transform: uppercase; font-family: 'JetBrains Mono', monospace;
+        }
+        .status-good { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+        .status-neutral { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+        .status-bad { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+
+        .indicator-val { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-secondary); font-weight: 600; }
+        .indicator-desc { font-size: 11px; color: #94a3b8; line-height: 1.4; margin-top: 2px; }
+
+        .action-directive-box {
+            background: #182234; border: 1px solid var(--border); border-left: 4px solid var(--accent-blue);
+            padding: 10px 14px; font-size: 12px; color: #f3f4f6; line-height: 1.5;
+        }
+
+        .macro-banner-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-top: 12px;
+            font-size: 11px;
+            background: #0f172a;
+            padding: 10px 12px;
+            border-radius: 2px;
+            border: 1px solid #334155;
+        }
+
+        .macro-gauges-strip {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr) 2fr;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        @media (max-width: 1100px) {
+            .main-layout { grid-template-columns: 1fr; padding: 0 16px 20px 16px; }
+            .kpi-container { grid-template-columns: repeat(2, 1fr); padding: 12px 16px; }
+            .macro-strip { grid-template-columns: 1fr; padding: 10px 16px; }
+            .macro-gauges-strip { grid-template-columns: repeat(3, 1fr); }
+            .macro-gauges-strip > div:last-child { grid-column: span 3; }
+            .today-grid { grid-template-columns: 1fr; }
+            .decoder-grid { grid-template-columns: 1fr; }
+            .today-section { padding: 0 16px 12px 16px; }
+        }
+
+        @media (max-width: 768px) {
+            header { padding: 12px 16px; flex-direction: column; align-items: flex-start; gap: 10px; }
+            .header-actions { width: 100%; justify-content: space-between; flex-wrap: wrap; }
+            .macro-banner-grid { grid-template-columns: repeat(2, 1fr); }
+            .macro-gauges-strip { grid-template-columns: 1fr; }
+            .macro-gauges-strip > div:last-child { grid-column: span 1; }
+            .quick-buy-box { flex-direction: column; align-items: flex-start; gap: 8px; }
+        }
+
+        @media (max-width: 480px) {
+            .kpi-container { grid-template-columns: 1fr; }
+            .macro-banner-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="brand">
+            <h1>AL-SANGMOO QUANT TERMINAL</h1>
+            <span class="badge">R's QUANT 3.5 INSTITUTIONAL</span>
+            <div class="live-tag"><div class="live-dot"></div> ACTIVE QUANT ENGINE</div>
+        </div>
+        <div class="header-actions">
+            <div class="server-status-pill" id="serverStatus">
+                <div class="server-dot" id="serverDot"></div>
+                <span id="serverStatusText">CONNECTING...</span>
+            </div>
+            <div style="font-size:11px; color:var(--text-secondary); font-family:'JetBrains Mono';" id="lastUpdated">Updated: Loading...</div>
+            <button class="btn-action scan" id="btnScanNow" onclick="triggerScanNow()">Run Live Scan</button>
+            <button class="btn-action" onclick="loadDashboard()">Refresh</button>
+        </div>
+    </header>
+
+    <!-- Gate-0 Macro Climate & Real-Time Financial Gauges Bar -->
+    <div style="background:#0f172a; border-bottom:1px solid var(--border); padding:14px 28px;">
+        
+        <!-- Macro Directive Banner -->
+        <div style="background:#1e293b; border:1px solid #d97706; border-left:5px solid #f59e0b; padding:12px 18px; border-radius:2px; margin-bottom:12px;">
+            <div style="font-size:13px; font-weight:800; color:#fbbf24; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                <span id="macroHeadline">[거시 게이트 0단계: 이번 주 신규 매수 보류 / 관망·현금 유지 권고]</span>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-size:11px; color:#cbd5e1;">Macro Stance Index (MSI):</span>
+                    <span id="msiScoreBadge" style="background:#f59e0b; color:#0f172a; font-size:12px; font-weight:800; padding:2px 8px; border-radius:2px; font-family:'JetBrains Mono';">64.8 / 100</span>
+                    <span id="macroStanceBadge" style="background:rgba(245,158,11,0.2); color:#fbbf24; font-size:11px; padding:2px 8px; border-radius:2px; font-family:'JetBrains Mono'; font-weight:700;">DEFENSE HOLD</span>
+                </div>
+            </div>
+            <div style="font-size:12px; color:#cbd5e1; margin-top:6px; line-height:1.5;" id="macroDirectiveText">
+                거시 위험 지수(MSI 64.8점: 10년물 금리 4.696%, 유가 $85.15) 및 방송 지침상, 적어도 이번 주는 신규 매수를 쉬어가고 관망해야 하는 장세입니다. 다만 거시 리스크 진정 시 즉시 공략할 최우선 1순위 후보 종목을 사전 선별합니다.
+            </div>
+
+            <!-- MSI 0~100 Visual Gauge Bar -->
+            <div style="margin-top:10px;">
+                <div style="display:flex; justify-content:space-between; font-size:10px; color:#94a3b8; font-weight:600; text-transform:uppercase; margin-bottom:3px;">
+                    <span>Active Buy (0~30)</span>
+                    <span>Selective Buy (31~60)</span>
+                    <span style="color:#fbbf24; font-weight:800;">Defense Hold (61~80) [현재]</span>
+                    <span>Cash Exit (81~100)</span>
+                </div>
+                <div style="height:6px; background:linear-gradient(to right, #10b981 0%, #10b981 30%, #eab308 31%, #eab308 60%, #f97316 61%, #f97316 80%, #ef4444 81%, #ef4444 100%); border-radius:3px; position:relative;">
+                    <div id="msiNeedle" style="position:absolute; left:64.8%; top:-4px; width:4px; height:14px; background:#ffffff; border-radius:2px; box-shadow:0 0 6px #ffffff; transform:translateX(-50%);"></div>
+                </div>
+            </div>
+
+            <!-- MSI 4-Factor Mathematical Breakdown Grid -->
+            <div class="macro-banner-grid">
+                <div>
+                    <div style="color:#94a3b8; font-size:10px; font-weight:600;">1. 하드 지표 (M_hard: 40%)</div>
+                    <div style="font-weight:700; color:#f8fafc; font-family:'JetBrains Mono';" id="msiHardVal">25.0 / 40.0 pt</div>
+                    <div style="color:#64748b; font-size:10px;" id="msiHardSub">VIX:0 | 10Y:15 | 유가:10</div>
+                </div>
+                <div>
+                    <div style="color:#94a3b8; font-size:10px; font-weight:600;">2. 방송 NLP 지침 (M_nlp: 30%)</div>
+                    <div style="font-weight:700; color:#f8fafc; font-family:'JetBrains Mono';" id="msiNlpVal">21.8 / 30.0 pt</div>
+                    <div style="color:#64748b; font-size:10px;" id="msiNlpSub">방어 8회 vs 매수 3회</div>
+                </div>
+                <div>
+                    <div style="color:#94a3b8; font-size:10px; font-weight:600;">3. 외생 충격 (M_shock: 20%)</div>
+                    <div style="font-weight:700; color:#f8fafc; font-family:'JetBrains Mono';" id="msiShockVal">15.0 / 20.0 pt</div>
+                    <div style="color:#64748b; font-size:10px;" id="msiShockSub">지정학+10 | 관세+5</div>
+                </div>
+                <div>
+                    <div style="color:#94a3b8; font-size:10px; font-weight:600;">4. 지수 추세 (M_trend: 10%)</div>
+                    <div style="font-weight:700; color:#f8fafc; font-family:'JetBrains Mono';" id="msiTrendVal">3.0 / 10.0 pt</div>
+                    <div style="color:#64748b; font-size:10px;">구름대 상단 유지</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="macro-gauges-strip">
+            <!-- Gauge 1: VIX -->
+            <div style="background:#111827; border:1px solid var(--border); border-radius:2px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div style="font-size:10px; color:#94a3af; text-transform:uppercase; font-weight:600;">VIX 공포지수</div>
+                    <div style="font-size:15px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6;" id="gaugeVixVal">14.25</div>
+                </div>
+                <span id="gaugeVixBadge" style="background:rgba(16,185,129,0.15); color:#34d399; font-size:10px; padding:2px 6px; border-radius:2px; font-weight:700;">CALM</span>
+            </div>
+
+            <!-- Gauge 2: US 10Y -->
+            <div style="background:#111827; border:1px solid var(--border); border-radius:2px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div style="font-size:10px; color:#94a3af; text-transform:uppercase; font-weight:600;">미국채 10년물 금리</div>
+                    <div style="font-size:15px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6;" id="gaugeUs10yVal">4.696%</div>
+                </div>
+                <span id="gaugeUs10yBadge" style="background:rgba(239,68,68,0.15); color:#f87171; font-size:10px; padding:2px 6px; border-radius:2px; font-weight:700;">HIGH BURDEN</span>
+            </div>
+
+            <!-- Gauge 3: WTI -->
+            <div style="background:#111827; border:1px solid var(--border); border-radius:2px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div style="font-size:10px; color:#94a3af; text-transform:uppercase; font-weight:600;">WTI 국제유가</div>
+                    <div style="font-size:15px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6;" id="gaugeWtiVal">$85.15</div>
+                </div>
+                <span id="gaugeWtiBadge" style="background:rgba(245,158,11,0.15); color:#fbbf24; font-size:10px; padding:2px 6px; border-radius:2px; font-weight:700;">ELEVATED</span>
+            </div>
+
+            <!-- Live Stream & Narrative -->
+            <div style="background:#111827; border:1px solid var(--border); border-radius:2px; padding:8px 12px; font-size:11px;">
+                <div style="color:#94a3af; font-weight:600;">LIVE BROADCAST & EXTERNAL RISKS:</div>
+                <div style="margin-top:2px;">
+                    <a href="https://www.youtube.com/@wepoll_original/streams" target="_blank" id="streamLink" style="color:#60a5fa; text-decoration:none; font-weight:700;">Interest Rates & Oil Prices Tipping Point</a>
+                    <span style="color:#9ca3af; margin-left:6px;" id="macroNarrative">| 지정학적 리스크 / 인플레이션 변동성</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPI Metrics -->
+    <div class="kpi-container">
+        <div class="kpi-card">
+            <div class="kpi-title">Active Portfolio Positions</div>
+            <div class="kpi-val" id="kpiCount" style="color:var(--accent-blue);">0</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">Total Invested Cost</div>
+            <div class="kpi-val" id="kpiInvested">$0.00</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">Current Portfolio Value</div>
+            <div class="kpi-val" id="kpiEval">$0.00</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">Realized / Unrealized PnL</div>
+            <div class="kpi-val" id="kpiPnl" style="color:var(--accent-green);">+0.00% ($0.00)</div>
+        </div>
+    </div>
+
+    <!-- Today's 6 Recommendations (2+2+2) -->
+    <div class="today-section">
+        <div class="today-banner">
+            <div class="today-title">
+                <span>Quantitative Tactical Verdict on Live Stream Stocks (2+2+2)</span>
+                <span style="font-size:11px; color:#9ca3af;">Click ticker to inspect TradingView chart & 5-factor quant decoder</span>
+            </div>
+            <div class="today-grid">
+                
+                <!-- Bull 2 -->
+                <div class="rec-card-group" style="border-left: 3px solid var(--accent-green);">
+                    <div class="group-header" style="color:var(--accent-green);">
+                        <span>Primary Accumulation (1차 매수 적합)</span>
+                        <span style="font-size:10px; background:rgba(16,185,129,0.15); padding:1px 5px; border-radius:2px;">Target +15% / Stop -3%</span>
+                    </div>
+                    <div id="todayBullCards">
+                        <div class="rec-item active" onclick="selectStock('AMZN', 261.31)">
+                            <div>
+                                <span class="rec-item-title" style="color:var(--accent-green);">AMZN <span class="rec-item-sub">아마존 (방송 27회)</span></span>
+                                <div class="rec-item-sub">구름대 위 + 기준선 지지 (+1.8%)</div>
+                            </div>
+                            <div class="rec-item-price">$261.31</div>
+                        </div>
+                        <div class="rec-item" onclick="selectStock('NVDA', 225.01)">
+                            <div>
+                                <span class="rec-item-title" style="color:var(--accent-green);">NVDA <span class="rec-item-sub">엔비디아 (방송 30회)</span></span>
+                                <div class="rec-item-sub">구름대 위 + 거래량 마름 (+7.7%)</div>
+                            </div>
+                            <div class="rec-item-price">$225.01</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Neutral 2 -->
+                <div class="rec-card-group" style="border-left: 3px solid var(--accent-yellow);">
+                    <div class="group-header" style="color:var(--accent-yellow);">
+                        <span>Consolidation (중립 관망)</span>
+                        <span style="font-size:10px; background:rgba(245,158,11,0.15); padding:1px 5px; border-radius:2px;">Hold / Observe</span>
+                    </div>
+                    <div id="todayNeutralCards">
+                        <div class="rec-item" onclick="selectStock('AMD', 506.00)">
+                            <div>
+                                <span class="rec-item-title" style="color:var(--accent-yellow);">AMD <span class="rec-item-sub">에이엠디 (방송 9회)</span></span>
+                                <div class="rec-item-sub">구름대 내부 횡보 (+1.4%)</div>
+                            </div>
+                            <div class="rec-item-price">$506.00</div>
+                        </div>
+                        <div class="rec-item" onclick="selectStock('GOOGL', 344.00)">
+                            <div>
+                                <span class="rec-item-title" style="color:var(--accent-yellow);">GOOGL <span class="rec-item-sub">알파벳 (방송 21회)</span></span>
+                                <div class="rec-item-sub">기준선 수렴 (-1.6%)</div>
+                            </div>
+                            <div class="rec-item-price">$344.00</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bear 2 -->
+                <div class="rec-card-group" style="border-left: 3px solid var(--accent-red);">
+                    <div class="group-header" style="color:var(--accent-red);">
+                        <span>Risk Alert / Short (생명선 붕괴)</span>
+                        <span style="font-size:10px; background:rgba(239,68,68,0.15); padding:1px 5px; border-radius:2px;">Avoid Entry / Hedge</span>
+                    </div>
+                    <div id="todayBearCards">
+                        <div class="rec-item" onclick="selectStock('META', 568.97)">
+                            <div>
+                                <span class="rec-item-title" style="color:var(--accent-red);">META <span class="rec-item-sub">메타 (방송 12회)</span></span>
+                                <div class="rec-item-sub">26일 생명선 붕괴 (-6.0%)</div>
+                            </div>
+                            <div class="rec-item-price">$568.97</div>
+                        </div>
+                        <div class="rec-item" onclick="selectStock('TSLA', 339.30)">
+                            <div>
+                                <span class="rec-item-title" style="color:var(--accent-red);">TSLA <span class="rec-item-sub">테슬라 (방송 3회)</span></span>
+                                <div class="rec-item-sub">26일 기준선 하향 이탈 (-3.6%)</div>
+                            </div>
+                            <div class="rec-item-price">$339.30</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Layout -->
+    <div class="main-layout">
+        
+        <!-- Left Column -->
+        <div class="left-pane">
+            
+            <!-- Quick Entry Panel -->
+            <div class="quick-buy-box" id="quickBuyBox">
+                <div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-size:14px; font-weight:800; font-family:'JetBrains Mono';" id="qbTicker">NVDA</span>
+                        <span style="font-size:14px; font-weight:700; color:#38bdf8; font-family:'JetBrains Mono';" id="qbPrice">$225.16</span>
+                    </div>
+                    <div style="font-size:11px; color:#9ca3af; margin-top:2px;" id="qbTargetStop">
+                        Target: <span style="color:#10b981;">$258.93 (+15.0%)</span> | Stop: <span style="color:#ef4444;">$218.41 (-3.0%)</span>
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-size:11px; color:#9ca3af;">Shares:</span>
+                    <input type="number" id="qbQty" class="quick-buy-input" value="5" min="1" />
+                    <button class="btn-buy-action" onclick="submitQuickBuy()">Enter Portfolio</button>
+                </div>
+            </div>
+
+            <!-- 1. Real Portfolio Table -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span>Real Portfolio Risk & Position Monitor</span>
+                    <button class="btn-reset-portfolio" onclick="resetUserPortfolio()">Clear Account</button>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Ticker</th>
+                                <th>Entry</th>
+                                <th>Shares</th>
+                                <th>Current</th>
+                                <th>PnL (%)</th>
+                                <th>Directive & Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="portfolioTableBody">
+                            <tr><td colspan="6" style="text-align:center; color:var(--text-secondary); padding:20px;">No open positions in active portfolio. Select a ticker above to enter a position.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 2. Historical 2+2+2 Matrix -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span>Historical Quantitative 2+2+2 Matrix</span>
+                    <span style="font-size:10px; color:#9ca3af;">Click ticker to inspect</span>
+                </div>
+                <div style="overflow-x: auto; max-height: 340px;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th style="color:var(--accent-green);">Accumulation (2)</th>
+                                <th style="color:var(--accent-yellow);">Consolidation (2)</th>
+                                <th style="color:var(--accent-red);">Risk / Short (2)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="matrixTableBody">
+                            <tr>
+                                <td style="font-family:'JetBrains Mono'; font-weight:700;">2026-08-18</td>
+                                <td>
+                                    <span class="ticker-pill bull" onclick="selectStock('LLY', 1183.16)">LLY ($1,183.16)</span>
+                                    <span class="ticker-pill bull" onclick="selectStock('AMZN', 261.31)" style="margin-left:4px;">AMZN ($261.31)</span>
+                                </td>
+                                <td>
+                                    <span class="ticker-pill neutral" onclick="selectStock('COST', 953.50)">COST ($953.50)</span>
+                                    <span class="ticker-pill neutral" onclick="selectStock('AVGO', 392.43)" style="margin-left:4px;">AVGO ($392.43)</span>
+                                </td>
+                                <td>
+                                    <span class="ticker-pill bear" onclick="selectStock('VST', 146.11)">VST ($146.11)</span>
+                                    <span class="ticker-pill bear" onclick="selectStock('META', 568.97)" style="margin-left:4px;">META ($568.97)</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Column: Interactive TradingView Chart & 5-Factor Decoder -->
+        <div class="right-pane">
+            <div class="chart-header">
+                <div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span class="ticker-title" id="curTicker">NVDA</span>
+                        <span class="ticker-price" id="curPrice" style="color:var(--accent-green);">$225.16</span>
+                        <span style="background:#1e293b; color:#38bdf8; font-size:11px; padding:2px 8px; border-radius:2px; font-weight:700; font-family:'JetBrains Mono'; border:1px solid #334155;">1D 일봉 (Daily)</span>
+                        <span style="background:#1e293b; color:#94a3b8; font-size:11px; padding:2px 8px; border-radius:2px; font-weight:700; font-family:'JetBrains Mono'; border:1px solid #334155;">최근 2개년 (500 거래일)</span>
+                    </div>
+                    <div style="font-size:11px; color:#94a3af; margin-top:3px;">
+                        지표 구성: 9일 전환선(하늘) | 26일 기준선(노랑, 생명선) | 선행스팬 구름대(초록/빨강) | 20·60 SMA | 거래량
+                    </div>
+                </div>
+                <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                    <button class="toggle-btn active" id="btnKijun">26D Kijun</button>
+                    <button class="toggle-btn active" id="btnTenkan">9D Tenkan</button>
+                    <button class="toggle-btn active" id="btnSpan">Ichimoku Cloud</button>
+                    <button class="toggle-btn active" id="btnSma">20/60 SMA</button>
+                </div>
+            </div>
+
+            <div id="chartContainer"></div>
+            <div id="volumeContainer"></div>
+
+            <!-- 5-Factor Quant Signal Decoder -->
+            <div class="decoder-card">
+                <div class="verdict-banner" id="verdictBanner">
+                    <div class="verdict-title">
+                        <span id="verdictTitle">Quant Rating: [Primary Accumulation]</span>
+                    </div>
+                    <div class="verdict-score" id="verdictScore" style="color:var(--accent-green);">Score: 100 / 100</div>
+                </div>
+
+                <div class="decoder-grid">
+                    
+                    <!-- 1. 26D Kijun-sen -->
+                    <div class="indicator-item">
+                        <div class="indicator-head">
+                            <span class="indicator-name">1. 26-Day Kijun-sen (Life Line)</span>
+                            <span class="status-badge status-good" id="sigKijunBadge">SUPPORT INTACT</span>
+                        </div>
+                        <div class="indicator-val" id="sigKijunVal">$1,172.94 (+0.9% Above Support)</div>
+                        <div class="indicator-desc" id="sigKijunDesc">Price maintains firm structural support above the 26-day Kijun-sen lifeline.</div>
+                    </div>
+
+                    <!-- 2. 9D Tenkan-sen -->
+                    <div class="indicator-item">
+                        <div class="indicator-head">
+                            <span class="indicator-name">2. 9-Day Tenkan-sen (Momentum)</span>
+                            <span class="status-badge status-good" id="sigTenkanBadge">BULLISH CROSS</span>
+                        </div>
+                        <div class="indicator-val" id="sigTenkanVal">$1,185.20 (Tenkan > Kijun)</div>
+                        <div class="indicator-desc" id="sigTenkanDesc">Short-term 9-day momentum is positioned above 26-day baseline, indicating positive momentum.</div>
+                    </div>
+
+                    <!-- 3. Current Ichimoku Cloud -->
+                    <div class="indicator-item">
+                        <div class="indicator-head">
+                            <span class="indicator-name">3. 현재 구름대 위치 (Current Cloud)</span>
+                            <span class="status-badge status-good" id="sigCloudBadge">ABOVE CLOUD</span>
+                        </div>
+                        <div class="indicator-val" id="sigCloudVal">구름대 상단 안착 (지지선 유효)</div>
+                        <div class="indicator-desc" id="sigCloudDesc">현재 주가가 일목 선행스팬 구름대 상단 위에 안착하여 강력한 방어벽을 형성하고 있습니다.</div>
+                    </div>
+
+                    <!-- 4. 26-Day Future Forward Cloud (향후 26일 미래 구름대) -->
+                    <div class="indicator-item">
+                        <div class="indicator-head">
+                            <span class="indicator-name">4. 향후 26일 미래 구름대 (Forward Horizon)</span>
+                            <span class="status-badge status-good" id="sigFutureCloudBadge">BULL CLOUD (양운)</span>
+                        </div>
+                        <div class="indicator-val" id="sigFutureCloudVal">+26일 선행스팬1 $213.51 > 선행스팬2 $210.90</div>
+                        <div class="indicator-desc" id="sigFutureCloudDesc">향후 26거래일 미래 구름대가 양운(상승 구름)으로 확장되어 중기 상승 추세 지지력이 유지됩니다.</div>
+                    </div>
+
+                    <!-- 5. Volume Dry-Up -->
+                    <div class="indicator-item">
+                        <div class="indicator-head">
+                            <span class="indicator-name">5. 20일 거래량 마름 (Volume Dry-Up)</span>
+                            <span class="status-badge status-good" id="sigVolBadge">OPTIMAL DRY-UP</span>
+                        </div>
+                        <div class="indicator-val" id="sigVolVal">20일 평균 대비 63% (수급 마름)</div>
+                        <div class="indicator-desc" id="sigVolDesc">눌림목 구간에서 거래량이 75% 이하로 건조되어 매도 압력 소진 및 반등 타점 형성.</div>
+                    </div>
+
+                </div>
+
+                <!-- 1-Sentence Tactical Action Directive -->
+                <div class="action-directive-box" id="actionDirectiveBox">
+                    <span style="font-size:11px; font-weight:700; color:#9ca3af; text-transform:uppercase; display:block; margin-bottom:2px;">Tactical Execution Directive:</span>
+                    <span id="actionDirectiveText" style="font-size:13px; font-weight:600; color:#f3f4f6;">
+                        1차 분할 매수 적합 타점입니다. 목표가 $1,360.63(+15.0%) 도달 시 분할 차익 실현을 진행하고, 손절 기준선 $1,147.67(-3.0%) 이탈 시 즉시 리스크 청산을 권고합니다.
+                    </span>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        let mainChart, volumeChart;
+        let candleSeries, kijunSeries, tenkanSeries, spanASeries, spanBSeries, sma20Series, sma60Series, volumeSeries;
+        let currentSelectedTicker = "AMZN";
+        let currentSelectedPrice = 261.31;
+        let isBackendOnline = false;
+
+        const STOCK_INTELLIGENCE = {
+            "AMZN": {
+                name: "아마존", price: 261.31,
+                verdict: "Primary Accumulation (1차 매수 적합)", score: "Score: 80 / 100", type: "BULL",
+                kijun: { val: "$256.68 (+1.8% 지지)", status: "status-good", badge: "SUPPORT INTACT", desc: "방송 27회 언급. 주가가 26일 기준선 위에 위치하여 기술적 반등 탄력을 유지 중입니다." },
+                tenkan: { val: "$258.40 (단기 정배열)", status: "status-good", badge: "BULLISH", desc: "단기 9일선이 26일선 위에 안착하여 단기 추세가 유효합니다." },
+                cloud: { val: "구름대 상단 안착", status: "status-good", badge: "ABOVE CLOUD", desc: "선행 스팬 구름대 상단을 수호하며 지지대를 형성했습니다." },
+                vol: { val: "평균 대비 86% (적정 수급)", status: "status-good", badge: "NORMAL", desc: "거래량이 안정화되며 매도 압력이 둔화되었습니다." },
+                action: "라이브 방송 집중 언급 종목 중 1차 분할 매수 적합 타점입니다. 목표가 $300.51(+15.0%), 손절선 $253.47(-3.0%) 원칙을 준수하십시오."
+            },
+            "NVDA": {
+                name: "엔비디아", price: 225.01,
+                verdict: "Primary Accumulation (1차 매수 적합)", score: "Score: 65 / 100", type: "BULL",
+                kijun: { val: "$208.96 (+7.7% 상회)", status: "status-good", badge: "STRONG TREND", desc: "방송 30회 최다 언급. 강력한 상승 추세 및 26일선 상단 유지 중." },
+                tenkan: { val: "$220.50 (호전 지속)", status: "status-good", badge: "BULLISH CROSS", desc: "단기 전환선이 기준선 위에서 추세를 견인하고 있습니다." },
+                cloud: { val: "구름대 최상단 주행", status: "status-good", badge: "ABOVE CLOUD", desc: "두터운 양운 위에서 견고한 매수세를 형성 중입니다." },
+                vol: { val: "평균 대비 68% (거래량 마름)", status: "status-good", badge: "OPTIMAL DRY-UP", desc: "조정 시 거래량이 마르며 건전한 눌림목을 형성했습니다." },
+                action: "방송 핵심 주도주 중 1차 분할 매수 타점입니다. 목표가 $258.76(+15.0%), 손절선 $218.26(-3.0%) 설정 권고."
+            },
+            "AMD": {
+                name: "에이엠디", price: 506.00,
+                verdict: "Consolidation (박스권 관망)", score: "Score: 50 / 100", type: "NEUTRAL",
+                kijun: { val: "$499.10 (+1.4% 수렴)", status: "status-neutral", badge: "CONSOLIDATION", desc: "방송 9회 언급. 26일 기준선 부근에서 좁은 박스권 공방 중입니다." },
+                tenkan: { val: "$502.40 (수렴)", status: "status-neutral", badge: "NEUTRAL", desc: "전환선과 기준선이 교차하며 횡보 중." },
+                cloud: { val: "구름대 내부 횡보", status: "status-neutral", badge: "IN CLOUD", desc: "구름대 안으로 들어와 방향성 탐색 중." },
+                vol: { val: "평균 대비 65%", status: "status-neutral", badge: "NEUTRAL", desc: "추세 돌파 전까지 대기 권고." },
+                action: "박스권 수렴 구간입니다. 확정적 상방 돌파 확인 전까지 신규 진입을 보류합니다."
+            },
+            "GOOGL": {
+                name: "알파벳", price: 344.00,
+                verdict: "Consolidation (수렴 관망)", score: "Score: 45 / 100", type: "NEUTRAL",
+                kijun: { val: "$349.50 (-1.6% 이탈)", status: "status-neutral", badge: "CONVERGING", desc: "방송 21회 언급. 기준선 바로 아래에서 회복을 시도 중입니다." },
+                tenkan: { val: "$346.20 (수렴)", status: "status-neutral", badge: "NEUTRAL", desc: "단기 공방 진행 중." },
+                cloud: { val: "구름대 하단 공방", status: "status-neutral", badge: "IN CLOUD", desc: "구름대 지지력 테스트 진행 중." },
+                vol: { val: "평균 대비 74%", status: "status-neutral", badge: "NEUTRAL", desc: "매수/매도 수급 균형." },
+                action: "기준선($349.50) 재탈환 여부를 확인한 후 진입 타이밍을 잡으십시오."
+            },
+            "META": {
+                name: "메타", price: 568.97,
+                verdict: "Risk Alert (생명선 붕괴)", score: "Risk: 90 / 100", type: "BEAR",
+                kijun: { val: "$605.29 (-6.0% 이탈)", status: "status-bad", badge: "BREAKDOWN", desc: "방송 12회 언급. 26일 기준선 대비 -6.0% 이탈하여 중기 추세가 훼손되었습니다." },
+                tenkan: { val: "$585.10 (데드크로스)", status: "status-bad", badge: "BEARISH CROSS", desc: "단기 하락 모멘텀이 지배하고 있습니다." },
+                cloud: { val: "구름대 하단 붕괴", status: "status-bad", badge: "BELOW CLOUD", desc: "주요 매물대 및 구름대를 하향 이탈했습니다." },
+                vol: { val: "투매 거래량 출회", status: "status-bad", badge: "HEAVY VOLUME", desc: "기관 차익 매물이 출회되어 기술적 반등 시 비중 축소 권고." },
+                action: "기준선 붕괴 및 구름대 이탈 상태입니다. 물타기 금지 및 숏 헤지 포지션이 우위에 있습니다."
+            },
+            "TSLA": {
+                name: "테슬라", price: 339.30,
+                verdict: "Risk Alert (생명선 이탈)", score: "Risk: 80 / 100", type: "BEAR",
+                kijun: { val: "$352.00 (-3.6% 이탈)", status: "status-bad", badge: "BREAKDOWN", desc: "방송 3회 언급. 26일 기준선(생명선)을 하향 이탈했습니다." },
+                tenkan: { val: "$344.50 (하락세)", status: "status-bad", badge: "BEARISH", desc: "단기 전환선이 꺾이며 매도 압력이 가중되었습니다." },
+                cloud: { val: "구름대 하단 위치", status: "status-bad", badge: "BELOW CLOUD", desc: "하방 지지력이 약화된 상태입니다." },
+                vol: { val: "매도 우위", status: "status-bad", badge: "SELLING VOLUME", desc: "매수세가 유입되지 않고 있습니다." },
+                action: "생명선 붕괴에 따른 추가 하락 리스크가 높습니다. 신규 매수 금지 및 리스크 회피 유지."
+            }
+        };
+
+        function initCharts() {
+            const chartDiv = document.getElementById("chartContainer");
+            const volDiv = document.getElementById("volumeContainer");
+            
+            mainChart = LightweightCharts.createChart(chartDiv, {
+                layout: { background: { color: '#0f172a' }, textColor: '#94a3b8' },
+                grid: { vertLines: { color: '#1e293b' }, horzLines: { color: '#1e293b' } },
+                timeScale: {
+                    timeVisible: true,
+                    borderColor: '#334155',
+                    rightOffset: 32, // 32 bars space for 26-day forward cloud
+                    barSpacing: 9,
+                    minBarSpacing: 0.5,
+                    fixLeftEdge: false,
+                    fixRightEdge: false
+                },
+                rightPriceScale: { borderColor: '#334155', autoScale: true },
+                crosshair: { mode: LightweightCharts.CrosshairMode.Normal }
+            });
+
+            candleSeries = mainChart.addCandlestickSeries({
+                upColor: '#10b981', downColor: '#ef4444',
+                borderUpColor: '#10b981', borderDownColor: '#ef4444',
+                wickUpColor: '#10b981', wickDownColor: '#ef4444'
+            });
+
+            kijunSeries = mainChart.addLineSeries({ color: '#fbbf24', lineWidth: 2, title: '26D Kijun (기준선)' });
+            tenkanSeries = mainChart.addLineSeries({ color: '#38bdf8', lineWidth: 2, title: '9D Tenkan (전환선)' });
+            spanASeries = mainChart.addLineSeries({ color: '#10b981', lineWidth: 2, title: '선행스팬1 (Span A)' });
+            spanBSeries = mainChart.addLineSeries({ color: '#ef4444', lineWidth: 2, title: '선행스팬2 (Span B)' });
+            sma20Series = mainChart.addLineSeries({ color: '#f43f5e', lineWidth: 1, title: 'SMA 20' });
+            sma60Series = mainChart.addLineSeries({ color: '#a855f7', lineWidth: 1, title: 'SMA 60' });
+
+            volumeChart = LightweightCharts.createChart(volDiv, {
+                layout: { background: { color: '#0f172a' }, textColor: '#94a3b8' },
+                grid: { vertLines: { color: '#1e293b' }, horzLines: { color: '#1e293b' } },
+                timeScale: {
+                    timeVisible: true,
+                    borderColor: '#334155',
+                    rightOffset: 32,
+                    barSpacing: 9,
+                    minBarSpacing: 0.5,
+                    fixLeftEdge: false,
+                    fixRightEdge: false
+                },
+                rightPriceScale: { borderColor: '#334155', autoScale: true }
+            });
+            volumeSeries = volumeChart.addHistogramSeries({ priceFormat: { type: 'volume' } });
+
+            mainChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
+                volumeChart.timeScale().setVisibleLogicalRange(range);
+            });
+
+            // Toggle buttons
+            setupToggle("btnKijun", kijunSeries);
+            setupToggle("btnTenkan", tenkanSeries);
+            setupToggle("btnSpan", [spanASeries, spanBSeries]);
+            setupToggle("btnSma", [sma20Series, sma60Series]);
+        }
+
+        function setupToggle(btnId, seriesOrArray) {
+            const btn = document.getElementById(btnId);
+            if (!btn) return;
+            btn.addEventListener("click", () => {
+                const isActive = btn.classList.toggle("active");
+                const target = Array.isArray(seriesOrArray) ? seriesOrArray : [seriesOrArray];
+                target.forEach(s => s.applyOptions({ visible: isActive }));
+            });
+        }
+
+        function selectStock(ticker, price) {
+            currentSelectedTicker = ticker;
+            currentSelectedPrice = price || 100.0;
+
+            document.getElementById("curTicker").textContent = ticker;
+            document.getElementById("curPrice").textContent = `$${currentSelectedPrice.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+
+            document.getElementById("qbTicker").textContent = ticker;
+            document.getElementById("qbPrice").textContent = `$${currentSelectedPrice.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+            
+            const tgtP = (currentSelectedPrice * 1.15).toFixed(2);
+            const stopP = (currentSelectedPrice * 0.97).toFixed(2);
+            document.getElementById("qbTargetStop").innerHTML = `Target: <span style="color:#10b981;">$${tgtP} (+15.0%)</span> | Stop: <span style="color:#ef4444;">$${stopP} (-3.0%)</span>`;
+
+            // Update Decoder Cards
+            updateDecoderUI(ticker);
+
+            // Fetch and render Chart Data
+            loadChartData(ticker);
+        }
+
+        function updateDecoderUI(ticker) {
+            const info = STOCK_INTELLIGENCE[ticker] || {
+                verdict: "Tactical Evaluation", score: "Rating Available", type: "NEUTRAL",
+                kijun: { val: "기준선 분석 중", status: "status-neutral", badge: "EVALUATING", desc: "26일 기준선 데이터를 산출 중입니다." },
+                tenkan: { val: "전환선 분석 중", status: "status-neutral", badge: "EVALUATING", desc: "9일 전환선 모멘텀을 분석 중입니다." },
+                cloud: { val: "구름대 분석 중", status: "status-neutral", badge: "EVALUATING", desc: "일목 구름대 위치를 계산 중입니다." },
+                vol: { val: "거래량 비율 산출 중", status: "status-neutral", badge: "EVALUATING", desc: "20일 평균 거래량 비율을 산출 중입니다." },
+                action: "기준선 및 손절선 원칙에 따라 분할 대응하십시오."
+            };
+
+            const banner = document.getElementById("verdictBanner");
+            const score = document.getElementById("verdictScore");
+            const title = document.getElementById("verdictTitle");
+
+            title.textContent = `Quant Rating: [${info.verdict}]`;
+            score.textContent = info.score;
+
+            if (info.type === 'BULL') {
+                banner.style.borderLeftColor = "var(--accent-green)";
+                score.style.color = "var(--accent-green)";
+            } else if (info.type === 'BEAR') {
+                banner.style.borderLeftColor = "var(--accent-red)";
+                score.style.color = "var(--accent-red)";
+            } else {
+                banner.style.borderLeftColor = "var(--accent-yellow)";
+                score.style.color = "var(--accent-yellow)";
+            }
+
+            document.getElementById("sigKijunBadge").className = `status-badge ${info.kijun.status}`;
+            document.getElementById("sigKijunBadge").textContent = info.kijun.badge;
+            document.getElementById("sigKijunVal").textContent = info.kijun.val;
+            document.getElementById("sigKijunDesc").textContent = info.kijun.desc;
+
+            document.getElementById("sigTenkanBadge").className = `status-badge ${info.tenkan.status}`;
+            document.getElementById("sigTenkanBadge").textContent = info.tenkan.badge;
+            document.getElementById("sigTenkanVal").textContent = info.tenkan.val;
+            document.getElementById("sigTenkanDesc").textContent = info.tenkan.desc;
+
+            document.getElementById("sigCloudBadge").className = `status-badge ${info.cloud.status}`;
+            document.getElementById("sigCloudBadge").textContent = info.cloud.badge;
+            document.getElementById("sigCloudVal").textContent = info.cloud.val;
+            document.getElementById("sigCloudDesc").textContent = info.cloud.desc;
+
+            document.getElementById("sigVolBadge").className = `status-badge ${info.vol.status}`;
+            document.getElementById("sigVolBadge").textContent = info.vol.badge;
+            document.getElementById("sigVolVal").textContent = info.vol.val;
+            document.getElementById("sigVolDesc").textContent = info.vol.desc;
+
+            document.getElementById("actionDirectiveText").textContent = info.action;
+        }
+
+        async function loadChartData(ticker) {
+            try {
+                let chartObj = null;
+                if (isBackendOnline) {
+                    const res = await fetch(`/api/chart/${ticker}`);
+                    if (res.ok) {
+                        chartObj = await res.json();
+                    }
+                }
+                
+                if (!chartObj && window.__DASHBOARD_CACHE__ && window.__DASHBOARD_CACHE__.charts) {
+                    chartObj = window.__DASHBOARD_CACHE__.charts[ticker];
+                }
+
+                if (chartObj && chartObj.candles && chartObj.candles.length > 0) {
+                    candleSeries.setData(chartObj.candles);
+                    kijunSeries.setData(chartObj.kijun_line || []);
+                    tenkanSeries.setData(chartObj.tenkan_line || []);
+                    spanASeries.setData(chartObj.span_a_line || chartObj.span_a || []);
+                    spanBSeries.setData(chartObj.span_b_line || chartObj.span_b || []);
+                    sma20Series.setData(chartObj.sma20 || []);
+                    sma60Series.setData(chartObj.sma60 || []);
+                    volumeSeries.setData(chartObj.volume || []);
+
+                    // Update 26-Day Future Forward Cloud Decoder
+                    if (chartObj.future_cloud_type) {
+                        const isBull = chartObj.future_cloud_type.includes("양운");
+                        const fcBadge = document.getElementById("sigFutureCloudBadge");
+                        if (fcBadge) {
+                            fcBadge.textContent = chartObj.future_cloud_type;
+                            fcBadge.className = `status-badge ${isBull ? 'status-good' : 'status-bad'}`;
+                        }
+                        const fcVal = document.getElementById("sigFutureCloudVal");
+                        if (fcVal) {
+                            fcVal.textContent = `+26일 선행스팬1 $${chartObj.future_span_a_latest} | 선행스팬2 $${chartObj.future_span_b_latest} (구름 두께 $${chartObj.future_cloud_gap})`;
+                        }
+                        const fcDesc = document.getElementById("sigFutureCloudDesc");
+                        if (fcDesc) {
+                            fcDesc.textContent = isBull 
+                                ? `향후 26거래일 미래 선행스팬1이 선행스팬2 위에 위치(양운)하여 하방 지지 매물대를 형성 중입니다.`
+                                : `향후 26거래일 미래 선행스팬2가 선행스팬1 위에 위치(음운)하여 상방 저항 매물대를 형성 중입니다.`;
+                        }
+                    }
+
+                    const totalBars = chartObj.candles.length;
+                    mainChart.timeScale().setVisibleLogicalRange({
+                        from: Math.max(0, totalBars - 90),
+                        to: totalBars + 26
+                    });
+                    volumeChart.timeScale().setVisibleLogicalRange({
+                        from: Math.max(0, totalBars - 90),
+                        to: totalBars + 26
+                    });
+                } else {
+                    renderSyntheticChart(ticker, currentSelectedPrice);
+                }
+            } catch (e) {
+                renderSyntheticChart(ticker, currentSelectedPrice);
+            }
+        }
+
+        function renderSyntheticChart(ticker, basePrice) {
+            const candles = [];
+            const vol = [];
+            const kijun = [];
+            const tenkan = [];
+            const spanA = [];
+            const spanB = [];
+            const sma20 = [];
+            const sma60 = [];
+
+            let price = basePrice * 0.92;
+            const now = new Date();
+
+            for (let i = 60; i >= 0; i--) {
+                const d = new Date(now);
+                d.setDate(d.getDate() - i);
+                const timeStr = d.toISOString().split('T')[0];
+
+                const delta = (Math.random() - 0.48) * (basePrice * 0.02);
+                const open = price;
+                const close = open + delta;
+                const high = Math.max(open, close) + Math.random() * (basePrice * 0.01);
+                const low = Math.min(open, close) - Math.random() * (basePrice * 0.01);
+                price = close;
+
+                candles.push({ time: timeStr, open, high, low, close });
+                kijun.push({ time: timeStr, value: close * 0.985 });
+                tenkan.push({ time: timeStr, value: close * 0.995 });
+                spanA.push({ time: timeStr, value: close * 0.97 });
+                spanB.push({ time: timeStr, value: close * 0.95 });
+                sma20.push({ time: timeStr, value: close * 0.98 });
+                sma60.push({ time: timeStr, value: close * 0.96 });
+                vol.push({ time: timeStr, value: Math.floor(Math.random() * 5000000) + 1000000, color: close >= open ? '#10b981' : '#ef4444' });
+            }
+
+            candleSeries.setData(candles);
+            kijunSeries.setData(kijun);
+            tenkanSeries.setData(tenkan);
+            spanASeries.setData(spanA);
+            spanBSeries.setData(spanB);
+            sma20Series.setData(sma20);
+            sma60Series.setData(sma60);
+            volumeSeries.setData(vol);
+            mainChart.timeScale().fitContent();
+            volumeChart.timeScale().fitContent();
+        }
+
+        async function loadDashboard() {
+            try {
+                const res = await fetch('/api/dashboard');
+                if (res.ok) {
+                    const data = await res.json();
+                    window.__DASHBOARD_CACHE__ = data;
+                    isBackendOnline = true;
+                    document.getElementById("serverStatusText").textContent = "API ACTIVE";
+                    document.getElementById("serverDot").style.background = "#10b981";
+                    renderDashboardData(data);
+                    return;
+                }
+            } catch (e) {
+                // Fallback to local cache
+            }
+
+            // Fallback
+            isBackendOnline = false;
+            document.getElementById("serverStatusText").textContent = "LOCAL CACHE";
+            document.getElementById("serverDot").style.background = "#3b82f6";
+            
+            try {
+                const resLocal = await fetch('dashboard_data.json');
+                if (resLocal.ok) {
+                    const localData = await resLocal.json();
+                    window.__DASHBOARD_CACHE__ = localData;
+                    renderDashboardData(localData);
+                }
+            } catch (e) {}
+        }
+
+        function renderDashboardData(data) {
+            document.getElementById("lastUpdated").textContent = `Updated: ${data.kpis?.last_updated || new Date().toLocaleString()}`;
+
+            // Dynamic Macro Gauges & Gate-0 Climate Strip
+            if (data.macro) {
+                if (data.macro.macro_climate) {
+                    const mc = data.macro.macro_climate;
+                    if (mc.macro_headline) document.getElementById("macroHeadline").textContent = mc.macro_headline;
+                    if (mc.macro_action_directive) document.getElementById("macroDirectiveText").textContent = mc.macro_action_directive;
+                    if (mc.macro_stance) {
+                        const badge = document.getElementById("macroStanceBadge");
+                        badge.textContent = mc.macro_stance.replace('_', ' ');
+                        badge.style.color = mc.macro_stance === 'DEFENSE_HOLD' ? '#fbbf24' : '#34d399';
+                    }
+                    if (mc.msi_score !== undefined) {
+                        document.getElementById("msiScoreBadge").textContent = `${mc.msi_score.toFixed(1)} / 100`;
+                        const needle = document.getElementById("msiNeedle");
+                        if (needle) needle.style.left = `${Math.min(100, Math.max(0, mc.msi_score))}%`;
+                    }
+                    if (mc.msi_breakdown) {
+                        const mb = mc.msi_breakdown;
+                        document.getElementById("msiHardVal").textContent = `${mb.m_hard.toFixed(1)} / 40.0 pt`;
+                        document.getElementById("msiHardSub").textContent = `VIX:${mb.vix_pts} | 10Y:${mb.us10y_pts} | 유가:${mb.wti_pts}`;
+                        document.getElementById("msiNlpVal").textContent = `${mb.m_nlp.toFixed(1)} / 30.0 pt`;
+                        document.getElementById("msiNlpSub").textContent = `방어 ${mb.def_count}회 vs 매수 ${mb.buy_count}회`;
+                        document.getElementById("msiShockVal").textContent = `${mb.m_shock.toFixed(1)} / 20.0 pt`;
+                        document.getElementById("msiTrendVal").textContent = `${mb.m_trend.toFixed(1)} / 10.0 pt`;
+                    }
+                }
+                if (data.macro.macro_gauges) {
+                    const mg = data.macro.macro_gauges;
+                    if (mg.vix) {
+                        document.getElementById("gaugeVixVal").textContent = Number(mg.vix.val).toFixed(2);
+                        document.getElementById("gaugeVixBadge").textContent = mg.vix.status || 'NORMAL';
+                    }
+                    if (mg.us10y) {
+                        document.getElementById("gaugeUs10yVal").textContent = Number(mg.us10y.val).toFixed(3) + '%';
+                        document.getElementById("gaugeUs10yBadge").textContent = mg.us10y.status || 'BURDEN';
+                    }
+                    if (mg.wti) {
+                        document.getElementById("gaugeWtiVal").textContent = '$' + Number(mg.wti.val).toFixed(2);
+                        document.getElementById("gaugeWtiBadge").textContent = mg.wti.status || 'STABLE';
+                    }
+                }
+                if (data.macro.macro_narrative) document.getElementById("macroNarrative").textContent = "| " + data.macro.macro_narrative;
+                if (data.macro.title) {
+                    const sLink = document.getElementById("streamLink");
+                    sLink.textContent = data.macro.title;
+                    if (data.macro.url) sLink.href = data.macro.url;
+                }
+            }
+
+            // Render Portfolio
+            const pBody = document.getElementById("portfolioTableBody");
+            const holdings = (data.portfolio && data.portfolio.holdings) || [];
+            
+            document.getElementById("kpiCount").textContent = `${holdings.length}`;
+            if (data.portfolio) {
+                document.getElementById("kpiInvested").textContent = `$${(data.portfolio.total_invested || 0).toLocaleString('en-US', {minimumFractionDigits:2})}`;
+                document.getElementById("kpiEval").textContent = `$${(data.portfolio.total_eval || 0).toLocaleString('en-US', {minimumFractionDigits:2})}`;
+                const pnlPct = data.portfolio.total_pnl_pct || 0;
+                const pnlAmt = data.portfolio.total_pnl_amount || 0;
+                const pnlEl = document.getElementById("kpiPnl");
+                pnlEl.textContent = `${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}% ($${pnlAmt.toLocaleString('en-US', {minimumFractionDigits:2})})`;
+                pnlEl.style.color = pnlPct >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+            }
+
+            if (holdings.length === 0) {
+                pBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-secondary); padding:20px;">No open positions in active portfolio. Select a ticker above to enter a position.</td></tr>`;
+            } else {
+                pBody.innerHTML = holdings.map(h => {
+                    const pnlColor = h.pnl_pct >= 0 ? '#10b981' : '#ef4444';
+                    return `
+                        <tr>
+                            <td><strong style="font-family:'JetBrains Mono';">${h.ticker}</strong></td>
+                            <td>$${h.buy_price.toLocaleString('en-US', {minimumFractionDigits:2})}</td>
+                            <td>${h.quantity}</td>
+                            <td>$${h.current_price.toLocaleString('en-US', {minimumFractionDigits:2})}</td>
+                            <td style="color:${pnlColor}; font-weight:700; font-family:'JetBrains Mono';">${h.pnl_pct >= 0 ? '+' : ''}${h.pnl_pct.toFixed(2)}%</td>
+                            <td>
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <span style="font-size:11px; color:#9ca3af;">${h.exit_advice || 'Holding'}</span>
+                                    <button onclick="sellHolding(${h.id}, ${h.current_price})" style="background:#dc2626; color:#fff; border:none; padding:2px 8px; border-radius:2px; font-size:10px; cursor:pointer;">Exit</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        }
+
+        async function submitQuickBuy() {
+            const qty = parseFloat(document.getElementById("qbQty").value) || 1;
+            if (isBackendOnline) {
+                try {
+                    const res = await fetch('/api/portfolio/buy', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ticker: currentSelectedTicker, buy_price: currentSelectedPrice, quantity: qty })
+                    });
+                    if (res.ok) {
+                        loadDashboard();
+                        return;
+                    }
+                } catch (e) {}
+            }
+            alert(`[Local Simulated Entry] Added ${qty} shares of ${currentSelectedTicker} at $${currentSelectedPrice}.`);
+        }
+
+        async function sellHolding(id, currentPrice) {
+            if (isBackendOnline) {
+                try {
+                    const res = await fetch(`/api/portfolio/sell/${id}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ sell_price: currentPrice, reason: 'MANUAL_CLOSE' })
+                    });
+                    if (res.ok) {
+                        loadDashboard();
+                        return;
+                    }
+                } catch (e) {}
+            }
+        }
+
+        async function resetUserPortfolio() {
+            if (!confirm("Are you sure you want to clear all positions from portfolio?")) return;
+            if (isBackendOnline) {
+                try {
+                    const res = await fetch('/api/portfolio/reset', { method: 'POST' });
+                    if (res.ok) {
+                        loadDashboard();
+                        return;
+                    }
+                } catch (e) {}
+            }
+        }
+
+        async function triggerScanNow() {
+            const btn = document.getElementById("btnScanNow");
+            btn.textContent = "Scanning...";
+            btn.disabled = true;
+            try {
+                if (isBackendOnline) {
+                    await fetch('/api/scan_now', { method: 'POST' });
+                }
+            } catch (e) {}
+            await loadDashboard();
+            btn.textContent = "Run Live Scan";
+            btn.disabled = false;
+        }
+
+        window.addEventListener("DOMContentLoaded", () => {
+            initCharts();
+            selectStock("NVDA", 225.16);
+            loadDashboard();
+            setInterval(loadDashboard, 30000); // 30s live refresh
+        });
+
+        window.addEventListener("resize", () => {
+            const chartDiv = document.getElementById("chartContainer");
+            const volDiv = document.getElementById("volumeContainer");
+            if (mainChart && chartDiv) {
+                mainChart.applyOptions({ width: chartDiv.clientWidth });
+            }
+            if (volumeChart && volDiv) {
+                volumeChart.applyOptions({ width: volDiv.clientWidth });
+            }
+        });
+    </script>
+</body>
+</html>

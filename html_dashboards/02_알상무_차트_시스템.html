@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>알상무 실전 퀀트 차트 분석 시스템 (Al-Sangmoo Quant Terminal)</title>
+    <!-- Lightweight Charts from TradingView -->
+    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-card: #21262d;
+            --border-color: #30363d;
+            --text-primary: #f0f6fc;
+            --text-muted: #8b949e;
+            --accent-pink: #ff6496; /* 알상무 분홍색 지지선 */
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-gold: #e3b341;
+            --accent-blue: #58a6ff;
+            --cloud-bull: rgba(63, 185, 80, 0.18);
+            --cloud-bear: rgba(248, 81, 73, 0.18);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Pretendard', -apple-system, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        header {
+            background-color: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand h1 {
+            font-size: 1.15rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .brand .badge {
+            background: linear-gradient(135deg, #ff6496, #ff2d55);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .macro-bar {
+            display: flex;
+            gap: 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+            background-color: var(--bg-card);
+            padding: 6px 14px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        .macro-item {
+            display: flex;
+            gap: 6px;
+        }
+
+        .macro-item .label { color: var(--text-muted); }
+        .macro-item .val-red { color: var(--accent-red); font-weight: 700; }
+        .macro-item .val-green { color: var(--accent-green); font-weight: 700; }
+        .macro-item .val-gold { color: var(--accent-gold); font-weight: 700; }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            flex: 1;
+            gap: 1px;
+            background-color: var(--border-color);
+        }
+
+        .chart-section {
+            background-color: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .chart-toolbar {
+            padding: 10px 16px;
+            background-color: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+        }
+
+        .symbol-selector {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-sym {
+            background-color: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 5px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-sym.active {
+            background-color: var(--accent-pink);
+            color: white;
+            border-color: var(--accent-pink);
+        }
+
+        .indicator-legend {
+            display: flex;
+            gap: 14px;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
+
+        .legend-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 4px;
+        }
+
+        #chart-container {
+            flex: 1;
+            min-height: 520px;
+            width: 100%;
+        }
+
+        #volume-container {
+            height: 140px;
+            width: 100%;
+            border-top: 1px solid var(--border-color);
+        }
+
+        /* Sidebar Protocol Panel */
+        .sidebar {
+            background-color: var(--bg-secondary);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+        }
+
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 14px;
+        }
+
+        .card h3 {
+            font-size: 0.88rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .signal-box {
+            padding: 12px;
+            border-radius: 6px;
+            border-left: 4px solid var(--accent-pink);
+            background-color: rgba(255, 100, 150, 0.08);
+            margin-bottom: 10px;
+        }
+
+        .signal-title {
+            font-weight: 700;
+            font-size: 0.95rem;
+            margin-bottom: 4px;
+            color: var(--accent-pink);
+        }
+
+        .signal-desc {
+            font-size: 0.8rem;
+            line-height: 1.4;
+            color: var(--text-primary);
+        }
+
+        .checklist {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 0.82rem;
+        }
+
+        .checklist li {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .check-icon {
+            color: var(--accent-green);
+            font-weight: 700;
+        }
+        .cross-icon {
+            color: var(--accent-red);
+            font-weight: 700;
+        }
+
+        .quote-box {
+            font-size: 0.8rem;
+            font-style: italic;
+            color: var(--accent-gold);
+            border-left: 3px solid var(--accent-gold);
+            padding-left: 10px;
+            margin-top: 8px;
+            line-height: 1.4;
+        }
+
+        .formula-tag {
+            display: inline-block;
+            background-color: var(--bg-primary);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--accent-blue);
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="brand">
+        <h1><span>🏛️</span> 알상무 실전 퀀트 차트 분석 시스템 <span class="badge">R's QUANT 3.0</span></h1>
+    </div>
+    <div class="macro-bar">
+        <div class="macro-item"><span class="label">환율(USDKRW):</span> <span class="val-red">1,382.5원 (위험)</span></div>
+        <div class="macro-item"><span class="label">미 10년물:</span> <span class="val-gold">4.28%</span></div>
+        <div class="macro-item"><span class="label">시장 국면:</span> <span class="val-green">가을 (빈집 선점기)</span></div>
+    </div>
+</header>
+
+<div class="main-container">
+    <!-- Chart Area -->
+    <div class="chart-section">
+        <div class="chart-toolbar">
+            <div class="symbol-selector">
+                <button class="btn-sym active" onclick="changeStock('SK하이닉스')">SK하이닉스</button>
+                <button class="btn-sym" onclick="changeStock('삼성전자')">삼성전자</button>
+                <button class="btn-sym" onclick="changeStock('엔비디아')">NVDA</button>
+                <button class="btn-sym" onclick="changeStock('테슬라')">TSLA</button>
+            </div>
+            <div class="indicator-legend">
+                <span><span class="legend-dot" style="background:#ff6496"></span>분홍색 지지선</span>
+                <span><span class="legend-dot" style="background:#e3b341"></span>기준선(26)</span>
+                <span><span class="legend-dot" style="background:#58a6ff"></span>전환선(9)</span>
+                <span><span class="legend-dot" style="background:rgba(63,185,80,0.6)"></span>일목 구름대</span>
+                <span><span class="legend-dot" style="background:#a371f7"></span>60일 수급선</span>
+            </div>
+        </div>
+
+        <div id="chart-container"></div>
+        <div id="volume-container"></div>
+    </div>
+
+    <!-- Right Sidebar Intelligence -->
+    <div class="sidebar">
+        <!-- Live Persona Diagnosis -->
+        <div class="card">
+            <h3>⚡️ 실시간 알상무 진단 <span class="badge" style="background:var(--accent-pink)">ㅎㅈ 확정</span></h3>
+            <div class="signal-box">
+                <div class="signal-title" id="signal-state">일목 구름대 상단 지지 안착</div>
+                <div class="signal-desc" id="signal-message">
+                    "주가가 구름대 위에 딱 걸쳐있고 20일선 눌림목에서 거래량이 바짝 말랐죠? 1차 분할 매수 타점입니다. 단, 26일 기준선 깨지면 칼손절 치세요."
+                </div>
+            </div>
+            <div class="quote-box" id="quote-text">
+                "지금 팔면 안 돼. 지난주에 팔았어야 돼. 하지만 기준선 무너지면 미련 없이 던져라."
+            </div>
+        </div>
+
+        <!-- 4-Stage Checklist -->
+        <div class="card">
+            <h3>📋 4단계 알상무 검증 체크리스트</h3>
+            <ul class="checklist" id="checklist-items">
+                <li><span class="check-icon">✓</span> <strong>일목 구름대:</strong> 주가가 구름대 상단에 안착</li>
+                <li><span class="check-icon">✓</span> <strong>기준선(26일선):</strong> 기준선 위에서 양봉 지지</li>
+                <li><span class="check-icon">✓</span> <strong>거래량(Volume):</strong> 조정 시 거래량 급감(Dry-up)</li>
+                <li><span class="cross-icon">✕</span> <strong>환율 리스크:</strong> 1,380원 상회로 외인 수급 주의</li>
+            </ul>
+        </div>
+
+        <!-- Quantitative Formula Card -->
+        <div class="card">
+            <h3>📐 차트 콤보 수식 정의</h3>
+            <div style="font-size:0.8rem; color:var(--text-muted); line-height: 1.5;">
+                <strong>1. 매수 트리거 (Buy):</strong><br>
+                <span class="formula-tag">Close > SpanA && Close > Kijun && Tenkan > Kijun && Vol < SMA(Vol,20)*0.7</span><br><br>
+                <strong>2. 숏/칼손절 트리거 (Stop/Short):</strong><br>
+                <span class="formula-tag">Close < Kijun(26) || Close < Pink_Trend_Line</span>
+            </div>
+        </div>
+
+        <!-- Money Management Protocol -->
+        <div class="card">
+            <h3>🛡️ 자금 관리 & 비중 헌법</h3>
+            <div style="font-size:0.82rem; line-height:1.6;">
+                • <strong>1차 진입:</strong> 계좌의 30% (기준선 지지 시)<br>
+                • <strong>2차 불타기:</strong> 계좌의 40% (전고점 돌파 시)<br>
+                • <strong>영구 현금 버퍼:</strong> 20% 상시 달러/현금 유지<br>
+                • <strong>손절 룰:</strong> 매수가 대비 -3% 도달 시 칼손절
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Initialize Chart
+    const chartContainer = document.getElementById('chart-container');
+    const volumeContainer = document.getElementById('volume-container');
+
+    const chart = LightweightCharts.createChart(chartContainer, {
+        layout: {
+            background: { color: '#0d1117' },
+            textColor: '#8b949e',
+        },
+        grid: {
+            vertLines: { color: '#161b22' },
+            horzLines: { color: '#161b22' },
+        },
+        crosshair: {
+            mode: LightweightCharts.CrosshairMode.Normal,
+        },
+        rightPriceScale: {
+            borderColor: '#30363d',
+        },
+        timeScale: {
+            borderColor: '#30363d',
+            timeVisible: true,
+        },
+    });
+
+    const volumeChart = LightweightCharts.createChart(volumeContainer, {
+        layout: {
+            background: { color: '#0d1117' },
+            textColor: '#8b949e',
+        },
+        grid: {
+            vertLines: { color: '#161b22' },
+            horzLines: { color: '#161b22' },
+        },
+        rightPriceScale: {
+            borderColor: '#30363d',
+        },
+        timeScale: {
+            borderColor: '#30363d',
+            timeVisible: true,
+        },
+    });
+
+    // Series
+    const candleSeries = chart.addCandlestickSeries({
+        upColor: '#3fb950',
+        downColor: '#f85149',
+        borderVisible: false,
+        wickUpColor: '#3fb950',
+        wickDownColor: '#f85149',
+    });
+
+    // Pink Support Line (알상무 분홍색 지지선)
+    const pinkLineSeries = chart.addLineSeries({
+        color: '#ff6496',
+        lineWidth: 3,
+        title: '분홍색 지지선',
+    });
+
+    // Kijun-sen (기준선 26)
+    const kijunSeries = chart.addLineSeries({
+        color: '#e3b341',
+        lineWidth: 2,
+        title: '기준선(26)',
+    });
+
+    // Tenkan-sen (전환선 9)
+    const tenkanSeries = chart.addLineSeries({
+        color: '#58a6ff',
+        lineWidth: 1.5,
+        title: '전환선(9)',
+    });
+
+    // 60-day Institutional Line (60일 수급선)
+    const sma60Series = chart.addLineSeries({
+        color: '#a371f7',
+        lineWidth: 1.5,
+        lineStyle: LightweightCharts.LineStyle.Dashed,
+        title: '60일선',
+    });
+
+    // Volume Series
+    const volumeSeries = volumeChart.addHistogramSeries({
+        color: '#26a69a',
+        priceFormat: { type: 'volume' },
+        priceScaleId: '',
+    });
+
+    // Synchronize scales
+    chart.timeScale().subscribeVisibleTimeRangeChange(range => {
+        volumeChart.timeScale().setVisibleRange(range);
+    });
+    volumeChart.timeScale().subscribeVisibleTimeRangeChange(range => {
+        chart.timeScale().setVisibleRange(range);
+    });
+
+    // Generate Synthetic Technical Dataset based on real profile
+    function generateAlData(basePrice, trend) {
+        const candles = [];
+        const volumes = [];
+        const pinkData = [];
+        const kijunData = [];
+        const tenkanData = [];
+        const sma60Data = [];
+
+        let currentPrice = basePrice;
+        const now = new Date();
+
+        for (let i = 120; i >= 0; i--) {
+            const d = new Date(now);
+            d.setDate(d.getDate() - i);
+            const dateStr = d.toISOString().split('T')[0];
+
+            const change = (Math.random() - 0.48 + trend) * (currentPrice * 0.025);
+            const open = currentPrice;
+            const close = open + change;
+            const high = Math.max(open, close) + Math.random() * (currentPrice * 0.015);
+            const low = Math.min(open, close) - Math.random() * (currentPrice * 0.015);
+            currentPrice = close;
+
+            candles.push({ time: dateStr, open, high, low, close });
+
+            const vol = Math.floor(Math.random() * 800000 + 200000);
+            volumes.push({
+                time: dateStr,
+                value: vol,
+                color: close >= open ? 'rgba(63, 185, 80, 0.5)' : 'rgba(248, 81, 73, 0.5)',
+            });
+        }
+
+        // Calculate Kijun (26) & Tenkan (9) & 60 SMA
+        for (let i = 0; i < candles.length; i++) {
+            const time = candles[i].time;
+
+            // Tenkan (9)
+            if (i >= 9) {
+                const slice9 = candles.slice(i - 9, i);
+                const h9 = Math.max(...slice9.map(c => c.high));
+                const l9 = Math.min(...slice9.map(c => c.low));
+                tenkanData.push({ time, value: (h9 + l9) / 2 });
+            }
+
+            // Kijun (26)
+            if (i >= 26) {
+                const slice26 = candles.slice(i - 26, i);
+                const h26 = Math.max(...slice26.map(c => c.high));
+                const l26 = Math.min(...slice26.map(c => c.low));
+                kijunData.push({ time, value: (h26 + l26) / 2 });
+            }
+
+            // 60 SMA
+            if (i >= 60) {
+                const slice60 = candles.slice(i - 60, i);
+                const avg60 = slice60.reduce((acc, c) => acc + c.close, 0) / 60;
+                sma60Data.push({ time, value: avg60 });
+            }
+
+            // Dynamic Pink Support Line (Low connection)
+            if (i >= 40) {
+                const basePink = candles[40].low * 0.98 + (i - 40) * (candles[candles.length - 1].close - candles[40].low) / 95;
+                pinkData.push({ time, value: basePink });
+            }
+        }
+
+        return { candles, volumes, pinkData, kijunData, tenkanData, sma60Data };
+    }
+
+    function changeStock(name) {
+        document.querySelectorAll('.btn-sym').forEach(b => b.classList.remove('active'));
+        event.target.classList.add('active');
+
+        let base = 180000;
+        let trend = 0.003;
+        let stateTitle = "일목 구름대 상단 지지 안착";
+        let stateMsg = '"주가가 구름대 위에 딱 걸쳐있고 20일선 눌림목에서 거래량이 바짝 말랐죠? 1차 분할 매수 타점입니다. 단, 26일 기준선 깨지면 칼손절 치세요."';
+        let quote = '"지금 팔면 안 돼. 지난주에 팔았어야 돼. 하지만 기준선 무너지면 미련 없이 던져라."';
+
+        if (name === '삼성전자') {
+            base = 65000;
+            trend = -0.002;
+            stateTitle = "분홍색 지지선 이탈 경보 (알반꿀 주의)";
+            stateMsg = '"삼성전자는 지금 기준선 밑으로 기어들어가고 있어요. 분홍색 지지선 또 내려 그어야 될 판입니다. 지금 물타지 말고 60일선 돌파할 때까지 관망하세요."';
+            quote = '"누가 숏이 잃는 거 봤어? 내 뷰까지 숏을 친다고!"';
+        } else if (name === '엔비디아') {
+            base = 125;
+            trend = 0.005;
+            stateTitle = "대세 상승 파동 & 분할 익절 구간";
+            stateMsg = '"엔비디아는 전형적인 일목 삼역호전 상태입니다. 다만 볼린저 상단에서 과열 신호가 나오고 있으니 20%는 차익 실현해두고 달러 금고에 챙기세요."';
+            quote = '"어둠의 세력이 유동성을 뿜을 때 같이 타고 가되, 문 닫히기 전에 나올 준비를 해라."';
+        } else if (name === '테슬라') {
+            base = 220;
+            trend = 0.001;
+            stateTitle = "빈집 선점 & 박스권 횡보";
+            stateMsg = '"모두가 테슬라 욕하고 아무도 관심 안 가질 때가 바로 빈집 털이 타점입니다. 기준선 지지만 확인되면 슬금슬금 모아가도 됩니다."';
+            quote = '"남들 다 환호할 때는 숏을 치고, 남들 다 울 때는 빈집을 털어라."';
+        }
+
+        document.getElementById('signal-state').innerText = stateTitle;
+        document.getElementById('signal-message').innerText = stateMsg;
+        document.getElementById('quote-text').innerText = quote;
+
+        const data = generateAlData(base, trend);
+        candleSeries.setData(data.candles);
+        volumeSeries.setData(data.volumes);
+        pinkLineSeries.setData(data.pinkData);
+        kijunSeries.setData(data.kijunData);
+        tenkanSeries.setData(data.tenkanData);
+        sma60Series.setData(data.sma60Data);
+
+        chart.timeScale().fitContent();
+        volumeChart.timeScale().fitContent();
+    }
+
+    // Initialize with SK Hynix
+    const initialData = generateAlData(185000, 0.003);
+    candleSeries.setData(initialData.candles);
+    volumeSeries.setData(initialData.volumes);
+    pinkLineSeries.setData(initialData.pinkData);
+    kijunSeries.setData(initialData.kijunData);
+    tenkanSeries.setData(initialData.tenkanData);
+    sma60Series.setData(initialData.sma60Data);
+
+    chart.timeScale().fitContent();
+    volumeChart.timeScale().fitContent();
+
+    window.addEventListener('resize', () => {
+        chart.resize(chartContainer.clientWidth, chartContainer.clientHeight);
+        volumeChart.resize(volumeContainer.clientWidth, volumeContainer.clientHeight);
+    });
+</script>
+
+</body>
+</html>
