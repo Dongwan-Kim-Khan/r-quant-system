@@ -1,6 +1,6 @@
 {
   "ticker": "NFLX",
-  "latest_close": 80.05,
+  "latest_close": 80.02,
   "kijun": 73.12,
   "tenkan": 77.37,
   "span_a": 76.02,
@@ -9,7 +9,7 @@
   "future_span_b_latest": 73.92,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 1.33,
-  "kijun_gap_pct": 9.48,
+  "kijun_gap_pct": 9.44,
   "vol_ratio": 0.22,
   "bull_score": 45,
   "bear_score": 0,
@@ -27,10 +27,10 @@
     "is_weekly_bull": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$73.12 (+9.5%)",
+      "val": "$73.12 (+9.4%)",
       "status": "status-neutral",
       "badge": "OVERHEATED",
-      "desc": "현재가 $80.05 / 26일선 $73.12 (이격 +9.5%)"
+      "desc": "현재가 $80.02 / 26일선 $73.12 (이격 +9.4%)"
     },
     "tenkan": {
       "val": "$77.37",
@@ -3555,7 +3555,7 @@
           "open": 80.27,
           "high": 80.34,
           "low": 79.17,
-          "close": 80.05
+          "close": 80.02
         }
       ],
       "kijun_line": [
@@ -13773,7 +13773,7 @@
         },
         {
           "time": "2026-08-21",
-          "value": 75.31
+          "value": 75.3
         }
       ],
       "sma60": [
@@ -18276,7 +18276,7 @@
         },
         {
           "time": "2026-08-21",
-          "value": 7140242.0,
+          "value": 7291303.0,
           "color": "#dc2626"
         }
       ],
@@ -19261,7 +19261,7 @@
           "open": 77.8,
           "high": 81.16,
           "low": 75.47,
-          "close": 80.05
+          "close": 80.02
         }
       ],
       "kijun_line": [
@@ -22862,7 +22862,7 @@
         },
         {
           "time": "2026-08-21",
-          "value": 132593042.0,
+          "value": 132744103.0,
           "color": "#059669"
         }
       ],
@@ -26423,7 +26423,7 @@
       "open": 80.27,
       "high": 80.34,
       "low": 79.17,
-      "close": 80.05
+      "close": 80.02
     }
   ],
   "kijun_line": [
@@ -36641,7 +36641,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 75.31
+      "value": 75.3
     }
   ],
   "sma60": [
@@ -41144,7 +41144,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 7140242.0,
+      "value": 7291303.0,
       "color": "#dc2626"
     }
   ]

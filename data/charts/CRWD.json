@@ -1,6 +1,6 @@
 {
   "ticker": "CRWD",
-  "latest_close": 190.53,
+  "latest_close": 190.27,
   "kijun": 200.82,
   "tenkan": 207.25,
   "span_a": 192.61,
@@ -9,7 +9,7 @@
   "future_span_b_latest": 190.97,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 13.07,
-  "kijun_gap_pct": -5.12,
+  "kijun_gap_pct": -5.25,
   "vol_ratio": 0.3,
   "bull_score": 55,
   "bear_score": 55,
@@ -27,10 +27,10 @@
     "is_weekly_bull": true,
     "trampoline_detected": true,
     "kijun": {
-      "val": "$200.82 (-5.1%)",
+      "val": "$200.82 (-5.3%)",
       "status": "status-bear",
       "badge": "BREAKDOWN",
-      "desc": "현재가 $190.53 / 26일선 $200.82 (이격 -5.1%)"
+      "desc": "현재가 $190.27 / 26일선 $200.82 (이격 -5.3%)"
     },
     "tenkan": {
       "val": "$207.25",
@@ -3555,7 +3555,7 @@
           "open": 190.5,
           "high": 191.28,
           "low": 187.01,
-          "close": 190.53
+          "close": 190.27
         }
       ],
       "kijun_line": [
@@ -13773,7 +13773,7 @@
         },
         {
           "time": "2026-08-21",
-          "value": 204.17
+          "value": 204.16
         }
       ],
       "sma60": [
@@ -18276,8 +18276,8 @@
         },
         {
           "time": "2026-08-21",
-          "value": 2175419.0,
-          "color": "#059669"
+          "value": 2214676.0,
+          "color": "#dc2626"
         }
       ],
       "future_span_a": [
@@ -19261,7 +19261,7 @@
           "open": 216.53,
           "high": 219.18,
           "low": 187.01,
-          "close": 190.53
+          "close": 190.27
         }
       ],
       "kijun_line": [
@@ -21807,7 +21807,7 @@
         },
         {
           "time": "2026-08-21",
-          "value": 166.05
+          "value": 166.04
         }
       ],
       "sma60": [
@@ -22862,7 +22862,7 @@
         },
         {
           "time": "2026-08-21",
-          "value": 35112119.0,
+          "value": 35151376.0,
           "color": "#dc2626"
         }
       ],
@@ -26423,7 +26423,7 @@
       "open": 190.5,
       "high": 191.28,
       "low": 187.01,
-      "close": 190.53
+      "close": 190.27
     }
   ],
   "kijun_line": [
@@ -36641,7 +36641,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 204.17
+      "value": 204.16
     }
   ],
   "sma60": [
@@ -41144,8 +41144,8 @@
     },
     {
       "time": "2026-08-21",
-      "value": 2175419.0,
-      "color": "#059669"
+      "value": 2214676.0,
+      "color": "#dc2626"
     }
   ]
 }

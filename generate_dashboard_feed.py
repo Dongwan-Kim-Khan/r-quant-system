@@ -562,6 +562,18 @@ def build_dashboard_data():
             "status_label": "ACTIVE_BUY"
         })
     
+    # Refresh today's 2+2+2 Recommendation Matrix in SQLite DB
+    if dual_consensus_picks or strat1_exclusive or strat2_exclusive:
+        top_bulls = (dual_consensus_picks + strat1_exclusive)[:2]
+        top_neutrals = (strat1_exclusive + dual_consensus_picks)[2:4]
+        top_snipers = strat2_exclusive[:2]
+        
+        b_picks = [{"ticker": x["ticker"], "close": x["price"]} for x in top_bulls]
+        n_picks = [{"ticker": x["ticker"], "close": x["price"]} for x in top_neutrals]
+        s_picks = [{"ticker": x["ticker"], "close": x["price"]} for x in top_snipers]
+        
+        db_manager.save_recommendation_matrix_record(today_str, b_picks, n_picks, s_picks)
+
     # Load 2+2+2 Matrix and Portfolio from DB
     matrix = db_manager.get_recommendations_matrix()
     if not isinstance(matrix, list):
