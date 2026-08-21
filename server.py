@@ -113,6 +113,9 @@ def get_dashboard_summary():
     
     macro_info = FEED_CACHE.get("macro", {})
     kpis = dict(FEED_CACHE.get("kpis", {}))
+    dual_consensus = FEED_CACHE.get("dual_consensus", [])
+    strat1_exclusive = FEED_CACHE.get("strat1_exclusive", [])
+    strat2_exclusive = FEED_CACHE.get("strat2_exclusive", [])
     primary_accumulation = FEED_CACHE.get("primary_accumulation", [])
     sniper_radar = FEED_CACHE.get("sniper_radar", [])
     signal_tracker = FEED_CACHE.get("signal_tracker", [])
@@ -135,6 +138,9 @@ def get_dashboard_summary():
         "kpis": kpis,
         "portfolio": portfolio,
         "matrix": matrix,
+        "dual_consensus": dual_consensus,
+        "strat1_exclusive": strat1_exclusive,
+        "strat2_exclusive": strat2_exclusive,
         "primary_accumulation": primary_accumulation,
         "sniper_radar": sniper_radar,
         "signal_tracker": signal_tracker,
