@@ -241,6 +241,17 @@
         .ticker-title { font-size: 16px; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
         .ticker-price { font-size: 16px; font-weight: 800; font-family: 'JetBrains Mono', monospace; margin-left: 8px; }
 
+        .tf-btn {
+            background: transparent; border: none; color: #94a3b8;
+            padding: 3px 8px; border-radius: 2px; font-size: 11px; font-weight: 700;
+            font-family: 'JetBrains Mono', monospace; cursor: pointer; transition: all 0.15s ease-in-out;
+        }
+        .tf-btn:hover { color: #f8fafc; background: #1e293b; }
+        .tf-btn.active {
+            background: #38bdf8; color: #0f172a; font-weight: 800;
+            box-shadow: 0 0 8px rgba(56, 189, 248, 0.35);
+        }
+
         .toggle-btn {
             background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary);
             padding: 4px 10px; border-radius: 2px; font-size: 11px; font-weight: 600; cursor: pointer;
@@ -689,14 +700,19 @@
                     <div style="display:flex; align-items:center; gap:8px;">
                         <span class="ticker-title" id="curTicker">NVDA</span>
                         <span class="ticker-price" id="curPrice" style="color:var(--accent-green);">$225.16</span>
-                        <span style="background:#1e293b; color:#38bdf8; font-size:11px; padding:2px 8px; border-radius:2px; font-weight:700; font-family:'JetBrains Mono'; border:1px solid #334155;">1D 일봉 (Daily)</span>
-                        <span style="background:#1e293b; color:#94a3b8; font-size:11px; padding:2px 8px; border-radius:2px; font-weight:700; font-family:'JetBrains Mono'; border:1px solid #334155;">최근 2개년 (500 거래일)</span>
+                        <span id="curTfBadge" style="background:#1e293b; color:#38bdf8; font-size:11px; padding:2px 8px; border-radius:2px; font-weight:700; font-family:'JetBrains Mono'; border:1px solid #334155;">1D 일봉 (Daily)</span>
+                        <span id="curPeriodBadge" style="background:#1e293b; color:#94a3b8; font-size:11px; padding:2px 8px; border-radius:2px; font-weight:700; font-family:'JetBrains Mono'; border:1px solid #334155;">최근 2개년 (500 거래일)</span>
                     </div>
-                    <div style="font-size:11px; color:#94a3af; margin-top:3px;">
+                    <div style="font-size:11px; color:#94a3af; margin-top:3px;" id="chartIndicatorLegend">
                         지표 구성: 9일 전환선(하늘) | 26일 기준선(노랑, 생명선) | 선행스팬 구름대(초록/빨강) | 20·60 SMA | 거래량
                     </div>
                 </div>
                 <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                    <!-- Timeframe Switcher (Daily vs Weekly) -->
+                    <div style="display:flex; align-items:center; background:#0f172a; border:1px solid #334155; border-radius:3px; padding:2px; margin-right:4px;">
+                        <button class="tf-btn active" id="btnTfDaily" onclick="switchTimeframe('daily')">1D 일봉</button>
+                        <button class="tf-btn" id="btnTfWeekly" onclick="switchTimeframe('weekly')">1W 주봉</button>
+                    </div>
                     <button class="toggle-btn active" id="btnKijun">26D Kijun</button>
                     <button class="toggle-btn active" id="btnTenkan">9D Tenkan</button>
                     <button class="toggle-btn active" id="btnSpan">Ichimoku Cloud</button>
@@ -1064,6 +1080,66 @@
 
         let currentChartAbortController = null;
         let currentChartRequestId = 0;
+        let currentTimeframe = 'daily';
+        let currentLoadedChartObj = null;
+
+        function switchTimeframe(tf) {
+            currentTimeframe = tf;
+            
+            const btnDaily = document.getElementById("btnTfDaily");
+            const btnWeekly = document.getElementById("btnTfWeekly");
+            const curTfBadge = document.getElementById("curTfBadge");
+            const curPeriodBadge = document.getElementById("curPeriodBadge");
+            const legend = document.getElementById("chartIndicatorLegend");
+
+            if (tf === 'weekly') {
+                if (btnDaily) btnDaily.classList.remove('active');
+                if (btnWeekly) btnWeekly.classList.add('active');
+                if (curTfBadge) {
+                    curTfBadge.textContent = "1W 주봉 (Weekly)";
+                    curTfBadge.style.color = "#c084fc";
+                }
+                if (curPeriodBadge) curPeriodBadge.textContent = "최근 3개년 (150 주봉)";
+                if (legend) legend.textContent = "지표 구성: 9주 전환선(하늘) | 26주 기준선(노랑, 생명선) | 주봉 일목 구름대 | 20·60주 SMA | 주봉 거래량";
+            } else {
+                if (btnDaily) btnDaily.classList.add('active');
+                if (btnWeekly) btnWeekly.classList.remove('active');
+                if (curTfBadge) {
+                    curTfBadge.textContent = "1D 일봉 (Daily)";
+                    curTfBadge.style.color = "#38bdf8";
+                }
+                if (curPeriodBadge) curPeriodBadge.textContent = "최근 2개년 (500 거래일)";
+                if (legend) legend.textContent = "지표 구성: 9일 전환선(하늘) | 26일 기준선(노랑, 생명선) | 선행스팬 구름대(초록/빨강) | 20·60 SMA | 거래량";
+            }
+
+            if (currentLoadedChartObj) {
+                renderChartSeriesForTimeframe(currentLoadedChartObj, tf);
+            }
+        }
+
+        function renderChartSeriesForTimeframe(chartObj, tf) {
+            if (!chartObj) return;
+            let tfData = null;
+            if (chartObj.timeframes && chartObj.timeframes[tf] && chartObj.timeframes[tf].candles && chartObj.timeframes[tf].candles.length > 0) {
+                tfData = chartObj.timeframes[tf];
+            } else {
+                tfData = chartObj;
+            }
+
+            candleSeries.setData(tfData.candles || []);
+            kijunSeries.setData(tfData.kijun_line || []);
+            tenkanSeries.setData(tfData.tenkan_line || []);
+            spanASeries.setData(tfData.span_a_line || []);
+            spanBSeries.setData(tfData.span_b_line || []);
+            sma20Series.setData(tfData.sma20 || []);
+            sma60Series.setData(tfData.sma60 || []);
+            volumeSeries.setData(tfData.volume || []);
+
+            try {
+                mainChart.timeScale().fitContent();
+                volumeChart.timeScale().fitContent();
+            } catch (e) {}
+        }
 
         async function loadChartData(ticker) {
             const requestId = ++currentChartRequestId;
@@ -1104,7 +1180,9 @@
                     chartObj = window.__DASHBOARD_CACHE__.charts[ticker];
                 }
 
-                if (chartObj && chartObj.candles && chartObj.candles.length > 0) {
+                currentLoadedChartObj = chartObj;
+
+                if (chartObj && (chartObj.candles || (chartObj.timeframes && chartObj.timeframes.daily))) {
                     updateDecoderUI(ticker, chartObj);
 
                     // Dynamically update real-time stock price and quick buy inputs
@@ -1120,14 +1198,7 @@
                         updateTargetStopLive();
                     }
 
-                    candleSeries.setData(chartObj.candles);
-                    kijunSeries.setData(chartObj.kijun_line || []);
-                    tenkanSeries.setData(chartObj.tenkan_line || []);
-                    spanASeries.setData(chartObj.span_a_line || chartObj.span_a || []);
-                    spanBSeries.setData(chartObj.span_b_line || chartObj.span_b || []);
-                    sma20Series.setData(chartObj.sma20 || []);
-                    sma60Series.setData(chartObj.sma60 || []);
-                    volumeSeries.setData(chartObj.volume || []);
+                    renderChartSeriesForTimeframe(chartObj, currentTimeframe);
 
                     // Update 26-Day Future Forward Cloud Decoder
                     if (chartObj.future_cloud_type) {

@@ -70,9 +70,86 @@ CHARTS_DIR = os.path.join(BASE_DIR, "data", "charts")
 from concurrent.futures import ThreadPoolExecutor
 from al_sangmoo.core.constants import WATCHLIST, STOCK_DICT
 
+def build_ichimoku_series(df_in, max_bars=500, is_weekly=False):
+    df_clean = df_in.dropna(subset=['Close', 'High', 'Low', 'Kijun', 'Tenkan']).tail(max_bars)
+    if df_clean.empty:
+        return {}
+        
+    candles = []
+    tenkan_pts = []
+    kijun_pts = []
+    span_a_pts = []
+    span_b_pts = []
+    sma20_pts = []
+    sma60_pts = []
+    vol_pts = []
+    
+    for idx, row in df_clean.iterrows():
+        time_str = idx.strftime("%Y-%m-%d")
+        candles.append({
+            "time": time_str,
+            "open": round(float(row['Open']), 2),
+            "high": round(float(row['High']), 2),
+            "low": round(float(row['Low']), 2),
+            "close": round(float(row['Close']), 2)
+        })
+        if not pd.isna(row.get('Tenkan')):
+            tenkan_pts.append({"time": time_str, "value": round(float(row['Tenkan']), 2)})
+        if not pd.isna(row.get('Kijun')):
+            kijun_pts.append({"time": time_str, "value": round(float(row['Kijun']), 2)})
+        if not pd.isna(row.get('SpanA')):
+            span_a_pts.append({"time": time_str, "value": round(float(row['SpanA']), 2)})
+        if not pd.isna(row.get('SpanB')):
+            span_b_pts.append({"time": time_str, "value": round(float(row['SpanB']), 2)})
+        if not pd.isna(row.get('SMA20')):
+            sma20_pts.append({"time": time_str, "value": round(float(row['SMA20']), 2)})
+        if not pd.isna(row.get('SMA60')):
+            sma60_pts.append({"time": time_str, "value": round(float(row['SMA60']), 2)})
+        if not pd.isna(row.get('Volume')):
+            vol_pts.append({
+                "time": time_str,
+                "value": float(row['Volume']),
+                "color": "#059669" if row['Close'] >= row['Open'] else "#dc2626"
+            })
+            
+    # Future 26 forward cloud projection
+    last_date = df_clean.index[-1]
+    if is_weekly:
+        future_dates = pd.date_range(start=last_date + pd.Timedelta(days=7), periods=26, freq='W-FRI')
+    else:
+        future_dates = pd.bdate_range(start=last_date + pd.Timedelta(days=1), periods=26)
+        
+    future_span_a_vals = []
+    future_span_b_vals = []
+    for k in range(len(future_dates)):
+        f_time_str = future_dates[k].strftime("%Y-%m-%d")
+        lookback_idx = len(df_clean) - 26 + k
+        if 0 <= lookback_idx < len(df_clean):
+            val_a = float(df_clean['RawSpanA'].iloc[lookback_idx])
+            val_b = float(df_clean['RawSpanB'].iloc[lookback_idx])
+            if not pd.isna(val_a):
+                span_a_pts.append({"time": f_time_str, "value": round(val_a, 2)})
+                future_span_a_vals.append(val_a)
+            if not pd.isna(val_b):
+                span_b_pts.append({"time": f_time_str, "value": round(val_b, 2)})
+                future_span_b_vals.append(val_b)
+                
+    return {
+        "candles": candles,
+        "kijun_line": kijun_pts,
+        "tenkan_line": tenkan_pts,
+        "span_a_line": span_a_pts,
+        "span_b_line": span_b_pts,
+        "sma20": sma20_pts,
+        "sma60": sma60_pts,
+        "volume": vol_pts,
+        "future_span_a": future_span_a_vals,
+        "future_span_b": future_span_b_vals
+    }
+
 def compute_all_indicators(ticker):
     try:
-        df = yf.download(ticker, period="2y", interval="1d", progress=False)
+        df = yf.download(ticker, period="3y", interval="1d", progress=False)
         if df.empty:
             return None
         if isinstance(df.columns, pd.MultiIndex):
@@ -82,99 +159,43 @@ def compute_all_indicators(ticker):
         if len(df) < 60:
             return None
             
-        high_9 = df['High'].rolling(window=9).max()
-        low_9 = df['Low'].rolling(window=9).min()
-        df['Tenkan'] = (high_9 + low_9) / 2
-
-        high_26 = df['High'].rolling(window=26).max()
-        low_26 = df['Low'].rolling(window=26).min()
-        df['Kijun'] = (high_26 + low_26) / 2
-
-        high_52 = df['High'].rolling(window=52).max()
-        low_52 = df['Low'].rolling(window=52).min()
-
-        # Raw Senkou Spans before 26-day forward shift
+        # 1. Calculate Daily Ichimoku
+        df['Tenkan'] = (df['High'].rolling(9).max() + df['Low'].rolling(9).min()) / 2
+        df['Kijun'] = (df['High'].rolling(26).max() + df['Low'].rolling(26).min()) / 2
         df['RawSpanA'] = (df['Tenkan'] + df['Kijun']) / 2
-        df['RawSpanB'] = (high_52 + low_52) / 2
-
-        # Historical shifted spans for today's candle alignment
+        df['RawSpanB'] = (df['High'].rolling(52).max() + df['Low'].rolling(52).min()) / 2
         df['SpanA'] = df['RawSpanA'].shift(26)
         df['SpanB'] = df['RawSpanB'].shift(26)
-
-        df['SMA20'] = df['Close'].rolling(window=20).mean()
-        df['SMA60'] = df['Close'].rolling(window=60).mean()
-        df['Vol_SMA20'] = df['Volume'].rolling(window=20).mean()
+        df['SMA20'] = df['Close'].rolling(20).mean()
+        df['SMA60'] = df['Close'].rolling(60).mean()
+        df['Vol_SMA20'] = df['Volume'].rolling(20).mean()
         df['Vol_Ratio'] = df['Volume'] / df['Vol_SMA20']
         
-        candles = []
-        tenkan_pts = []
-        kijun_pts = []
-        span_a_pts = []
-        span_b_pts = []
-        sma20_pts = []
-        sma60_pts = []
-        vol_pts = []
+        # 2. Calculate Weekly Ichimoku (Resampled to Weekly)
+        df_w = df[['Open', 'High', 'Low', 'Close', 'Volume']].resample('W-FRI').agg({
+            'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last', 'Volume': 'sum'
+        }).dropna()
+        df_w['Tenkan'] = (df_w['High'].rolling(9).max() + df_w['Low'].rolling(9).min()) / 2
+        df_w['Kijun'] = (df_w['High'].rolling(26).max() + df_w['Low'].rolling(26).min()) / 2
+        df_w['RawSpanA'] = (df_w['Tenkan'] + df_w['Kijun']) / 2
+        df_w['RawSpanB'] = (df_w['High'].rolling(52).max() + df_w['Low'].rolling(52).min()) / 2
+        df_w['SpanA'] = df_w['RawSpanA'].shift(26)
+        df_w['SpanB'] = df_w['RawSpanB'].shift(26)
+        df_w['SMA20'] = df_w['Close'].rolling(20).mean()
+        df_w['SMA60'] = df_w['Close'].rolling(60).mean()
+        df_w['Vol_SMA20'] = df_w['Volume'].rolling(20).mean()
+        df_w['Vol_Ratio'] = df_w['Volume'] / df_w['Vol_SMA20']
+
+        # Build Daily & Weekly Series Payloads
+        daily_series = build_ichimoku_series(df, max_bars=500, is_weekly=False)
+        weekly_series = build_ichimoku_series(df_w, max_bars=150, is_weekly=True)
         
-        # 500 daily trading days (2 full years) for seamless zoom without clipping
         df_clean = df.dropna(subset=['Close', 'High', 'Low', 'Kijun', 'Tenkan']).tail(500)
-        
-        # 1. Historical Data Points
-        for idx, row in df_clean.iterrows():
-            time_str = idx.strftime("%Y-%m-%d")
-            candles.append({
-                "time": time_str,
-                "open": round(float(row['Open']), 2),
-                "high": round(float(row['High']), 2),
-                "low": round(float(row['Low']), 2),
-                "close": round(float(row['Close']), 2)
-            })
-            if not pd.isna(row['Tenkan']):
-                tenkan_pts.append({"time": time_str, "value": round(float(row['Tenkan']), 2)})
-            if not pd.isna(row['Kijun']):
-                kijun_pts.append({"time": time_str, "value": round(float(row['Kijun']), 2)})
-            if not pd.isna(row['SpanA']):
-                span_a_pts.append({"time": time_str, "value": round(float(row['SpanA']), 2)})
-            if not pd.isna(row['SpanB']):
-                span_b_pts.append({"time": time_str, "value": round(float(row['SpanB']), 2)})
-            if not pd.isna(row['SMA20']):
-                sma20_pts.append({"time": time_str, "value": round(float(row['SMA20']), 2)})
-            if not pd.isna(row['SMA60']):
-                sma60_pts.append({"time": time_str, "value": round(float(row['SMA60']), 2)})
-            if not pd.isna(row['Volume']):
-                vol_pts.append({
-                    "time": time_str,
-                    "value": float(row['Volume']),
-                    "color": "#059669" if row['Close'] >= row['Open'] else "#dc2626"
-                })
-                
-        # 2. Future 26-Trading-Day Ichimoku Cloud Projection (향후 26일 미래 구름대 확장)
-        last_date = df_clean.index[-1]
-        future_dates = pd.bdate_range(start=last_date + pd.Timedelta(days=1), periods=26)
-        raw_a_series = df_clean['RawSpanA'].dropna()
-        raw_b_series = df_clean['RawSpanB'].dropna()
-        
-        future_span_a_vals = []
-        future_span_b_vals = []
-        
-        for k in range(len(future_dates)):
-            f_time_str = future_dates[k].strftime("%Y-%m-%d")
-            # Pull the 26-day forward projections from raw spans
-            lookback_idx = len(df_clean) - 26 + k
-            if 0 <= lookback_idx < len(df_clean):
-                val_a = float(df_clean['RawSpanA'].iloc[lookback_idx])
-                val_b = float(df_clean['RawSpanB'].iloc[lookback_idx])
-                if not pd.isna(val_a):
-                    span_a_pts.append({"time": f_time_str, "value": round(val_a, 2)})
-                    future_span_a_vals.append(val_a)
-                if not pd.isna(val_b):
-                    span_b_pts.append({"time": f_time_str, "value": round(val_b, 2)})
-                    future_span_b_vals.append(val_b)
-            
         last = df_clean.iloc[-1]
         close = float(last['Close'])
         kijun = float(last['Kijun'])
         tenkan = float(last['Tenkan'])
-        vol_ratio = float(last['Vol_Ratio'])
+        vol_ratio = float(last['Vol_Ratio']) if not pd.isna(last['Vol_Ratio']) else 1.0
         span_a = float(last['SpanA']) if not pd.isna(last['SpanA']) else close
         span_b = float(last['SpanB']) if not pd.isna(last['SpanB']) else close
         
@@ -182,7 +203,23 @@ def compute_all_indicators(ticker):
         cloud_bottom = min(span_a, span_b)
         kijun_gap = ((close - kijun) / kijun) * 100
         
-        # Future cloud characteristics (+26 days ahead)
+        # Weekly Macro Stance Evaluation
+        w_clean = df_w.dropna(subset=['Close', 'High', 'Low', 'Kijun', 'Tenkan'])
+        if not w_clean.empty:
+            w_last = w_clean.iloc[-1]
+            w_close = float(w_last['Close'])
+            w_kijun = float(w_last['Kijun'])
+            w_span_a = float(w_last['SpanA']) if not pd.isna(w_last['SpanA']) else w_close
+            w_span_b = float(w_last['SpanB']) if not pd.isna(w_last['SpanB']) else w_close
+            w_cloud_top = max(w_span_a, w_span_b)
+            is_weekly_bull = (w_close >= w_cloud_top * 0.96) or (w_close >= w_kijun * 0.95)
+        else:
+            is_weekly_bull = (close >= cloud_top * 0.97)
+            w_cloud_top = cloud_top
+            w_kijun = kijun
+        
+        future_span_a_vals = daily_series.get("future_span_a", [])
+        future_span_b_vals = daily_series.get("future_span_b", [])
         future_a_latest = future_span_a_vals[-1] if future_span_a_vals else span_a
         future_b_latest = future_span_b_vals[-1] if future_span_b_vals else span_b
         is_future_bull_cloud = future_a_latest >= future_b_latest
@@ -252,24 +289,25 @@ def compute_all_indicators(ticker):
         if tenkan >= kijun: sniper_score += 15
         elif close >= tenkan: sniper_score += 10
         
-        is_sniper_active = trampoline_detected and (sniper_score >= 80) and (close >= cloud_top * 0.97)
-        is_strat1_active = (bull_score >= 80) and (-0.8 <= kijun_gap <= 4.8)
+        # Apply Weekly Bull Stance Requirement
+        is_sniper_active = is_weekly_bull and trampoline_detected and (sniper_score >= 80) and (close >= cloud_top * 0.97)
+        is_strat1_active = is_weekly_bull and (bull_score >= 80) and (-0.8 <= kijun_gap <= 4.8)
         
         if is_strat1_active and is_sniper_active:
             quant_type = "BULL"
             quant_verdict = "Dual 5-Star (양대 전략 동시 충족 특급 매수)"
             quant_score_text = "100 / 100 pt (DUAL_5_STAR)"
-            action_directive = f"[황금 교집합] 구름대 지지 도약({trampoline_days_ago}일 전) 성공 및 26일 기준선({kijun_gap:+.1f}%) 안착. 기관 퀀트 최우선 공략."
+            action_directive = f"[황금 교집합] 주봉 정배열 + 구름대 도약({trampoline_days_ago}일 전) + 26일 기준선({kijun_gap:+.1f}%) 안착."
         elif is_sniper_active:
             quant_type = "BULL"
             quant_verdict = "Sniper Alert (구름대 도약 2단계 특급 매수)"
             quant_score_text = f"{sniper_score} / 100 pt (SNIPER_BUY)"
-            action_directive = f"[전략 2 스나이퍼] {trampoline_days_ago}일 전 구름대 지지 도약 확인 후 상방 시세 분출(기준선 대비 {kijun_gap:+.1f}%). 목표 +15% / 손절 -4%."
+            action_directive = f"[전략 2 스나이퍼] 주봉 상승장 + {trampoline_days_ago}일 전 구름대 지지 도약 후 상방 시세 분출(기준선 대비 {kijun_gap:+.1f}%). 목표 +15% / 손절 -4%."
         elif is_strat1_active:
             quant_type = "BULL"
             quant_verdict = "Bull Accumulation (1차 분할 매수 적합)"
             quant_score_text = f"{bull_score} / 100 pt (BULL_BUY)"
-            action_directive = "26일 기준선 및 일목 구름대 상단 안착 확인. 거시 변동성 진정 시 1차 분할 매수 적합."
+            action_directive = "주봉 상승장 + 26일 기준선 및 일목 구름대 상단 안착 확인. 1차 분할 매수 적합."
         elif bear_score >= 50:
             quant_type = "BEAR"
             quant_verdict = "Risk Breakdown (생명선 붕괴 / 매수 금지)"
@@ -315,6 +353,7 @@ def compute_all_indicators(ticker):
             "sniper_score": sniper_score,
             "type": quant_type,
             "is_sniper": is_sniper_active,
+            "is_weekly_bull": is_weekly_bull,
             "trampoline_detected": trampoline_detected,
             "kijun": {"val": f"${kijun:,.2f} ({kijun_gap:+.1f}%)", "status": kijun_status, "badge": kijun_badge, "desc": kijun_desc},
             "tenkan": {"val": f"${tenkan:,.2f}", "status": tenkan_status, "badge": tenkan_badge, "desc": tenkan_desc},
@@ -338,20 +377,24 @@ def compute_all_indicators(ticker):
             "vol_ratio": round(vol_ratio, 2),
             "bull_score": bull_score,
             "bear_score": bear_score,
+            "sniper_score": sniper_score,
             "is_sniper": is_sniper_active,
+            "is_weekly_bull": is_weekly_bull,
             "intelligence": intelligence,
             "status_tag": quant_type,
             "status_text": quant_verdict,
-            "timeframe": "1D",
-            "period": "2Y",
-            "candles": candles,
-            "kijun_line": kijun_pts,
-            "tenkan_line": tenkan_pts,
-            "span_a_line": span_a_pts,
-            "span_b_line": span_b_pts,
-            "sma20": sma20_pts,
-            "sma60": sma60_pts,
-            "volume": vol_pts
+            "timeframes": {
+                "daily": daily_series,
+                "weekly": weekly_series
+            },
+            "candles": daily_series.get("candles", []),
+            "kijun_line": daily_series.get("kijun_line", []),
+            "tenkan_line": daily_series.get("tenkan_line", []),
+            "span_a_line": daily_series.get("span_a_line", []),
+            "span_b_line": daily_series.get("span_b_line", []),
+            "sma20": daily_series.get("sma20", []),
+            "sma60": daily_series.get("sma60", []),
+            "volume": daily_series.get("volume", [])
         }
     except Exception as e:
         print(f"Error computing {ticker}: {e}")
