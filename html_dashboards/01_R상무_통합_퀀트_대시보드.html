@@ -966,14 +966,37 @@
             document.getElementById("actionDirectiveText").textContent = info.action;
         }
 
+        let currentChartAbortController = null;
+        let currentChartRequestId = 0;
+
         async function loadChartData(ticker) {
+            const requestId = ++currentChartRequestId;
+            
+            // Cancel previous in-flight chart fetch if active
+            if (currentChartAbortController) {
+                currentChartAbortController.abort();
+            }
+            currentChartAbortController = new AbortController();
+            const signal = currentChartAbortController.signal;
+
             try {
                 let chartObj = null;
                 if (isBackendOnline) {
-                    const res = await fetch(`/api/chart/${ticker}`);
-                    if (res.ok) {
-                        chartObj = await res.json();
+                    try {
+                        const res = await fetch(`/api/chart/${ticker}`, { signal });
+                        if (res.ok) {
+                            chartObj = await res.json();
+                        }
+                    } catch (err) {
+                        if (err.name === 'AbortError') {
+                            return; // Gracefully discard aborted request
+                        }
                     }
+                }
+                
+                // If a newer request was dispatched while waiting, discard stale response
+                if (requestId !== currentChartRequestId) {
+                    return;
                 }
                 
                 if (!chartObj && window.GLOBAL_DASHBOARD_DATA && window.GLOBAL_DASHBOARD_DATA.charts && window.GLOBAL_DASHBOARD_DATA.charts[ticker]) {

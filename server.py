@@ -26,9 +26,9 @@ app = FastAPI(title="Al-Sangmoo Quant Portfolio Backend", version="2.6")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_origins=["http://localhost:8000", "http://127.0.0.1:8000", "http://localhost:3000", "*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
@@ -141,8 +141,8 @@ def sell_stock(position_id: int, order: SellOrder):
     if position_id <= 0:
         raise HTTPException(status_code=400, detail="유효하지 않은 포지션 ID입니다.")
         
-    success = db_manager.close_portfolio_position(
-        position_id=position_id,
+    success = db_manager.record_portfolio_sell(
+        holding_id=position_id,
         sell_price=order.sell_price,
         sell_date=order.sell_date,
         reason=order.reason
@@ -153,7 +153,7 @@ def sell_stock(position_id: int, order: SellOrder):
 
 @app.post("/api/portfolio/reset")
 def reset_portfolio():
-    db_manager.clear_portfolio()
+    db_manager.reset_all_holdings()
     return {"status": "success", "message": "포트폴리오 계좌가 성공적으로 초기화(비우기)되었습니다."}
 
 @app.get("/api/recommendations/matrix")
@@ -184,13 +184,17 @@ def get_ticker_chart(ticker: str):
 def trigger_scan_now():
     try:
         import al_sangmoo_daily_bot
-        bull_picks, neutral_picks, bear_picks = al_sangmoo_daily_bot.scan_and_select_2x2x2()
+        bull_picks, neutral_picks, bear_picks, macro_climate = al_sangmoo_daily_bot.scan_and_select_2x2x2()
         today_str = datetime.now().strftime("%Y-%m-%d")
         db_manager.save_recommendation_matrix_record(today_str, bull_picks, neutral_picks, bear_picks)
         data = build_dashboard_data()
         global CHART_CACHE
         CHART_CACHE = data.get("charts", {})
-        return {"status": "success", "message": f"{today_str} 실시간 스캔 & 차트 갱신 완료!"}
+        return {
+            "status": "success",
+            "message": f"{today_str} 실시간 3-Gate 스캔 & 대시보드 갱신 완료!",
+            "macro_stance": macro_climate.get("macro_stance") if macro_climate else "NORMAL"
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
 

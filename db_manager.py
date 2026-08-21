@@ -8,8 +8,14 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_FILE = os.path.join(BASE_DIR, "quant_trades.db")
 
 def get_db():
-    conn = sqlite3.connect(DB_FILE)
+    conn = sqlite3.connect(DB_FILE, timeout=30.0)
     conn.row_factory = sqlite3.Row
+    try:
+        conn.execute("PRAGMA journal_mode = WAL;")
+        conn.execute("PRAGMA busy_timeout = 30000;")
+        conn.execute("PRAGMA synchronous = NORMAL;")
+    except Exception:
+        pass
     return conn
 
 def init_db():
@@ -252,53 +258,65 @@ def get_live_portfolio():
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM my_portfolio WHERE status = 'HOLDING' ORDER BY buy_date DESC, id DESC")
     holdings = [dict(r) for r in cursor.fetchall()]
+    conn.close()
     
     total_invested = 0.0
     total_eval = 0.0
+    update_rows = []
     
     for h in holdings:
         ticker = h['ticker']
+        buy_price = float(h['buy_price'])
+        quantity = float(h['quantity'])
+        total_cost = buy_price * quantity
+        cur_price = buy_price
+        
         try:
             cur_data = yf.download(ticker, period="5d", interval="1d", progress=False)
             if not cur_data.empty:
                 if isinstance(cur_data.columns, pd.MultiIndex):
                     cur_data.columns = cur_data.columns.get_level_values(0)
                 cur_price = float(cur_data.iloc[-1]['Close'])
-                buy_price = float(h['buy_price'])
-                quantity = float(h['quantity'])
-                total_cost = buy_price * quantity
-                cur_val = cur_price * quantity
-                pnl_pct = ((cur_price - buy_price) / buy_price) * 100
-                pnl_amt = cur_val - total_cost
-                
-                if pnl_pct >= 15.0:
-                    advice = f"전량 익절 매도 권고 (목표가 달성 {pnl_pct:+.2f}%)"
-                elif pnl_pct <= -3.0:
-                    advice = f"칼손절 긴급 매도 권고 (손절선 이탈 {pnl_pct:+.2f}%)"
-                elif 8.0 <= pnl_pct < 15.0:
-                    advice = f"50% 분할 익절 권고 (수익률 {pnl_pct:+.1f}%)"
-                else:
-                    advice = f"보유 지속 (손절선 ${buy_price * 0.97:,.2f} 유지)"
-                    
-                h['current_price'] = cur_price
-                h['current_value'] = cur_val
-                h['pnl_pct'] = pnl_pct
-                h['pnl_amount'] = pnl_amt
-                h['exit_advice'] = advice
-                
-                cursor.execute("""
-                UPDATE my_portfolio SET current_price = ?, current_value = ?, pnl_pct = ?, pnl_amount = ?, exit_advice = ?
-                WHERE id = ?
-                """, (cur_price, cur_val, pnl_pct, pnl_amt, advice, h['id']))
         except Exception:
             pass
             
-        total_invested += float(h['total_cost'])
-        total_eval += float(h['current_value'])
+        cur_val = cur_price * quantity
+        pnl_pct = ((cur_price - buy_price) / buy_price) * 100 if buy_price > 0 else 0.0
+        pnl_amt = cur_val - total_cost
         
-    conn.commit()
-    conn.close()
-    
+        if pnl_pct >= 15.0:
+            advice = f"전량 익절 매도 권고 (목표가 달성 {pnl_pct:+.2f}%)"
+        elif pnl_pct <= -3.0:
+            advice = f"칼손절 긴급 매도 권고 (손절선 이탈 {pnl_pct:+.2f}%)"
+        elif 8.0 <= pnl_pct < 15.0:
+            advice = f"50% 분할 익절 권고 (수익률 {pnl_pct:+.1f}%)"
+        else:
+            advice = f"보유 지속 (손절선 ${buy_price * 0.97:,.2f} 유지)"
+            
+        h['current_price'] = cur_price
+        h['current_value'] = cur_val
+        h['pnl_pct'] = pnl_pct
+        h['pnl_amount'] = pnl_amt
+        h['exit_advice'] = advice
+        
+        update_rows.append((cur_price, cur_val, pnl_pct, pnl_amt, advice, h['id']))
+        total_invested += total_cost
+        total_eval += cur_val
+        
+    # Short atomic batch write
+    if update_rows:
+        try:
+            conn = get_db()
+            cursor = conn.cursor()
+            cursor.executemany("""
+            UPDATE my_portfolio SET current_price = ?, current_value = ?, pnl_pct = ?, pnl_amount = ?, exit_advice = ?
+            WHERE id = ?
+            """, update_rows)
+            conn.commit()
+            conn.close()
+        except Exception:
+            pass
+            
     overall_pnl_pct = ((total_eval - total_invested) / total_invested * 100) if total_invested > 0 else 0.0
     overall_pnl_amt = total_eval - total_invested
     
@@ -318,3 +336,7 @@ def get_recommendations_matrix():
     rows = [dict(r) for r in cursor.fetchall()]
     conn.close()
     return rows
+
+# Function aliases for backward compatibility and API stability
+close_portfolio_position = record_portfolio_sell
+clear_portfolio = reset_all_holdings

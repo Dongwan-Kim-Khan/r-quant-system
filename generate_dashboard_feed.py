@@ -1,10 +1,58 @@
 import os
 import sys
+import time
 import json
+import tempfile
 import pandas as pd
 import yfinance as yf
 from datetime import datetime
 import db_manager
+
+def atomic_save_json(file_path, data, indent=2, max_retries=10):
+    dir_name = os.path.dirname(os.path.abspath(file_path))
+    os.makedirs(dir_name, exist_ok=True)
+    temp_name = None
+    with tempfile.NamedTemporaryFile("w", dir=dir_name, delete=False, encoding="utf-8") as tf:
+        temp_name = tf.name
+        json.dump(data, tf, ensure_ascii=False, indent=indent)
+        tf.flush()
+        os.fsync(tf.fileno())
+        
+    for attempt in range(max_retries):
+        try:
+            os.replace(temp_name, file_path)
+            return
+        except (PermissionError, OSError):
+            if attempt == max_retries - 1:
+                try:
+                    with open(file_path, "w", encoding="utf-8") as f:
+                        json.dump(data, f, ensure_ascii=False, indent=indent)
+                    if temp_name and os.path.exists(temp_name):
+                        os.remove(temp_name)
+                    return
+                except Exception:
+                    pass
+                raise
+            time.sleep(0.01 * (1.5 ** attempt))
+            
+    if temp_name and os.path.exists(temp_name):
+        try:
+            os.remove(temp_name)
+        except Exception:
+            pass
+
+def atomic_read_json(file_path, default=None, max_retries=5):
+    if not os.path.exists(file_path):
+        return default if default is not None else {}
+    for attempt in range(max_retries):
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (PermissionError, json.JSONDecodeError, OSError):
+            if attempt == max_retries - 1:
+                return default if default is not None else {}
+            time.sleep(0.01 * (attempt + 1))
+    return default if default is not None else {}
 
 # Windows encoding fix
 if sys.platform.startswith('win'):
@@ -299,8 +347,7 @@ def build_dashboard_data():
     }
     
     out_path = os.path.join(BASE_DIR, OUTPUT_JSON)
-    with open(out_path, "w", encoding="utf-8") as f:
-        json.dump(payload, f, ensure_ascii=False, indent=2)
+    atomic_save_json(out_path, payload)
         
     print(f"Successfully generated dashboard feed: {out_path}")
     return payload
