@@ -1,6 +1,6 @@
 {
   "ticker": "PANW",
-  "latest_close": 349.95,
+  "latest_close": 353.04,
   "kijun": 353.71,
   "tenkan": 370.95,
   "span_a": 325.61,
@@ -9,28 +9,28 @@
   "future_span_b_latest": 325.01,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 37.31,
-  "kijun_gap_pct": -1.06,
-  "vol_ratio": 0.27,
-  "bull_score": 80,
+  "kijun_gap_pct": -0.19,
+  "vol_ratio": 0.29,
+  "bull_score": 100,
   "bear_score": 40,
-  "sniper_score": 85,
+  "sniper_score": 95,
   "is_sniper": true,
   "is_weekly_bull": true,
   "intelligence": {
-    "verdict": "Sniper Alert (구름대 도약 2단계 특급 매수)",
-    "score": "85 / 100 pt (SNIPER_BUY)",
-    "bull_score": 80,
+    "verdict": "Dual 5-Star (양대 전략 동시 충족 특급 매수)",
+    "score": "100 / 100 pt (DUAL_5_STAR)",
+    "bull_score": 100,
     "bear_score": 40,
-    "sniper_score": 85,
+    "sniper_score": 95,
     "type": "BULL",
     "is_sniper": true,
     "is_weekly_bull": true,
     "trampoline_detected": true,
     "kijun": {
-      "val": "$353.71 (-1.1%)",
-      "status": "status-neutral",
+      "val": "$353.71 (-0.2%)",
+      "status": "status-bull",
       "badge": "SUPPORTED",
-      "desc": "26일 기준선($353.71) 대비 -1.1% 상방 도약 가속 구간"
+      "desc": "26일 기준선($353.71) 대비 -0.2% 상방 도약 가속 구간"
     },
     "tenkan": {
       "val": "$370.95",
@@ -45,15 +45,15 @@
       "desc": "일목 구름대(272.8~325.6) 0일 전 지지 반등 확인 완료"
     },
     "vol": {
-      "val": "27% (20D)",
+      "val": "29% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 27% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 29% (매도세 고갈 완벽)"
     },
-    "action": "[전략 2 스나이퍼] 주봉 상승장 + 0일 전 구름대 지지 도약 후 상방 시세 분출(기준선 대비 -1.1%). 목표 +15% / 손절 -4%."
+    "action": "[황금 교집합] 주봉 정배열 + 구름대 도약(0일 전) + 26일 기준선(-0.2%) 안착."
   },
   "status_tag": "BULL",
-  "status_text": "Sniper Alert (구름대 도약 2단계 특급 매수)",
+  "status_text": "Dual 5-Star (양대 전략 동시 충족 특급 매수)",
   "timeframes": {
     "daily": {
       "candles": [
@@ -3553,9 +3553,9 @@
         {
           "time": "2026-08-21",
           "open": 352.5,
-          "high": 352.57,
+          "high": 353.23,
           "low": 343.01,
-          "close": 349.95
+          "close": 353.04
         }
       ],
       "kijun_line": [
@@ -13773,7 +13773,7 @@
         },
         {
           "time": "2026-08-21",
-          "value": 357.64
+          "value": 357.79
         }
       ],
       "sma60": [
@@ -15775,7 +15775,7 @@
         },
         {
           "time": "2026-08-21",
-          "value": 325.72
+          "value": 325.77
         }
       ],
       "volume": [
@@ -18276,8 +18276,8 @@
         },
         {
           "time": "2026-08-21",
-          "value": 1499319.0,
-          "color": "#dc2626"
+          "value": 1604085.0,
+          "color": "#059669"
         }
       ],
       "future_span_a": [
@@ -19261,7 +19261,7 @@
           "open": 383.25,
           "high": 386.0,
           "low": 343.01,
-          "close": 349.95
+          "close": 353.04
         }
       ],
       "kijun_line": [
@@ -21807,7 +21807,7 @@
         },
         {
           "time": "2026-08-21",
-          "value": 280.31
+          "value": 280.46
         }
       ],
       "sma60": [
@@ -22201,7 +22201,7 @@
         },
         {
           "time": "2026-08-21",
-          "value": 217.48
+          "value": 217.53
         }
       ],
       "volume": [
@@ -22862,7 +22862,7 @@
         },
         {
           "time": "2026-08-21",
-          "value": 21551719.0,
+          "value": 21656485.0,
           "color": "#dc2626"
         }
       ],
@@ -26421,9 +26421,9 @@
     {
       "time": "2026-08-21",
       "open": 352.5,
-      "high": 352.57,
+      "high": 353.23,
       "low": 343.01,
-      "close": 349.95
+      "close": 353.04
     }
   ],
   "kijun_line": [
@@ -36641,7 +36641,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 357.64
+      "value": 357.79
     }
   ],
   "sma60": [
@@ -38643,7 +38643,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 325.72
+      "value": 325.77
     }
   ],
   "volume": [
@@ -41144,8 +41144,8 @@
     },
     {
       "time": "2026-08-21",
-      "value": 1499319.0,
-      "color": "#dc2626"
+      "value": 1604085.0,
+      "color": "#059669"
     }
   ]
 }

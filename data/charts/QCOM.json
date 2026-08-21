@@ -1,6 +1,6 @@
 {
   "ticker": "QCOM",
-  "latest_close": 160.65,
+  "latest_close": 160.77,
   "kijun": 160.77,
   "tenkan": 161.85,
   "span_a": 191.88,
@@ -9,28 +9,28 @@
   "future_span_b_latest": 188.17,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 26.86,
-  "kijun_gap_pct": -0.07,
-  "vol_ratio": 0.15,
+  "kijun_gap_pct": 0.0,
+  "vol_ratio": 0.16,
   "bull_score": 65,
-  "bear_score": 75,
-  "sniper_score": 25,
+  "bear_score": 35,
+  "sniper_score": 30,
   "is_sniper": false,
   "is_weekly_bull": true,
   "intelligence": {
-    "verdict": "Risk Breakdown (생명선 붕괴 / 매수 금지)",
-    "score": "65 / 100 pt (BEAR_EXIT)",
+    "verdict": "Neutral Consolidation (박스권 수렴)",
+    "score": "65 / 100 pt (HOLD)",
     "bull_score": 65,
-    "bear_score": 75,
-    "sniper_score": 25,
-    "type": "BEAR",
+    "bear_score": 35,
+    "sniper_score": 30,
+    "type": "NEUTRAL",
     "is_sniper": false,
     "is_weekly_bull": true,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$160.77 (-0.1%)",
+      "val": "$160.77 (+0.0%)",
       "status": "status-bull",
       "badge": "SUPPORTED",
-      "desc": "현재가 $160.65 / 26일선 $160.77 (이격 -0.1%)"
+      "desc": "현재가 $160.77 / 26일선 $160.77 (이격 +0.0%)"
     },
     "tenkan": {
       "val": "$161.85",
@@ -45,15 +45,15 @@
       "desc": "일목 구름대(191.9~211.6) 하단 붕괴"
     },
     "vol": {
-      "val": "15% (20D)",
+      "val": "16% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 15% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 16% (매도세 고갈 완벽)"
     },
-    "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
+    "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
   },
-  "status_tag": "BEAR",
-  "status_text": "Risk Breakdown (생명선 붕괴 / 매수 금지)",
+  "status_tag": "NEUTRAL",
+  "status_text": "Neutral Consolidation (박스권 수렴)",
   "timeframes": {
     "daily": {
       "candles": [
@@ -1242,7 +1242,7 @@
         },
         {
           "time": "2025-04-29",
-          "open": 142.78,
+          "open": 142.77,
           "high": 144.33,
           "low": 141.67,
           "close": 142.99
@@ -3555,7 +3555,7 @@
           "open": 162.92,
           "high": 163.33,
           "low": 159.17,
-          "close": 160.65
+          "close": 160.77
         }
       ],
       "kijun_line": [
@@ -13773,7 +13773,7 @@
         },
         {
           "time": "2026-08-21",
-          "value": 160.6
+          "value": 160.61
         }
       ],
       "sma60": [
@@ -15775,7 +15775,7 @@
         },
         {
           "time": "2026-08-21",
-          "value": 186.81
+          "value": 186.82
         }
       ],
       "volume": [
@@ -18276,7 +18276,7 @@
         },
         {
           "time": "2026-08-21",
-          "value": 1652155.0,
+          "value": 1748066.0,
           "color": "#dc2626"
         }
       ],
@@ -19261,7 +19261,7 @@
           "open": 166.25,
           "high": 166.5,
           "low": 156.73,
-          "close": 160.65
+          "close": 160.77
         }
       ],
       "kijun_line": [
@@ -21511,7 +21511,7 @@
         },
         {
           "time": "2025-03-21",
-          "value": 156.66
+          "value": 156.67
         },
         {
           "time": "2025-03-28",
@@ -21807,7 +21807,7 @@
         },
         {
           "time": "2026-08-21",
-          "value": 184.18
+          "value": 184.19
         }
       ],
       "sma60": [
@@ -22862,7 +22862,7 @@
         },
         {
           "time": "2026-08-21",
-          "value": 38292755.0,
+          "value": 38388666.0,
           "color": "#dc2626"
         }
       ],
@@ -22895,12 +22895,12 @@
         189.20865919378068
       ],
       "future_span_b": [
-        160.22333311164638,
-        160.22333311164638,
-        160.22333311164638,
-        160.22333311164638,
-        160.22333311164638,
-        160.22333311164638,
+        160.22332600687554,
+        160.22332600687554,
+        160.22332600687554,
+        160.22332600687554,
+        160.22332600687554,
+        160.22332600687554,
         162.19386218196294,
         162.19386218196294,
         162.19386218196294,
@@ -24110,7 +24110,7 @@
     },
     {
       "time": "2025-04-29",
-      "open": 142.78,
+      "open": 142.77,
       "high": 144.33,
       "low": 141.67,
       "close": 142.99
@@ -26423,7 +26423,7 @@
       "open": 162.92,
       "high": 163.33,
       "low": 159.17,
-      "close": 160.65
+      "close": 160.77
     }
   ],
   "kijun_line": [
@@ -36641,7 +36641,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 160.6
+      "value": 160.61
     }
   ],
   "sma60": [
@@ -38643,7 +38643,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 186.81
+      "value": 186.82
     }
   ],
   "volume": [
@@ -41144,7 +41144,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 1652155.0,
+      "value": 1748066.0,
       "color": "#dc2626"
     }
   ]

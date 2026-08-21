@@ -1,6 +1,6 @@
 {
   "ticker": "RKLB",
-  "latest_close": 72.57,
+  "latest_close": 72.07,
   "kijun": 72.52,
   "tenkan": 78.5,
   "span_a": 88.47,
@@ -9,28 +9,28 @@
   "future_span_b_latest": 89.0,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 13.49,
-  "kijun_gap_pct": 0.08,
-  "vol_ratio": 0.24,
-  "bull_score": 65,
-  "bear_score": 35,
-  "sniper_score": 30,
+  "kijun_gap_pct": -0.61,
+  "vol_ratio": 0.26,
+  "bull_score": 55,
+  "bear_score": 75,
+  "sniper_score": 25,
   "is_sniper": false,
   "is_weekly_bull": false,
   "intelligence": {
-    "verdict": "Neutral Consolidation (박스권 수렴)",
-    "score": "65 / 100 pt (HOLD)",
-    "bull_score": 65,
-    "bear_score": 35,
-    "sniper_score": 30,
-    "type": "NEUTRAL",
+    "verdict": "Risk Breakdown (생명선 붕괴 / 매수 금지)",
+    "score": "55 / 100 pt (BEAR_EXIT)",
+    "bull_score": 55,
+    "bear_score": 75,
+    "sniper_score": 25,
+    "type": "BEAR",
     "is_sniper": false,
     "is_weekly_bull": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$72.52 (+0.1%)",
-      "status": "status-bull",
-      "badge": "SUPPORTED",
-      "desc": "현재가 $72.57 / 26일선 $72.52 (이격 +0.1%)"
+      "val": "$72.52 (-0.6%)",
+      "status": "status-bear",
+      "badge": "BREAKDOWN",
+      "desc": "현재가 $72.07 / 26일선 $72.52 (이격 -0.6%)"
     },
     "tenkan": {
       "val": "$78.50",
@@ -45,15 +45,15 @@
       "desc": "일목 구름대(88.5~108.5) 하단 붕괴"
     },
     "vol": {
-      "val": "24% (20D)",
+      "val": "26% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 24% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 26% (매도세 고갈 완벽)"
     },
-    "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
+    "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
   },
-  "status_tag": "NEUTRAL",
-  "status_text": "Neutral Consolidation (박스권 수렴)",
+  "status_tag": "BEAR",
+  "status_text": "Risk Breakdown (생명선 붕괴 / 매수 금지)",
   "timeframes": {
     "daily": {
       "candles": [
@@ -3555,7 +3555,7 @@
           "open": 74.12,
           "high": 74.94,
           "low": 71.45,
-          "close": 72.57
+          "close": 72.07
         }
       ],
       "kijun_line": [
@@ -13773,7 +13773,7 @@
         },
         {
           "time": "2026-08-21",
-          "value": 74.07
+          "value": 74.05
         }
       ],
       "sma60": [
@@ -15775,7 +15775,7 @@
         },
         {
           "time": "2026-08-21",
-          "value": 88.53
+          "value": 88.52
         }
       ],
       "volume": [
@@ -18276,7 +18276,7 @@
         },
         {
           "time": "2026-08-21",
-          "value": 4408039.0,
+          "value": 4671099.0,
           "color": "#dc2626"
         }
       ],
@@ -19261,7 +19261,7 @@
           "open": 81.01,
           "high": 85.55,
           "low": 71.45,
-          "close": 72.57
+          "close": 72.07
         }
       ],
       "kijun_line": [
@@ -21807,7 +21807,7 @@
         },
         {
           "time": "2026-08-21",
-          "value": 91.93
+          "value": 91.91
         }
       ],
       "sma60": [
@@ -22201,7 +22201,7 @@
         },
         {
           "time": "2026-08-21",
-          "value": 70.3
+          "value": 70.29
         }
       ],
       "volume": [
@@ -22862,7 +22862,7 @@
         },
         {
           "time": "2026-08-21",
-          "value": 70965039.0,
+          "value": 71228099.0,
           "color": "#dc2626"
         }
       ],
@@ -26423,7 +26423,7 @@
       "open": 74.12,
       "high": 74.94,
       "low": 71.45,
-      "close": 72.57
+      "close": 72.07
     }
   ],
   "kijun_line": [
@@ -36641,7 +36641,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 74.07
+      "value": 74.05
     }
   ],
   "sma60": [
@@ -38643,7 +38643,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 88.53
+      "value": 88.52
     }
   ],
   "volume": [
@@ -41144,7 +41144,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 4408039.0,
+      "value": 4671099.0,
       "color": "#dc2626"
     }
   ]

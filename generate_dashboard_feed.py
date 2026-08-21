@@ -465,10 +465,10 @@ def build_dashboard_data():
         is_sn = c["is_sniper"]
         s_score = c.get("sniper_score", 95 if is_sn else 0)
         
-        # Strategy 1 (Classic Pullback Accumulation): Bull trend, Bull Score >= 80, Kijun gap -0.8% ~ +4.8%
-        is_strat1 = (b_score >= 80) and (-0.8 <= kgap <= 4.8)
-        # Strategy 2 (Cloud Bounce Sniper): Cloud trampoline launch detected, Sniper Score >= 80
-        is_strat2 = bool(is_sn) and (s_score >= 80)
+        # Strategy 1 (Classic Pullback Accumulation): Weekly Bull, Bull Score >= 80, Kijun gap -0.8% ~ +4.8%
+        is_strat1 = c.get("is_weekly_bull", False) and (b_score >= 80) and (-0.8 <= kgap <= 4.8)
+        # Strategy 2 (Cloud Bounce Sniper): Weekly Bull, Cloud trampoline launch detected, Sniper Score >= 80
+        is_strat2 = c.get("is_weekly_bull", False) and bool(is_sn) and (s_score >= 80)
         
         item_score = 100 if (is_strat1 and is_strat2) else (b_score if is_strat1 else s_score)
         
