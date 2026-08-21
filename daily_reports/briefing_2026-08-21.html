@@ -1,0 +1,185 @@
+
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #f1f5f9; color: #0f172a; margin: 0; padding: 24px; line-height: 1.5; }
+            .container { max-width: 720px; margin: 0 auto; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; overflow: hidden; }
+            .header { background: #0f172a; color: #ffffff; padding: 24px 28px; border-bottom: 2px solid #334155; }
+            .header h1 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
+            .header .meta { font-size: 12px; color: #94a3b8; margin-top: 6px; }
+            
+            .macro-alert-bar { background: #fffbeb; border: 1px solid #fef3c7; border-left: 5px solid #d97706; padding: 14px 18px; font-size: 13px; color: #92400e; font-weight: 600; line-height: 1.5; }
+            .macro-gauges-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+            .macro-gauge-box { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 2px; padding: 8px 12px; font-size: 12px; }
+            .macro-gauge-title { color: #64748b; font-size: 11px; text-transform: uppercase; font-weight: 600; }
+            .macro-gauge-val { font-family: monospace; font-size: 14px; font-weight: 700; color: #0f172a; margin-top: 2px; }
+            
+            .section { padding: 20px 28px; border-bottom: 1px solid #e2e8f0; }
+            .section-title { font-size: 14px; font-weight: 700; color: #1e293b; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 14px; padding-bottom: 6px; border-bottom: 2px solid #0f172a; }
+            .macro-box { background: #f8fafc; border: 1px solid #cbd5e1; border-left: 4px solid #334155; padding: 14px 16px; margin-bottom: 12px; }
+            .macro-row { font-size: 13px; margin-bottom: 6px; }
+            .macro-row strong { color: #0f172a; }
+            .table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+            .table th { background: #f1f5f9; color: #475569; font-weight: 600; text-align: left; padding: 8px 10px; border: 1px solid #e2e8f0; }
+            .table td { padding: 8px 10px; border: 1px solid #e2e8f0; color: #1e293b; }
+            .stock-card { background: #ffffff; border: 1px solid #cbd5e1; border-left: 4px solid #0f172a; padding: 14px 16px; margin-bottom: 10px; }
+            .stock-card-bull { border-left-color: #059669; }
+            .stock-card-neutral { border-left-color: #d97706; }
+            .stock-card-bear { border-left-color: #dc2626; }
+            .stock-head { display: flex; justify-content: space-between; font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+            .stock-meta { font-size: 12px; color: #475569; line-height: 1.6; }
+            .badge { display: inline-block; padding: 2px 6px; font-size: 11px; font-weight: 600; border-radius: 2px; }
+            .badge-bull { background: #dcfce7; color: #166534; }
+            .badge-neutral { background: #fef3c7; color: #92400e; }
+            .badge-bear { background: #fee2e2; color: #991b1b; }
+            .badge-hold { background: #e0f2fe; color: #075985; }
+            .footer { padding: 16px 28px; font-size: 11px; color: #64748b; background: #f8fafc; text-align: center; border-top: 1px solid #e2e8f0; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>AL-SANGMOO QUANTITATIVE TACTICAL REPORT</h1>
+                <div class="meta">발행일시: 2026-08-21 12:30 KST | 분석 모듈: 3단계 게이트 의사결정 파이프라인 (거시 기후 ➔ 문맥 NLP ➔ 17년 퀀트)</div>
+            </div>
+            
+            <!-- Gate 0: Macro Climate & Weekly Directive -->
+            <div class="macro-alert-bar">
+                <div style="font-size:14px; font-weight:800; color:#b45309; margin-bottom:4px;">[거시 게이트 0단계: 거시 안정권 (MSI 33.0점) / 선별적 눌림목 매수 유효]</div>
+                <div>거시 위험 지수(MSI 33.0점)가 정상 범위에 위치합니다. 26일 기준선 지지가 확인된 주도 종목에 대한 소액 분할 매수가 유효합니다.</div>
+                
+                <!-- Macro 3 Gauges -->
+                <div class="macro-gauges-grid">
+                    <div class="macro-gauge-box">
+                        <div class="macro-gauge-title">VIX 공포지수</div>
+                        <div class="macro-gauge-val">16.01 <span style="font-size:11px; color:#64748b;">(NORMAL)</span></div>
+                    </div>
+                    <div class="macro-gauge-box">
+                        <div class="macro-gauge-title">미국채 10년물 금리</div>
+                        <div class="macro-gauge-val">4.696% <span style="font-size:11px; color:#b45309;">(HIGH_BURDEN)</span></div>
+                    </div>
+                    <div class="macro-gauge-box">
+                        <div class="macro-gauge-title">WTI 국제유가</div>
+                        <div class="macro-gauge-val">$87.83 <span style="font-size:11px; color:#166534;">(ELEVATED)</span></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 1. Macro Regime & Host Recommended Stocks -->
+            <div class="section">
+                <div class="section-title">1. Vikings Live Broadcast Context & Macro Intelligence</div>
+                <div class="macro-box">
+                    <div class="macro-row"><strong>라이브 방송 본문:</strong> <a href="https://www.youtube.com/watch?v=G7rMcAiS6rI" target="_blank" style="color:#0f172a; text-decoration:underline;">[바이킹스] 시장이 쫄아있는 근본적인 이유ㅣ[버디버디] NH투자증권 백찬규 센터장/하나증권 박승진 실장 초대석</a></div>
+                    <div class="macro-row"><strong>거시 리스크 요인:</strong> 거시 매크로 관망 국면</div>
+                    <div class="macro-row"><strong>방송 내 추천·순환매 긍정 평가 종목:</strong> <span style="font-family:monospace; font-size:12px; font-weight:600;">방송 본문 문맥 분석 완료</span></div>
+                </div>
+            </div>
+
+            <!-- 2. Real Portfolio Risk & Execution Monitor -->
+            <div class="section">
+                <div class="section-title">2. Real Portfolio Risk & Execution Monitor</div>
+    
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:14px; font-size:12px; color:#64748b; text-align:center;">
+                    [실계좌 보유 현황: 0 종목] 현재 실제 포트폴리오에 등록된 보유 종목이 없습니다.<br>
+                    웹 대시보드(http://localhost:8000)에서 포지션 진입 시 실시간 손절(-3%) 및 목표가(+15%) 추적 모니터링이 자동 개시됩니다.
+                </div>
+        
+            </div>
+
+            <!-- 3. Quantitative Evaluation on Recommended Stocks (2+2+2) -->
+            <div class="section">
+                <div class="section-title">3. Tactical 2+2+2 Matrix (시장 안정 시 최우선 매수 후보)</div>
+                <div style="font-size:12px; font-weight:700; color:#059669; margin-bottom:8px;">[Primary Accumulation] 방송 긍정 추천 + 퀀트 지표 합격 (거시 안정 시 1차 분할 매수 1순위)</div>
+    
+                <div class="stock-card stock-card-bull">
+                    <div class="stock-head">
+                        <span>AMZN &nbsp;<span class="badge badge-bull">적합도 100점</span></span>
+                        <span style="font-family:monospace;">$260.11</span>
+                    </div>
+                    <div class="stock-meta">
+                        • <strong>26일 기준선:</strong> $256.68 (이격도 +1.3%) | <strong>20일 거래량 비율:</strong> 59% (수급 마름)<br>
+                        • <strong>진입 기준가:</strong> $260.11 | <strong>1차 목표가:</strong> $299.13 (+15.0%) | <strong>손절 기준선:</strong> $252.31 (-3.0%)<br>
+                        • <strong>정량 분석 평가:</strong> 방송 본문에서 긍정 추천 평가를 받았으며, 일목 구름대 상단 안착 및 26일 기준선 지지 확인. 거시 변동성 진정 시 1순위 분할 매수 진입 대상.
+                    </div>
+                </div>
+        
+                <div class="stock-card stock-card-bull">
+                    <div class="stock-head">
+                        <span>NVDA &nbsp;<span class="badge badge-bull">적합도 80점</span></span>
+                        <span style="font-family:monospace;">$216.85</span>
+                    </div>
+                    <div class="stock-meta">
+                        • <strong>26일 기준선:</strong> $208.96 (이격도 +3.8%) | <strong>20일 거래량 비율:</strong> 79% (수급 마름)<br>
+                        • <strong>진입 기준가:</strong> $216.85 | <strong>1차 목표가:</strong> $249.38 (+15.0%) | <strong>손절 기준선:</strong> $210.34 (-3.0%)<br>
+                        • <strong>정량 분석 평가:</strong> 방송 본문에서 긍정 추천 평가를 받았으며, 일목 구름대 상단 안착 및 26일 기준선 지지 확인. 거시 변동성 진정 시 1순위 분할 매수 진입 대상.
+                    </div>
+                </div>
+        
+                <div style="font-size:12px; font-weight:700; color:#d97706; margin:16px 0 8px 0;">[Consolidation / Neutral] 박스권 횡보 및 추세 수렴 종목 (신규 진입 보류)</div>
+    
+                <div class="stock-card stock-card-neutral">
+                    <div class="stock-head">
+                        <span>QCOM &nbsp;<span class="badge badge-neutral">관망 대상</span></span>
+                        <span style="font-family:monospace;">$160.74</span>
+                    </div>
+                    <div class="stock-meta">
+                        • <strong>위치 상태:</strong> 구름대 하단 붕괴 | <strong>기준선 이격도:</strong> -0.0%<br>
+                        • <strong>정량 분석 평가:</strong> 단기 박스권 횡보 및 추세 수렴 구간. 상방 돌파 또는 확정적 지지 반등 확인 전까지 신규 진입 보류.
+                    </div>
+                </div>
+        
+                <div class="stock-card stock-card-neutral">
+                    <div class="stock-head">
+                        <span>TSLA &nbsp;<span class="badge badge-neutral">관망 대상</span></span>
+                        <span style="font-family:monospace;">$345.13</span>
+                    </div>
+                    <div class="stock-meta">
+                        • <strong>위치 상태:</strong> 구름대 하단 붕괴 | <strong>기준선 이격도:</strong> -0.4%<br>
+                        • <strong>정량 분석 평가:</strong> 단기 박스권 횡보 및 추세 수렴 구간. 상방 돌파 또는 확정적 지지 반등 확인 전까지 신규 진입 보류.
+                    </div>
+                </div>
+        
+                <div style="font-size:12px; font-weight:700; color:#dc2626; margin:16px 0 8px 0;">[Risk Alert / Short Hedge] 기준선 붕괴 및 리스크 회피 종목 (생명선 이탈 / 매수 절대 금지)</div>
+    
+                <div class="stock-card stock-card-bear">
+                    <div class="stock-head">
+                        <span>GOOGL &nbsp;<span class="badge badge-bear">위험도 90점</span></span>
+                        <span style="font-family:monospace;">$340.67</span>
+                    </div>
+                    <div class="stock-meta">
+                        • <strong>위치 상태:</strong> 구름대 하단 붕괴 | <strong>기준선 이탈도:</strong> -2.6%<br>
+                        • <strong>정량 분석 평가:</strong> 26일 기준선(생명선) 하향 붕괴. 추가 낙폭 리스크 존재하므로 물타기/매수 절대 금지 및 숏 헤지 우위.
+                    </div>
+                </div>
+        
+                <div class="stock-card stock-card-bear">
+                    <div class="stock-head">
+                        <span>META &nbsp;<span class="badge badge-bear">위험도 90점</span></span>
+                        <span style="font-family:monospace;">$545.83</span>
+                    </div>
+                    <div class="stock-meta">
+                        • <strong>위치 상태:</strong> 구름대 하단 붕괴 | <strong>기준선 이탈도:</strong> -9.5%<br>
+                        • <strong>정량 분석 평가:</strong> 26일 기준선(생명선) 하향 붕괴. 추가 낙폭 리스크 존재하므로 물타기/매수 절대 금지 및 숏 헤지 우위.
+                    </div>
+                </div>
+        
+            </div>
+
+            <!-- 4. Model Verification -->
+            <div class="section">
+                <div class="section-title">4. Model Governance & Verification</div>
+                <div style="font-size:12px; color:#475569;">
+                    • <strong>전수 포워드 트래킹 상태:</strong> 데이터 누적 단계 (초기 전수 포워드 트래킹 중)<br>
+                    • <strong>시스템 아키텍처:</strong> Gate 0 (거시 기후) ➔ Gate 1 (방송 문맥 NLP) ➔ Gate 2 (알상무 17년 퀀트)
+                </div>
+            </div>
+            
+            <div class="footer">
+                Al-Sangmoo Quantitative Risk Engine • Confidential Portfolio Report • Generated Daily at 12:30 KST
+            </div>
+        </div>
+    </body>
+    </html>
+    
