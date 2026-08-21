@@ -1,6 +1,8 @@
 import os
 import sys
+import json
 import smtplib
+from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -13,7 +15,13 @@ if sys.platform.startswith('win'):
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, ".."))
+sys.path.insert(0, PROJECT_ROOT)
+
+import al_sangmoo_daily_bot
+import db_manager
+
 ENV_FILE = os.path.join(PROJECT_ROOT, ".env")
+FEED_FILE = os.path.join(PROJECT_ROOT, "dashboard_data.json")
 
 def load_env():
     if os.path.exists(ENV_FILE):
@@ -29,35 +37,65 @@ def test_send():
     gmail_user = os.environ.get("GMAIL_USER")
     gmail_pass = os.environ.get("GMAIL_APP_PASSWORD")
     receiver = os.environ.get("ALERT_EMAIL_RECEIVER", "kdw58170425@gmail.com")
+    today_str = datetime.now().strftime("%Y-%m-%d")
     
-    print(f"📧 [테스트] 발신자: {gmail_user}")
-    print(f"📧 [테스트] 수신자: {receiver}")
+    print("=" * 65)
+    print("  R-SANGMOO QUANT PLATFORM: EMAIL DISPATCH TEST SUITE")
+    print("=" * 65)
+    print(f"  - Sender   : {gmail_user}")
+    print(f"  - Receiver : {receiver}")
     
     if not gmail_user or not gmail_pass:
-        print("❌ [.env 오류] GMAIL_USER 또는 GMAIL_APP_PASSWORD가 .env 파일에 비어 있습니다.")
-        print("👉 해결 방법: 구글 계정 보안에서 '앱 비밀번호(16자리)'를 발급받아 .env 파일의 GMAIL_APP_PASSWORD= 에 입력해주세요.")
+        print("\n[ERROR] GMAIL_USER or GMAIL_APP_PASSWORD not set in .env file.")
         return
         
+    # Load live feed data if available
+    feed_data = {}
+    if os.path.exists(FEED_FILE):
+        try:
+            with open(FEED_FILE, "r", encoding="utf-8") as f:
+                feed_data = json.load(f)
+        except Exception:
+            pass
+            
+    dual_consensus = feed_data.get("dual_consensus", [])
+    strat1_exclusive = feed_data.get("strat1_exclusive", [])
+    strat2_exclusive = feed_data.get("strat2_exclusive", [])
+    
+    portfolio_alerts = al_sangmoo_daily_bot.evaluate_user_portfolio_positions()
+    health_status = "전수 포워드 트래킹 정상 가동 중 (17년 퀀트 프레임워크)"
+    
+    # Generate 3-Column Tactical Email
+    html_content = al_sangmoo_daily_bot.generate_email_content(
+        today_str=today_str,
+        dual_consensus=dual_consensus,
+        strat1_exclusive=strat1_exclusive,
+        strat2_exclusive=strat2_exclusive,
+        portfolio_alerts=portfolio_alerts,
+        health_status=health_status,
+        feed_data=feed_data
+    )
+    
     try:
-        msg = MIMEMultipart()
-        msg["Subject"] = "🧪 [R상무 퀀트] 이메일 발송 연동 테스트 성공!"
-        msg["From"] = f"R상무 퀀트 봇 <{gmail_user}>"
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = f"[R-Sangmoo Quant Briefing] {today_str} Tactical 3-Column Quant Report"
+        msg["From"] = f"R-Sangmoo Quant Engine <{gmail_user}>"
         msg["To"] = receiver
         
-        body = """
-        <h2>🎉 R상무 퀀트 모닝 브리핑 이메일 연동 성공!</h2>
-        <p>축하합니다. 이메일 SMTP 발송 설정이 정상적으로 완료되었습니다.</p>
-        <p>이제 매일 아침 8시 30분에 <strong>2+2+2 자동 추천 6종목 및 보유 종목 매도/익절 알림</strong>이 본 메일함으로 자동 전송됩니다.</p>
-        """
-        msg.attach(MIMEText(body, "html", "utf-8"))
+        msg.attach(MIMEText(html_content, "html", "utf-8"))
         
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
             server.login(gmail_user, gmail_pass)
             server.sendmail(gmail_user, receiver, msg.as_string())
             
-        print(f"✅ [성공] {receiver}에게 테스트 메일을 성공적으로 발송했습니다! 메일함을 확인해주세요.")
+        print(f"\n[SUCCESS] Modernized 3-Column Tactical Email successfully sent to {receiver}!")
+        print("  - Dual Consensus Candidates :", len(dual_consensus))
+        print("  - Strategy 1 Candidates    :", len(strat1_exclusive))
+        print("  - Strategy 2 Candidates    :", len(strat2_exclusive))
+        print("  - Portfolio Alerts         :", len(portfolio_alerts))
+        print("=" * 65)
     except Exception as e:
-        print(f"❌ [발송 실패] 오류 내용: {e}")
+        print(f"\n[FAILURE] Email dispatch failed: {e}")
 
 if __name__ == "__main__":
     test_send()

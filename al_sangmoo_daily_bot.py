@@ -412,28 +412,33 @@ def evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, 
         
     return history_df, health_status
 
-def generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, portfolio_alerts, health_status, stream_info=None):
+def generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_exclusive, portfolio_alerts, health_status, stream_info=None, feed_data=None):
     if stream_info is None:
         stream_info = {}
+    if feed_data is None:
+        feed_data = {}
         
+    macro_info = feed_data.get("macro", {})
+    macro_climate = macro_info.get("macro_climate", stream_info.get("macro_climate", {}))
+    macro_gauges = macro_info.get("macro_gauges", stream_info.get("macro_gauges", {}))
+    mentioned_stocks = stream_info.get("mentioned_stocks", [])
+    
     stream_title = stream_info.get("title", "바이킹스 데일리 매크로 & 라이브 방송 분석")
     stream_url = stream_info.get("url", "https://www.youtube.com/@wepoll_original/streams")
-    macro_climate = stream_info.get("macro_climate", {})
-    macro_gauges = stream_info.get("macro_gauges", {})
-    mentioned_stocks = stream_info.get("mentioned_stocks", [])
     
     vix = macro_gauges.get("vix", {"val": 15.8, "delta": "+0.4%", "status": "NORMAL"})
     us10y = macro_gauges.get("us10y", {"val": 4.69, "delta": "+0.04%p", "status": "CRITICAL_BURDEN"})
     dxy = macro_gauges.get("dxy", {"val": 99.5, "delta": "+0.1%", "status": "NEUTRAL"})
     wti = macro_gauges.get("wti", {"val": 86.2, "delta": "-0.5%", "status": "INFLATION_SHOCK"})
-    gold = macro_gauges.get("gold", {"val": 4620.0, "delta": "+0.3%", "status": "STABLE"})
     
+    macro_stance = macro_climate.get("macro_stance", "DEFENSE_HOLD").replace('_', ' ')
+    msi_score = macro_climate.get("msi_score", 66.9)
     macro_headline = macro_climate.get("macro_headline", "[거시 게이트 0단계: 거시 위험 지수 경보 / 신규 매수 보류 권고]")
     macro_directive = macro_climate.get("macro_action_directive", "거시 지표 및 방송 지침상 이번 주는 관망 주간입니다.")
     external_shocks = ", ".join(macro_climate.get("external_shocks", ["금리 경로 영향권", "인플레이션 변동성"]))
     
     rec_list = [f"{m['ticker']}(+{m['net_sentiment']} / 키워드: {', '.join(m.get('positive_reasons', []))})" for m in mentioned_stocks if m.get('host_intent') == 'BULLISH_RECOMMENDED']
-    rec_summary_str = " | ".join(rec_list[:5]) if rec_list else "방송 본문 문맥 분석 완료"
+    rec_summary_str = " | ".join(rec_list[:5]) if rec_list else "바이킹스 정규 방송 문맥 분석 완료"
 
     html = f"""
     <!DOCTYPE html>
@@ -442,35 +447,36 @@ def generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, por
         <meta charset="utf-8">
         <style>
             body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #f1f5f9; color: #0f172a; margin: 0; padding: 24px; line-height: 1.5; }}
-            .container {{ max-width: 720px; margin: 0 auto; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; overflow: hidden; }}
-            .header {{ background: #0f172a; color: #ffffff; padding: 24px 28px; border-bottom: 2px solid #334155; }}
-            .header h1 {{ margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }}
+            .container {{ max-width: 740px; margin: 0 auto; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }}
+            .header {{ background: #0f172a; color: #ffffff; padding: 24px 28px; border-bottom: 3px solid #38bdf8; }}
+            .header h1 {{ margin: 0; font-size: 18px; font-weight: 800; letter-spacing: -0.02em; }}
             .header .meta {{ font-size: 12px; color: #94a3b8; margin-top: 6px; }}
             
-            .macro-alert-bar {{ background: #fffbeb; border: 1px solid #fef3c7; border-left: 5px solid #d97706; padding: 14px 18px; font-size: 13px; color: #92400e; font-weight: 600; line-height: 1.5; }}
-            .macro-gauges-grid {{ display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 10px; }}
-            .macro-gauge-box {{ background: #ffffff; border: 1px solid #e2e8f0; border-radius: 2px; padding: 8px 10px; font-size: 11px; }}
-            .macro-gauge-title {{ color: #64748b; font-size: 10px; text-transform: uppercase; font-weight: 600; }}
-            .macro-gauge-val {{ font-family: monospace; font-size: 13px; font-weight: 700; color: #0f172a; margin-top: 2px; }}
+            .macro-alert-bar {{ background: #fffbeb; border-left: 5px solid #d97706; padding: 14px 18px; font-size: 13px; color: #92400e; font-weight: 600; line-height: 1.5; }}
+            .macro-gauges-grid {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }}
+            .macro-gauge-box {{ background: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px; padding: 8px 10px; font-size: 11px; }}
+            .macro-gauge-title {{ color: #64748b; font-size: 10px; text-transform: uppercase; font-weight: 700; }}
+            .macro-gauge-val {{ font-family: monospace; font-size: 13px; font-weight: 800; color: #0f172a; margin-top: 2px; }}
             
             .section {{ padding: 20px 28px; border-bottom: 1px solid #e2e8f0; }}
-            .section-title {{ font-size: 14px; font-weight: 700; color: #1e293b; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 14px; padding-bottom: 6px; border-bottom: 2px solid #0f172a; }}
-            .macro-box {{ background: #f8fafc; border: 1px solid #cbd5e1; border-left: 4px solid #334155; padding: 14px 16px; margin-bottom: 12px; }}
+            .section-title {{ font-size: 13px; font-weight: 800; color: #1e293b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #0f172a; }}
+            .macro-box {{ background: #f8fafc; border: 1px solid #cbd5e1; border-left: 4px solid #334155; padding: 12px 16px; margin-bottom: 12px; }}
             .macro-row {{ font-size: 13px; margin-bottom: 6px; }}
             .macro-row strong {{ color: #0f172a; }}
             .table {{ width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }}
-            .table th {{ background: #f1f5f9; color: #475569; font-weight: 600; text-align: left; padding: 8px 10px; border: 1px solid #e2e8f0; }}
+            .table th {{ background: #f1f5f9; color: #475569; font-weight: 700; text-align: left; padding: 8px 10px; border: 1px solid #e2e8f0; font-family: monospace; font-size: 11px; }}
             .table td {{ padding: 8px 10px; border: 1px solid #e2e8f0; color: #1e293b; }}
-            .stock-card {{ background: #ffffff; border: 1px solid #cbd5e1; border-left: 4px solid #0f172a; padding: 14px 16px; margin-bottom: 10px; }}
-            .stock-card-bull {{ border-left-color: #059669; }}
-            .stock-card-neutral {{ border-left-color: #d97706; }}
-            .stock-card-bear {{ border-left-color: #dc2626; }}
-            .stock-head {{ display: flex; justify-content: space-between; font-weight: 700; font-size: 14px; margin-bottom: 6px; }}
+            
+            .stock-card {{ background: #ffffff; border: 1px solid #cbd5e1; border-left: 4px solid #0f172a; padding: 12px 16px; margin-bottom: 10px; border-radius: 4px; }}
+            .stock-card-dual {{ border-left-color: #f59e0b; background: #fffdf5; border-color: #fef08a; }}
+            .stock-card-strat1 {{ border-left-color: #059669; }}
+            .stock-card-strat2 {{ border-left-color: #dc2626; }}
+            .stock-head {{ display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 14px; margin-bottom: 6px; }}
             .stock-meta {{ font-size: 12px; color: #475569; line-height: 1.6; }}
-            .badge {{ display: inline-block; padding: 2px 6px; font-size: 11px; font-weight: 600; border-radius: 2px; }}
-            .badge-bull {{ background: #dcfce7; color: #166534; }}
-            .badge-neutral {{ background: #fef3c7; color: #92400e; }}
-            .badge-bear {{ background: #fee2e2; color: #991b1b; }}
+            .badge {{ display: inline-block; padding: 2px 6px; font-size: 10px; font-weight: 700; border-radius: 2px; font-family: monospace; }}
+            .badge-dual {{ background: #fef08a; color: #854d0e; }}
+            .badge-strat1 {{ background: #dcfce7; color: #166534; }}
+            .badge-strat2 {{ background: #fee2e2; color: #991b1b; }}
             .badge-hold {{ background: #e0f2fe; color: #075985; }}
             .footer {{ padding: 16px 28px; font-size: 11px; color: #64748b; background: #f8fafc; text-align: center; border-top: 1px solid #e2e8f0; }}
         </style>
@@ -478,8 +484,8 @@ def generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, por
     <body>
         <div class="container">
             <div class="header">
-                <h1>R-SANGMOO QUANTITATIVE TACTICAL REPORT</h1>
-                <div class="meta">발행일시: {today_str} 12:30 KST | 분석 모듈: 3단계 게이트 의사결정 파이프라인 (거시 기후 ➔ 문맥 NLP ➔ 17년 퀀트)</div>
+                <h1>R-SANGMOO QUANTITATIVE DAILY BRIEFING</h1>
+                <div class="meta">발행일시: {today_str} 12:30 KST | 거시 위험 태세: <strong style="color:#fbbf24;">{macro_stance} (MSI {msi_score:.1f}pt)</strong> | 17년 퀀트 프레임워크</div>
             </div>
             
             <!-- Gate 0: Macro Climate & Weekly Directive -->
@@ -487,34 +493,30 @@ def generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, por
                 <div style="font-size:14px; font-weight:800; color:#b45309; margin-bottom:4px;">{macro_headline}</div>
                 <div>{macro_directive}</div>
                 
-                <!-- Macro 5 Gauges -->
+                <!-- Macro 4 Gauges -->
                 <div class="macro-gauges-grid">
                     <div class="macro-gauge-box">
                         <div class="macro-gauge-title">10년물 국채금리</div>
-                        <div class="macro-gauge-val">{us10y['val']}% <span style="font-size:10px; color:#b45309;">({us10y['status']})</span></div>
+                        <div class="macro-gauge-val">{us10y.get('val', 4.42)}% <span style="font-size:10px; color:#b45309;">({us10y.get('status', 'BURDEN')})</span></div>
                     </div>
                     <div class="macro-gauge-box">
                         <div class="macro-gauge-title">달러 인덱스</div>
-                        <div class="macro-gauge-val">{dxy['val']} <span style="font-size:10px; color:#64748b;">({dxy['status']})</span></div>
+                        <div class="macro-gauge-val">{dxy.get('val', 99.5)} <span style="font-size:10px; color:#64748b;">({dxy.get('status', 'NEUTRAL')})</span></div>
                     </div>
                     <div class="macro-gauge-box">
                         <div class="macro-gauge-title">VIX 공포지수</div>
-                        <div class="macro-gauge-val">{vix['val']} <span style="font-size:10px; color:#64748b;">({vix['status']})</span></div>
+                        <div class="macro-gauge-val">{vix.get('val', 15.8)} <span style="font-size:10px; color:#64748b;">({vix.get('status', 'NORMAL')})</span></div>
                     </div>
                     <div class="macro-gauge-box">
                         <div class="macro-gauge-title">WTI 국제유가</div>
-                        <div class="macro-gauge-val">${wti['val']} <span style="font-size:10px; color:#b45309;">({wti['status']})</span></div>
-                    </div>
-                    <div class="macro-gauge-box">
-                        <div class="macro-gauge-title">국제 금시세</div>
-                        <div class="macro-gauge-val">${gold['val']} <span style="font-size:10px; color:#64748b;">({gold['status']})</span></div>
+                        <div class="macro-gauge-val">${wti.get('val', 78.5)} <span style="font-size:10px; color:#b45309;">({wti.get('status', 'STABLE')})</span></div>
                     </div>
                 </div>
             </div>
             
-            <!-- 1. Macro Regime & Host Recommended Stocks -->
+            <!-- 1. Vikings Live Broadcast Context -->
             <div class="section">
-                <div class="section-title">1. Vikings Live Broadcast Context & Macro Intelligence</div>
+                <div class="section-title">1. Vikings Live Broadcast & Macro Intelligence</div>
                 <div class="macro-box">
                     <div class="macro-row"><strong>라이브 방송 본문:</strong> <a href="{stream_url}" target="_blank" style="color:#0f172a; text-decoration:underline;">{stream_title}</a></div>
                     <div class="macro-row"><strong>거시 리스크 요인:</strong> {external_shocks}</div>
@@ -531,13 +533,13 @@ def generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, por
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>종목</th>
+                            <th>TICKER</th>
                             <th>보유수량</th>
                             <th>매수가</th>
                             <th>현재가</th>
                             <th>수익률</th>
                             <th>목표가(+15%)</th>
-                            <th>손절가(-3%)</th>
+                            <th>손절가(-4%)</th>
                             <th>실전 대응 지침</th>
                         </tr>
                     </thead>
@@ -545,7 +547,7 @@ def generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, por
         """
         for p in portfolio_alerts:
             pnl_color = "#059669" if p['pnl_pct'] > 0 else "#dc2626"
-            badge_class = "badge-bull" if "익절" in p['badge'] else ("badge-bear" if "손절" in p['badge'] else "badge-hold")
+            badge_class = "badge-strat1" if "익절" in p['badge'] else ("badge-strat2" if "손절" in p['badge'] else "badge-hold")
             html += f"""
                         <tr>
                             <td><strong>{p['ticker']}</strong></td>
@@ -566,80 +568,94 @@ def generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, por
         html += """
                 <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:14px; font-size:12px; color:#64748b; text-align:center;">
                     [실계좌 보유 현황: 0 종목] 현재 실제 포트폴리오에 등록된 보유 종목이 없습니다.<br>
-                    웹 대시보드(http://localhost:8000)에서 포지션 진입 시 실시간 손절(-3%) 및 목표가(+15%) 추적 모니터링이 자동 개시됩니다.
+                    웹 대시보드(http://localhost:8000)에서 포지션 진입 시 실시간 손절(-4%) 및 목표가(+15%) 추적 모니터링이 자동 개시됩니다.
                 </div>
         """
 
     html += """
             </div>
 
-            <!-- 3. Quantitative Evaluation on Recommended Stocks (2+2+2) -->
+            <!-- 3. Tactical 3-Column Quant Portfolio -->
             <div class="section">
-                <div class="section-title">3. Tactical 2+2+2 Matrix (시장 안정 시 최우선 매수 후보)</div>
-                <div style="font-size:12px; font-weight:700; color:#059669; margin-bottom:8px;">[Primary Accumulation] 방송 긍정 추천 + 퀀트 지표 합격 (거시 안정 시 1차 분할 매수 1순위)</div>
+                <div class="section-title">3. Tactical 3-Column Quant Recommendations (오늘의 핵심 퀀트 추천주)</div>
     """
-    for b in bull_picks:
-        stop_p = b['close'] * 0.97
-        tgt_p = b['close'] * 1.15
-        pos_reasons = f"방송 문맥 긍정 ({', '.join(b.get('positive_reasons', []))}) | " if b.get('positive_reasons') else ""
-        html += f"""
-                <div class="stock-card stock-card-bull">
-                    <div class="stock-head">
-                        <span>{b['ticker']} &nbsp;<span class="badge badge-bull">{pos_reasons}적합도 {b['bull_score']}점</span></span>
-                        <span style="font-family:monospace;">${b['close']:,.2f}</span>
-                    </div>
-                    <div class="stock-meta">
-                        • <strong>26일 기준선:</strong> ${b['kijun']:,.2f} (이격도 {b['kijun_gap']:+.1f}%) | <strong>20일 거래량 비율:</strong> {b['vol_ratio']*100:.0f}% (수급 마름)<br>
-                        • <strong>진입 기준가:</strong> ${b['close']:,.2f} | <strong>1차 목표가:</strong> ${tgt_p:,.2f} (+15.0%) | <strong>손절 기준선:</strong> ${stop_p:,.2f} (-3.0%)<br>
-                        • <strong>정량 분석 평가:</strong> 방송 본문에서 긍정 추천 평가를 받았으며, 일목 구름대 상단 안착 및 26일 기준선 지지 확인. 거시 변동성 진정 시 1순위 분할 매수 진입 대상.
-                    </div>
+    
+    # 3.1. Dual Consensus (5-Star Alpha ∩)
+    if dual_consensus:
+        html += """
+                <div style="font-size:13px; font-weight:800; color:#b45309; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+                    <span>[최상위 5-Star ∩] DUAL CONSENSUS ALPHA (양대 전략 동시 충족 100점 만점 주도주)</span>
                 </div>
         """
+        for d in dual_consensus:
+            html += f"""
+                <div class="stock-card stock-card-dual">
+                    <div class="stock-head">
+                        <span><strong>{d['ticker']}</strong> &nbsp;<span style="font-size:12px; color:#64748b;">{d.get('name','')}</span> &nbsp;<span class="badge badge-dual">5-STAR ALPHA 100점</span></span>
+                        <span style="font-family:monospace; font-weight:800;">${d['price']:,.2f}</span>
+                    </div>
+                    <div class="stock-meta">
+                        • <strong>26일 기준선 이격:</strong> {d['kijun_gap']:+.2f}% | <strong>20일 거래량 비율:</strong> {d['vol_ratio']}% (수급 마름 확인)<br>
+                        • <strong>1차 목표가(+15%):</strong> <span style="color:#059669; font-weight:700;">${d['target_price']:,.2f}</span> | <strong>칼손절 기준선(-4%):</strong> <span style="color:#dc2626; font-weight:700;">${d['stop_price']:,.2f}</span><br>
+                        • <strong>기관 퀀트 분석:</strong> 정석 기준선 지지 눌림목과 14일 구름대 반등(트램펄린) 2단계 시세 분출 조건을 동시에 완벽 충족한 최우선 매수 후보.
+                    </div>
+                </div>
+            """
 
-    html += """
-                <div style="font-size:12px; font-weight:700; color:#d97706; margin:16px 0 8px 0;">[Consolidation / Neutral] 박스권 횡보 및 추세 수렴 종목 (신규 진입 보류)</div>
-    """
-    for n in neutral_picks:
-        html += f"""
-                <div class="stock-card stock-card-neutral">
-                    <div class="stock-head">
-                        <span>{n['ticker']} &nbsp;<span class="badge badge-neutral">관망 대상</span></span>
-                        <span style="font-family:monospace;">${n['close']:,.2f}</span>
-                    </div>
-                    <div class="stock-meta">
-                        • <strong>위치 상태:</strong> {n['cloud_status']} | <strong>기준선 이격도:</strong> {n['kijun_gap']:+.1f}%<br>
-                        • <strong>정량 분석 평가:</strong> 단기 박스권 횡보 및 추세 수렴 구간. 상방 돌파 또는 확정적 지지 반등 확인 전까지 신규 진입 보류.
-                    </div>
+    # 3.2. Strategy I (Primary Accumulation)
+    if strat1_exclusive:
+        html += """
+                <div style="font-size:13px; font-weight:800; color:#059669; margin:16px 0 8px 0;">
+                    [전략 I] PRIMARY ACCUMULATION (26일 기준선 눌림목 1차 분할 매수 적합주)
                 </div>
         """
+        for p in strat1_exclusive:
+            html += f"""
+                <div class="stock-card stock-card-strat1">
+                    <div class="stock-head">
+                        <span><strong>{p['ticker']}</strong> &nbsp;<span style="font-size:12px; color:#64748b;">{p.get('name','')}</span> &nbsp;<span class="badge badge-strat1">적합도 {p['score']}점</span></span>
+                        <span style="font-family:monospace; font-weight:800;">${p['price']:,.2f}</span>
+                    </div>
+                    <div class="stock-meta">
+                        • <strong>26일 기준선 이격:</strong> {p['kijun_gap']:+.2f}% | <strong>20일 거래량 비율:</strong> {p['vol_ratio']}%<br>
+                        • <strong>1차 목표가(+15%):</strong> <span style="color:#059669; font-weight:700;">${p['target_price']:,.2f}</span> | <strong>손절 기준선(-4%):</strong> <span style="color:#dc2626; font-weight:700;">${p['stop_price']:,.2f}</span><br>
+                        • <strong>기관 퀀트 분석:</strong> 주봉 대세 상승 안착 및 26일 기준선 생명선 지지 확인. 거시 변동성 진정 시 1차 분할 매수 진입 대상.
+                    </div>
+                </div>
+            """
 
-    html += """
-                <div style="font-size:12px; font-weight:700; color:#dc2626; margin:16px 0 8px 0;">[Risk Alert / Short Hedge] 기준선 붕괴 및 리스크 회피 종목 (생명선 이탈 / 매수 절대 금지)</div>
-    """
-    for s in bear_picks:
-        caution_info = f"방송 문맥 주의 ({', '.join(s.get('caution_reasons', []))}) | " if s.get('caution_reasons') else ""
-        html += f"""
-                <div class="stock-card stock-card-bear">
-                    <div class="stock-head">
-                        <span>{s['ticker']} &nbsp;<span class="badge badge-bear">{caution_info}위험도 {s['bear_score']}점</span></span>
-                        <span style="font-family:monospace;">${s['close']:,.2f}</span>
-                    </div>
-                    <div class="stock-meta">
-                        • <strong>위치 상태:</strong> {s['cloud_status']} | <strong>기준선 이탈도:</strong> {s['kijun_gap']:+.1f}%<br>
-                        • <strong>정량 분석 평가:</strong> 26일 기준선(생명선) 하향 붕괴. 추가 낙폭 리스크 존재하므로 물타기/매수 절대 금지 및 숏 헤지 우위.
-                    </div>
+    # 3.3. Strategy II (Cloud Bounce Sniper Radar)
+    if strat2_exclusive:
+        html += """
+                <div style="font-size:13px; font-weight:800; color:#dc2626; margin:16px 0 8px 0;">
+                    [전략 II] CLOUD BOUNCE SNIPER RADAR (일목 구름대 지지 도약 2단계 발사대 모멘텀주)
                 </div>
         """
+        for s in strat2_exclusive:
+            html += f"""
+                <div class="stock-card stock-card-strat2">
+                    <div class="stock-head">
+                        <span><strong>{s['ticker']}</strong> &nbsp;<span style="font-size:12px; color:#64748b;">{s.get('name','')}</span> &nbsp;<span class="badge badge-strat2">스나이퍼 {s['score']}점</span></span>
+                        <span style="font-family:monospace; font-weight:800;">${s['price']:,.2f}</span>
+                    </div>
+                    <div class="stock-meta">
+                        • <strong>26일 기준선 이격:</strong> {s['kijun_gap']:+.2f}% | <strong>20일 거래량 비율:</strong> {s['vol_ratio']}%<br>
+                        • <strong>1차 목표가(+15%):</strong> <span style="color:#059669; font-weight:700;">${s['target_price']:,.2f}</span> | <strong>손절 기준선(-4%):</strong> <span style="color:#dc2626; font-weight:700;">${s['stop_price']:,.2f}</span><br>
+                        • <strong>기관 퀀트 분석:</strong> 최근 14거래일 내 일목 구름대 트램펄린 반등 후 2단계 기준선 상방 가속 발사대 진입 완료.
+                    </div>
+                </div>
+            """
 
     html += f"""
             </div>
 
-            <!-- 4. Model Verification -->
+            <!-- 4. Model Governance & Verification -->
             <div class="section">
                 <div class="section-title">4. Model Governance & Verification</div>
                 <div style="font-size:12px; color:#475569;">
                     • <strong>전수 포워드 트래킹 상태:</strong> {health_status}<br>
-                    • <strong>시스템 아키텍처:</strong> Gate 0 (거시 기후) ➔ Gate 1 (방송 문맥 NLP) ➔ Gate 2 (R상무 17년 퀀트)
+                    • <strong>시스템 아키텍처:</strong> Gate 0 (거시 기후) ➔ Gate 1 (방송 문맥 NLP) ➔ Gate 2 (R상무 17년 퀀트: 주봉 대세 + 일봉 3단 그리드)<br>
+                    • <strong>웹 대시보드 링크:</strong> <a href="http://localhost:8000" target="_blank" style="color:#0284c7; font-weight:700; text-decoration:underline;">http://localhost:8000 (R상무 퀀트 통합 대시보드)</a>
                 </div>
             </div>
             
@@ -652,7 +668,7 @@ def generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, por
     """
     return html
 
-def print_markdown_briefing(today_str, bull_picks, neutral_picks, bear_picks, portfolio_alerts, health_status, stream_info=None):
+def print_markdown_briefing(today_str, dual_consensus, strat1_exclusive, strat2_exclusive, portfolio_alerts, health_status, stream_info=None):
     if stream_info is None:
         stream_info = {}
         
@@ -660,7 +676,6 @@ def print_markdown_briefing(today_str, bull_picks, neutral_picks, bear_picks, po
     stream_url = stream_info.get("url", "https://www.youtube.com/@wepoll_original/streams")
     macro_climate = stream_info.get("macro_climate", {})
     macro_gauges = stream_info.get("macro_gauges", {})
-    mentioned_stocks = stream_info.get("mentioned_stocks", [])
     
     vix = macro_gauges.get("vix", {"val": 15.8, "status": "NORMAL"})
     us10y = macro_gauges.get("us10y", {"val": 4.42, "status": "BURDEN"})
@@ -668,10 +683,6 @@ def print_markdown_briefing(today_str, bull_picks, neutral_picks, bear_picks, po
     
     macro_headline = macro_climate.get("macro_headline", "[거시 게이트 0단계: 이번 주 신규 매수 보류 / 관망·현금 유지 권고]")
     macro_directive = macro_climate.get("macro_action_directive", "거시 지표 및 방송 지침상 이번 주는 관망 주간입니다.")
-    external_shocks = ", ".join(macro_climate.get("external_shocks", ["금리 경로 영향권", "인플레이션 변동성"]))
-    
-    rec_list = [f"{m['ticker']}(+{m['net_sentiment']} / {', '.join(m.get('positive_reasons', []))})" for m in mentioned_stocks if m.get('host_intent') == 'BULLISH_RECOMMENDED']
-    rec_summary_str = " | ".join(rec_list[:5]) if rec_list else "방송 본문 문맥 분석 완료"
 
     md = f"""# R-SANGMOO QUANTITATIVE TACTICAL REPORT ({today_str})
 
@@ -683,15 +694,13 @@ def print_markdown_briefing(today_str, bull_picks, neutral_picks, bear_picks, po
 
 * **거시 총평**: {macro_headline}
 * **실전 거시 지침**: {macro_directive}
-* **실시간 거시 지표**: VIX `{vix['val']}` ({vix['status']}) | 미국채 10년물 `{us10y['val']}%` ({us10y['status']}) | WTI 유가 `${wti['val']}` ({wti['status']})
+* **실시간 거시 지표**: VIX `{vix.get('val', 15.8)}` ({vix.get('status', 'NORMAL')}) | 미국채 10년물 `{us10y.get('val', 4.42)}%` ({us10y.get('status', 'BURDEN')}) | WTI 유가 `${wti.get('val', 78.5)}` ({wti.get('status', 'STABLE')})
 
 ---
 
 ## 1. Vikings Live Broadcast Context & Macro Flow
 
 * **라이브 방송**: [{stream_title}]({stream_url})
-* **거시 리스크 요인**: {external_shocks}
-* **방송 내 추천·순환매 긍정 평가 종목**: `{rec_summary_str}`
 
 ---
 
@@ -703,37 +712,31 @@ def print_markdown_briefing(today_str, bull_picks, neutral_picks, bear_picks, po
             qty_str = f"{p['quantity']:.4f}".rstrip('0').rstrip('.')
             md += f"* **{p['ticker']}** ({qty_str}주) [{p['badge']}] (수익률 {p['pnl_pct']:+.2f}%)\n"
             md += f"  - 매수가: ${p['buy_price']:,.2f} | 현재가: ${p['cur_price']:,.2f}\n"
-            md += f"  - 목표가(+15%): ${p['target_price']:,.2f} | 손절가(-3%): ${p['stop_loss_price']:,.2f}\n"
+            md += f"  - 목표가(+15%): ${p['target_price']:,.2f} | 손절가(-4%): ${p['stop_loss_price']:,.2f}\n"
             md += f"  - 대응 지침: {p['advice']}\n\n"
     else:
         md += "*[실계좌 보유 현황: 0 종목] 현재 실제 포트폴리오에 등록된 보유 종목이 없습니다.*\n\n"
 
     md += """---
 
-## 3. Tactical 2+2+2 Matrix (시장 안정 시 최우선 매수 후보)
+## 3. Tactical 3-Column Quant Recommendations
 
-### [Primary Accumulation] 방송 긍정 추천 + 퀀트 지표 합격 (거시 안정 시 1순위 매수)
+### [5-Star Alpha ∩] Dual Consensus Alpha (황금 교집합 100점 만점)
 """
-    for b in bull_picks:
-        stop_p = b['close'] * 0.97
-        tgt_p = b['close'] * 1.15
-        pos_reasons = f"방송 문맥 긍정 ({', '.join(b.get('positive_reasons', []))}) | " if b.get('positive_reasons') else ""
-        md += f"* **{b['ticker']}** (현재가 ${b['close']:,.2f} | {pos_reasons}적합도 {b['bull_score']}점)\n"
-        md += f"  - 26일 기준선: ${b['kijun']:,.2f} (이격도 {b['kijun_gap']:+.1f}%) | 거래량 비율: {b['vol_ratio']*100:.0f}%\n"
-        md += f"  - 1차 목표가: ${tgt_p:,.2f} (+15.0%) | 손절 기준선: ${stop_p:,.2f} (-3.0%)\n"
-        md += f"  - 정량 분석: 방송 본문에서 긍정 추천 평가를 받았으며, 일목 구름대 상단 안착 및 26일 생명선 지지 확인. 거시 변동성 진정 시 1순위 분할 매수 진입 대상.\n\n"
-
-    md += """### [Consolidation / Neutral] 박스권 횡보 및 추세 수렴 종목
-"""
-    for n in neutral_picks:
-        md += f"* **{n['ticker']}** (${n['close']:,.2f}): {n['cloud_status']} (기준선 이격 {n['kijun_gap']:+.1f}%). 박스권 횡보에 따른 관망 유지.\n"
+    for d in dual_consensus:
+        md += f"* **{d['ticker']}** (${d['price']:,.2f} | 100점 만점) | 26일선 이격: {d['kijun_gap']:+.2f}% | TP(+15%): ${d['target_price']:,.2f} | SL(-4%): ${d['stop_price']:,.2f}\n"
 
     md += """
-### [Risk Alert / Short Hedge] 기준선 붕괴 및 리스크 회피 종목 (매수 절대 금지)
+### [Strategy I] Primary Accumulation (기준선 눌림목 1차 분할 매수)
 """
-    for s in bear_picks:
-        caution_info = f"방송 문맥 주의 ({', '.join(s.get('caution_reasons', []))}) | " if s.get('caution_reasons') else ""
-        md += f"* **{s['ticker']}** (${s['close']:,.2f} | {caution_info}): {s['cloud_status']} (기준선 대비 {s['kijun_gap']:+.1f}% 이탈). 생명선 붕괴에 따른 물타기 금지 및 숏 우위.\n"
+    for p in strat1_exclusive:
+        md += f"* **{p['ticker']}** (${p['price']:,.2f} | {p['score']}점) | 26일선 이격: {p['kijun_gap']:+.2f}% | TP(+15%): ${p['target_price']:,.2f} | SL(-4%): ${p['stop_price']:,.2f}\n"
+
+    md += """
+### [Strategy II] Cloud Bounce Sniper Radar (구름대 도약 2단계 발사대)
+"""
+    for s in strat2_exclusive:
+        md += f"* **{s['ticker']}** (${s['price']:,.2f} | {s['score']}점) | 26일선 이격: {s['kijun_gap']:+.2f}% | TP(+15%): ${s['target_price']:,.2f} | SL(-4%): ${s['stop_price']:,.2f}\n"
 
     md += f"""
 ---
@@ -741,7 +744,7 @@ def print_markdown_briefing(today_str, bull_picks, neutral_picks, bear_picks, po
 ## 4. Model Governance & Verification
 
 * 모델 검증 상태: `{health_status}`
-* 시스템 아키텍처: Gate 0 (거시 기후) ➔ Gate 1 (방송 문맥 NLP) ➔ Gate 2 (R상무 17년 퀀트)
+* 시스템 아키텍처: Gate 0 (거시 기후) ➔ Gate 1 (방송 문맥 NLP) ➔ Gate 2 (R상무 17년 퀀트: 주봉 대세 + 일봉 3단 그리드)
 """
     print(md)
 
@@ -751,17 +754,28 @@ def main():
     
     # 1. Fetch latest YouTube stream, Real-time Macro Gauges & Gate-0 Macro Climate
     stream_info = youtube_stream_scanner.fetch_latest_wepoll_stream()
-    mentioned_stocks = stream_info.get("mentioned_stocks", [])
     macro_climate = stream_info.get("macro_climate", {})
     macro_gauges = stream_info.get("macro_gauges", {})
     
-    # 2. Run 3-Gate 2+2+2 Filter
-    bull_picks, neutral_picks, bear_picks, all_candidates = scan_and_select_2x2x2(stream_sentiment_list=mentioned_stocks)
+    # 2. Build Dashboard Cache Feed & 3-Column Tactical Quant Portfolio
+    try:
+        feed_data = generate_dashboard_feed.build_dashboard_data()
+        print("[Dashboard Feed] Updated dashboard_data.json.")
+    except Exception as e:
+        print(f"[Dashboard Feed Error] {e}")
+        feed_data = {}
+        
+    dual_consensus = feed_data.get("dual_consensus", [])
+    strat1_exclusive = feed_data.get("strat1_exclusive", [])
+    strat2_exclusive = feed_data.get("strat2_exclusive", [])
     
     # 3. Evaluate User Real Portfolio Positions
     portfolio_alerts = evaluate_user_portfolio_positions()
     
     # 4. Update Background History
+    bull_picks = (dual_consensus + strat1_exclusive)[:2]
+    neutral_picks = (strat1_exclusive + dual_consensus)[2:4]
+    bear_picks = strat2_exclusive[:2]
     history_df, health_status = evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, today_str)
     
     # 5. Save Macro Snapshot and Recommendation Matrix into SQLite
@@ -772,24 +786,17 @@ def main():
     except Exception as e:
         print(f"[SQLite DB Warning] {e}")
         
-    # 6. Build Dashboard Cache Feed
-    try:
-        generate_dashboard_feed.build_dashboard_data()
-        print("[Dashboard Feed] Updated dashboard_data.json.")
-    except Exception as e:
-        print(f"[Dashboard Feed Error] {e}")
-        
-    # 7. Generate HTML & Send Email
-    html_content = generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, portfolio_alerts, health_status, stream_info)
+    # 6. Generate Modern Responsive HTML & Send Email
+    html_content = generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_exclusive, portfolio_alerts, health_status, stream_info, feed_data)
     out_html_path = os.path.join(REPORTS_DIR, f"briefing_{today_str}.html")
     with open(out_html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
         
-    subject = f"[R-Sangmoo Quant Tactical Report] {today_str} Macro Regime & Tactical 2+2+2 Matrix"
+    subject = f"[R-Sangmoo Quant Report] {today_str} Tactical 3-Column Quant & Macro Briefing"
     send_email_report(subject, html_content)
     
-    # 8. Print Markdown Briefing
-    print_markdown_briefing(today_str, bull_picks, neutral_picks, bear_picks, portfolio_alerts, health_status, stream_info)
+    # 7. Print Markdown Briefing
+    print_markdown_briefing(today_str, dual_consensus, strat1_exclusive, strat2_exclusive, portfolio_alerts, health_status, stream_info)
 
 if __name__ == "__main__":
     main()
