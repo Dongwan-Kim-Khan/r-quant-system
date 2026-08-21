@@ -505,6 +505,30 @@ def build_dashboard_data():
     strat1_exclusive = strat1_exclusive[:4]
     strat2_exclusive = strat2_exclusive[:4]
 
+    # Load current portfolio & recommendation streaks
+    portfolio = db_manager.get_live_portfolio()
+    wallet_map = {h['ticker'].upper(): h for h in portfolio.get('holdings', [])}
+    streaks = db_manager.get_recommendation_streaks()
+
+    # Tag IN WALLET & STREAK properties onto each candidate
+    for group in [dual_consensus_picks, strat1_exclusive, strat2_exclusive]:
+        for item in group:
+            tk_upper = item["ticker"].upper()
+            if tk_upper in wallet_map:
+                item["in_wallet"] = True
+                item["holding_pnl"] = float(wallet_map[tk_upper].get("pnl_pct", 0.0))
+                item["holding_qty"] = float(wallet_map[tk_upper].get("quantity", 0.0))
+                item["holding_price"] = float(wallet_map[tk_upper].get("buy_price", 0.0))
+            else:
+                item["in_wallet"] = False
+                item["holding_pnl"] = 0.0
+                item["holding_qty"] = 0.0
+                item["holding_price"] = 0.0
+                
+            streak_days = streaks.get(item["ticker"], 1)
+            item["streak_days"] = streak_days
+            item["streak_label"] = f"[{streak_days}D STREAK]" if streak_days >= 2 else ""
+
     # Combined full sets for backwards compatibility
     all_strat1 = dual_consensus_picks + strat1_exclusive
     all_strat2 = dual_consensus_picks + strat2_exclusive
@@ -527,6 +551,9 @@ def build_dashboard_data():
             "target_price": d["target_price"],
             "stop_price": d["stop_price"],
             "score": 100,
+            "in_wallet": d.get("in_wallet", False),
+            "streak_days": d.get("streak_days", 1),
+            "streak_label": d.get("streak_label", ""),
             "status": "DUAL_5_STAR",
             "status_label": "DUAL_5_STAR"
         })
@@ -545,6 +572,9 @@ def build_dashboard_data():
             "target_price": s["target_price"],
             "stop_price": s["stop_price"],
             "score": 95,
+            "in_wallet": s.get("in_wallet", False),
+            "streak_days": s.get("streak_days", 1),
+            "streak_label": s.get("streak_label", ""),
             "status": "ACTIVE_SNIPER",
             "status_label": "ACTIVE_SNIPER"
         })
@@ -563,6 +593,9 @@ def build_dashboard_data():
             "target_price": p["target_price"],
             "stop_price": p["stop_price"],
             "score": p["score"],
+            "in_wallet": p.get("in_wallet", False),
+            "streak_days": p.get("streak_days", 1),
+            "streak_label": p.get("streak_label", ""),
             "status": "ACTIVE_BUY",
             "status_label": "ACTIVE_BUY"
         })

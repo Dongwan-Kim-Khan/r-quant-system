@@ -1474,14 +1474,31 @@
                 const targetPrice = item.target_price ? Number(item.target_price).toFixed(2) : (Number(item.price) * 1.15).toFixed(2);
                 const stopPrice = item.stop_price ? Number(item.stop_price).toFixed(2) : (Number(item.price) * 0.96).toFixed(2);
                 
+                // IN WALLET Badge & Highlight
+                let walletBadge = '';
+                let walletCardStyle = '';
+                if (item.in_wallet) {
+                    const pnlSign = (item.holding_pnl >= 0) ? '+' : '';
+                    walletBadge = `<span style="font-size:9px; font-weight:800; font-family:'JetBrains Mono'; color:#38bdf8; background:rgba(56,189,248,0.15); border:1px solid #0284c7; padding:1px 5px; border-radius:3px; letter-spacing:0.5px;">[IN WALLET: ${pnlSign}${Number(item.holding_pnl).toFixed(1)}%]</span>`;
+                    walletCardStyle = 'border-left:3px solid #38bdf8; background:rgba(15,23,42,0.95);';
+                }
+                
+                // STREAK Badge
+                let streakBadge = '';
+                if (item.streak_days && item.streak_days >= 2) {
+                    streakBadge = `<span style="font-size:9px; font-weight:800; font-family:'JetBrains Mono'; color:#fbbf24; background:rgba(251,191,36,0.15); border:1px solid #d97706; padding:1px 5px; border-radius:3px; letter-spacing:0.5px;">[${item.streak_days}D STREAK]</span>`;
+                }
+
                 return `
-                    <div class="rec-item ${isActive}" data-ticker="${item.ticker}" onclick="selectStock('${item.ticker}', ${item.price})">
+                    <div class="rec-item ${isActive}" data-ticker="${item.ticker}" style="${walletCardStyle}" onclick="selectStock('${item.ticker}', ${item.price})">
                         <div style="flex:1;">
                             <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:2px;">
-                                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                                <div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap;">
                                     <span class="rec-item-title" style="color:${colorTheme};">${item.ticker}</span>
                                     <span class="rec-item-sub" style="font-size:11px; font-weight:600;">${item.name}</span>
                                     <span class="origin-badge ${originClass}" style="font-size:9px; padding:1px 5px;">${originText}</span>
+                                    ${streakBadge}
+                                    ${walletBadge}
                                 </div>
                                 <div class="rec-item-price" style="color:${colorTheme};">$${Number(item.price).toFixed(2)}</div>
                             </div>

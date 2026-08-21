@@ -376,9 +376,43 @@ def archive_daily_recommendations(today_str: str, dual_consensus: list, strat1_e
         ))
         saved_count += 1
         
-    conn.commit()
+def get_recommendation_streaks() -> dict:
+    """
+    Computes consecutive active recommendation days (streaks) for each ticker.
+    Returns a dict mapping ticker -> integer streak count (>= 1).
+    """
+    init_database()
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT DISTINCT date, ticker FROM trades ORDER BY date DESC")
+    rows = cursor.fetchall()
     conn.close()
-    return saved_count
+    
+    ticker_dates = {}
+    for r in rows:
+        d_str, tk = r[0], r[1]
+        if tk not in ticker_dates:
+            ticker_dates[tk] = set()
+        ticker_dates[tk].add(d_str)
+        
+    streaks = {}
+    for tk, dates in ticker_dates.items():
+        sorted_dates = sorted(list(dates), reverse=True)
+        streak = 1
+        for i in range(len(sorted_dates) - 1):
+            try:
+                d1 = datetime.strptime(sorted_dates[i], "%Y-%m-%d")
+                d2 = datetime.strptime(sorted_dates[i+1], "%Y-%m-%d")
+                delta = (d1 - d2).days
+                # Continuous calendar days or over-the-weekend gap (Friday to Monday: 3 days)
+                if delta == 1 or (d1.weekday() == 0 and delta <= 3):
+                    streak += 1
+                else:
+                    break
+            except Exception:
+                break
+        streaks[tk] = streak
+    return streaks
 
 # Aliases
 get_db = get_connection

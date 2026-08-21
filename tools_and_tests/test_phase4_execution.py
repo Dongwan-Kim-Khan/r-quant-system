@@ -1,4 +1,4 @@
-﻿"""
+"""
 Comprehensive Phase 4 Test Suite:
 Broker Gateway, Pre-Trade Guardrails, Macro Circuit Breakers & Online Backup Snapshots.
 """
@@ -83,28 +83,45 @@ def test_macro_circuit_breakers():
 
 def test_paper_broker_adapter():
     print("\n[Test 3] Verifying Paper Trading Execution Gateway Adapter...")
-    broker = PaperTradingBroker(initial_cash=100000.0)
-    db_manager.reset_all_holdings()
+    
+    # Backup user's actual portfolio holdings before test
+    conn = db_manager.get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM my_portfolio")
+    user_portfolio_backup = cursor.fetchall()
+    conn.close()
+    
+    try:
+        broker = PaperTradingBroker(initial_cash=100000.0)
+        db_manager.reset_all_holdings()
 
-    # Buy order fill
-    buy_fill = broker.submit_buy_order(ticker="LLY", price=950.0, quantity=2.0)
-    assert buy_fill["status"] == "FILLED"
-    pos_id = buy_fill["position_id"]
-    print(f"  - Paper Buy Execution: Filled 2 shares LLY at ${buy_fill['fill_price']:,.2f} (Pos #{pos_id})")
+        # Buy order fill
+        buy_fill = broker.submit_buy_order(ticker="LLY", price=950.0, quantity=2.0)
+        assert buy_fill["status"] == "FILLED"
+        pos_id = buy_fill["position_id"]
+        print(f"  - Paper Buy Execution: Filled 2 shares LLY at ${buy_fill['fill_price']:,.2f} (Pos #{pos_id})")
 
-    # Balance check
-    balance = broker.get_account_balance()
-    assert balance["total_invested"] > 0
-    assert balance["total_equity"] > 0
-    print(f"  - Account Equity: ${balance['total_equity']:,.2f} (Cash: ${balance['cash_available']:,.2f})")
+        # Balance check
+        balance = broker.get_account_balance()
+        assert balance["total_invested"] > 0
+        assert balance["total_equity"] > 0
+        print(f"  - Account Equity: ${balance['total_equity']:,.2f} (Cash: ${balance['cash_available']:,.2f})")
 
-    # Sell order fill
-    sell_fill = broker.submit_sell_order(position_id=pos_id, price=1000.0, reason="PAPER_TP")
-    assert sell_fill["status"] == "FILLED"
-    print(f"  - Paper Sell Execution: Position #{pos_id} closed at ${sell_fill['fill_price']:,.2f}")
-
-    db_manager.reset_all_holdings()
-    print("  -> PASSED: Paper broker execution gateway verified.")
+        # Sell order fill
+        sell_fill = broker.submit_sell_order(position_id=pos_id, price=1000.0, reason="PAPER_TP")
+        assert sell_fill["status"] == "FILLED"
+        print(f"  - Paper Sell Execution: Position #{pos_id} closed at ${sell_fill['fill_price']:,.2f}")
+        print("  -> PASSED: Paper broker execution gateway verified.")
+    finally:
+        # Restore user's real portfolio holdings
+        c = db_manager.get_db()
+        cur = c.cursor()
+        cur.execute("DELETE FROM my_portfolio")
+        if user_portfolio_backup:
+            placeholders = ",".join(["?"] * len(user_portfolio_backup[0]))
+            cur.executemany(f"INSERT INTO my_portfolio VALUES ({placeholders})", user_portfolio_backup)
+        c.commit()
+        c.close()
 
 def test_sqlite_snapshot_backup():
     print("\n[Test 4] Verifying Online Non-Blocking SQLite Snapshot Backup...")

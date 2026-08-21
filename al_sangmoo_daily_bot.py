@@ -580,6 +580,17 @@ def generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_e
                 <div class="section-title">3. Tactical 3-Column Quant Recommendations (오늘의 핵심 퀀트 추천주)</div>
     """
     
+    # Helper for item badges
+    def format_item_badges(item):
+        badges_str = ""
+        if item.get("streak_days", 1) >= 2:
+            badges_str += f""" &nbsp;<span style="background:#fef3c7; color:#92400e; border:1px solid #d97706; padding:1px 5px; font-size:10px; font-weight:700; font-family:monospace; border-radius:3px;">[{item['streak_days']}D STREAK]</span>"""
+        if item.get("in_wallet"):
+            pnl = item.get("holding_pnl", 0.0)
+            pnl_sign = "+" if pnl >= 0 else ""
+            badges_str += f""" &nbsp;<span style="background:#e0f2fe; color:#0369a1; border:1px solid #0284c7; padding:1px 5px; font-size:10px; font-weight:700; font-family:monospace; border-radius:3px;">[IN WALLET: {pnl_sign}{pnl:.1f}%]</span>"""
+        return badges_str
+
     # 3.1. Dual Consensus (5-Star Alpha ∩)
     if dual_consensus:
         html += """
@@ -588,10 +599,12 @@ def generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_e
                 </div>
         """
         for d in dual_consensus:
+            ext_badges = format_item_badges(d)
+            wallet_style = "border-left: 4px solid #0284c7; background: #f0f9ff;" if d.get("in_wallet") else ""
             html += f"""
-                <div class="stock-card stock-card-dual">
+                <div class="stock-card stock-card-dual" style="{wallet_style}">
                     <div class="stock-head">
-                        <span><strong>{d['ticker']}</strong> &nbsp;<span style="font-size:12px; color:#64748b;">{d.get('name','')}</span> &nbsp;<span class="badge badge-dual">5-STAR ALPHA 100점</span></span>
+                        <span><strong>{d['ticker']}</strong> &nbsp;<span style="font-size:12px; color:#64748b;">{d.get('name','')}</span> &nbsp;<span class="badge badge-dual">5-STAR ALPHA 100점</span>{ext_badges}</span>
                         <span style="font-family:monospace; font-weight:800;">${d['price']:,.2f}</span>
                     </div>
                     <div class="stock-meta">
@@ -610,10 +623,12 @@ def generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_e
                 </div>
         """
         for p in strat1_exclusive:
+            ext_badges = format_item_badges(p)
+            wallet_style = "border-left: 4px solid #0284c7; background: #f0f9ff;" if p.get("in_wallet") else ""
             html += f"""
-                <div class="stock-card stock-card-strat1">
+                <div class="stock-card stock-card-strat1" style="{wallet_style}">
                     <div class="stock-head">
-                        <span><strong>{p['ticker']}</strong> &nbsp;<span style="font-size:12px; color:#64748b;">{p.get('name','')}</span> &nbsp;<span class="badge badge-strat1">적합도 {p['score']}점</span></span>
+                        <span><strong>{p['ticker']}</strong> &nbsp;<span style="font-size:12px; color:#64748b;">{p.get('name','')}</span> &nbsp;<span class="badge badge-strat1">적합도 {p['score']}점</span>{ext_badges}</span>
                         <span style="font-family:monospace; font-weight:800;">${p['price']:,.2f}</span>
                     </div>
                     <div class="stock-meta">
@@ -632,10 +647,12 @@ def generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_e
                 </div>
         """
         for s in strat2_exclusive:
+            ext_badges = format_item_badges(s)
+            wallet_style = "border-left: 4px solid #0284c7; background: #f0f9ff;" if s.get("in_wallet") else ""
             html += f"""
-                <div class="stock-card stock-card-strat2">
+                <div class="stock-card stock-card-strat2" style="{wallet_style}">
                     <div class="stock-head">
-                        <span><strong>{s['ticker']}</strong> &nbsp;<span style="font-size:12px; color:#64748b;">{s.get('name','')}</span> &nbsp;<span class="badge badge-strat2">스나이퍼 {s['score']}점</span></span>
+                        <span><strong>{s['ticker']}</strong> &nbsp;<span style="font-size:12px; color:#64748b;">{s.get('name','')}</span> &nbsp;<span class="badge badge-strat2">스나이퍼 {s['score']}점</span>{ext_badges}</span>
                         <span style="font-family:monospace; font-weight:800;">${s['price']:,.2f}</span>
                     </div>
                     <div class="stock-meta">
