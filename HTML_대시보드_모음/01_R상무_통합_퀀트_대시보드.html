@@ -984,16 +984,21 @@
 
             try {
                 let chartObj = null;
-                if (isBackendOnline) {
-                    try {
-                        const res = await fetch(`/api/chart/${ticker}`, { signal });
-                        if (res.ok) {
-                            chartObj = await res.json();
+                try {
+                    const res = await fetch(`/api/chart/${ticker}`, { signal });
+                    if (res.ok) {
+                        chartObj = await res.json();
+                        isBackendOnline = true;
+                        const sText = document.getElementById("serverStatusText");
+                        const sDot = document.getElementById("serverDot");
+                        if (sDot) sDot.style.background = "#10b981";
+                        if (sText && (sText.textContent === "CONNECTING..." || sText.textContent === "LOCAL CACHE")) {
+                            sText.textContent = "API ACTIVE";
                         }
-                    } catch (err) {
-                        if (err.name === 'AbortError') {
-                            return; // Gracefully discard aborted request
-                        }
+                    }
+                } catch (err) {
+                    if (err.name === 'AbortError') {
+                        return; // Gracefully discard aborted request
                     }
                 }
                 
@@ -1003,10 +1008,6 @@
                 }
                 
                 if (!chartObj && window.__DASHBOARD_CACHE__ && window.__DASHBOARD_CACHE__.charts && window.__DASHBOARD_CACHE__.charts[ticker]) {
-                    chartObj = window.__DASHBOARD_CACHE__.charts[ticker];
-                }
-                
-                if (!chartObj && window.__DASHBOARD_CACHE__ && window.__DASHBOARD_CACHE__.charts) {
                     chartObj = window.__DASHBOARD_CACHE__.charts[ticker];
                 }
 
@@ -1181,6 +1182,7 @@
                     document.getElementById("serverStatusText").textContent = "API ACTIVE";
                     document.getElementById("serverDot").style.background = "#10b981";
                     renderDashboardData(data);
+                    loadChartData(currentSelectedTicker);
                     return;
                 }
             } catch (e) {
@@ -1198,6 +1200,7 @@
                     const localData = await resLocal.json();
                     window.__DASHBOARD_CACHE__ = localData;
                     renderDashboardData(localData);
+                    loadChartData(currentSelectedTicker);
                 }
             } catch (e) {}
         }
