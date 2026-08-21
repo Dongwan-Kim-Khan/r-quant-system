@@ -1,6 +1,6 @@
 {
   "ticker": "DIS",
-  "latest_close": 107.3,
+  "latest_close": 107.25,
   "kijun": 100.59,
   "tenkan": 105.36,
   "span_a": 98.29,
@@ -9,24 +9,24 @@
   "future_span_b_latest": 100.59,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 2.39,
-  "kijun_gap_pct": 6.67,
+  "kijun_gap_pct": 6.63,
   "vol_ratio": 0.1,
   "bull_score": 65,
   "bear_score": 0,
-  "is_sniper": false,
+  "is_sniper": true,
   "intelligence": {
-    "verdict": "Neutral Consolidation (박스권 수렴)",
-    "score": "65 / 100 pt (HOLD)",
+    "verdict": "Sniper Alert (구름대 도약 2단계 특급 매수)",
+    "score": "95 / 100 pt (SNIPER_BUY)",
     "bull_score": 65,
     "bear_score": 0,
-    "type": "NEUTRAL",
-    "is_sniper": false,
+    "type": "BULL",
+    "is_sniper": true,
     "trampoline_detected": true,
     "kijun": {
-      "val": "$100.59 (+6.7%)",
+      "val": "$100.59 (+6.6%)",
       "status": "status-neutral",
       "badge": "OVERHEATED",
-      "desc": "현재가 $107.30 / 26일선 $100.59 (이격 +6.7%)"
+      "desc": "현재가 $107.25 / 26일선 $100.59 (이격 +6.6%)"
     },
     "tenkan": {
       "val": "$105.36",
@@ -46,10 +46,10 @@
       "badge": "VOLUME DRY",
       "desc": "20일 평균 거래량 대비 10% (매도세 고갈 완벽)"
     },
-    "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
+    "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 상방 시세 분출(기준선 대비 +6.6%). 목표 +15% / 손절 -4%."
   },
-  "status_tag": "NEUTRAL",
-  "status_text": "Neutral Consolidation (박스권 수렴)",
+  "status_tag": "BULL",
+  "status_text": "Sniper Alert (구름대 도약 2단계 특급 매수)",
   "timeframe": "1D",
   "period": "2Y",
   "candles": [
@@ -2039,7 +2039,7 @@
       "open": 112.93,
       "high": 115.42,
       "low": 112.76,
-      "close": 114.99
+      "close": 114.98
     },
     {
       "time": "2025-11-13",
@@ -3390,7 +3390,7 @@
       "open": 107.57,
       "high": 108.41,
       "low": 106.99,
-      "close": 107.3
+      "close": 107.25
     }
   ],
   "kijun_line": [
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 997578.0,
+      "value": 1069350.0,
       "color": "#dc2626"
     }
   ]

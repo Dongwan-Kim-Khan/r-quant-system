@@ -1,6 +1,6 @@
 {
   "ticker": "PLTR",
-  "latest_close": 173.04,
+  "latest_close": 173.57,
   "kijun": 149.03,
   "tenkan": 174.26,
   "span_a": 126.7,
@@ -9,7 +9,7 @@
   "future_span_b_latest": 143.27,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 18.37,
-  "kijun_gap_pct": 16.1,
+  "kijun_gap_pct": 16.46,
   "vol_ratio": 0.1,
   "bull_score": 65,
   "bear_score": 0,
@@ -23,10 +23,10 @@
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$149.03 (+16.1%)",
+      "val": "$149.03 (+16.5%)",
       "status": "status-neutral",
       "badge": "OVERHEATED",
-      "desc": "현재가 $173.04 / 26일선 $149.03 (이격 +16.1%)"
+      "desc": "현재가 $173.57 / 26일선 $149.03 (이격 +16.5%)"
     },
     "tenkan": {
       "val": "$174.26",
@@ -3390,7 +3390,7 @@
       "open": 173.98,
       "high": 175.15,
       "low": 172.55,
-      "close": 173.04
+      "close": 173.57
     }
   ],
   "kijun_line": [
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 156.93
+      "value": 156.96
     }
   ],
   "sma60": [
@@ -14610,7 +14610,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 139.51
+      "value": 139.52
     }
   ],
   "volume": [
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 4486144.0,
+      "value": 4794018.0,
       "color": "#dc2626"
     }
   ]

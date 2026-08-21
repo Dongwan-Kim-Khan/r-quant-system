@@ -1,6 +1,6 @@
 {
   "ticker": "NET",
-  "latest_close": 277.84,
+  "latest_close": 280.0,
   "kijun": 291.46,
   "tenkan": 303.12,
   "span_a": 258.49,
@@ -9,8 +9,8 @@
   "future_span_b_latest": 272.27,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 25.02,
-  "kijun_gap_pct": -4.67,
-  "vol_ratio": 0.07,
+  "kijun_gap_pct": -3.93,
+  "vol_ratio": 0.08,
   "bull_score": 65,
   "bear_score": 55,
   "is_sniper": false,
@@ -23,10 +23,10 @@
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$291.46 (-4.7%)",
+      "val": "$291.46 (-3.9%)",
       "status": "status-bear",
       "badge": "BREAKDOWN",
-      "desc": "현재가 $277.84 / 26일선 $291.46 (이격 -4.7%)"
+      "desc": "현재가 $280.00 / 26일선 $291.46 (이격 -3.9%)"
     },
     "tenkan": {
       "val": "$303.12",
@@ -41,10 +41,10 @@
       "desc": "일목 구름대(238.4~258.5) 상단 안착"
     },
     "vol": {
-      "val": "7% (20D)",
+      "val": "8% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 7% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 8% (매도세 고갈 완벽)"
     },
     "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
   },
@@ -3390,7 +3390,7 @@
       "open": 280.86,
       "high": 281.88,
       "low": 274.03,
-      "close": 277.84
+      "close": 280.0
     }
   ],
   "kijun_line": [
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 292.84
+      "value": 292.95
     }
   ],
   "sma60": [
@@ -14610,7 +14610,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 264.77
+      "value": 264.81
     }
   ],
   "volume": [
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 294518.0,
+      "value": 321459.0,
       "color": "#dc2626"
     }
   ]

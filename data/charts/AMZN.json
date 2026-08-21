@@ -10,7 +10,7 @@
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 5.93,
   "kijun_gap_pct": 0.87,
-  "vol_ratio": 0.19,
+  "vol_ratio": 0.2,
   "bull_score": 100,
   "bear_score": 0,
   "is_sniper": true,
@@ -41,12 +41,12 @@
       "desc": "일목 구름대(245.0~252.1) 상단 안착"
     },
     "vol": {
-      "val": "19% (20D)",
+      "val": "20% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 19% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 20% (매도세 고갈 완벽)"
     },
-    "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 +0.9%) 안착. 목표 +15% / 손절 -4%."
+    "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 상방 시세 분출(기준선 대비 +0.9%). 목표 +15% / 손절 -4%."
   },
   "status_tag": "BULL",
   "status_text": "Sniper Alert (구름대 도약 2단계 특급 매수)",
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 8765915.0,
+      "value": 9344568.0,
       "color": "#dc2626"
     }
   ]

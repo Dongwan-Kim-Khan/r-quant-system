@@ -1,6 +1,6 @@
 {
   "ticker": "HOOD",
-  "latest_close": 106.96,
+  "latest_close": 107.47,
   "kijun": 95.94,
   "tenkan": 99.67,
   "span_a": 105.97,
@@ -9,24 +9,24 @@
   "future_span_b_latest": 99.49,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 1.68,
-  "kijun_gap_pct": 11.48,
-  "vol_ratio": 0.74,
-  "bull_score": 65,
+  "kijun_gap_pct": 12.01,
+  "vol_ratio": 0.83,
+  "bull_score": 45,
   "bear_score": 0,
   "is_sniper": false,
   "intelligence": {
     "verdict": "Neutral Consolidation (박스권 수렴)",
-    "score": "65 / 100 pt (HOLD)",
-    "bull_score": 65,
+    "score": "45 / 100 pt (HOLD)",
+    "bull_score": 45,
     "bear_score": 0,
     "type": "NEUTRAL",
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$95.94 (+11.5%)",
+      "val": "$95.94 (+12.0%)",
       "status": "status-neutral",
       "badge": "OVERHEATED",
-      "desc": "현재가 $106.96 / 26일선 $95.94 (이격 +11.5%)"
+      "desc": "현재가 $107.47 / 26일선 $95.94 (이격 +12.0%)"
     },
     "tenkan": {
       "val": "$99.67",
@@ -41,10 +41,10 @@
       "desc": "일목 구름대(96.6~106.0) 상단 안착"
     },
     "vol": {
-      "val": "74% (20D)",
-      "status": "status-bull",
-      "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 74% (매도세 고갈 완벽)"
+      "val": "83% (20D)",
+      "status": "status-neutral",
+      "badge": "NORMAL VOL",
+      "desc": "20일 평균 거래량 대비 83% (통상 거래량)"
     },
     "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
   },
@@ -3390,7 +3390,7 @@
       "open": 100.88,
       "high": 107.91,
       "low": 98.77,
-      "close": 106.96
+      "close": 107.47
     }
   ],
   "kijun_line": [
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 93.82
+      "value": 93.85
     }
   ],
   "sma60": [
@@ -14610,7 +14610,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 98.02
+      "value": 98.03
     }
   ],
   "volume": [
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 13154824.0,
+      "value": 14879365.0,
       "color": "#059669"
     }
   ]

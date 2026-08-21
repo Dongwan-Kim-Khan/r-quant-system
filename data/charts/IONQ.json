@@ -1,6 +1,6 @@
 {
   "ticker": "IONQ",
-  "latest_close": 42.7,
+  "latest_close": 43.02,
   "kijun": 39.88,
   "tenkan": 44.14,
   "span_a": 46.16,
@@ -9,8 +9,8 @@
   "future_span_b_latest": 47.88,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 5.87,
-  "kijun_gap_pct": 7.09,
-  "vol_ratio": 0.17,
+  "kijun_gap_pct": 7.88,
+  "vol_ratio": 0.18,
   "bull_score": 30,
   "bear_score": 35,
   "is_sniper": false,
@@ -23,10 +23,10 @@
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$39.88 (+7.1%)",
+      "val": "$39.88 (+7.9%)",
       "status": "status-neutral",
       "badge": "OVERHEATED",
-      "desc": "현재가 $42.70 / 26일선 $39.88 (이격 +7.1%)"
+      "desc": "현재가 $43.02 / 26일선 $39.88 (이격 +7.9%)"
     },
     "tenkan": {
       "val": "$44.14",
@@ -41,10 +41,10 @@
       "desc": "일목 구름대(46.2~54.2) 하단 붕괴"
     },
     "vol": {
-      "val": "17% (20D)",
+      "val": "18% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 17% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 18% (매도세 고갈 완벽)"
     },
     "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
   },
@@ -3390,7 +3390,7 @@
       "open": 42.2,
       "high": 43.87,
       "low": 42.04,
-      "close": 42.7
+      "close": 43.02
     }
   ],
   "kijun_line": [
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 40.98
+      "value": 41.0
     }
   ],
   "sma60": [
@@ -14610,7 +14610,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 47.91
+      "value": 47.92
     }
   ],
   "volume": [
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 3382326.0,
+      "value": 3745779.0,
       "color": "#059669"
     }
   ]

@@ -222,13 +222,13 @@ def compute_all_indicators(ticker):
                     trampoline_days_ago = b_offset - 1
                     break
         
-        is_sniper_active = trampoline_detected and (-1.0 <= kijun_gap <= 4.5) and (close >= cloud_top * 0.98) and (bull_score >= 65)
+        is_sniper_active = trampoline_detected and (kijun_gap >= -1.0) and (close >= cloud_top * 0.98) and (bull_score >= 60)
         
         if is_sniper_active:
             quant_type = "BULL"
             quant_verdict = "Sniper Alert (구름대 도약 2단계 특급 매수)"
             quant_score_text = f"95 / 100 pt (SNIPER_BUY)"
-            action_directive = f"[전략 2 스나이퍼] {trampoline_days_ago}일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 {kijun_gap:+.1f}%) 안착. 목표 +15% / 손절 -4%."
+            action_directive = f"[전략 2 스나이퍼] {trampoline_days_ago}일 전 구름대 지지 도약 확인 후 상방 시세 분출(기준선 대비 {kijun_gap:+.1f}%). 목표 +15% / 손절 -4%."
         elif bull_score >= 70:
             quant_type = "BULL"
             quant_verdict = "Bull Accumulation (1차 분할 매수 적합)"
@@ -359,47 +359,82 @@ def build_dashboard_data():
         "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
     
-    # Rank and Categorize Dual Strategy Picks
-    # 1. Strategy 2: Sniper Radar (Cloud Trampoline)
-    sniper_radar_picks = []
-    # 2. Strategy 1: Primary Accumulation (Classic Kijun Pullback)
-    primary_accumulation_picks = []
+    # Rank and Categorize Strategy 1, Dual Consensus (Intersection), and Strategy 2
+    strat1_exclusive = []
+    strat2_exclusive = []
+    dual_consensus_picks = []
     
     for t, c in chart_data.items():
         is_stream = t in stream_mentioned_tickers
         origin_tag = "VIKINGS_LIVE" if is_stream else "QUANT_DISCOVERY"
         origin_label = "바이킹스 라이브" if is_stream else "60종목 퀀트 발굴"
         
+        kgap = c["kijun_gap_pct"]
+        v_ratio = c["vol_ratio"]
+        b_score = c["bull_score"]
+        is_sn = c["is_sniper"]
+        
+        # Strategy 1 (Classic Pullback Accumulation): Bull trend, Kijun gap -0.8% ~ +4.0%, Dry volume
+        is_strat1 = (b_score >= 65) and (-0.8 <= kgap <= 4.2) and (v_ratio <= 0.85)
+        # Strategy 2 (Cloud Bounce Sniper): Cloud trampoline launch detected, High momentum
+        is_strat2 = bool(is_sn)
+        
         item = {
             "ticker": t,
             "name": STOCK_DICT.get(t, [t])[0],
             "price": c["latest_close"],
-            "score": c["bull_score"],
-            "kijun_gap": c["kijun_gap_pct"],
-            "vol_ratio": round(c["vol_ratio"] * 100),
+            "score": b_score,
+            "kijun_gap": kgap,
+            "vol_ratio": round(v_ratio * 100),
             "origin": origin_tag,
             "origin_label": origin_label,
-            "is_sniper": c["is_sniper"],
+            "is_sniper": is_strat2,
+            "is_strat1": is_strat1,
             "action": c["intelligence"]["action"],
             "target_price": round(c["latest_close"] * 1.15, 2),
             "stop_price": round(c["latest_close"] * 0.96, 2)
         }
         
-        if c["is_sniper"]:
-            sniper_radar_picks.append(item)
-        if c["bull_score"] >= 65:
-            primary_accumulation_picks.append(item)
+        if is_strat1 and is_strat2:
+            dual_consensus_picks.append(item)
+        elif is_strat1:
+            strat1_exclusive.append(item)
+        elif is_strat2:
+            strat2_exclusive.append(item)
             
-    # Sort Primary Accumulation by score desc, then by kijun gap asc
-    primary_accumulation_picks.sort(key=lambda x: (-x["score"], abs(x["kijun_gap"])))
-    sniper_radar_picks.sort(key=lambda x: -x["score"])
+    # Sort each category
+    dual_consensus_picks.sort(key=lambda x: (-x["score"], abs(x["kijun_gap"])))
+    strat1_exclusive.sort(key=lambda x: (-x["score"], abs(x["kijun_gap"])))
+    strat2_exclusive.sort(key=lambda x: (-x["score"], abs(x["kijun_gap"])))
 
-    # Build Unified Signal Tracker (Combining Strategy 2 & Strategy 1)
+    # Combined full sets for backwards compatibility
+    all_strat1 = dual_consensus_picks + strat1_exclusive
+    all_strat2 = dual_consensus_picks + strat2_exclusive
+
+    # Build Unified Signal Tracker (Dual Consensus -> Strategy 2 -> Strategy 1)
     today_str = datetime.now().strftime("%Y-%m-%d")
     signal_tracker = []
     
-    # 1. Sniper Radar signals first
-    for s in sniper_radar_picks:
+    # 1. Dual Consensus signals first (Top 5-Star conviction)
+    for d in dual_consensus_picks:
+        signal_tracker.append({
+            "date": today_str,
+            "ticker": d["ticker"],
+            "name": d["name"],
+            "origin": d["origin"],
+            "origin_label": d["origin_label"],
+            "strategy": "양대 전략 공통 (황금 교집합)",
+            "strategy_code": "STRATEGY_DUAL_CONSENSUS",
+            "entry_price": d["price"],
+            "target_price": d["target_price"],
+            "stop_price": d["stop_price"],
+            "score": 100,
+            "status": "DUAL_5_STAR",
+            "status_label": "DUAL_5_STAR"
+        })
+        
+    # 2. Strategy 2 Sniper Radar signals
+    for s in strat2_exclusive:
         signal_tracker.append({
             "date": today_str,
             "ticker": s["ticker"],
@@ -416,8 +451,8 @@ def build_dashboard_data():
             "status_label": "ACTIVE_SNIPER"
         })
         
-    # 2. Primary Accumulation signals
-    for p in primary_accumulation_picks[:12]:
+    # 3. Strategy 1 Primary Accumulation signals
+    for p in strat1_exclusive[:8]:
         signal_tracker.append({
             "date": today_str,
             "ticker": p["ticker"],
@@ -485,10 +520,14 @@ def build_dashboard_data():
         "trades": trades,
         "matrix": matrix,
         "portfolio": portfolio,
-        "primary_accumulation": primary_accumulation_picks,
-        "sniper_radar": sniper_radar_picks,
+        "dual_consensus": dual_consensus_picks,
+        "strat1_exclusive": strat1_exclusive,
+        "strat2_exclusive": strat2_exclusive,
+        "primary_accumulation": all_strat1,
+        "sniper_radar": all_strat2,
         "signal_tracker": signal_tracker,
-        "chart_intelligence": chart_intelligence
+        "chart_intelligence": chart_intelligence,
+        "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
     
     out_path = os.path.join(BASE_DIR, OUTPUT_JSON)

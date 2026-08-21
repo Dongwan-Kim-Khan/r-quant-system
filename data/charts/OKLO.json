@@ -1,6 +1,6 @@
 {
   "ticker": "OKLO",
-  "latest_close": 43.11,
+  "latest_close": 43.38,
   "kijun": 43.05,
   "tenkan": 44.24,
   "span_a": 49.51,
@@ -9,8 +9,8 @@
   "future_span_b_latest": 49.81,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 6.16,
-  "kijun_gap_pct": 0.15,
-  "vol_ratio": 0.12,
+  "kijun_gap_pct": 0.78,
+  "vol_ratio": 0.13,
   "bull_score": 65,
   "bear_score": 35,
   "is_sniper": false,
@@ -23,10 +23,10 @@
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$43.05 (+0.2%)",
+      "val": "$43.05 (+0.8%)",
       "status": "status-bull",
       "badge": "SUPPORTED",
-      "desc": "현재가 $43.11 / 26일선 $43.05 (이격 +0.2%)"
+      "desc": "현재가 $43.38 / 26일선 $43.05 (이격 +0.8%)"
     },
     "tenkan": {
       "val": "$44.24",
@@ -41,10 +41,10 @@
       "desc": "일목 구름대(49.5~60.5) 하단 붕괴"
     },
     "vol": {
-      "val": "12% (20D)",
+      "val": "13% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 12% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 13% (매도세 고갈 완벽)"
     },
     "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
   },
@@ -3390,7 +3390,7 @@
       "open": 42.04,
       "high": 43.68,
       "low": 42.04,
-      "close": 43.11
+      "close": 43.38
     }
   ],
   "kijun_line": [
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 42.84
+      "value": 42.85
     }
   ],
   "sma60": [
@@ -14610,7 +14610,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 50.07
+      "value": 50.08
     }
   ],
   "volume": [
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 1091314.0,
+      "value": 1210124.0,
       "color": "#059669"
     }
   ]

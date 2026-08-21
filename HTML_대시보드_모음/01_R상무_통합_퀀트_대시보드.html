@@ -497,47 +497,64 @@
     </div>
 
     <!-- Tactical Dual-Strategy Alpha Grid (Bloomberg Terminal Style) -->
+    <!-- Tactical Quant Signals (3-Column Architecture: Left = Strat 1, Center = Dual Consensus, Right = Strat 2) -->
     <div class="today-section">
         <div class="today-banner">
             <div class="today-title">
-                <span>TACTICAL QUANTITATIVE SIGNALS (60-ASSET GLOBAL UNIVERSE)</span>
-                <span style="font-size:11px; color:#94a3af; font-family:'JetBrains Mono';">DUAL-STRATEGY ALPHA ENGINE | 1D HORIZON</span>
+                <span>TACTICAL QUANT SIGNALS (60-ASSET GLOBAL UNIVERSE)</span>
+                <span style="font-size:11px; color:#94a3af; font-family:'JetBrains Mono';">3-COLUMN QUANT MATRIX | DUAL-STRATEGY & GOLDEN INTERSECTION</span>
             </div>
             
-            <!-- Strategy II: Cloud Bounce Sniper Radar -->
-            <div id="sniperRadarContainer" style="margin-bottom:12px; display:block;">
-                <div style="background:#1e1b4b; border:1px solid #6366f1; border-left:4px solid #818cf8; border-radius:3px; padding:8px 12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-size:12px; font-weight:800; color:#c7d2fe; letter-spacing:0.04em; text-transform:uppercase; font-family:'JetBrains Mono';">
-                        STRATEGY II: CLOUD BOUNCE SNIPER RADAR [PROBABILITY: 41.3% | PROFIT FACTOR: 1.60]
-                    </span>
-                    <span style="font-size:10px; color:#a5b4fc; font-family:'JetBrains Mono'; font-weight:700;">STAGE 2 PULLBACK EXECUTION</span>
-                </div>
-                <div id="sniperRadarCards" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:10px;">
-                    <!-- Dynamically populated -->
-                </div>
-            </div>
-
-            <!-- Strategy I: Primary Accumulation Grid -->
-            <div>
-                <div style="background:#0f172a; border:1px solid var(--border); border-left:4px solid var(--accent-green); border-radius:3px; padding:8px 12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-size:12px; font-weight:800; color:#34d399; letter-spacing:0.04em; text-transform:uppercase; font-family:'JetBrains Mono';">
-                        STRATEGY I: TACTICAL PRIMARY ACCUMULATION TOP PICKS [KIJUN SUPPORT: -0.5% ~ +4.0%]
-                    </span>
-                    <span style="font-size:10px; color:#94a3b8; font-family:'JetBrains Mono'; font-weight:700;">TARGET: +15.0% | STOP: -4.0%</span>
-                </div>
-                <div id="primaryAccumulationCards" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:10px;">
-                    <!-- Dynamically populated -->
-                    <div class="rec-item active" onclick="selectStock('AMZN', 260.11)">
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:12px; margin-top:6px;">
+                
+                <!-- [LEFT] Strategy I: Primary Accumulation (기준선 눌림목 1차 분할 매수) -->
+                <div style="background:#0f172a; border:1px solid #1e293b; border-top:3px solid var(--accent-green); border-radius:4px; padding:12px; display:flex; flex-direction:column;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #1e293b;">
                         <div>
-                            <div style="display:flex; align-items:center; gap:6px;">
-                                <span class="rec-item-title" style="color:var(--accent-green);">AMZN</span>
-                                <span class="origin-badge origin-vikings">[VIKINGS LIVE]</span>
-                            </div>
-                            <div class="rec-item-sub">Score: 100/100 | Kijun +1.3% | Vol 59%</div>
+                            <span style="font-size:12px; font-weight:800; color:#34d399; letter-spacing:0.04em; text-transform:uppercase; font-family:'JetBrains Mono'; display:block;">
+                                STRATEGY I: PRIMARY ACCUMULATION
+                            </span>
+                            <span style="font-size:10px; color:#94a3b8; font-family:'JetBrains Mono';">26D KIJUN PULLBACK (-0.8% ~ +4.0%)</span>
                         </div>
-                        <div class="rec-item-price">$260.11</div>
+                        <span style="font-size:10px; color:#34d399; background:#064e3b; padding:2px 6px; border-radius:2px; font-family:'JetBrains Mono'; font-weight:700;">STRAT I ONLY</span>
+                    </div>
+                    <div id="strat1ExclusiveCards" style="display:flex; flex-direction:column; gap:8px; flex:1;">
+                        <!-- Populated dynamically via JavaScript -->
                     </div>
                 </div>
+
+                <!-- [CENTER] Dual Consensus: Strategy I ∩ Strategy II (황금 교집합) -->
+                <div style="background:#17170c; border:1px solid #78350f; border-top:3px solid #f59e0b; border-radius:4px; padding:12px; display:flex; flex-direction:column; box-shadow:0 0 15px rgba(245,158,11,0.08);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #78350f;">
+                        <div>
+                            <span style="font-size:12px; font-weight:800; color:#fbbf24; letter-spacing:0.04em; text-transform:uppercase; font-family:'JetBrains Mono'; display:block;">
+                                DUAL CONSENSUS ALPHA (STRAT I ∩ II)
+                            </span>
+                            <span style="font-size:10px; color:#fde68a; font-family:'JetBrains Mono';">TRAMPOLINE BOUNCE + KIJUN SUPPORT</span>
+                        </div>
+                        <span style="font-size:10px; color:#0f172a; background:#fbbf24; padding:2px 6px; border-radius:2px; font-family:'JetBrains Mono'; font-weight:800;">5-STAR ALPHA ∩</span>
+                    </div>
+                    <div id="dualConsensusCards" style="display:flex; flex-direction:column; gap:8px; flex:1;">
+                        <!-- Populated dynamically via JavaScript -->
+                    </div>
+                </div>
+
+                <!-- [RIGHT] Strategy II: Cloud Bounce Sniper Radar (구름대 반등 2단계 스나이퍼) -->
+                <div style="background:#0f172a; border:1px solid #1e293b; border-top:3px solid #f87171; border-radius:4px; padding:12px; display:flex; flex-direction:column;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #1e293b;">
+                        <div>
+                            <span style="font-size:12px; font-weight:800; color:#f87171; letter-spacing:0.04em; text-transform:uppercase; font-family:'JetBrains Mono'; display:block;">
+                                STRATEGY II: CLOUD BOUNCE SNIPER
+                            </span>
+                            <span style="font-size:10px; color:#fca5a5; font-family:'JetBrains Mono';">STAGE 2 MOMENTUM LAUNCH</span>
+                        </div>
+                        <span style="font-size:10px; color:#f87171; background:#450a0a; padding:2px 6px; border-radius:2px; font-family:'JetBrains Mono'; font-weight:700;">STRAT II ONLY</span>
+                    </div>
+                    <div id="strat2ExclusiveCards" style="display:flex; flex-direction:column; gap:8px; flex:1;">
+                        <!-- Populated dynamically via JavaScript -->
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
@@ -1344,59 +1361,57 @@
                 }
             }
 
-            // 1. Strategy II: Cloud Bounce Sniper Radar
-            const sniperContainer = document.getElementById("sniperRadarContainer");
-            const sniperCards = document.getElementById("sniperRadarCards");
-            if (sniperContainer) sniperContainer.style.display = "block";
-            if (sniperCards) {
-                if (data.sniper_radar && data.sniper_radar.length > 0) {
-                    sniperCards.innerHTML = data.sniper_radar.map(s => {
-                        const originClass = (s.origin === 'VIKINGS_LIVE') ? 'origin-vikings' : 'origin-quant';
-                        const originText = (s.origin === 'VIKINGS_LIVE') ? '[VIKINGS LIVE]' : '[UNIVERSE SCAN]';
-                        const isActive = (currentSelectedTicker === s.ticker) ? 'active' : '';
-                        return `
-                            <div class="rec-item ${isActive}" onclick="selectStock('${s.ticker}', ${s.price})">
-                                <div>
-                                    <div style="display:flex; align-items:center; gap:6px;">
-                                        <span class="rec-item-title" style="color:#f87171;">${s.ticker} <span class="rec-item-sub">${s.name}</span></span>
-                                        <span class="origin-badge ${originClass}">${originText}</span>
-                                    </div>
-                                    <div class="rec-item-sub">SCORE: ${s.score || 95}/100 | TGT: $${Number(s.target_price).toFixed(2)} (+15%) | STP: $${Number(s.stop_price).toFixed(2)} (-4%)</div>
-                                </div>
-                                <div class="rec-item-price" style="color:#f87171;">$${Number(s.price).toFixed(2)}</div>
+            // Render 3-Column Tactical Quant Matrix (Left = Strat 1, Center = Dual Consensus, Right = Strat 2)
+            const strat1Cards = document.getElementById("strat1ExclusiveCards");
+            const dualCards = document.getElementById("dualConsensusCards");
+            const strat2Cards = document.getElementById("strat2ExclusiveCards");
+
+            // Helper to render uniform card items
+            const renderItemCard = (item, colorTheme) => {
+                const originClass = (item.origin === 'VIKINGS_LIVE') ? 'origin-vikings' : 'origin-quant';
+                const originText = (item.origin === 'VIKINGS_LIVE') ? '[VIKINGS LIVE]' : '[UNIVERSE SCAN]';
+                const isActive = (currentSelectedTicker === item.ticker) ? 'active' : '';
+                return `
+                    <div class="rec-item ${isActive}" onclick="selectStock('${item.ticker}', ${item.price})">
+                        <div>
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                <span class="rec-item-title" style="color:${colorTheme};">${item.ticker} <span class="rec-item-sub">${item.name}</span></span>
+                                <span class="origin-badge ${originClass}">${originText}</span>
                             </div>
-                        `;
-                    }).join('');
-                } else {
-                    sniperCards.innerHTML = `
-                        <div style="grid-column: 1 / -1; background:#0f172a; border:1px dashed #334155; border-radius:4px; padding:12px; text-align:center; color:#64748b; font-size:11px; font-family:'JetBrains Mono';">
-                            [MONITORING] 현재 60개 글로벌 유니버스 자산 중 2단계 구름대 지지 반등(Trampoline Bounce) 타점을 실시간 스캔 중입니다.
+                            <div class="rec-item-sub">SCORE: ${item.score}/100 | KIJUN: ${item.kijun_gap >= 0 ? '+' : ''}${Number(item.kijun_gap).toFixed(1)}% | VOL: ${item.vol_ratio}%</div>
                         </div>
-                    `;
+                        <div class="rec-item-price" style="color:${colorTheme};">$${Number(item.price).toFixed(2)}</div>
+                    </div>
+                `;
+            };
+
+            // 1. [LEFT] Strategy I: Primary Accumulation
+            if (strat1Cards) {
+                const list1 = data.strat1_exclusive || (data.primary_accumulation || []).filter(p => !p.is_sniper);
+                if (list1.length > 0) {
+                    strat1Cards.innerHTML = list1.slice(0, 6).map(p => renderItemCard(p, "var(--accent-green)")).join('');
+                } else {
+                    strat1Cards.innerHTML = `<div style="background:#0f172a; border:1px dashed #334155; border-radius:4px; padding:12px; text-align:center; color:#64748b; font-size:11px; font-family:'JetBrains Mono';">기준선 눌림목 형성 대기 중</div>`;
                 }
             }
 
-            // 2. Strategy I: Primary Accumulation Top Picks
-            const primaryCards = document.getElementById("primaryAccumulationCards");
-            if (data.primary_accumulation && data.primary_accumulation.length > 0) {
-                if (primaryCards) {
-                    primaryCards.innerHTML = data.primary_accumulation.slice(0, 8).map(p => {
-                        const originClass = (p.origin === 'VIKINGS_LIVE') ? 'origin-vikings' : 'origin-quant';
-                        const originText = (p.origin === 'VIKINGS_LIVE') ? '[VIKINGS LIVE]' : '[UNIVERSE SCAN]';
-                        const isActive = (currentSelectedTicker === p.ticker) ? 'active' : '';
-                        return `
-                            <div class="rec-item ${isActive}" onclick="selectStock('${p.ticker}', ${p.price})">
-                                <div>
-                                    <div style="display:flex; align-items:center; gap:6px;">
-                                        <span class="rec-item-title" style="color:var(--accent-green);">${p.ticker} <span class="rec-item-sub">${p.name}</span></span>
-                                        <span class="origin-badge ${originClass}">${originText}</span>
-                                    </div>
-                                    <div class="rec-item-sub">SCORE: ${p.score}/100 | KIJUN: ${p.kijun_gap >= 0 ? '+' : ''}${Number(p.kijun_gap).toFixed(1)}% | VOL: ${p.vol_ratio}%</div>
-                                </div>
-                                <div class="rec-item-price">$${Number(p.price).toFixed(2)}</div>
-                            </div>
-                        `;
-                    }).join('');
+            // 2. [CENTER] Dual Consensus: Strategy I ∩ Strategy II (황금 교집합)
+            if (dualCards) {
+                const dualList = data.dual_consensus || [];
+                if (dualList.length > 0) {
+                    dualCards.innerHTML = dualList.slice(0, 6).map(d => renderItemCard(d, "#fbbf24")).join('');
+                } else {
+                    dualCards.innerHTML = `<div style="background:#17170c; border:1px dashed #78350f; border-radius:4px; padding:12px; text-align:center; color:#fbbf24; font-size:11px; font-family:'JetBrains Mono';">양대 전략 동시 충족 5-Star 종목 스캔 중</div>`;
+                }
+            }
+
+            // 3. [RIGHT] Strategy II: Cloud Bounce Sniper Radar
+            if (strat2Cards) {
+                const list2 = data.strat2_exclusive || (data.sniper_radar || []).filter(s => !s.is_strat1);
+                if (list2.length > 0) {
+                    strat2Cards.innerHTML = list2.slice(0, 6).map(s => renderItemCard(s, "#f87171")).join('');
+                } else {
+                    strat2Cards.innerHTML = `<div style="background:#0f172a; border:1px dashed #334155; border-radius:4px; padding:12px; text-align:center; color:#64748b; font-size:11px; font-family:'JetBrains Mono';">구름대 2단계 도약 종목 스캔 중</div>`;
                 }
             }
 

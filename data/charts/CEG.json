@@ -1,6 +1,6 @@
 {
   "ticker": "CEG",
-  "latest_close": 271.91,
+  "latest_close": 271.68,
   "kijun": 265.57,
   "tenkan": 275.69,
   "span_a": 253.1,
@@ -9,8 +9,8 @@
   "future_span_b_latest": 257.42,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 13.21,
-  "kijun_gap_pct": 2.39,
-  "vol_ratio": 0.11,
+  "kijun_gap_pct": 2.3,
+  "vol_ratio": 0.12,
   "bull_score": 65,
   "bear_score": 0,
   "is_sniper": false,
@@ -23,10 +23,10 @@
     "is_sniper": false,
     "trampoline_detected": true,
     "kijun": {
-      "val": "$265.57 (+2.4%)",
+      "val": "$265.57 (+2.3%)",
       "status": "status-bull",
       "badge": "SUPPORTED",
-      "desc": "현재가 $271.91 / 26일선 $265.57 (이격 +2.4%)"
+      "desc": "현재가 $271.68 / 26일선 $265.57 (이격 +2.3%)"
     },
     "tenkan": {
       "val": "$275.69",
@@ -41,10 +41,10 @@
       "desc": "일목 구름대(253.1~278.0) 내부 횡보"
     },
     "vol": {
-      "val": "11% (20D)",
+      "val": "12% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 11% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 12% (매도세 고갈 완벽)"
     },
     "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
   },
@@ -1653,7 +1653,7 @@
       "time": "2025-08-26",
       "open": 309.04,
       "high": 316.71,
-      "low": 308.58,
+      "low": 308.59,
       "close": 314.82
     },
     {
@@ -1840,7 +1840,7 @@
     },
     {
       "time": "2025-10-03",
-      "open": 356.88,
+      "open": 356.87,
       "high": 374.69,
       "low": 356.7,
       "close": 358.0
@@ -3390,7 +3390,7 @@
       "open": 275.5,
       "high": 275.65,
       "low": 271.24,
-      "close": 271.91
+      "close": 271.68
     }
   ],
   "kijun_line": [
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 269.86
+      "value": 269.85
     }
   ],
   "sma60": [
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 292998.0,
+      "value": 313890.0,
       "color": "#dc2626"
     }
   ]

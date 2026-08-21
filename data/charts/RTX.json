@@ -1,6 +1,6 @@
 {
   "ticker": "RTX",
-  "latest_close": 212.58,
+  "latest_close": 212.55,
   "kijun": 207.9,
   "tenkan": 219.29,
   "span_a": 193.71,
@@ -9,7 +9,7 @@
   "future_span_b_latest": 201.38,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 12.22,
-  "kijun_gap_pct": 2.25,
+  "kijun_gap_pct": 2.24,
   "vol_ratio": 0.13,
   "bull_score": 100,
   "bear_score": 0,
@@ -23,10 +23,10 @@
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$207.90 (+2.3%)",
+      "val": "$207.90 (+2.2%)",
       "status": "status-bull",
       "badge": "SUPPORTED",
-      "desc": "현재가 $212.58 / 26일선 $207.90 (이격 +2.3%)"
+      "desc": "현재가 $212.55 / 26일선 $207.90 (이격 +2.2%)"
     },
     "tenkan": {
       "val": "$219.29",
@@ -3390,7 +3390,7 @@
       "open": 213.36,
       "high": 213.52,
       "low": 212.32,
-      "close": 212.58
+      "close": 212.55
     }
   ],
   "kijun_line": [
@@ -3888,11 +3888,11 @@
     },
     {
       "time": "2025-03-26",
-      "value": 126.27
+      "value": 126.28
     },
     {
       "time": "2025-03-27",
-      "value": 126.27
+      "value": 126.28
     },
     {
       "time": "2025-03-28",
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 624829.0,
+      "value": 650868.0,
       "color": "#dc2626"
     }
   ]

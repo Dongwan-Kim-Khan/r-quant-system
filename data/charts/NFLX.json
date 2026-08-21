@@ -1,6 +1,6 @@
 {
   "ticker": "NFLX",
-  "latest_close": 79.57,
+  "latest_close": 79.46,
   "kijun": 73.12,
   "tenkan": 77.37,
   "span_a": 76.02,
@@ -9,7 +9,7 @@
   "future_span_b_latest": 73.92,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 1.33,
-  "kijun_gap_pct": 8.82,
+  "kijun_gap_pct": 8.66,
   "vol_ratio": 0.12,
   "bull_score": 30,
   "bear_score": 0,
@@ -23,10 +23,10 @@
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$73.12 (+8.8%)",
+      "val": "$73.12 (+8.7%)",
       "status": "status-neutral",
       "badge": "OVERHEATED",
-      "desc": "현재가 $79.57 / 26일선 $73.12 (이격 +8.8%)"
+      "desc": "현재가 $79.46 / 26일선 $73.12 (이격 +8.7%)"
     },
     "tenkan": {
       "val": "$77.37",
@@ -3390,7 +3390,7 @@
       "open": 80.27,
       "high": 80.34,
       "low": 79.28,
-      "close": 79.57
+      "close": 79.46
     }
   ],
   "kijun_line": [
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 3823213.0,
+      "value": 4079748.0,
       "color": "#dc2626"
     }
   ]

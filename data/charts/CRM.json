@@ -1,6 +1,6 @@
 {
   "ticker": "CRM",
-  "latest_close": 206.63,
+  "latest_close": 207.1,
   "kijun": 181.57,
   "tenkan": 198.95,
   "span_a": 164.83,
@@ -9,24 +9,24 @@
   "future_span_b_latest": 177.16,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 13.1,
-  "kijun_gap_pct": 13.8,
-  "vol_ratio": 0.08,
+  "kijun_gap_pct": 14.06,
+  "vol_ratio": 0.09,
   "bull_score": 65,
   "bear_score": 0,
-  "is_sniper": false,
+  "is_sniper": true,
   "intelligence": {
-    "verdict": "Neutral Consolidation (박스권 수렴)",
-    "score": "65 / 100 pt (HOLD)",
+    "verdict": "Sniper Alert (구름대 도약 2단계 특급 매수)",
+    "score": "95 / 100 pt (SNIPER_BUY)",
     "bull_score": 65,
     "bear_score": 0,
-    "type": "NEUTRAL",
-    "is_sniper": false,
+    "type": "BULL",
+    "is_sniper": true,
     "trampoline_detected": true,
     "kijun": {
-      "val": "$181.57 (+13.8%)",
+      "val": "$181.57 (+14.1%)",
       "status": "status-neutral",
       "badge": "OVERHEATED",
-      "desc": "현재가 $206.63 / 26일선 $181.57 (이격 +13.8%)"
+      "desc": "현재가 $207.10 / 26일선 $181.57 (이격 +14.1%)"
     },
     "tenkan": {
       "val": "$198.95",
@@ -41,15 +41,15 @@
       "desc": "일목 구름대(164.8~178.6) 상단 안착"
     },
     "vol": {
-      "val": "8% (20D)",
+      "val": "9% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 8% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 9% (매도세 고갈 완벽)"
     },
-    "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
+    "action": "[전략 2 스나이퍼] 11일 전 구름대 지지 도약 확인 후 상방 시세 분출(기준선 대비 +14.1%). 목표 +15% / 손절 -4%."
   },
-  "status_tag": "NEUTRAL",
-  "status_text": "Neutral Consolidation (박스권 수렴)",
+  "status_tag": "BULL",
+  "status_text": "Sniper Alert (구름대 도약 2단계 특급 매수)",
   "timeframe": "1D",
   "period": "2Y",
   "candles": [
@@ -245,7 +245,7 @@
     {
       "time": "2024-11-04",
       "open": 294.22,
-      "high": 296.39,
+      "high": 296.38,
       "low": 289.22,
       "close": 294.24
     },
@@ -526,7 +526,7 @@
       "time": "2025-01-02",
       "open": 332.44,
       "high": 335.02,
-      "low": 324.04,
+      "low": 324.03,
       "close": 326.85
     },
     {
@@ -1287,7 +1287,7 @@
     },
     {
       "time": "2025-06-11",
-      "open": 265.83,
+      "open": 265.82,
       "high": 266.82,
       "low": 262.77,
       "close": 263.26
@@ -3390,7 +3390,7 @@
       "open": 205.58,
       "high": 207.99,
       "low": 204.73,
-      "close": 206.63
+      "close": 207.1
     }
   ],
   "kijun_line": [
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 192.44
+      "value": 192.46
     }
   ],
   "sma60": [
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 991730.0,
+      "value": 1086234.0,
       "color": "#059669"
     }
   ]
