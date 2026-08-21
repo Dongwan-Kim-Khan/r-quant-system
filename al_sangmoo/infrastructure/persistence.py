@@ -1,4 +1,4 @@
-﻿"""
+"""
 SQLite Persistence Repository Layer with WAL Mode & Atomic Transactions.
 """
 import os
@@ -333,6 +333,52 @@ def get_recommendations_matrix() -> list:
     rows = [dict(r) for r in cursor.fetchall()]
     conn.close()
     return rows
+
+def archive_daily_recommendations(today_str: str, dual_consensus: list, strat1_exclusive: list, strat2_exclusive: list) -> int:
+    init_database()
+    conn = get_connection()
+    cursor = conn.cursor()
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    saved_count = 0
+    
+    all_recs = []
+    for d in dual_consensus:
+        all_recs.append((d, "DUAL_5_STAR"))
+    for p in strat1_exclusive:
+        all_recs.append((p, "STRAT1_PULLBACK"))
+    for s in strat2_exclusive:
+        all_recs.append((s, "STRAT2_SNIPER"))
+        
+    for item, rec_type in all_recs:
+        tk = item["ticker"]
+        price = float(item["price"])
+        tgt_p = float(item.get("target_price", round(price * 1.15, 2)))
+        stop_p = float(item.get("stop_price", round(price * 0.96, 2)))
+        part_p = round(price * 1.08, 2)
+        
+        cursor.execute("""
+        INSERT OR REPLACE INTO trades (
+            id, date, ticker, type, entry_price, current_price,
+            target_price, partial_tp_price, stop_loss_price,
+            pnl_pct, max_gain_pct, status, days_active, exit_advice, updated_at
+        )
+        VALUES (
+            (SELECT id FROM trades WHERE date = ? AND ticker = ?),
+            ?, ?, ?, ?, ?,
+            ?, ?, ?,
+            0.0, 0.0, 'OPEN', 0, ?, ?
+        )
+        """, (
+            today_str, tk,
+            today_str, tk, rec_type, price, price,
+            tgt_p, part_p, stop_p,
+            f"신규 추천 진입 ({rec_type})", now_str
+        ))
+        saved_count += 1
+        
+    conn.commit()
+    conn.close()
+    return saved_count
 
 # Aliases
 get_db = get_connection

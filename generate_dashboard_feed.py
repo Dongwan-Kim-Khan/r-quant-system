@@ -495,10 +495,15 @@ def build_dashboard_data():
         elif is_strat2:
             strat2_exclusive.append(item)
             
-    # Sort each category
-    dual_consensus_picks.sort(key=lambda x: (-x["score"], abs(x["kijun_gap"])))
-    strat1_exclusive.sort(key=lambda x: (-x["score"], abs(x["kijun_gap"])))
-    strat2_exclusive.sort(key=lambda x: (-x["score"], abs(x["kijun_gap"])))
+    # Sort each category by highest conviction (Score -> Nearest Kijun Gap -> Lowest Volume Ratio)
+    dual_consensus_picks.sort(key=lambda x: (-x["score"], abs(x["kijun_gap"]), x["vol_ratio"]))
+    strat1_exclusive.sort(key=lambda x: (-x["score"], abs(x["kijun_gap"]), x["vol_ratio"]))
+    strat2_exclusive.sort(key=lambda x: (-x["score"], abs(x["kijun_gap"]), x["vol_ratio"]))
+
+    # Concentrate to Top Elite Recommendations (Top 4 Dual, Top 4 Strat 1, Top 4 Strat 2)
+    dual_consensus_picks = dual_consensus_picks[:4]
+    strat1_exclusive = strat1_exclusive[:4]
+    strat2_exclusive = strat2_exclusive[:4]
 
     # Combined full sets for backwards compatibility
     all_strat1 = dual_consensus_picks + strat1_exclusive
@@ -545,7 +550,7 @@ def build_dashboard_data():
         })
         
     # 3. Strategy 1 Primary Accumulation signals
-    for p in strat1_exclusive[:8]:
+    for p in strat1_exclusive:
         signal_tracker.append({
             "date": today_str,
             "ticker": p["ticker"],
@@ -562,7 +567,7 @@ def build_dashboard_data():
             "status_label": "ACTIVE_BUY"
         })
     
-    # Refresh today's 2+2+2 Recommendation Matrix in SQLite DB
+    # Refresh today's 2+2+2 Recommendation Matrix & Permanent Trade Tracking Archive in SQLite DB
     if dual_consensus_picks or strat1_exclusive or strat2_exclusive:
         top_bulls = (dual_consensus_picks + strat1_exclusive)[:2]
         top_neutrals = (strat1_exclusive + dual_consensus_picks)[2:4]
@@ -572,7 +577,11 @@ def build_dashboard_data():
         n_picks = [{"ticker": x["ticker"], "close": x["price"]} for x in top_neutrals]
         s_picks = [{"ticker": x["ticker"], "close": x["price"]} for x in top_snipers]
         
-        db_manager.save_recommendation_matrix_record(today_str, b_picks, n_picks, s_picks)
+        try:
+            db_manager.save_recommendation_matrix_record(today_str, b_picks, n_picks, s_picks)
+            db_manager.archive_daily_recommendations(today_str, dual_consensus_picks, strat1_exclusive, strat2_exclusive)
+        except Exception as e:
+            print(f"[DB Archiving Warning] {e}")
 
     # Load 2+2+2 Matrix and Portfolio from DB
     matrix = db_manager.get_recommendations_matrix()

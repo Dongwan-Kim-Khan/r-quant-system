@@ -1501,7 +1501,7 @@
             if (strat1Cards) {
                 const list1 = data.strat1_exclusive || (data.primary_accumulation || []).filter(p => !p.is_sniper);
                 if (list1.length > 0) {
-                    strat1Cards.innerHTML = list1.slice(0, 6).map(p => renderItemCard(p, "var(--accent-green)")).join('');
+                    strat1Cards.innerHTML = list1.map(p => renderItemCard(p, "var(--accent-green)")).join('');
                 } else {
                     strat1Cards.innerHTML = `<div style="background:#0f172a; border:1px dashed #334155; border-radius:4px; padding:12px; text-align:center; color:#64748b; font-size:11px; font-family:'JetBrains Mono';">기준선 눌림목 형성 대기 중</div>`;
                 }
@@ -1511,7 +1511,7 @@
             if (dualCards) {
                 const dualList = data.dual_consensus || [];
                 if (dualList.length > 0) {
-                    dualCards.innerHTML = dualList.slice(0, 6).map(d => renderItemCard(d, "#fbbf24")).join('');
+                    dualCards.innerHTML = dualList.map(d => renderItemCard(d, "#fbbf24")).join('');
                 } else {
                     dualCards.innerHTML = `<div style="background:#17170c; border:1px dashed #78350f; border-radius:4px; padding:12px; text-align:center; color:#fbbf24; font-size:11px; font-family:'JetBrains Mono';">양대 전략 동시 충족 5-Star 종목 스캔 중</div>`;
                 }
@@ -1521,7 +1521,7 @@
             if (strat2Cards) {
                 const list2 = data.strat2_exclusive || (data.sniper_radar || []).filter(s => !s.is_strat1);
                 if (list2.length > 0) {
-                    strat2Cards.innerHTML = list2.slice(0, 6).map(s => renderItemCard(s, "#f87171")).join('');
+                    strat2Cards.innerHTML = list2.map(s => renderItemCard(s, "#f87171")).join('');
                 } else {
                     strat2Cards.innerHTML = `<div style="background:#0f172a; border:1px dashed #334155; border-radius:4px; padding:12px; text-align:center; color:#64748b; font-size:11px; font-family:'JetBrains Mono';">구름대 2단계 도약 종목 스캔 중</div>`;
                 }

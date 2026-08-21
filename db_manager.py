@@ -1,4 +1,4 @@
-﻿"""
+"""
 Legacy Facade for Database Access.
 Delegates to al_sangmoo.infrastructure.persistence.
 """
@@ -15,6 +15,7 @@ from al_sangmoo.infrastructure.persistence import (
     get_live_portfolio,
     save_recommendation_matrix_record,
     get_recommendations_matrix,
+    archive_daily_recommendations,
     close_portfolio_position,
     clear_portfolio
 )
