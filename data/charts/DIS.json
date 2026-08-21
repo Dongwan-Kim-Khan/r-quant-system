@@ -1,6 +1,6 @@
 {
   "ticker": "DIS",
-  "latest_close": 107.7,
+  "latest_close": 107.62,
   "kijun": 100.59,
   "tenkan": 105.36,
   "span_a": 98.29,
@@ -9,25 +9,25 @@
   "future_span_b_latest": 100.59,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 2.39,
-  "kijun_gap_pct": 7.07,
-  "vol_ratio": 0.11,
-  "bull_score": 65,
+  "kijun_gap_pct": 6.99,
+  "vol_ratio": 0.12,
+  "bull_score": 80,
   "bear_score": 0,
   "is_sniper": true,
   "intelligence": {
     "verdict": "Sniper Alert (구름대 도약 2단계 특급 매수)",
     "score": "100 / 100 pt (SNIPER_BUY)",
-    "bull_score": 65,
+    "bull_score": 80,
     "bear_score": 0,
     "sniper_score": 100,
     "type": "BULL",
     "is_sniper": true,
     "trampoline_detected": true,
     "kijun": {
-      "val": "$100.59 (+7.1%)",
+      "val": "$100.59 (+7.0%)",
       "status": "status-bull",
       "badge": "STAGE 2 MOMENTUM",
-      "desc": "26일 기준선($100.59) 대비 +7.1% 상방 도약 가속 구간"
+      "desc": "26일 기준선($100.59) 대비 +7.0% 상방 도약 가속 구간"
     },
     "tenkan": {
       "val": "$105.36",
@@ -42,12 +42,12 @@
       "desc": "일목 구름대(98.3~102.2) 0일 전 지지 반등 확인 완료"
     },
     "vol": {
-      "val": "11% (20D)",
+      "val": "12% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 11% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 12% (매도세 고갈 완벽)"
     },
-    "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 상방 시세 분출(기준선 대비 +7.1%). 목표 +15% / 손절 -4%."
+    "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 상방 시세 분출(기준선 대비 +7.0%). 목표 +15% / 손절 -4%."
   },
   "status_tag": "BULL",
   "status_text": "Sniper Alert (구름대 도약 2단계 특급 매수)",
@@ -72,7 +72,7 @@
       "time": "2024-09-30",
       "open": 94.64,
       "high": 95.35,
-      "low": 93.27,
+      "low": 93.26,
       "close": 94.0
     },
     {
@@ -3391,7 +3391,7 @@
       "open": 107.57,
       "high": 108.41,
       "low": 106.99,
-      "close": 107.7
+      "close": 107.62
     }
   ],
   "kijun_line": [
@@ -16997,7 +16997,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 1172155.0,
+      "value": 1215953.0,
       "color": "#059669"
     }
   ]

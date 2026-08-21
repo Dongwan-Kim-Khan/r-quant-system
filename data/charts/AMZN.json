@@ -1,6 +1,6 @@
 {
   "ticker": "AMZN",
-  "latest_close": 259.14,
+  "latest_close": 259.23,
   "kijun": 256.68,
   "tenkan": 267.94,
   "span_a": 244.99,
@@ -9,14 +9,14 @@
   "future_span_b_latest": 256.38,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 5.93,
-  "kijun_gap_pct": 0.96,
-  "vol_ratio": 0.23,
+  "kijun_gap_pct": 1.0,
+  "vol_ratio": 0.24,
   "bull_score": 100,
   "bear_score": 0,
   "is_sniper": true,
   "intelligence": {
-    "verdict": "Sniper Alert (구름대 도약 2단계 특급 매수)",
-    "score": "100 / 100 pt (SNIPER_BUY)",
+    "verdict": "Dual 5-Star (양대 전략 동시 충족 특급 매수)",
+    "score": "100 / 100 pt (DUAL_5_STAR)",
     "bull_score": 100,
     "bear_score": 0,
     "sniper_score": 100,
@@ -42,15 +42,15 @@
       "desc": "일목 구름대(245.0~252.1) 0일 전 지지 반등 확인 완료"
     },
     "vol": {
-      "val": "23% (20D)",
+      "val": "24% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 23% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 24% (매도세 고갈 완벽)"
     },
-    "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 상방 시세 분출(기준선 대비 +1.0%). 목표 +15% / 손절 -4%."
+    "action": "[황금 교집합] 구름대 지지 도약(0일 전) 성공 및 26일 기준선(+1.0%) 안착. 기관 퀀트 최우선 공략."
   },
   "status_tag": "BULL",
-  "status_text": "Sniper Alert (구름대 도약 2단계 특급 매수)",
+  "status_text": "Dual 5-Star (양대 전략 동시 충족 특급 매수)",
   "timeframe": "1D",
   "period": "2Y",
   "candles": [
@@ -3391,7 +3391,7 @@
       "open": 260.75,
       "high": 261.08,
       "low": 257.04,
-      "close": 259.14
+      "close": 259.23
     }
   ],
   "kijun_line": [
@@ -12837,7 +12837,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 261.4
+      "value": 261.41
     }
   ],
   "sma60": [
@@ -14611,7 +14611,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 250.44
+      "value": 250.45
     }
   ],
   "volume": [
@@ -16997,7 +16997,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 10755768.0,
+      "value": 11115392.0,
       "color": "#dc2626"
     }
   ]

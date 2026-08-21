@@ -189,19 +189,40 @@ def compute_all_indicators(ticker):
         future_cloud_type = "양운 (상승 지지 구름대)" if is_future_bull_cloud else "음운 (하락 저항 구름대)"
         future_cloud_gap = abs(future_a_latest - future_b_latest)
         
-        # 17-Year Quant Exact Scoring (Strategy 1)
+        # 1. Strategy 1 (Primary Accumulation - Graduated 17-Year Quant Scoring, Max 100 pt)
         bull_score = 0
-        if close >= cloud_top: bull_score += 35
-        if -0.5 <= kijun_gap <= 4.0: bull_score += 35
-        if vol_ratio <= 0.75: bull_score += 20
-        if tenkan >= kijun: bull_score += 10
+        if close >= cloud_top:
+            bull_score += 35
+        elif close >= cloud_top * 0.97:
+            bull_score += 25
+        elif close >= cloud_bottom:
+            bull_score += 15
+            
+        if -0.5 <= kijun_gap <= 3.5:
+            bull_score += 35
+        elif -0.8 <= kijun_gap <= 4.8:
+            bull_score += 25
+        elif -1.5 <= kijun_gap <= 7.0:
+            bull_score += 15
+            
+        if vol_ratio <= 0.60:
+            bull_score += 20
+        elif vol_ratio <= 0.85:
+            bull_score += 15
+        elif vol_ratio <= 1.10:
+            bull_score += 10
+            
+        if tenkan >= kijun:
+            bull_score += 10
+        elif close >= tenkan:
+            bull_score += 5
         
         bear_score = 0
         if close < kijun: bear_score += 40
         if close < cloud_bottom: bear_score += 35
         if kijun_gap < -2.0: bear_score += 15
         
-        # Strategy 2: 2-Phase Cloud Trampoline Launch Evaluation
+        # 2. Strategy 2 (Cloud Trampoline Bounce Sniper - 4 Distinct Factors, Max 100 pt)
         # Lookback 14 bars to check if a Cloud Bounce Launch happened
         trampoline_detected = False
         trampoline_days_ago = 0
@@ -222,21 +243,29 @@ def compute_all_indicators(ticker):
                     trampoline_days_ago = b_offset - 1
                     break
         
-        # Strategy 2 Specific Sniper Scoring (Max 100 pt)
         sniper_score = 0
         if trampoline_detected: sniper_score += 40
-        if close >= cloud_top: sniper_score += 35
-        if kijun_gap >= -0.5: sniper_score += 15
-        if tenkan >= kijun: sniper_score += 10
+        if close >= cloud_top: sniper_score += 30
+        elif close >= cloud_top * 0.98: sniper_score += 20
+        if kijun_gap >= 0: sniper_score += 15
+        elif kijun_gap >= -1.0: sniper_score += 10
+        if tenkan >= kijun: sniper_score += 15
+        elif close >= tenkan: sniper_score += 10
         
-        is_sniper_active = (sniper_score >= 85) and trampoline_detected and (close >= cloud_top * 0.98)
+        is_sniper_active = trampoline_detected and (sniper_score >= 80) and (close >= cloud_top * 0.97)
+        is_strat1_active = (bull_score >= 80) and (-0.8 <= kijun_gap <= 4.8)
         
-        if is_sniper_active:
+        if is_strat1_active and is_sniper_active:
+            quant_type = "BULL"
+            quant_verdict = "Dual 5-Star (양대 전략 동시 충족 특급 매수)"
+            quant_score_text = "100 / 100 pt (DUAL_5_STAR)"
+            action_directive = f"[황금 교집합] 구름대 지지 도약({trampoline_days_ago}일 전) 성공 및 26일 기준선({kijun_gap:+.1f}%) 안착. 기관 퀀트 최우선 공략."
+        elif is_sniper_active:
             quant_type = "BULL"
             quant_verdict = "Sniper Alert (구름대 도약 2단계 특급 매수)"
             quant_score_text = f"{sniper_score} / 100 pt (SNIPER_BUY)"
             action_directive = f"[전략 2 스나이퍼] {trampoline_days_ago}일 전 구름대 지지 도약 확인 후 상방 시세 분출(기준선 대비 {kijun_gap:+.1f}%). 목표 +15% / 손절 -4%."
-        elif bull_score >= 75:
+        elif is_strat1_active:
             quant_type = "BULL"
             quant_verdict = "Bull Accumulation (1차 분할 매수 적합)"
             quant_score_text = f"{bull_score} / 100 pt (BULL_BUY)"
@@ -392,10 +421,10 @@ def build_dashboard_data():
         is_sn = c["is_sniper"]
         s_score = c.get("sniper_score", 95 if is_sn else 0)
         
-        # Strategy 1 (Classic Pullback Accumulation): Bull trend, Bull Score >= 80, Kijun gap -0.8% ~ +4.0%, Dry volume
-        is_strat1 = (b_score >= 80) and (-0.8 <= kgap <= 4.0) and (v_ratio <= 0.85)
-        # Strategy 2 (Cloud Bounce Sniper): Cloud trampoline launch detected, Sniper Score >= 85
-        is_strat2 = bool(is_sn) and (s_score >= 85)
+        # Strategy 1 (Classic Pullback Accumulation): Bull trend, Bull Score >= 80, Kijun gap -0.8% ~ +4.8%
+        is_strat1 = (b_score >= 80) and (-0.8 <= kgap <= 4.8)
+        # Strategy 2 (Cloud Bounce Sniper): Cloud trampoline launch detected, Sniper Score >= 80
+        is_strat2 = bool(is_sn) and (s_score >= 80)
         
         item_score = 100 if (is_strat1 and is_strat2) else (b_score if is_strat1 else s_score)
         

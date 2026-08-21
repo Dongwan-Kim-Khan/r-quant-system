@@ -1,6 +1,6 @@
 {
   "ticker": "ARM",
-  "latest_close": 246.93,
+  "latest_close": 245.0,
   "kijun": 259.34,
   "tenkan": 265.85,
   "span_a": 324.34,
@@ -9,8 +9,8 @@
   "future_span_b_latest": 336.05,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 73.45,
-  "kijun_gap_pct": -4.79,
-  "vol_ratio": 0.11,
+  "kijun_gap_pct": -5.53,
+  "vol_ratio": 0.12,
   "bull_score": 30,
   "bear_score": 90,
   "is_sniper": false,
@@ -19,15 +19,15 @@
     "score": "30 / 100 pt (BEAR_EXIT)",
     "bull_score": 30,
     "bear_score": 90,
-    "sniper_score": 10,
+    "sniper_score": 15,
     "type": "BEAR",
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$259.34 (-4.8%)",
+      "val": "$259.34 (-5.5%)",
       "status": "status-bear",
       "badge": "BREAKDOWN",
-      "desc": "현재가 $246.93 / 26일선 $259.34 (이격 -4.8%)"
+      "desc": "현재가 $245.00 / 26일선 $259.34 (이격 -5.5%)"
     },
     "tenkan": {
       "val": "$265.85",
@@ -42,10 +42,10 @@
       "desc": "일목 구름대(324.3~325.5) 하단 붕괴"
     },
     "vol": {
-      "val": "11% (20D)",
+      "val": "12% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 11% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 12% (매도세 고갈 완벽)"
     },
     "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
   },
@@ -3390,8 +3390,8 @@
       "time": "2026-08-21",
       "open": 252.9,
       "high": 255.93,
-      "low": 246.4,
-      "close": 246.93
+      "low": 244.54,
+      "close": 245.0
     }
   ],
   "kijun_line": [
@@ -12837,7 +12837,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 260.96
+      "value": 260.86
     }
   ],
   "sma60": [
@@ -14611,7 +14611,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 312.48
+      "value": 312.45
     }
   ],
   "volume": [
@@ -16997,7 +16997,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 565336.0,
+      "value": 628969.0,
       "color": "#dc2626"
     }
   ]

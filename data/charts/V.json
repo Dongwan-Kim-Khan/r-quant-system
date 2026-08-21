@@ -1,22 +1,22 @@
 {
   "ticker": "V",
-  "latest_close": 370.5,
+  "latest_close": 371.14,
   "kijun": 360.57,
-  "tenkan": 364.39,
+  "tenkan": 364.68,
   "span_a": 347.28,
   "span_b": 336.44,
-  "future_span_a_latest": 362.48,
+  "future_span_a_latest": 362.63,
   "future_span_b_latest": 344.84,
   "future_cloud_type": "양운 (상승 지지 구름대)",
-  "future_cloud_gap": 17.64,
-  "kijun_gap_pct": 2.76,
-  "vol_ratio": 0.17,
+  "future_cloud_gap": 17.78,
+  "kijun_gap_pct": 2.93,
+  "vol_ratio": 0.18,
   "bull_score": 100,
   "bear_score": 0,
   "is_sniper": true,
   "intelligence": {
-    "verdict": "Sniper Alert (구름대 도약 2단계 특급 매수)",
-    "score": "100 / 100 pt (SNIPER_BUY)",
+    "verdict": "Dual 5-Star (양대 전략 동시 충족 특급 매수)",
+    "score": "100 / 100 pt (DUAL_5_STAR)",
     "bull_score": 100,
     "bear_score": 0,
     "sniper_score": 100,
@@ -24,16 +24,16 @@
     "is_sniper": true,
     "trampoline_detected": true,
     "kijun": {
-      "val": "$360.57 (+2.8%)",
+      "val": "$360.57 (+2.9%)",
       "status": "status-bull",
       "badge": "SUPPORTED",
-      "desc": "26일 기준선($360.57) 대비 +2.8% 상방 도약 가속 구간"
+      "desc": "26일 기준선($360.57) 대비 +2.9% 상방 도약 가속 구간"
     },
     "tenkan": {
-      "val": "$364.39",
+      "val": "$364.68",
       "status": "status-bull",
       "badge": "GOLDEN CROSS",
-      "desc": "9일 전환선 $364.39 상단 정배열"
+      "desc": "9일 전환선 $364.68 상단 정배열"
     },
     "cloud": {
       "val": "$347.28",
@@ -42,15 +42,15 @@
       "desc": "일목 구름대(336.4~347.3) 0일 전 지지 반등 확인 완료"
     },
     "vol": {
-      "val": "17% (20D)",
+      "val": "18% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 17% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 18% (매도세 고갈 완벽)"
     },
-    "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 상방 시세 분출(기준선 대비 +2.8%). 목표 +15% / 손절 -4%."
+    "action": "[황금 교집합] 구름대 지지 도약(0일 전) 성공 및 26일 기준선(+2.9%) 안착. 기관 퀀트 최우선 공략."
   },
   "status_tag": "BULL",
-  "status_text": "Sniper Alert (구름대 도약 2단계 특급 매수)",
+  "status_text": "Dual 5-Star (양대 전략 동시 충족 특급 매수)",
   "timeframe": "1D",
   "period": "2Y",
   "candles": [
@@ -834,7 +834,7 @@
     {
       "time": "2025-03-10",
       "open": 336.09,
-      "high": 341.11,
+      "high": 341.1,
       "low": 333.82,
       "close": 337.61
     },
@@ -976,7 +976,7 @@
       "open": 298.65,
       "high": 318.53,
       "low": 295.62,
-      "close": 308.79
+      "close": 308.78
     },
     {
       "time": "2025-04-08",
@@ -3389,9 +3389,9 @@
     {
       "time": "2026-08-21",
       "open": 367.87,
-      "high": 370.74,
+      "high": 371.32,
       "low": 366.66,
-      "close": 370.5
+      "close": 371.14
     }
   ],
   "kijun_line": [
@@ -7211,7 +7211,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 364.39
+      "value": 364.68
     }
   ],
   "span_a_line": [
@@ -7909,7 +7909,7 @@
     },
     {
       "time": "2025-07-16",
-      "value": 355.53
+      "value": 355.54
     },
     {
       "time": "2025-07-17",
@@ -9121,7 +9121,7 @@
     },
     {
       "time": "2026-09-28",
-      "value": 362.48
+      "value": 362.63
     }
   ],
   "span_b_line": [
@@ -12837,7 +12837,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 364.88
+      "value": 364.91
     }
   ],
   "sma60": [
@@ -14611,7 +14611,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 346.99
+      "value": 347.0
     }
   ],
   "volume": [
@@ -16997,7 +16997,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 1206331.0,
+      "value": 1288061.0,
       "color": "#059669"
     }
   ]

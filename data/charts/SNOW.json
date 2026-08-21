@@ -1,6 +1,6 @@
 {
   "ticker": "SNOW",
-  "latest_close": 321.77,
+  "latest_close": 321.27,
   "kijun": 297.77,
   "tenkan": 328.08,
   "span_a": 257.22,
@@ -9,8 +9,8 @@
   "future_span_b_latest": 279.72,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 33.21,
-  "kijun_gap_pct": 8.06,
-  "vol_ratio": 0.09,
+  "kijun_gap_pct": 7.89,
+  "vol_ratio": 0.1,
   "bull_score": 65,
   "bear_score": 0,
   "is_sniper": false,
@@ -24,10 +24,10 @@
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$297.77 (+8.1%)",
+      "val": "$297.77 (+7.9%)",
       "status": "status-neutral",
       "badge": "OVERHEATED",
-      "desc": "현재가 $321.77 / 26일선 $297.77 (이격 +8.1%)"
+      "desc": "현재가 $321.27 / 26일선 $297.77 (이격 +7.9%)"
     },
     "tenkan": {
       "val": "$328.08",
@@ -42,10 +42,10 @@
       "desc": "일목 구름대(210.6~257.2) 상단 안착"
     },
     "vol": {
-      "val": "9% (20D)",
+      "val": "10% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 9% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 10% (매도세 고갈 완벽)"
     },
     "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
   },
@@ -3391,7 +3391,7 @@
       "open": 321.66,
       "high": 323.27,
       "low": 314.2,
-      "close": 321.77
+      "close": 321.27
     }
   ],
   "kijun_line": [
@@ -12837,7 +12837,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 314.91
+      "value": 314.88
     }
   ],
   "sma60": [
@@ -14611,7 +14611,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 273.35
+      "value": 273.34
     }
   ],
   "volume": [
@@ -16997,8 +16997,8 @@
     },
     {
       "time": "2026-08-21",
-      "value": 437681.0,
-      "color": "#059669"
+      "value": 462011.0,
+      "color": "#dc2626"
     }
   ]
 }

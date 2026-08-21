@@ -1,16 +1,16 @@
 {
   "ticker": "AMAT",
-  "latest_close": 487.75,
+  "latest_close": 485.4,
   "kijun": 505.87,
-  "tenkan": 524.86,
+  "tenkan": 523.58,
   "span_a": 590.32,
   "span_b": 561.82,
-  "future_span_a_latest": 515.37,
+  "future_span_a_latest": 514.72,
   "future_span_b_latest": 587.37,
   "future_cloud_type": "음운 (하락 저항 구름대)",
-  "future_cloud_gap": 72.01,
-  "kijun_gap_pct": -3.58,
-  "vol_ratio": 0.16,
+  "future_cloud_gap": 72.65,
+  "kijun_gap_pct": -4.05,
+  "vol_ratio": 0.18,
   "bull_score": 30,
   "bear_score": 90,
   "is_sniper": false,
@@ -19,21 +19,21 @@
     "score": "30 / 100 pt (BEAR_EXIT)",
     "bull_score": 30,
     "bear_score": 90,
-    "sniper_score": 10,
+    "sniper_score": 15,
     "type": "BEAR",
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$505.87 (-3.6%)",
+      "val": "$505.87 (-4.0%)",
       "status": "status-bear",
       "badge": "BREAKDOWN",
-      "desc": "현재가 $487.75 / 26일선 $505.87 (이격 -3.6%)"
+      "desc": "현재가 $485.40 / 26일선 $505.87 (이격 -4.0%)"
     },
     "tenkan": {
-      "val": "$524.86",
+      "val": "$523.58",
       "status": "status-bull",
       "badge": "GOLDEN CROSS",
-      "desc": "9일 전환선 $524.86 상단 정배열"
+      "desc": "9일 전환선 $523.58 상단 정배열"
     },
     "cloud": {
       "val": "$590.32",
@@ -42,10 +42,10 @@
       "desc": "일목 구름대(561.8~590.3) 하단 붕괴"
     },
     "vol": {
-      "val": "16% (20D)",
+      "val": "18% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 16% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 18% (매도세 고갈 완벽)"
     },
     "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
   },
@@ -505,7 +505,7 @@
     {
       "time": "2024-12-27",
       "open": 163.92,
-      "high": 164.95,
+      "high": 164.96,
       "low": 162.42,
       "close": 164.59
     },
@@ -856,7 +856,7 @@
       "time": "2025-03-13",
       "open": 147.23,
       "high": 151.35,
-      "low": 146.71,
+      "low": 146.72,
       "close": 148.28
     },
     {
@@ -1813,7 +1813,7 @@
     },
     {
       "time": "2025-09-29",
-      "open": 205.21,
+      "open": 205.2,
       "high": 209.34,
       "low": 203.55,
       "close": 203.82
@@ -2080,7 +2080,7 @@
     {
       "time": "2025-11-20",
       "open": 237.94,
-      "high": 239.91,
+      "high": 239.9,
       "low": 218.18,
       "close": 219.45
     },
@@ -2362,7 +2362,7 @@
       "open": 318.35,
       "high": 327.52,
       "low": 315.78,
-      "close": 324.09
+      "close": 324.08
     },
     {
       "time": "2026-01-22",
@@ -3390,8 +3390,8 @@
       "time": "2026-08-21",
       "open": 503.5,
       "high": 503.5,
-      "low": 486.57,
-      "close": 487.75
+      "low": 484.0,
+      "close": 485.4
     }
   ],
   "kijun_line": [
@@ -7211,7 +7211,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 524.86
+      "value": 523.58
     }
   ],
   "span_a_line": [
@@ -9121,7 +9121,7 @@
     },
     {
       "time": "2026-09-28",
-      "value": 515.37
+      "value": 514.72
     }
   ],
   "span_b_line": [
@@ -9443,7 +9443,7 @@
     },
     {
       "time": "2025-04-07",
-      "value": 175.04
+      "value": 175.05
     },
     {
       "time": "2025-04-08",
@@ -12837,7 +12837,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 513.12
+      "value": 513.0
     }
   ],
   "sma60": [
@@ -14611,7 +14611,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 546.48
+      "value": 546.44
     }
   ],
   "volume": [
@@ -16997,7 +16997,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 1268484.0,
+      "value": 1393760.0,
       "color": "#dc2626"
     }
   ]

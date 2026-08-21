@@ -1,6 +1,6 @@
 {
   "ticker": "WMT",
-  "latest_close": 102.54,
+  "latest_close": 102.73,
   "kijun": 110.12,
   "tenkan": 109.52,
   "span_a": 113.86,
@@ -9,8 +9,8 @@
   "future_span_b_latest": 112.55,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 2.73,
-  "kijun_gap_pct": -6.89,
-  "vol_ratio": 0.49,
+  "kijun_gap_pct": -6.72,
+  "vol_ratio": 0.52,
   "bull_score": 20,
   "bear_score": 90,
   "is_sniper": false,
@@ -24,10 +24,10 @@
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$110.12 (-6.9%)",
+      "val": "$110.12 (-6.7%)",
       "status": "status-bear",
       "badge": "BREAKDOWN",
-      "desc": "현재가 $102.54 / 26일선 $110.12 (이격 -6.9%)"
+      "desc": "현재가 $102.73 / 26일선 $110.12 (이격 -6.7%)"
     },
     "tenkan": {
       "val": "$109.52",
@@ -42,10 +42,10 @@
       "desc": "일목 구름대(113.9~121.2) 하단 붕괴"
     },
     "vol": {
-      "val": "49% (20D)",
+      "val": "52% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 49% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 52% (매도세 고갈 완벽)"
     },
     "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
   },
@@ -206,7 +206,7 @@
       "open": 81.9,
       "high": 82.0,
       "low": 81.16,
-      "close": 81.23
+      "close": 81.22
     },
     {
       "time": "2024-10-28",
@@ -254,7 +254,7 @@
       "time": "2024-11-05",
       "open": 81.39,
       "high": 82.47,
-      "low": 81.22,
+      "low": 81.23,
       "close": 82.38
     },
     {
@@ -616,7 +616,7 @@
     },
     {
       "time": "2025-01-23",
-      "open": 91.72,
+      "open": 91.71,
       "high": 92.55,
       "low": 91.08,
       "close": 92.55
@@ -3391,7 +3391,7 @@
       "open": 103.68,
       "high": 104.28,
       "low": 102.16,
-      "close": 102.54
+      "close": 102.73
     }
   ],
   "kijun_line": [
@@ -12837,7 +12837,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 112.15
+      "value": 112.16
     }
   ],
   "sma60": [
@@ -16997,7 +16997,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 12183607.0,
+      "value": 12799205.0,
       "color": "#dc2626"
     }
   ]

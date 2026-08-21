@@ -1,6 +1,6 @@
 {
   "ticker": "AMD",
-  "latest_close": 467.6,
+  "latest_close": 465.02,
   "kijun": 492.75,
   "tenkan": 488.81,
   "span_a": 521.99,
@@ -9,25 +9,25 @@
   "future_span_b_latest": 504.38,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 13.6,
-  "kijun_gap_pct": -5.1,
-  "vol_ratio": 0.13,
-  "bull_score": 20,
+  "kijun_gap_pct": -5.63,
+  "vol_ratio": 0.15,
+  "bull_score": 35,
   "bear_score": 55,
   "is_sniper": false,
   "intelligence": {
     "verdict": "Risk Breakdown (생명선 붕괴 / 매수 금지)",
-    "score": "20 / 100 pt (BEAR_EXIT)",
-    "bull_score": 20,
+    "score": "35 / 100 pt (BEAR_EXIT)",
+    "bull_score": 35,
     "bear_score": 55,
     "sniper_score": 40,
     "type": "BEAR",
     "is_sniper": false,
     "trampoline_detected": true,
     "kijun": {
-      "val": "$492.75 (-5.1%)",
+      "val": "$492.75 (-5.6%)",
       "status": "status-bear",
       "badge": "BREAKDOWN",
-      "desc": "현재가 $467.60 / 26일선 $492.75 (이격 -5.1%)"
+      "desc": "현재가 $465.02 / 26일선 $492.75 (이격 -5.6%)"
     },
     "tenkan": {
       "val": "$488.81",
@@ -42,10 +42,10 @@
       "desc": "일목 구름대(461.7~522.0) 내부 횡보"
     },
     "vol": {
-      "val": "13% (20D)",
+      "val": "15% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 13% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 15% (매도세 고갈 완벽)"
     },
     "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
   },
@@ -3390,8 +3390,8 @@
       "time": "2026-08-21",
       "open": 476.67,
       "high": 477.32,
-      "low": 466.84,
-      "close": 467.6
+      "low": 464.22,
+      "close": 465.02
     }
   ],
   "kijun_line": [
@@ -12837,7 +12837,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 480.83
+      "value": 480.7
     }
   ],
   "sma60": [
@@ -14611,7 +14611,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 508.7
+      "value": 508.66
     }
   ],
   "volume": [
@@ -16997,7 +16997,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 3351247.0,
+      "value": 3789397.0,
       "color": "#dc2626"
     }
   ]

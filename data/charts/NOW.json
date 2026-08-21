@@ -1,6 +1,6 @@
 {
   "ticker": "NOW",
-  "latest_close": 129.98,
+  "latest_close": 129.51,
   "kijun": 111.34,
   "tenkan": 124.37,
   "span_a": 104.07,
@@ -9,8 +9,8 @@
   "future_span_b_latest": 110.27,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 7.58,
-  "kijun_gap_pct": 16.74,
-  "vol_ratio": 0.11,
+  "kijun_gap_pct": 16.32,
+  "vol_ratio": 0.12,
   "bull_score": 65,
   "bear_score": 0,
   "is_sniper": true,
@@ -24,10 +24,10 @@
     "is_sniper": true,
     "trampoline_detected": true,
     "kijun": {
-      "val": "$111.34 (+16.7%)",
+      "val": "$111.34 (+16.3%)",
       "status": "status-bull",
       "badge": "STAGE 2 MOMENTUM",
-      "desc": "26일 기준선($111.34) 대비 +16.7% 상방 도약 가속 구간"
+      "desc": "26일 기준선($111.34) 대비 +16.3% 상방 도약 가속 구간"
     },
     "tenkan": {
       "val": "$124.37",
@@ -42,12 +42,12 @@
       "desc": "일목 구름대(104.1~112.3) 2일 전 지지 반등 확인 완료"
     },
     "vol": {
-      "val": "11% (20D)",
+      "val": "12% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 11% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 12% (매도세 고갈 완벽)"
     },
-    "action": "[전략 2 스나이퍼] 2일 전 구름대 지지 도약 확인 후 상방 시세 분출(기준선 대비 +16.7%). 목표 +15% / 손절 -4%."
+    "action": "[전략 2 스나이퍼] 2일 전 구름대 지지 도약 확인 후 상방 시세 분출(기준선 대비 +16.3%). 목표 +15% / 손절 -4%."
   },
   "status_tag": "BULL",
   "status_text": "Sniper Alert (구름대 도약 2단계 특급 매수)",
@@ -3391,7 +3391,7 @@
       "open": 130.29,
       "high": 131.0,
       "low": 127.65,
-      "close": 129.98
+      "close": 129.51
     }
   ],
   "kijun_line": [
@@ -12837,7 +12837,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 120.02
+      "value": 119.99
     }
   ],
   "sma60": [
@@ -14611,7 +14611,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 110.35
+      "value": 110.34
     }
   ],
   "volume": [
@@ -16997,7 +16997,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 2401765.0,
+      "value": 2520476.0,
       "color": "#dc2626"
     }
   ]

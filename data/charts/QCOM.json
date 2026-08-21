@@ -1,6 +1,6 @@
 {
   "ticker": "QCOM",
-  "latest_close": 160.2,
+  "latest_close": 159.6,
   "kijun": 160.77,
   "tenkan": 161.85,
   "span_a": 191.88,
@@ -9,25 +9,25 @@
   "future_span_b_latest": 188.17,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 26.86,
-  "kijun_gap_pct": -0.35,
+  "kijun_gap_pct": -0.73,
   "vol_ratio": 0.13,
-  "bull_score": 65,
+  "bull_score": 55,
   "bear_score": 75,
   "is_sniper": false,
   "intelligence": {
     "verdict": "Risk Breakdown (생명선 붕괴 / 매수 금지)",
-    "score": "65 / 100 pt (BEAR_EXIT)",
-    "bull_score": 65,
+    "score": "55 / 100 pt (BEAR_EXIT)",
+    "bull_score": 55,
     "bear_score": 75,
     "sniper_score": 25,
     "type": "BEAR",
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$160.77 (-0.4%)",
-      "status": "status-bull",
-      "badge": "SUPPORTED",
-      "desc": "현재가 $160.20 / 26일선 $160.77 (이격 -0.4%)"
+      "val": "$160.77 (-0.7%)",
+      "status": "status-bear",
+      "badge": "BREAKDOWN",
+      "desc": "현재가 $159.60 / 26일선 $160.77 (이격 -0.7%)"
     },
     "tenkan": {
       "val": "$161.85",
@@ -108,7 +108,7 @@
       "open": 161.48,
       "high": 162.52,
       "low": 159.65,
-      "close": 160.81
+      "close": 160.8
     },
     {
       "time": "2024-10-08",
@@ -168,7 +168,7 @@
     },
     {
       "time": "2024-10-18",
-      "open": 165.78,
+      "open": 165.79,
       "high": 166.24,
       "low": 163.19,
       "close": 164.64
@@ -1078,7 +1078,7 @@
     },
     {
       "time": "2025-04-29",
-      "open": 142.78,
+      "open": 142.77,
       "high": 144.33,
       "low": 141.67,
       "close": 142.99
@@ -3390,8 +3390,8 @@
       "time": "2026-08-21",
       "open": 162.92,
       "high": 163.33,
-      "low": 160.17,
-      "close": 160.2
+      "low": 159.55,
+      "close": 159.6
     }
   ],
   "kijun_line": [
@@ -12837,7 +12837,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 160.58
+      "value": 160.55
     }
   ],
   "sma60": [
@@ -14611,7 +14611,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 186.81
+      "value": 186.8
     }
   ],
   "volume": [
@@ -16997,7 +16997,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 1365839.0,
+      "value": 1446664.0,
       "color": "#dc2626"
     }
   ]

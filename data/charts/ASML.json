@@ -1,6 +1,6 @@
 {
   "ticker": "ASML",
-  "latest_close": 1748.33,
+  "latest_close": 1743.53,
   "kijun": 1713.49,
   "tenkan": 1818.68,
   "span_a": 1813.19,
@@ -9,25 +9,25 @@
   "future_span_b_latest": 1764.01,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 2.08,
-  "kijun_gap_pct": 2.03,
-  "vol_ratio": 0.12,
-  "bull_score": 65,
+  "kijun_gap_pct": 1.75,
+  "vol_ratio": 0.13,
+  "bull_score": 80,
   "bear_score": 0,
   "is_sniper": false,
   "intelligence": {
-    "verdict": "Neutral Consolidation (박스권 수렴)",
-    "score": "65 / 100 pt (HOLD)",
-    "bull_score": 65,
+    "verdict": "Bull Accumulation (1차 분할 매수 적합)",
+    "score": "80 / 100 pt (BULL_BUY)",
+    "bull_score": 80,
     "bear_score": 0,
-    "sniper_score": 65,
-    "type": "NEUTRAL",
+    "sniper_score": 70,
+    "type": "BULL",
     "is_sniper": false,
     "trampoline_detected": true,
     "kijun": {
-      "val": "$1,713.49 (+2.0%)",
+      "val": "$1,713.49 (+1.8%)",
       "status": "status-bull",
       "badge": "SUPPORTED",
-      "desc": "현재가 $1,748.33 / 26일선 $1,713.49 (이격 +2.0%)"
+      "desc": "현재가 $1,743.53 / 26일선 $1,713.49 (이격 +1.8%)"
     },
     "tenkan": {
       "val": "$1,818.68",
@@ -42,15 +42,15 @@
       "desc": "일목 구름대(1681.2~1813.2) 내부 횡보"
     },
     "vol": {
-      "val": "12% (20D)",
+      "val": "13% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 12% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 13% (매도세 고갈 완벽)"
     },
-    "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
+    "action": "26일 기준선 및 일목 구름대 상단 안착 확인. 거시 변동성 진정 시 1차 분할 매수 적합."
   },
-  "status_tag": "NEUTRAL",
-  "status_text": "Neutral Consolidation (박스권 수렴)",
+  "status_tag": "BULL",
+  "status_text": "Bull Accumulation (1차 분할 매수 적합)",
   "timeframe": "1D",
   "period": "2Y",
   "candles": [
@@ -198,7 +198,7 @@
       "time": "2024-10-24",
       "open": 708.12,
       "high": 708.13,
-      "low": 694.81,
+      "low": 694.8,
       "close": 699.09
     },
     {
@@ -253,7 +253,7 @@
     {
       "time": "2024-11-05",
       "open": 663.95,
-      "high": 675.78,
+      "high": 675.79,
       "low": 663.91,
       "close": 666.85
     },
@@ -560,7 +560,7 @@
     },
     {
       "time": "2025-01-10",
-      "open": 740.33,
+      "open": 740.34,
       "high": 740.63,
       "low": 724.96,
       "close": 728.52
@@ -1331,7 +1331,7 @@
     {
       "time": "2025-06-20",
       "open": 761.41,
-      "high": 762.04,
+      "high": 762.05,
       "low": 729.58,
       "close": 749.68
     },
@@ -1533,7 +1533,7 @@
     },
     {
       "time": "2025-08-01",
-      "open": 685.48,
+      "open": 685.49,
       "high": 688.89,
       "low": 679.01,
       "close": 685.31
@@ -1652,7 +1652,7 @@
     },
     {
       "time": "2025-08-26",
-      "open": 753.8,
+      "open": 753.81,
       "high": 758.5,
       "low": 750.96,
       "close": 758.21
@@ -3390,8 +3390,8 @@
       "time": "2026-08-21",
       "open": 1763.44,
       "high": 1769.09,
-      "low": 1743.81,
-      "close": 1748.33
+      "low": 1741.77,
+      "close": 1743.53
     }
   ],
   "kijun_line": [
@@ -3917,7 +3917,7 @@
     },
     {
       "time": "2025-04-04",
-      "value": 664.08
+      "value": 664.07
     },
     {
       "time": "2025-04-07",
@@ -3973,7 +3973,7 @@
     },
     {
       "time": "2025-04-25",
-      "value": 648.99
+      "value": 649.0
     },
     {
       "time": "2025-04-28",
@@ -10315,7 +10315,7 @@
     },
     {
       "time": "2026-02-19",
-      "value": 1109.5
+      "value": 1109.51
     },
     {
       "time": "2026-02-20",
@@ -12837,7 +12837,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 1725.83
+      "value": 1725.59
     }
   ],
   "sma60": [
@@ -14611,7 +14611,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 1765.1
+      "value": 1765.02
     }
   ],
   "volume": [
@@ -16997,7 +16997,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 178632.0,
+      "value": 196810.0,
       "color": "#dc2626"
     }
   ]

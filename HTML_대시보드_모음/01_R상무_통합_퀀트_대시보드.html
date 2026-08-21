@@ -721,7 +721,7 @@
                     <!-- 1. 26D Kijun-sen -->
                     <div class="indicator-item">
                         <div class="indicator-head">
-                            <span class="indicator-name">1. 26-Day Kijun-sen (Life Line)</span>
+                            <span class="indicator-name" id="sigKijunTitle">1. 26-Day Kijun-sen (Life Line)</span>
                             <span class="status-badge status-good" id="sigKijunBadge">SUPPORT INTACT</span>
                         </div>
                         <div class="indicator-val" id="sigKijunVal">$1,172.94 (+0.9% Above Support)</div>
@@ -731,7 +731,7 @@
                     <!-- 2. 9D Tenkan-sen -->
                     <div class="indicator-item">
                         <div class="indicator-head">
-                            <span class="indicator-name">2. 9-Day Tenkan-sen (Momentum)</span>
+                            <span class="indicator-name" id="sigTenkanTitle">2. 9-Day Tenkan-sen (Momentum)</span>
                             <span class="status-badge status-good" id="sigTenkanBadge">BULLISH CROSS</span>
                         </div>
                         <div class="indicator-val" id="sigTenkanVal">$1,185.20 (Tenkan > Kijun)</div>
@@ -741,7 +741,7 @@
                     <!-- 3. Current Ichimoku Cloud -->
                     <div class="indicator-item">
                         <div class="indicator-head">
-                            <span class="indicator-name">3. 현재 구름대 위치 (Current Cloud)</span>
+                            <span class="indicator-name" id="sigCloudTitle">3. 현재 구름대 위치 (Current Cloud)</span>
                             <span class="status-badge status-good" id="sigCloudBadge">ABOVE CLOUD</span>
                         </div>
                         <div class="indicator-val" id="sigCloudVal">구름대 상단 안착 (지지선 유효)</div>
@@ -751,7 +751,7 @@
                     <!-- 4. 26-Day Future Forward Cloud (향후 26일 미래 구름대) -->
                     <div class="indicator-item">
                         <div class="indicator-head">
-                            <span class="indicator-name">4. 향후 26일 미래 구름대 (Forward Horizon)</span>
+                            <span class="indicator-name" id="sigFutureCloudTitle">4. 향후 26일 미래 구름대 (Forward Horizon)</span>
                             <span class="status-badge status-good" id="sigFutureCloudBadge">BULL CLOUD (양운)</span>
                         </div>
                         <div class="indicator-val" id="sigFutureCloudVal">+26일 선행스팬1 $213.51 > 선행스팬2 $210.90</div>
@@ -761,7 +761,7 @@
                     <!-- 5. Volume Dry-Up -->
                     <div class="indicator-item">
                         <div class="indicator-head">
-                            <span class="indicator-name">5. 20일 거래량 마름 (Volume Dry-Up)</span>
+                            <span class="indicator-name" id="sigVolTitle">5. 20일 거래량 마름 (Volume Dry-Up)</span>
                             <span class="status-badge status-good" id="sigVolBadge">OPTIMAL DRY-UP</span>
                         </div>
                         <div class="indicator-val" id="sigVolVal">20일 평균 대비 63% (수급 마름)</div>
@@ -1028,6 +1028,36 @@
             document.getElementById("sigVolBadge").textContent = info.vol.badge;
             document.getElementById("sigVolVal").textContent = info.vol.val;
             document.getElementById("sigVolDesc").textContent = info.vol.desc;
+
+            // Dynamically customize title labels based on strategy type
+            const isSniper = Boolean(info.is_sniper);
+            const isDual = Boolean(info.verdict && (info.verdict.includes("Dual 5-Star") || info.verdict.includes("특급 매수") && info.verdict.includes("양대")));
+            
+            const elKijunTitle = document.getElementById("sigKijunTitle");
+            const elTenkanTitle = document.getElementById("sigTenkanTitle");
+            const elCloudTitle = document.getElementById("sigCloudTitle");
+            const elFutureCloudTitle = document.getElementById("sigFutureCloudTitle");
+            const elVolTitle = document.getElementById("sigVolTitle");
+
+            if (isDual) {
+                if (elKijunTitle) elKijunTitle.textContent = "1. [전략 I] 26일 기준선 생명선 안착";
+                if (elTenkanTitle) elTenkanTitle.textContent = "2. 9일 전환선 골든크로스 정배열";
+                if (elCloudTitle) elCloudTitle.textContent = "3. [전략 II] 구름대 도약(Trampoline Bounce)";
+                if (elFutureCloudTitle) elFutureCloudTitle.textContent = "4. +26일 미래 구름대 양운 확장";
+                if (elVolTitle) elVolTitle.textContent = "5. 매도세 고갈 거래량 마름 (5-Star 최고확신)";
+            } else if (isSniper) {
+                if (elKijunTitle) elKijunTitle.textContent = "1. [2단계] 시세 분출 모멘텀 (Stage 2 Launch)";
+                if (elTenkanTitle) elTenkanTitle.textContent = "2. 9일 전환선 상향 가속 (Tenkan Momentum)";
+                if (elCloudTitle) elCloudTitle.textContent = "3. [1단계] 구름대 지지 도약 (Trampoline Bounce)";
+                if (elFutureCloudTitle) elFutureCloudTitle.textContent = "4. +26일 미래 구름대 발사대 지지";
+                if (elVolTitle) elVolTitle.textContent = "5. 도약 후 거래량 및 리스크 관리 (-4% 컷)";
+            } else {
+                if (elKijunTitle) elKijunTitle.textContent = "1. 26-Day Kijun-sen (Life Line)";
+                if (elTenkanTitle) elTenkanTitle.textContent = "2. 9-Day Tenkan-sen (Momentum)";
+                if (elCloudTitle) elCloudTitle.textContent = "3. 현재 구름대 위치 (Current Cloud)";
+                if (elFutureCloudTitle) elFutureCloudTitle.textContent = "4. 향후 26일 미래 구름대 (Forward Horizon)";
+                if (elVolTitle) elVolTitle.textContent = "5. 20일 거래량 마름 (Volume Dry-Up)";
+            }
 
             document.getElementById("actionDirectiveText").textContent = info.action;
         }

@@ -1,16 +1,16 @@
 {
   "ticker": "RTX",
-  "latest_close": 211.62,
+  "latest_close": 211.93,
   "kijun": 207.9,
-  "tenkan": 219.01,
+  "tenkan": 218.97,
   "span_a": 193.71,
   "span_b": 186.39,
-  "future_span_a_latest": 213.46,
+  "future_span_a_latest": 213.44,
   "future_span_b_latest": 201.38,
   "future_cloud_type": "양운 (상승 지지 구름대)",
-  "future_cloud_gap": 12.08,
-  "kijun_gap_pct": 1.79,
-  "vol_ratio": 0.15,
+  "future_cloud_gap": 12.06,
+  "kijun_gap_pct": 1.94,
+  "vol_ratio": 0.16,
   "bull_score": 100,
   "bear_score": 0,
   "is_sniper": false,
@@ -24,16 +24,16 @@
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$207.90 (+1.8%)",
+      "val": "$207.90 (+1.9%)",
       "status": "status-bull",
       "badge": "SUPPORTED",
-      "desc": "현재가 $211.62 / 26일선 $207.90 (이격 +1.8%)"
+      "desc": "현재가 $211.93 / 26일선 $207.90 (이격 +1.9%)"
     },
     "tenkan": {
-      "val": "$219.01",
+      "val": "$218.97",
       "status": "status-bull",
       "badge": "GOLDEN CROSS",
-      "desc": "9일 전환선 $219.01 상단 정배열"
+      "desc": "9일 전환선 $218.97 상단 정배열"
     },
     "cloud": {
       "val": "$193.71",
@@ -42,10 +42,10 @@
       "desc": "일목 구름대(186.4~193.7) 상단 안착"
     },
     "vol": {
-      "val": "15% (20D)",
+      "val": "16% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 15% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 16% (매도세 고갈 완벽)"
     },
     "action": "26일 기준선 및 일목 구름대 상단 안착 확인. 거시 변동성 진정 시 1차 분할 매수 적합."
   },
@@ -3390,8 +3390,8 @@
       "time": "2026-08-21",
       "open": 213.36,
       "high": 213.52,
-      "low": 211.62,
-      "close": 211.62
+      "low": 211.54,
+      "close": 211.93
     }
   ],
   "kijun_line": [
@@ -7211,7 +7211,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 219.01
+      "value": 218.97
     }
   ],
   "span_a_line": [
@@ -9121,7 +9121,7 @@
     },
     {
       "time": "2026-09-28",
-      "value": 213.46
+      "value": 213.44
     }
   ],
   "span_b_line": [
@@ -12837,7 +12837,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 219.02
+      "value": 219.04
     }
   ],
   "sma60": [
@@ -16997,7 +16997,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 734480.0,
+      "value": 788305.0,
       "color": "#dc2626"
     }
   ]

@@ -1,6 +1,6 @@
 {
   "ticker": "CCJ",
-  "latest_close": 100.87,
+  "latest_close": 100.61,
   "kijun": 92.84,
   "tenkan": 98.22,
   "span_a": 96.14,
@@ -9,25 +9,25 @@
   "future_span_b_latest": 97.32,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 1.79,
-  "kijun_gap_pct": 8.65,
-  "vol_ratio": 0.34,
-  "bull_score": 30,
+  "kijun_gap_pct": 8.37,
+  "vol_ratio": 0.37,
+  "bull_score": 45,
   "bear_score": 0,
   "is_sniper": false,
   "intelligence": {
     "verdict": "Neutral Consolidation (박스권 수렴)",
-    "score": "30 / 100 pt (HOLD)",
-    "bull_score": 30,
+    "score": "45 / 100 pt (HOLD)",
+    "bull_score": 45,
     "bear_score": 0,
-    "sniper_score": 25,
+    "sniper_score": 30,
     "type": "NEUTRAL",
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$92.84 (+8.6%)",
+      "val": "$92.84 (+8.4%)",
       "status": "status-neutral",
       "badge": "OVERHEATED",
-      "desc": "현재가 $100.87 / 26일선 $92.84 (이격 +8.6%)"
+      "desc": "현재가 $100.61 / 26일선 $92.84 (이격 +8.4%)"
     },
     "tenkan": {
       "val": "$98.22",
@@ -42,10 +42,10 @@
       "desc": "일목 구름대(96.1~105.6) 내부 횡보"
     },
     "vol": {
-      "val": "34% (20D)",
+      "val": "37% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 34% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 37% (매도세 고갈 완벽)"
     },
     "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
   },
@@ -3391,7 +3391,7 @@
       "open": 97.78,
       "high": 102.53,
       "low": 97.5,
-      "close": 100.87
+      "close": 100.61
     }
   ],
   "kijun_line": [
@@ -12837,7 +12837,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 94.16
+      "value": 94.15
     }
   ],
   "sma60": [
@@ -14611,7 +14611,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 98.28
+      "value": 98.27
     }
   ],
   "volume": [
@@ -16997,7 +16997,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 959079.0,
+      "value": 1042668.0,
       "color": "#059669"
     }
   ]

@@ -1,22 +1,22 @@
 {
   "ticker": "NVDA",
-  "latest_close": 216.18,
+  "latest_close": 215.28,
   "kijun": 208.96,
-  "tenkan": 221.79,
+  "tenkan": 221.5,
   "span_a": 202.19,
   "span_b": 213.03,
-  "future_span_a_latest": 215.38,
+  "future_span_a_latest": 215.23,
   "future_span_b_latest": 208.86,
   "future_cloud_type": "양운 (상승 지지 구름대)",
-  "future_cloud_gap": 6.52,
-  "kijun_gap_pct": 3.46,
-  "vol_ratio": 0.21,
+  "future_cloud_gap": 6.37,
+  "kijun_gap_pct": 3.02,
+  "vol_ratio": 0.23,
   "bull_score": 100,
   "bear_score": 0,
   "is_sniper": true,
   "intelligence": {
-    "verdict": "Sniper Alert (구름대 도약 2단계 특급 매수)",
-    "score": "100 / 100 pt (SNIPER_BUY)",
+    "verdict": "Dual 5-Star (양대 전략 동시 충족 특급 매수)",
+    "score": "100 / 100 pt (DUAL_5_STAR)",
     "bull_score": 100,
     "bear_score": 0,
     "sniper_score": 100,
@@ -24,16 +24,16 @@
     "is_sniper": true,
     "trampoline_detected": true,
     "kijun": {
-      "val": "$208.96 (+3.5%)",
+      "val": "$208.96 (+3.0%)",
       "status": "status-bull",
       "badge": "SUPPORTED",
-      "desc": "26일 기준선($208.96) 대비 +3.5% 상방 도약 가속 구간"
+      "desc": "26일 기준선($208.96) 대비 +3.0% 상방 도약 가속 구간"
     },
     "tenkan": {
-      "val": "$221.79",
+      "val": "$221.50",
       "status": "status-bull",
       "badge": "GOLDEN CROSS",
-      "desc": "9일 전환선 $221.79 상단 정배열"
+      "desc": "9일 전환선 $221.50 상단 정배열"
     },
     "cloud": {
       "val": "$213.03",
@@ -42,15 +42,15 @@
       "desc": "일목 구름대(202.2~213.0) 0일 전 지지 반등 확인 완료"
     },
     "vol": {
-      "val": "21% (20D)",
+      "val": "23% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 21% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 23% (매도세 고갈 완벽)"
     },
-    "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 상방 시세 분출(기준선 대비 +3.5%). 목표 +15% / 손절 -4%."
+    "action": "[황금 교집합] 구름대 지지 도약(0일 전) 성공 및 26일 기준선(+3.0%) 안착. 기관 퀀트 최우선 공략."
   },
   "status_tag": "BULL",
-  "status_text": "Sniper Alert (구름대 도약 2단계 특급 매수)",
+  "status_text": "Dual 5-Star (양대 전략 동시 충족 특급 매수)",
   "timeframe": "1D",
   "period": "2Y",
   "candles": [
@@ -3390,8 +3390,8 @@
       "time": "2026-08-21",
       "open": 218.42,
       "high": 218.74,
-      "low": 215.91,
-      "close": 216.18
+      "low": 215.08,
+      "close": 215.28
     }
   ],
   "kijun_line": [
@@ -7211,7 +7211,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 221.79
+      "value": 221.5
     }
   ],
   "span_a_line": [
@@ -9121,7 +9121,7 @@
     },
     {
       "time": "2026-09-28",
-      "value": 215.38
+      "value": 215.23
     }
   ],
   "span_b_line": [
@@ -12837,7 +12837,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 213.25
+      "value": 213.21
     }
   ],
   "sma60": [
@@ -14611,7 +14611,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 208.46
+      "value": 208.44
     }
   ],
   "volume": [
@@ -16997,7 +16997,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 23920871.0,
+      "value": 25752678.0,
       "color": "#dc2626"
     }
   ]

@@ -1,6 +1,6 @@
 {
   "ticker": "NOC",
-  "latest_close": 556.91,
+  "latest_close": 557.0,
   "kijun": 536.76,
   "tenkan": 575.22,
   "span_a": 530.83,
@@ -9,15 +9,15 @@
   "future_span_b_latest": 536.76,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 19.23,
-  "kijun_gap_pct": 3.75,
-  "vol_ratio": 0.2,
-  "bull_score": 100,
+  "kijun_gap_pct": 3.77,
+  "vol_ratio": 0.22,
+  "bull_score": 90,
   "bear_score": 0,
   "is_sniper": true,
   "intelligence": {
-    "verdict": "Sniper Alert (구름대 도약 2단계 특급 매수)",
-    "score": "100 / 100 pt (SNIPER_BUY)",
-    "bull_score": 100,
+    "verdict": "Dual 5-Star (양대 전략 동시 충족 특급 매수)",
+    "score": "100 / 100 pt (DUAL_5_STAR)",
+    "bull_score": 90,
     "bear_score": 0,
     "sniper_score": 100,
     "type": "BULL",
@@ -42,15 +42,15 @@
       "desc": "일목 구름대(530.8~536.1) 0일 전 지지 반등 확인 완료"
     },
     "vol": {
-      "val": "20% (20D)",
+      "val": "22% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 20% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 22% (매도세 고갈 완벽)"
     },
-    "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 상방 시세 분출(기준선 대비 +3.8%). 목표 +15% / 손절 -4%."
+    "action": "[황금 교집합] 구름대 지지 도약(0일 전) 성공 및 26일 기준선(+3.8%) 안착. 기관 퀀트 최우선 공략."
   },
   "status_tag": "BULL",
-  "status_text": "Sniper Alert (구름대 도약 2단계 특급 매수)",
+  "status_text": "Dual 5-Star (양대 전략 동시 충족 특급 매수)",
   "timeframe": "1D",
   "period": "2Y",
   "candles": [
@@ -828,7 +828,7 @@
       "time": "2025-03-07",
       "open": 463.6,
       "high": 481.22,
-      "low": 462.73,
+      "low": 462.72,
       "close": 476.73
     },
     {
@@ -906,7 +906,7 @@
       "open": 481.12,
       "high": 485.53,
       "low": 479.25,
-      "close": 485.12
+      "close": 485.11
     },
     {
       "time": "2025-03-25",
@@ -1011,7 +1011,7 @@
       "open": 519.18,
       "high": 527.84,
       "low": 515.13,
-      "close": 525.04
+      "close": 525.03
     },
     {
       "time": "2025-04-15",
@@ -3391,7 +3391,7 @@
       "open": 566.14,
       "high": 567.51,
       "low": 555.93,
-      "close": 556.91
+      "close": 557.0
     }
   ],
   "kijun_line": [
@@ -12837,7 +12837,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 563.02
+      "value": 563.03
     }
   ],
   "sma60": [
@@ -16997,7 +16997,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 134646.0,
+      "value": 145882.0,
       "color": "#dc2626"
     }
   ]
