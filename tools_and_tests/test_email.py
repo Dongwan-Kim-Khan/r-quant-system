@@ -12,7 +12,8 @@ if sys.platform.startswith('win'):
         pass
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ENV_FILE = os.path.join(BASE_DIR, ".env")
+PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, ".."))
+ENV_FILE = os.path.join(PROJECT_ROOT, ".env")
 
 def load_env():
     if os.path.exists(ENV_FILE):
