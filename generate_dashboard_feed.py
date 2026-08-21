@@ -212,7 +212,8 @@ def compute_all_indicators(ticker):
             w_span_a = float(w_last['SpanA']) if not pd.isna(w_last['SpanA']) else w_close
             w_span_b = float(w_last['SpanB']) if not pd.isna(w_last['SpanB']) else w_close
             w_cloud_top = max(w_span_a, w_span_b)
-            is_weekly_bull = (w_close >= w_cloud_top * 0.96) or (w_close >= w_kijun * 0.95)
+            # Strict Weekly Bull: Price must be at or above Weekly Cloud Top (max 2% tolerance)
+            is_weekly_bull = (w_close >= w_cloud_top * 0.98)
         else:
             is_weekly_bull = (close >= cloud_top * 0.97)
             w_cloud_top = cloud_top

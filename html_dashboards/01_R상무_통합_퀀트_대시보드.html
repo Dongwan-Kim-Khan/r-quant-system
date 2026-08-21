@@ -1126,7 +1126,8 @@
                 tfData = chartObj;
             }
 
-            candleSeries.setData(tfData.candles || []);
+            const candles = tfData.candles || [];
+            candleSeries.setData(candles);
             kijunSeries.setData(tfData.kijun_line || []);
             tenkanSeries.setData(tfData.tenkan_line || []);
             spanASeries.setData(tfData.span_a_line || []);
@@ -1135,10 +1136,30 @@
             sma60Series.setData(tfData.sma60 || []);
             volumeSeries.setData(tfData.volume || []);
 
-            try {
-                mainChart.timeScale().fitContent();
-                volumeChart.timeScale().fitContent();
-            } catch (e) {}
+            // Perfectly reset scroll position and frame latest candles + future cloud projection
+            requestAnimationFrame(() => {
+                try {
+                    const totalCandles = candles.length;
+                    mainChart.timeScale().resetTimeScale();
+                    volumeChart.timeScale().resetTimeScale();
+                    
+                    if (totalCandles > 0) {
+                        const barsToShow = tf === 'weekly' ? Math.min(80, totalCandles) : Math.min(130, totalCandles);
+                        const targetRange = {
+                            from: totalCandles - barsToShow,
+                            to: totalCandles + 28
+                        };
+                        mainChart.timeScale().setVisibleLogicalRange(targetRange);
+                        volumeChart.timeScale().setVisibleLogicalRange(targetRange);
+                    } else {
+                        mainChart.timeScale().fitContent();
+                        volumeChart.timeScale().fitContent();
+                    }
+                } catch (e) {
+                    mainChart.timeScale().fitContent();
+                    volumeChart.timeScale().fitContent();
+                }
+            });
         }
 
         async function loadChartData(ticker) {
