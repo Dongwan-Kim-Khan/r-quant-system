@@ -378,12 +378,12 @@
                 <span id="macroHeadline">[거시 게이트 0단계: 이번 주 신규 매수 보류 / 관망·현금 유지 권고]</span>
                 <div style="display:flex; align-items:center; gap:8px;">
                     <span style="font-size:11px; color:#cbd5e1;">Macro Stance Index (MSI):</span>
-                    <span id="msiScoreBadge" style="background:#f59e0b; color:#0f172a; font-size:12px; font-weight:800; padding:2px 8px; border-radius:2px; font-family:'JetBrains Mono';">64.8 / 100</span>
+                    <span id="msiScoreBadge" style="background:#f59e0b; color:#0f172a; font-size:12px; font-weight:800; padding:2px 8px; border-radius:2px; font-family:'JetBrains Mono';">-- / 100</span>
                     <span id="macroStanceBadge" style="background:rgba(245,158,11,0.2); color:#fbbf24; font-size:11px; padding:2px 8px; border-radius:2px; font-family:'JetBrains Mono'; font-weight:700;">DEFENSE HOLD</span>
                 </div>
             </div>
             <div style="font-size:12px; color:#cbd5e1; margin-top:6px; line-height:1.5;" id="macroDirectiveText">
-                거시 위험 지수(MSI 64.8점: 10년물 금리 4.696%, 유가 $85.15) 및 방송 지침상, 적어도 이번 주는 신규 매수를 쉬어가고 관망해야 하는 장세입니다. 다만 거시 리스크 진정 시 즉시 공략할 최우선 1순위 후보 종목을 사전 선별합니다.
+                거시 위험 지수 및 방송 지침 데이터를 불러오는 중입니다...
             </div>
 
             <!-- MSI 0~100 Visual Gauge Bar -->
@@ -395,7 +395,7 @@
                     <span style="color:#f87171; font-weight:800;">Cash Exit (75~100)</span>
                 </div>
                 <div style="height:6px; background:linear-gradient(to right, #10b981 0%, #10b981 30%, #eab308 30%, #eab308 50%, #f97316 50%, #f97316 75%, #ef4444 75%, #ef4444 100%); border-radius:3px; position:relative;">
-                    <div id="msiNeedle" style="position:absolute; left:75.0%; top:-4px; width:4px; height:14px; background:#ffffff; border-radius:2px; box-shadow:0 0 6px #ffffff; transform:translateX(-50%);"></div>
+                    <div id="msiNeedle" style="position:absolute; left:50%; top:-4px; width:4px; height:14px; background:#ffffff; border-radius:2px; box-shadow:0 0 6px #ffffff; transform:translateX(-50%);"></div>
                 </div>
             </div>
 
@@ -403,18 +403,18 @@
             <div class="macro-banner-grid" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-top:12px; background:rgba(0,0,0,0.25); padding:10px 14px; border-radius:2px; font-size:11px;">
                 <div>
                     <div style="color:#94a3b8; font-size:10px; font-weight:600;">1. 금융 거시 4대 축 (M_hard: 60%)</div>
-                    <div style="font-weight:700; color:#f8fafc; font-family:'JetBrains Mono';" id="msiHardVal">40.0 / 60.0 pt</div>
-                    <div style="color:#64748b; font-size:10px;" id="msiHardSub">10Y:25.0 | DXY:0.0 | VIX:5.0 | 유가:10.0</div>
+                    <div style="font-weight:700; color:#f8fafc; font-family:'JetBrains Mono';" id="msiHardVal">-- / 60.0 pt</div>
+                    <div style="color:#64748b; font-size:10px;" id="msiHardSub">Loading...</div>
                 </div>
                 <div>
                     <div style="color:#94a3b8; font-size:10px; font-weight:600;">2. 방송 육성 지침 (M_nlp: 25%)</div>
-                    <div style="font-weight:700; color:#f8fafc; font-family:'JetBrains Mono';" id="msiNlpVal">20.0 / 25.0 pt</div>
-                    <div style="color:#64748b; font-size:10px;" id="msiNlpSub">방어 42회 vs 매수 0회</div>
+                    <div style="font-weight:700; color:#f8fafc; font-family:'JetBrains Mono';" id="msiNlpVal">-- / 25.0 pt</div>
+                    <div style="color:#64748b; font-size:10px;" id="msiNlpSub">Loading...</div>
                 </div>
                 <div>
                     <div style="color:#94a3b8; font-size:10px; font-weight:600;">3. 외생 충격 (M_shock: 15%)</div>
-                    <div style="font-weight:700; color:#f8fafc; font-family:'JetBrains Mono';" id="msiShockVal">15.0 / 15.0 pt</div>
-                    <div style="color:#64748b; font-size:10px;" id="msiShockSub">지정학+6 | 관세+4 | 금리경로+5</div>
+                    <div style="font-weight:700; color:#f8fafc; font-family:'JetBrains Mono';" id="msiShockVal">-- / 15.0 pt</div>
+                    <div style="color:#64748b; font-size:10px;" id="msiShockSub">Loading...</div>
                 </div>
             </div>
         </div>
@@ -913,8 +913,8 @@
             let info = null;
             if (liveChartData && liveChartData.intelligence) {
                 info = liveChartData.intelligence;
-            } else if (window.GLOBAL_DASHBOARD_DATA && window.GLOBAL_DASHBOARD_DATA.charts && window.GLOBAL_DASHBOARD_DATA.charts[ticker] && window.GLOBAL_DASHBOARD_DATA.charts[ticker].intelligence) {
-                info = window.GLOBAL_DASHBOARD_DATA.charts[ticker].intelligence;
+            } else if (window.__DASHBOARD_CACHE__ && window.__DASHBOARD_CACHE__.charts && window.__DASHBOARD_CACHE__.charts[ticker] && window.__DASHBOARD_CACHE__.charts[ticker].intelligence) {
+                info = window.__DASHBOARD_CACHE__.charts[ticker].intelligence;
             } else if (STOCK_INTELLIGENCE[ticker]) {
                 info = STOCK_INTELLIGENCE[ticker];
             } else {
@@ -1002,8 +1002,8 @@
                     return;
                 }
                 
-                if (!chartObj && window.GLOBAL_DASHBOARD_DATA && window.GLOBAL_DASHBOARD_DATA.charts && window.GLOBAL_DASHBOARD_DATA.charts[ticker]) {
-                    chartObj = window.GLOBAL_DASHBOARD_DATA.charts[ticker];
+                if (!chartObj && window.__DASHBOARD_CACHE__ && window.__DASHBOARD_CACHE__.charts && window.__DASHBOARD_CACHE__.charts[ticker]) {
+                    chartObj = window.__DASHBOARD_CACHE__.charts[ticker];
                 }
                 
                 if (!chartObj && window.__DASHBOARD_CACHE__ && window.__DASHBOARD_CACHE__.charts) {

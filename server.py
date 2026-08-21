@@ -100,15 +100,23 @@ def get_dashboard_summary():
     matrix = db_manager.get_recommendations_matrix()
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
-    # Read latest macro & KPI feed from dashboard_data.json
+    # Read full feed from dashboard_data.json (macro, kpis, strategies, charts)
     macro_info = {}
     kpis = {}
+    primary_accumulation = []
+    sniper_radar = []
+    signal_tracker = []
+    charts = {}
     if os.path.exists(DASHBOARD_JSON):
         try:
             with open(DASHBOARD_JSON, "r", encoding="utf-8") as f:
                 feed = json.load(f)
                 macro_info = feed.get("macro", {})
                 kpis = feed.get("kpis", {})
+                primary_accumulation = feed.get("primary_accumulation", [])
+                sniper_radar = feed.get("sniper_radar", [])
+                signal_tracker = feed.get("signal_tracker", [])
+                charts = feed.get("charts", {})
         except Exception:
             pass
             
@@ -129,6 +137,10 @@ def get_dashboard_summary():
         "kpis": kpis,
         "portfolio": portfolio,
         "matrix": matrix,
+        "primary_accumulation": primary_accumulation,
+        "sniper_radar": sniper_radar,
+        "signal_tracker": signal_tracker,
+        "charts": charts,
         "last_updated": now_str
     }
 
