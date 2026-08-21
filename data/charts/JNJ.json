@@ -1,6 +1,6 @@
 {
   "ticker": "JNJ",
-  "latest_close": 270.44,
+  "latest_close": 270.64,
   "kijun": 260.98,
   "tenkan": 265.86,
   "span_a": 253.1,
@@ -9,7 +9,7 @@
   "future_span_b_latest": 251.99,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 11.44,
-  "kijun_gap_pct": 3.62,
+  "kijun_gap_pct": 3.7,
   "vol_ratio": 0.16,
   "bull_score": 100,
   "bear_score": 0,
@@ -19,14 +19,15 @@
     "score": "100 / 100 pt (SNIPER_BUY)",
     "bull_score": 100,
     "bear_score": 0,
+    "sniper_score": 100,
     "type": "BULL",
     "is_sniper": true,
     "trampoline_detected": true,
     "kijun": {
-      "val": "$260.98 (+3.6%)",
+      "val": "$260.98 (+3.7%)",
       "status": "status-bull",
       "badge": "SUPPORTED",
-      "desc": "현재가 $270.44 / 26일선 $260.98 (이격 +3.6%)"
+      "desc": "26일 기준선($260.98) 대비 +3.7% 상방 도약 가속 구간"
     },
     "tenkan": {
       "val": "$265.86",
@@ -37,8 +38,8 @@
     "cloud": {
       "val": "$253.10",
       "status": "status-bull",
-      "badge": "ABOVE CLOUD",
-      "desc": "일목 구름대(244.3~253.1) 상단 안착"
+      "badge": "TRAMPOLINE BOUNCE",
+      "desc": "일목 구름대(244.3~253.1) 0일 전 지지 반등 확인 완료"
     },
     "vol": {
       "val": "16% (20D)",
@@ -46,7 +47,7 @@
       "badge": "VOLUME DRY",
       "desc": "20일 평균 거래량 대비 16% (매도세 고갈 완벽)"
     },
-    "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 상방 시세 분출(기준선 대비 +3.6%). 목표 +15% / 손절 -4%."
+    "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 상방 시세 분출(기준선 대비 +3.7%). 목표 +15% / 손절 -4%."
   },
   "status_tag": "BULL",
   "status_text": "Sniper Alert (구름대 도약 2단계 특급 매수)",
@@ -3388,9 +3389,9 @@
     {
       "time": "2026-08-21",
       "open": 267.83,
-      "high": 270.56,
+      "high": 270.78,
       "low": 267.04,
-      "close": 270.44
+      "close": 270.64
     }
   ],
   "kijun_line": [
@@ -12836,7 +12837,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 262.16
+      "value": 262.17
     }
   ],
   "sma60": [
@@ -16996,7 +16997,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 1070069.0,
+      "value": 1104683.0,
       "color": "#059669"
     }
   ]

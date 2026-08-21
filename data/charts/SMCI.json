@@ -1,6 +1,6 @@
 {
   "ticker": "SMCI",
-  "latest_close": 37.12,
+  "latest_close": 37.19,
   "kijun": 32.85,
   "tenkan": 36.62,
   "span_a": 30.84,
@@ -9,7 +9,7 @@
   "future_span_b_latest": 34.16,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 0.57,
-  "kijun_gap_pct": 13.02,
+  "kijun_gap_pct": 13.23,
   "vol_ratio": 0.16,
   "bull_score": 30,
   "bear_score": 0,
@@ -19,14 +19,15 @@
     "score": "30 / 100 pt (HOLD)",
     "bull_score": 30,
     "bear_score": 0,
+    "sniper_score": 65,
     "type": "NEUTRAL",
     "is_sniper": false,
     "trampoline_detected": true,
     "kijun": {
-      "val": "$32.85 (+13.0%)",
+      "val": "$32.85 (+13.2%)",
       "status": "status-neutral",
       "badge": "OVERHEATED",
-      "desc": "현재가 $37.12 / 26일선 $32.85 (이격 +13.0%)"
+      "desc": "현재가 $37.19 / 26일선 $32.85 (이격 +13.2%)"
     },
     "tenkan": {
       "val": "$36.62",
@@ -3390,7 +3391,7 @@
       "open": 37.15,
       "high": 37.67,
       "low": 36.83,
-      "close": 37.12
+      "close": 37.19
     }
   ],
   "kijun_line": [
@@ -16996,8 +16997,8 @@
     },
     {
       "time": "2026-08-21",
-      "value": 8280640.0,
-      "color": "#dc2626"
+      "value": 8745896.0,
+      "color": "#059669"
     }
   ]
 }

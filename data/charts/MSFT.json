@@ -1,6 +1,6 @@
 {
   "ticker": "MSFT",
-  "latest_close": 483.62,
+  "latest_close": 484.27,
   "kijun": 444.72,
   "tenkan": 490.32,
   "span_a": 384.41,
@@ -9,7 +9,7 @@
   "future_span_b_latest": 430.65,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 36.87,
-  "kijun_gap_pct": 8.75,
+  "kijun_gap_pct": 8.89,
   "vol_ratio": 0.13,
   "bull_score": 65,
   "bear_score": 0,
@@ -19,14 +19,15 @@
     "score": "65 / 100 pt (HOLD)",
     "bull_score": 65,
     "bear_score": 0,
+    "sniper_score": 60,
     "type": "NEUTRAL",
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$444.72 (+8.7%)",
+      "val": "$444.72 (+8.9%)",
       "status": "status-neutral",
       "badge": "OVERHEATED",
-      "desc": "현재가 $483.62 / 26일선 $444.72 (이격 +8.7%)"
+      "desc": "현재가 $484.27 / 26일선 $444.72 (이격 +8.9%)"
     },
     "tenkan": {
       "val": "$490.32",
@@ -1296,7 +1297,7 @@
       "time": "2025-06-12",
       "open": 470.37,
       "high": 475.72,
-      "low": 468.89,
+      "low": 468.88,
       "close": 474.18
     },
     {
@@ -1345,7 +1346,7 @@
       "time": "2025-06-24",
       "open": 484.16,
       "high": 487.04,
-      "low": 482.04,
+      "low": 482.03,
       "close": 485.31
     },
     {
@@ -1358,7 +1359,7 @@
     {
       "time": "2025-06-26",
       "open": 488.15,
-      "high": 493.17,
+      "high": 493.16,
       "low": 487.99,
       "close": 492.58
     },
@@ -3390,7 +3391,7 @@
       "open": 479.88,
       "high": 484.58,
       "low": 478.53,
-      "close": 483.62
+      "close": 484.27
     }
   ],
   "kijun_line": [
@@ -12836,7 +12837,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 472.31
+      "value": 472.35
     }
   ],
   "sma60": [
@@ -14610,7 +14611,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 420.18
+      "value": 420.19
     }
   ],
   "volume": [
@@ -16996,7 +16997,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 4515066.0,
+      "value": 4672213.0,
       "color": "#059669"
     }
   ]

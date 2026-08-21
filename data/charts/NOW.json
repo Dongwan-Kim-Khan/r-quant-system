@@ -1,6 +1,6 @@
 {
   "ticker": "NOW",
-  "latest_close": 129.93,
+  "latest_close": 129.98,
   "kijun": 111.34,
   "tenkan": 124.37,
   "span_a": 104.07,
@@ -9,7 +9,7 @@
   "future_span_b_latest": 110.27,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 7.58,
-  "kijun_gap_pct": 16.7,
+  "kijun_gap_pct": 16.74,
   "vol_ratio": 0.11,
   "bull_score": 65,
   "bear_score": 0,
@@ -19,14 +19,15 @@
     "score": "100 / 100 pt (SNIPER_BUY)",
     "bull_score": 65,
     "bear_score": 0,
+    "sniper_score": 100,
     "type": "BULL",
     "is_sniper": true,
     "trampoline_detected": true,
     "kijun": {
       "val": "$111.34 (+16.7%)",
-      "status": "status-neutral",
-      "badge": "OVERHEATED",
-      "desc": "현재가 $129.93 / 26일선 $111.34 (이격 +16.7%)"
+      "status": "status-bull",
+      "badge": "STAGE 2 MOMENTUM",
+      "desc": "26일 기준선($111.34) 대비 +16.7% 상방 도약 가속 구간"
     },
     "tenkan": {
       "val": "$124.37",
@@ -37,8 +38,8 @@
     "cloud": {
       "val": "$112.32",
       "status": "status-bull",
-      "badge": "ABOVE CLOUD",
-      "desc": "일목 구름대(104.1~112.3) 상단 안착"
+      "badge": "TRAMPOLINE BOUNCE",
+      "desc": "일목 구름대(104.1~112.3) 2일 전 지지 반등 확인 완료"
     },
     "vol": {
       "val": "11% (20D)",
@@ -3390,7 +3391,7 @@
       "open": 130.29,
       "high": 131.0,
       "low": 127.65,
-      "close": 129.93
+      "close": 129.98
     }
   ],
   "kijun_line": [
@@ -12836,7 +12837,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 120.01
+      "value": 120.02
     }
   ],
   "sma60": [
@@ -16996,7 +16997,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 2284572.0,
+      "value": 2401765.0,
       "color": "#dc2626"
     }
   ]

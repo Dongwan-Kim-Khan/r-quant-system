@@ -1,6 +1,6 @@
 {
   "ticker": "OKLO",
-  "latest_close": 43.01,
+  "latest_close": 42.85,
   "kijun": 43.05,
   "tenkan": 44.24,
   "span_a": 49.51,
@@ -9,8 +9,8 @@
   "future_span_b_latest": 49.81,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 6.16,
-  "kijun_gap_pct": -0.09,
-  "vol_ratio": 0.16,
+  "kijun_gap_pct": -0.45,
+  "vol_ratio": 0.17,
   "bull_score": 65,
   "bear_score": 75,
   "is_sniper": false,
@@ -19,14 +19,15 @@
     "score": "65 / 100 pt (BEAR_EXIT)",
     "bull_score": 65,
     "bear_score": 75,
+    "sniper_score": 25,
     "type": "BEAR",
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$43.05 (-0.1%)",
+      "val": "$43.05 (-0.5%)",
       "status": "status-bull",
       "badge": "SUPPORTED",
-      "desc": "현재가 $43.01 / 26일선 $43.05 (이격 -0.1%)"
+      "desc": "현재가 $42.85 / 26일선 $43.05 (이격 -0.5%)"
     },
     "tenkan": {
       "val": "$44.24",
@@ -41,10 +42,10 @@
       "desc": "일목 구름대(49.5~60.5) 하단 붕괴"
     },
     "vol": {
-      "val": "16% (20D)",
+      "val": "17% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 16% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 17% (매도세 고갈 완벽)"
     },
     "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
   },
@@ -3390,7 +3391,7 @@
       "open": 42.04,
       "high": 43.68,
       "low": 42.04,
-      "close": 43.01
+      "close": 42.85
     }
   ],
   "kijun_line": [
@@ -12836,7 +12837,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 42.83
+      "value": 42.82
     }
   ],
   "sma60": [
@@ -16996,7 +16997,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 1412117.0,
+      "value": 1491579.0,
       "color": "#059669"
     }
   ]

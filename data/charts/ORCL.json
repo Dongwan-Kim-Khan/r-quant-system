@@ -1,6 +1,6 @@
 {
   "ticker": "ORCL",
-  "latest_close": 147.18,
+  "latest_close": 147.26,
   "kijun": 136.88,
   "tenkan": 148.34,
   "span_a": 153.9,
@@ -9,8 +9,8 @@
   "future_span_b_latest": 167.12,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 24.51,
-  "kijun_gap_pct": 7.52,
-  "vol_ratio": 0.16,
+  "kijun_gap_pct": 7.58,
+  "vol_ratio": 0.17,
   "bull_score": 30,
   "bear_score": 35,
   "is_sniper": false,
@@ -19,14 +19,15 @@
     "score": "30 / 100 pt (HOLD)",
     "bull_score": 30,
     "bear_score": 35,
+    "sniper_score": 25,
     "type": "NEUTRAL",
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$136.88 (+7.5%)",
+      "val": "$136.88 (+7.6%)",
       "status": "status-neutral",
       "badge": "OVERHEATED",
-      "desc": "현재가 $147.18 / 26일선 $136.88 (이격 +7.5%)"
+      "desc": "현재가 $147.26 / 26일선 $136.88 (이격 +7.6%)"
     },
     "tenkan": {
       "val": "$148.34",
@@ -41,10 +42,10 @@
       "desc": "일목 구름대(153.9~186.5) 하단 붕괴"
     },
     "vol": {
-      "val": "16% (20D)",
+      "val": "17% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 16% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 17% (매도세 고갈 완벽)"
     },
     "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
   },
@@ -468,7 +469,7 @@
     },
     {
       "time": "2024-12-19",
-      "open": 164.32,
+      "open": 164.31,
       "high": 167.7,
       "low": 164.17,
       "close": 165.53
@@ -1763,7 +1764,7 @@
     },
     {
       "time": "2025-09-18",
-      "open": 299.63,
+      "open": 299.62,
       "high": 300.4,
       "low": 288.71,
       "close": 293.28
@@ -3390,7 +3391,7 @@
       "open": 143.71,
       "high": 147.65,
       "low": 142.6,
-      "close": 147.18
+      "close": 147.26
     }
   ],
   "kijun_line": [
@@ -16996,7 +16997,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 4616853.0,
+      "value": 4932184.0,
       "color": "#059669"
     }
   ]

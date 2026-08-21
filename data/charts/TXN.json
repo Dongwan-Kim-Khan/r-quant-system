@@ -1,16 +1,16 @@
 {
   "ticker": "TXN",
-  "latest_close": 263.52,
-  "kijun": 279.73,
-  "tenkan": 276.5,
+  "latest_close": 262.8,
+  "kijun": 279.32,
+  "tenkan": 276.1,
   "span_a": 300.62,
   "span_b": 302.41,
-  "future_span_a_latest": 278.11,
-  "future_span_b_latest": 297.85,
+  "future_span_a_latest": 277.71,
+  "future_span_b_latest": 297.45,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 19.74,
-  "kijun_gap_pct": -5.79,
-  "vol_ratio": 0.13,
+  "kijun_gap_pct": -5.91,
+  "vol_ratio": 0.14,
   "bull_score": 20,
   "bear_score": 90,
   "is_sniper": false,
@@ -19,20 +19,21 @@
     "score": "20 / 100 pt (BEAR_EXIT)",
     "bull_score": 20,
     "bear_score": 90,
+    "sniper_score": 0,
     "type": "BEAR",
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$279.73 (-5.8%)",
+      "val": "$279.32 (-5.9%)",
       "status": "status-bear",
       "badge": "BREAKDOWN",
-      "desc": "현재가 $263.52 / 26일선 $279.73 (이격 -5.8%)"
+      "desc": "현재가 $262.80 / 26일선 $279.32 (이격 -5.9%)"
     },
     "tenkan": {
-      "val": "$276.50",
+      "val": "$276.10",
       "status": "status-bear",
       "badge": "DEAD CROSS",
-      "desc": "9일 전환선 $276.50 하단 역배열"
+      "desc": "9일 전환선 $276.10 하단 역배열"
     },
     "cloud": {
       "val": "$302.41",
@@ -41,10 +42,10 @@
       "desc": "일목 구름대(300.6~302.4) 하단 붕괴"
     },
     "vol": {
-      "val": "13% (20D)",
+      "val": "14% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 13% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 14% (매도세 고갈 완벽)"
     },
     "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
   },
@@ -414,7 +415,7 @@
       "time": "2024-12-09",
       "open": 182.91,
       "high": 188.42,
-      "low": 182.51,
+      "low": 182.5,
       "close": 184.27
     },
     {
@@ -603,7 +604,7 @@
       "time": "2025-01-21",
       "open": 182.57,
       "high": 187.17,
-      "low": 182.5,
+      "low": 182.51,
       "close": 185.96
     },
     {
@@ -3389,8 +3390,8 @@
       "time": "2026-08-21",
       "open": 269.78,
       "high": 269.79,
-      "low": 263.38,
-      "close": 263.52
+      "low": 262.57,
+      "close": 262.8
     }
   ],
   "kijun_line": [
@@ -5300,7 +5301,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 279.73
+      "value": 279.32
     }
   ],
   "tenkan_line": [
@@ -7210,7 +7211,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 276.5
+      "value": 276.1
     }
   ],
   "span_a_line": [
@@ -7684,7 +7685,7 @@
     },
     {
       "time": "2025-04-24",
-      "value": 178.45
+      "value": 178.44
     },
     {
       "time": "2025-04-25",
@@ -9120,7 +9121,7 @@
     },
     {
       "time": "2026-09-28",
-      "value": 278.11
+      "value": 277.71
     }
   ],
   "span_b_line": [
@@ -10926,7 +10927,7 @@
     },
     {
       "time": "2026-09-28",
-      "value": 297.85
+      "value": 297.45
     }
   ],
   "sma20": [
@@ -12836,7 +12837,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 275.73
+      "value": 275.69
     }
   ],
   "sma60": [
@@ -14610,7 +14611,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 290.4
+      "value": 290.39
     }
   ],
   "volume": [
@@ -16996,7 +16997,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 873745.0,
+      "value": 919125.0,
       "color": "#dc2626"
     }
   ]

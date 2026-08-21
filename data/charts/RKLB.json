@@ -1,6 +1,6 @@
 {
   "ticker": "RKLB",
-  "latest_close": 73.7,
+  "latest_close": 73.29,
   "kijun": 72.52,
   "tenkan": 78.65,
   "span_a": 88.47,
@@ -9,8 +9,8 @@
   "future_span_b_latest": 89.0,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 13.41,
-  "kijun_gap_pct": 1.63,
-  "vol_ratio": 0.16,
+  "kijun_gap_pct": 1.07,
+  "vol_ratio": 0.17,
   "bull_score": 65,
   "bear_score": 35,
   "is_sniper": false,
@@ -19,14 +19,15 @@
     "score": "65 / 100 pt (HOLD)",
     "bull_score": 65,
     "bear_score": 35,
+    "sniper_score": 25,
     "type": "NEUTRAL",
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$72.52 (+1.6%)",
+      "val": "$72.52 (+1.1%)",
       "status": "status-bull",
       "badge": "SUPPORTED",
-      "desc": "현재가 $73.70 / 26일선 $72.52 (이격 +1.6%)"
+      "desc": "현재가 $73.29 / 26일선 $72.52 (이격 +1.1%)"
     },
     "tenkan": {
       "val": "$78.65",
@@ -41,10 +42,10 @@
       "desc": "일목 구름대(88.5~108.5) 하단 붕괴"
     },
     "vol": {
-      "val": "16% (20D)",
+      "val": "17% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 16% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 17% (매도세 고갈 완벽)"
     },
     "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
   },
@@ -3390,7 +3391,7 @@
       "open": 74.12,
       "high": 74.94,
       "low": 73.19,
-      "close": 73.7
+      "close": 73.29
     }
   ],
   "kijun_line": [
@@ -12836,7 +12837,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 74.13
+      "value": 74.11
     }
   ],
   "sma60": [
@@ -16996,7 +16997,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 2944297.0,
+      "value": 3096551.0,
       "color": "#dc2626"
     }
   ]

@@ -1,6 +1,6 @@
 {
   "ticker": "GEV",
-  "latest_close": 962.12,
+  "latest_close": 961.58,
   "kijun": 1019.33,
   "tenkan": 1021.01,
   "span_a": 1061.93,
@@ -9,7 +9,7 @@
   "future_span_b_latest": 1025.76,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 5.58,
-  "kijun_gap_pct": -5.61,
+  "kijun_gap_pct": -5.67,
   "vol_ratio": 0.13,
   "bull_score": 30,
   "bear_score": 90,
@@ -19,14 +19,15 @@
     "score": "30 / 100 pt (BEAR_EXIT)",
     "bull_score": 30,
     "bear_score": 90,
+    "sniper_score": 50,
     "type": "BEAR",
     "is_sniper": false,
     "trampoline_detected": true,
     "kijun": {
-      "val": "$1,019.33 (-5.6%)",
+      "val": "$1,019.33 (-5.7%)",
       "status": "status-bear",
       "badge": "BREAKDOWN",
-      "desc": "현재가 $962.12 / 26일선 $1,019.33 (이격 -5.6%)"
+      "desc": "현재가 $961.58 / 26일선 $1,019.33 (이격 -5.7%)"
     },
     "tenkan": {
       "val": "$1,021.01",
@@ -898,7 +899,7 @@
       "open": 329.5,
       "high": 333.99,
       "low": 323.99,
-      "close": 332.71
+      "close": 332.72
     },
     {
       "time": "2025-03-24",
@@ -1849,7 +1850,7 @@
       "time": "2025-10-06",
       "open": 604.63,
       "high": 607.21,
-      "low": 592.36,
+      "low": 592.35,
       "close": 601.85
     },
     {
@@ -3390,7 +3391,7 @@
       "open": 974.73,
       "high": 976.87,
       "low": 955.78,
-      "close": 962.12
+      "close": 961.58
     }
   ],
   "kijun_line": [
@@ -8440,7 +8441,7 @@
     },
     {
       "time": "2026-01-26",
-      "value": 647.56
+      "value": 647.57
     },
     {
       "time": "2026-01-27",
@@ -12836,7 +12837,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 1000.04
+      "value": 1000.01
     }
   ],
   "sma60": [
@@ -14610,7 +14611,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 1020.22
+      "value": 1020.21
     }
   ],
   "volume": [
@@ -16996,7 +16997,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 283853.0,
+      "value": 292506.0,
       "color": "#dc2626"
     }
   ]

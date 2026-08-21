@@ -1,15 +1,15 @@
 {
   "ticker": "RTX",
-  "latest_close": 211.85,
+  "latest_close": 211.62,
   "kijun": 207.9,
-  "tenkan": 219.13,
+  "tenkan": 219.01,
   "span_a": 193.71,
   "span_b": 186.39,
-  "future_span_a_latest": 213.51,
+  "future_span_a_latest": 213.46,
   "future_span_b_latest": 201.38,
   "future_cloud_type": "양운 (상승 지지 구름대)",
-  "future_cloud_gap": 12.14,
-  "kijun_gap_pct": 1.9,
+  "future_cloud_gap": 12.08,
+  "kijun_gap_pct": 1.79,
   "vol_ratio": 0.15,
   "bull_score": 100,
   "bear_score": 0,
@@ -19,20 +19,21 @@
     "score": "100 / 100 pt (BULL_BUY)",
     "bull_score": 100,
     "bear_score": 0,
+    "sniper_score": 60,
     "type": "BULL",
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$207.90 (+1.9%)",
+      "val": "$207.90 (+1.8%)",
       "status": "status-bull",
       "badge": "SUPPORTED",
-      "desc": "현재가 $211.85 / 26일선 $207.90 (이격 +1.9%)"
+      "desc": "현재가 $211.62 / 26일선 $207.90 (이격 +1.8%)"
     },
     "tenkan": {
-      "val": "$219.13",
+      "val": "$219.01",
       "status": "status-bull",
       "badge": "GOLDEN CROSS",
-      "desc": "9일 전환선 $219.13 상단 정배열"
+      "desc": "9일 전환선 $219.01 상단 정배열"
     },
     "cloud": {
       "val": "$193.71",
@@ -938,7 +939,7 @@
     {
       "time": "2025-03-31",
       "open": 127.92,
-      "high": 129.95,
+      "high": 129.96,
       "low": 127.46,
       "close": 129.29
     },
@@ -3389,8 +3390,8 @@
       "time": "2026-08-21",
       "open": 213.36,
       "high": 213.52,
-      "low": 211.85,
-      "close": 211.85
+      "low": 211.62,
+      "close": 211.62
     }
   ],
   "kijun_line": [
@@ -7210,7 +7211,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 219.13
+      "value": 219.01
     }
   ],
   "span_a_line": [
@@ -9120,7 +9121,7 @@
     },
     {
       "time": "2026-09-28",
-      "value": 213.51
+      "value": 213.46
     }
   ],
   "span_b_line": [
@@ -12836,7 +12837,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 219.03
+      "value": 219.02
     }
   ],
   "sma60": [
@@ -16996,7 +16997,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 715862.0,
+      "value": 734480.0,
       "color": "#dc2626"
     }
   ]

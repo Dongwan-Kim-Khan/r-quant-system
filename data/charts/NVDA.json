@@ -1,6 +1,6 @@
 {
   "ticker": "NVDA",
-  "latest_close": 216.33,
+  "latest_close": 216.18,
   "kijun": 208.96,
   "tenkan": 221.79,
   "span_a": 202.19,
@@ -9,8 +9,8 @@
   "future_span_b_latest": 208.86,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 6.52,
-  "kijun_gap_pct": 3.52,
-  "vol_ratio": 0.2,
+  "kijun_gap_pct": 3.46,
+  "vol_ratio": 0.21,
   "bull_score": 100,
   "bear_score": 0,
   "is_sniper": true,
@@ -19,6 +19,7 @@
     "score": "100 / 100 pt (SNIPER_BUY)",
     "bull_score": 100,
     "bear_score": 0,
+    "sniper_score": 100,
     "type": "BULL",
     "is_sniper": true,
     "trampoline_detected": true,
@@ -26,7 +27,7 @@
       "val": "$208.96 (+3.5%)",
       "status": "status-bull",
       "badge": "SUPPORTED",
-      "desc": "현재가 $216.33 / 26일선 $208.96 (이격 +3.5%)"
+      "desc": "26일 기준선($208.96) 대비 +3.5% 상방 도약 가속 구간"
     },
     "tenkan": {
       "val": "$221.79",
@@ -37,14 +38,14 @@
     "cloud": {
       "val": "$213.03",
       "status": "status-bull",
-      "badge": "ABOVE CLOUD",
-      "desc": "일목 구름대(202.2~213.0) 상단 안착"
+      "badge": "TRAMPOLINE BOUNCE",
+      "desc": "일목 구름대(202.2~213.0) 0일 전 지지 반등 확인 완료"
     },
     "vol": {
-      "val": "20% (20D)",
+      "val": "21% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 20% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 21% (매도세 고갈 완벽)"
     },
     "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 상방 시세 분출(기준선 대비 +3.5%). 목표 +15% / 손절 -4%."
   },
@@ -379,7 +380,7 @@
       "time": "2024-12-02",
       "open": 138.61,
       "high": 140.23,
-      "low": 137.61,
+      "low": 137.6,
       "close": 138.41
     },
     {
@@ -3390,7 +3391,7 @@
       "open": 218.42,
       "high": 218.74,
       "low": 215.91,
-      "close": 216.33
+      "close": 216.18
     }
   ],
   "kijun_line": [
@@ -4104,7 +4105,7 @@
     },
     {
       "time": "2025-06-12",
-      "value": 128.47
+      "value": 128.46
     },
     {
       "time": "2025-06-13",
@@ -9858,7 +9859,7 @@
     },
     {
       "time": "2025-09-05",
-      "value": 154.32
+      "value": 154.31
     },
     {
       "time": "2025-09-08",
@@ -12836,7 +12837,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 213.26
+      "value": 213.25
     }
   ],
   "sma60": [
@@ -16996,7 +16997,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 22956014.0,
+      "value": 23920871.0,
       "color": "#dc2626"
     }
   ]

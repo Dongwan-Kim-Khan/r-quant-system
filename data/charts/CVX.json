@@ -1,6 +1,6 @@
 {
   "ticker": "CVX",
-  "latest_close": 206.65,
+  "latest_close": 206.58,
   "kijun": 196.44,
   "tenkan": 200.53,
   "span_a": 175.83,
@@ -9,7 +9,7 @@
   "future_span_b_latest": 186.17,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 12.32,
-  "kijun_gap_pct": 5.2,
+  "kijun_gap_pct": 5.16,
   "vol_ratio": 0.17,
   "bull_score": 65,
   "bear_score": 0,
@@ -19,14 +19,15 @@
     "score": "100 / 100 pt (SNIPER_BUY)",
     "bull_score": 65,
     "bear_score": 0,
+    "sniper_score": 100,
     "type": "BULL",
     "is_sniper": true,
     "trampoline_detected": true,
     "kijun": {
       "val": "$196.44 (+5.2%)",
-      "status": "status-neutral",
-      "badge": "OVERHEATED",
-      "desc": "현재가 $206.65 / 26일선 $196.44 (이격 +5.2%)"
+      "status": "status-bull",
+      "badge": "STAGE 2 MOMENTUM",
+      "desc": "26일 기준선($196.44) 대비 +5.2% 상방 도약 가속 구간"
     },
     "tenkan": {
       "val": "$200.53",
@@ -37,8 +38,8 @@
     "cloud": {
       "val": "$180.25",
       "status": "status-bull",
-      "badge": "ABOVE CLOUD",
-      "desc": "일목 구름대(175.8~180.3) 상단 안착"
+      "badge": "TRAMPOLINE BOUNCE",
+      "desc": "일목 구름대(175.8~180.3) 9일 전 지지 반등 확인 완료"
     },
     "vol": {
       "val": "17% (20D)",
@@ -1528,7 +1529,7 @@
       "open": 144.63,
       "high": 146.46,
       "low": 143.81,
-      "close": 144.29
+      "close": 144.28
     },
     {
       "time": "2025-08-01",
@@ -3390,7 +3391,7 @@
       "open": 205.93,
       "high": 207.82,
       "low": 205.98,
-      "close": 206.65
+      "close": 206.58
     }
   ],
   "kijun_line": [
@@ -12836,7 +12837,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 194.42
+      "value": 194.41
     }
   ],
   "sma60": [
@@ -14610,7 +14611,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 184.4
+      "value": 184.39
     }
   ],
   "volume": [
@@ -16996,7 +16997,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 1293853.0,
+      "value": 1336671.0,
       "color": "#059669"
     }
   ]

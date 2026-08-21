@@ -1,6 +1,6 @@
 {
   "ticker": "TSM",
-  "latest_close": 419.13,
+  "latest_close": 418.98,
   "kijun": 404.38,
   "tenkan": 421.88,
   "span_a": 436.51,
@@ -9,8 +9,8 @@
   "future_span_b_latest": 425.86,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 12.73,
-  "kijun_gap_pct": 3.65,
-  "vol_ratio": 0.17,
+  "kijun_gap_pct": 3.61,
+  "vol_ratio": 0.18,
   "bull_score": 65,
   "bear_score": 35,
   "is_sniper": false,
@@ -19,6 +19,7 @@
     "score": "65 / 100 pt (HOLD)",
     "bull_score": 65,
     "bear_score": 35,
+    "sniper_score": 25,
     "type": "NEUTRAL",
     "is_sniper": false,
     "trampoline_detected": false,
@@ -26,7 +27,7 @@
       "val": "$404.38 (+3.6%)",
       "status": "status-bull",
       "badge": "SUPPORTED",
-      "desc": "현재가 $419.13 / 26일선 $404.38 (이격 +3.6%)"
+      "desc": "현재가 $418.98 / 26일선 $404.38 (이격 +3.6%)"
     },
     "tenkan": {
       "val": "$421.88",
@@ -41,10 +42,10 @@
       "desc": "일목 구름대(431.6~436.5) 하단 붕괴"
     },
     "vol": {
-      "val": "17% (20D)",
+      "val": "18% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 17% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 18% (매도세 고갈 완벽)"
     },
     "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
   },
@@ -1701,7 +1702,7 @@
     {
       "time": "2025-09-05",
       "open": 237.61,
-      "high": 241.88,
+      "high": 241.87,
       "low": 235.3,
       "close": 240.75
     },
@@ -2171,7 +2172,7 @@
       "time": "2025-12-10",
       "open": 302.98,
       "high": 311.53,
-      "low": 300.13,
+      "low": 300.14,
       "close": 307.72
     },
     {
@@ -3389,8 +3390,8 @@
       "time": "2026-08-21",
       "open": 423.02,
       "high": 425.68,
-      "low": 418.65,
-      "close": 419.13
+      "low": 418.44,
+      "close": 418.98
     }
   ],
   "kijun_line": [
@@ -16996,7 +16997,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 2039003.0,
+      "value": 2120173.0,
       "color": "#dc2626"
     }
   ]

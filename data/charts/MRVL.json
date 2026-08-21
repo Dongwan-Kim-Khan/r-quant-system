@@ -1,6 +1,6 @@
 {
   "ticker": "MRVL",
-  "latest_close": 243.93,
+  "latest_close": 243.51,
   "kijun": 207.71,
   "tenkan": 229.47,
   "span_a": 240.62,
@@ -9,24 +9,25 @@
   "future_span_b_latest": 246.35,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 27.76,
-  "kijun_gap_pct": 17.44,
-  "vol_ratio": 0.21,
-  "bull_score": 65,
+  "kijun_gap_pct": 17.24,
+  "vol_ratio": 0.23,
+  "bull_score": 30,
   "bear_score": 0,
-  "is_sniper": true,
+  "is_sniper": false,
   "intelligence": {
-    "verdict": "Sniper Alert (구름대 도약 2단계 특급 매수)",
-    "score": "100 / 100 pt (SNIPER_BUY)",
-    "bull_score": 65,
+    "verdict": "Neutral Consolidation (박스권 수렴)",
+    "score": "30 / 100 pt (HOLD)",
+    "bull_score": 30,
     "bear_score": 0,
-    "type": "BULL",
-    "is_sniper": true,
+    "sniper_score": 65,
+    "type": "NEUTRAL",
+    "is_sniper": false,
     "trampoline_detected": true,
     "kijun": {
-      "val": "$207.71 (+17.4%)",
+      "val": "$207.71 (+17.2%)",
       "status": "status-neutral",
       "badge": "OVERHEATED",
-      "desc": "현재가 $243.93 / 26일선 $207.71 (이격 +17.4%)"
+      "desc": "현재가 $243.51 / 26일선 $207.71 (이격 +17.2%)"
     },
     "tenkan": {
       "val": "$229.47",
@@ -36,20 +37,20 @@
     },
     "cloud": {
       "val": "$243.86",
-      "status": "status-bull",
-      "badge": "ABOVE CLOUD",
-      "desc": "일목 구름대(240.6~243.9) 상단 안착"
+      "status": "status-neutral",
+      "badge": "INSIDE CLOUD",
+      "desc": "일목 구름대(240.6~243.9) 내부 횡보"
     },
     "vol": {
-      "val": "21% (20D)",
+      "val": "23% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 21% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 23% (매도세 고갈 완벽)"
     },
-    "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 상방 시세 분출(기준선 대비 +17.4%). 목표 +15% / 손절 -4%."
+    "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
   },
-  "status_tag": "BULL",
-  "status_text": "Sniper Alert (구름대 도약 2단계 특급 매수)",
+  "status_tag": "NEUTRAL",
+  "status_text": "Neutral Consolidation (박스권 수렴)",
   "timeframe": "1D",
   "period": "2Y",
   "candles": [
@@ -261,7 +262,7 @@
       "open": 89.01,
       "high": 91.29,
       "low": 88.07,
-      "close": 90.21
+      "close": 90.22
     },
     {
       "time": "2024-11-07",
@@ -1729,7 +1730,7 @@
     {
       "time": "2025-09-11",
       "open": 66.86,
-      "high": 68.05,
+      "high": 68.06,
       "low": 66.22,
       "close": 66.45
     },
@@ -3390,7 +3391,7 @@
       "open": 252.39,
       "high": 252.52,
       "low": 243.05,
-      "close": 243.93
+      "close": 243.51
     }
   ],
   "kijun_line": [
@@ -12836,7 +12837,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 210.76
+      "value": 210.74
     }
   ],
   "sma60": [
@@ -13910,7 +13911,7 @@
     },
     {
       "time": "2025-12-09",
-      "value": 85.97
+      "value": 85.96
     },
     {
       "time": "2025-12-10",
@@ -14610,7 +14611,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 238.46
+      "value": 238.45
     }
   ],
   "volume": [
@@ -16996,7 +16997,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 4775820.0,
+      "value": 5205825.0,
       "color": "#dc2626"
     }
   ]

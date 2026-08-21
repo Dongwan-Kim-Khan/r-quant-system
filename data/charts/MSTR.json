@@ -1,6 +1,6 @@
 {
   "ticker": "MSTR",
-  "latest_close": 118.96,
+  "latest_close": 119.83,
   "kijun": 105.09,
   "tenkan": 106.32,
   "span_a": 103.21,
@@ -9,8 +9,8 @@
   "future_span_b_latest": 109.03,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 3.32,
-  "kijun_gap_pct": 13.2,
-  "vol_ratio": 0.88,
+  "kijun_gap_pct": 14.03,
+  "vol_ratio": 0.9,
   "bull_score": 10,
   "bear_score": 0,
   "is_sniper": false,
@@ -19,14 +19,15 @@
     "score": "10 / 100 pt (HOLD)",
     "bull_score": 10,
     "bear_score": 0,
+    "sniper_score": 25,
     "type": "NEUTRAL",
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$105.09 (+13.2%)",
+      "val": "$105.09 (+14.0%)",
       "status": "status-neutral",
       "badge": "OVERHEATED",
-      "desc": "현재가 $118.96 / 26일선 $105.09 (이격 +13.2%)"
+      "desc": "현재가 $119.83 / 26일선 $105.09 (이격 +14.0%)"
     },
     "tenkan": {
       "val": "$106.32",
@@ -41,10 +42,10 @@
       "desc": "일목 구름대(103.2~139.4) 내부 횡보"
     },
     "vol": {
-      "val": "88% (20D)",
+      "val": "90% (20D)",
       "status": "status-neutral",
       "badge": "NORMAL VOL",
-      "desc": "20일 평균 거래량 대비 88% (통상 거래량)"
+      "desc": "20일 평균 거래량 대비 90% (통상 거래량)"
     },
     "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
   },
@@ -3390,7 +3391,7 @@
       "open": 119.78,
       "high": 120.97,
       "low": 115.85,
-      "close": 118.96
+      "close": 119.83
     }
   ],
   "kijun_line": [
@@ -12836,7 +12837,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 98.55
+      "value": 98.6
     }
   ],
   "sma60": [
@@ -14610,7 +14611,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 105.35
+      "value": 105.37
     }
   ],
   "volume": [
@@ -16996,8 +16997,8 @@
     },
     {
       "time": "2026-08-21",
-      "value": 17008583.0,
-      "color": "#dc2626"
+      "value": 17524116.0,
+      "color": "#059669"
     }
   ]
 }

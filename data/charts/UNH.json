@@ -1,6 +1,6 @@
 {
   "ticker": "UNH",
-  "latest_close": 388.22,
+  "latest_close": 389.13,
   "kijun": 410.65,
   "tenkan": 397.36,
   "span_a": 434.05,
@@ -9,7 +9,7 @@
   "future_span_b_latest": 422.72,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 18.72,
-  "kijun_gap_pct": -5.46,
+  "kijun_gap_pct": -5.24,
   "vol_ratio": 0.2,
   "bull_score": 20,
   "bear_score": 90,
@@ -19,14 +19,15 @@
     "score": "20 / 100 pt (BEAR_EXIT)",
     "bull_score": 20,
     "bear_score": 90,
+    "sniper_score": 40,
     "type": "BEAR",
     "is_sniper": false,
     "trampoline_detected": true,
     "kijun": {
-      "val": "$410.65 (-5.5%)",
+      "val": "$410.65 (-5.2%)",
       "status": "status-bear",
       "badge": "BREAKDOWN",
-      "desc": "현재가 $388.22 / 26일선 $410.65 (이격 -5.5%)"
+      "desc": "현재가 $389.13 / 26일선 $410.65 (이격 -5.2%)"
     },
     "tenkan": {
       "val": "$397.36",
@@ -980,7 +981,7 @@
     {
       "time": "2025-04-08",
       "open": 562.99,
-      "high": 565.74,
+      "high": 565.73,
       "low": 529.42,
       "close": 534.86
     },
@@ -3390,7 +3391,7 @@
       "open": 386.0,
       "high": 391.69,
       "low": 386.16,
-      "close": 388.22
+      "close": 389.13
     }
   ],
   "kijun_line": [
@@ -8024,11 +8025,11 @@
     },
     {
       "time": "2025-08-26",
-      "value": 290.49
+      "value": 290.5
     },
     {
       "time": "2025-08-27",
-      "value": 290.49
+      "value": 290.5
     },
     {
       "time": "2025-08-28",
@@ -12836,7 +12837,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 405.91
+      "value": 405.95
     }
   ],
   "sma60": [
@@ -14610,7 +14611,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 409.69
+      "value": 409.71
     }
   ],
   "volume": [
@@ -16996,7 +16997,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 815444.0,
+      "value": 849293.0,
       "color": "#059669"
     }
   ]

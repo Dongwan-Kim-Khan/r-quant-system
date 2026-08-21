@@ -1,6 +1,6 @@
 {
   "ticker": "ARM",
-  "latest_close": 246.77,
+  "latest_close": 246.93,
   "kijun": 259.34,
   "tenkan": 265.85,
   "span_a": 324.34,
@@ -9,7 +9,7 @@
   "future_span_b_latest": 336.05,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 73.45,
-  "kijun_gap_pct": -4.85,
+  "kijun_gap_pct": -4.79,
   "vol_ratio": 0.11,
   "bull_score": 30,
   "bear_score": 90,
@@ -19,6 +19,7 @@
     "score": "30 / 100 pt (BEAR_EXIT)",
     "bull_score": 30,
     "bear_score": 90,
+    "sniper_score": 10,
     "type": "BEAR",
     "is_sniper": false,
     "trampoline_detected": false,
@@ -26,7 +27,7 @@
       "val": "$259.34 (-4.8%)",
       "status": "status-bear",
       "badge": "BREAKDOWN",
-      "desc": "현재가 $246.77 / 26일선 $259.34 (이격 -4.8%)"
+      "desc": "현재가 $246.93 / 26일선 $259.34 (이격 -4.8%)"
     },
     "tenkan": {
       "val": "$265.85",
@@ -3390,7 +3391,7 @@
       "open": 252.9,
       "high": 255.93,
       "low": 246.4,
-      "close": 246.77
+      "close": 246.93
     }
   ],
   "kijun_line": [
@@ -12836,7 +12837,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 260.95
+      "value": 260.96
     }
   ],
   "sma60": [
@@ -16996,7 +16997,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 542706.0,
+      "value": 565336.0,
       "color": "#dc2626"
     }
   ]

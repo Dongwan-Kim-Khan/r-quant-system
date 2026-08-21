@@ -1,6 +1,6 @@
 {
   "ticker": "AMZN",
-  "latest_close": 259.07,
+  "latest_close": 259.14,
   "kijun": 256.68,
   "tenkan": 267.94,
   "span_a": 244.99,
@@ -9,8 +9,8 @@
   "future_span_b_latest": 256.38,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 5.93,
-  "kijun_gap_pct": 0.93,
-  "vol_ratio": 0.22,
+  "kijun_gap_pct": 0.96,
+  "vol_ratio": 0.23,
   "bull_score": 100,
   "bear_score": 0,
   "is_sniper": true,
@@ -19,14 +19,15 @@
     "score": "100 / 100 pt (SNIPER_BUY)",
     "bull_score": 100,
     "bear_score": 0,
+    "sniper_score": 100,
     "type": "BULL",
     "is_sniper": true,
     "trampoline_detected": true,
     "kijun": {
-      "val": "$256.68 (+0.9%)",
+      "val": "$256.68 (+1.0%)",
       "status": "status-bull",
       "badge": "SUPPORTED",
-      "desc": "현재가 $259.07 / 26일선 $256.68 (이격 +0.9%)"
+      "desc": "26일 기준선($256.68) 대비 +1.0% 상방 도약 가속 구간"
     },
     "tenkan": {
       "val": "$267.94",
@@ -37,16 +38,16 @@
     "cloud": {
       "val": "$252.06",
       "status": "status-bull",
-      "badge": "ABOVE CLOUD",
-      "desc": "일목 구름대(245.0~252.1) 상단 안착"
+      "badge": "TRAMPOLINE BOUNCE",
+      "desc": "일목 구름대(245.0~252.1) 0일 전 지지 반등 확인 완료"
     },
     "vol": {
-      "val": "22% (20D)",
+      "val": "23% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 22% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 23% (매도세 고갈 완벽)"
     },
-    "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 상방 시세 분출(기준선 대비 +0.9%). 목표 +15% / 손절 -4%."
+    "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 상방 시세 분출(기준선 대비 +1.0%). 목표 +15% / 손절 -4%."
   },
   "status_tag": "BULL",
   "status_text": "Sniper Alert (구름대 도약 2단계 특급 매수)",
@@ -3390,7 +3391,7 @@
       "open": 260.75,
       "high": 261.08,
       "low": 257.04,
-      "close": 259.07
+      "close": 259.14
     }
   ],
   "kijun_line": [
@@ -16996,7 +16997,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 10294806.0,
+      "value": 10755768.0,
       "color": "#dc2626"
     }
   ]

@@ -1,16 +1,16 @@
 {
   "ticker": "TSLA",
-  "latest_close": 358.6,
+  "latest_close": 358.75,
   "kijun": 341.99,
-  "tenkan": 341.37,
+  "tenkan": 341.75,
   "span_a": 401.69,
   "span_b": 411.0,
-  "future_span_a_latest": 341.68,
+  "future_span_a_latest": 341.87,
   "future_span_b_latest": 365.12,
   "future_cloud_type": "음운 (하락 저항 구름대)",
-  "future_cloud_gap": 23.44,
-  "kijun_gap_pct": 4.86,
-  "vol_ratio": 0.32,
+  "future_cloud_gap": 23.25,
+  "kijun_gap_pct": 4.9,
+  "vol_ratio": 0.37,
   "bull_score": 20,
   "bear_score": 35,
   "is_sniper": false,
@@ -19,6 +19,7 @@
     "score": "20 / 100 pt (HOLD)",
     "bull_score": 20,
     "bear_score": 35,
+    "sniper_score": 15,
     "type": "NEUTRAL",
     "is_sniper": false,
     "trampoline_detected": false,
@@ -26,13 +27,13 @@
       "val": "$341.99 (+4.9%)",
       "status": "status-neutral",
       "badge": "OVERHEATED",
-      "desc": "현재가 $358.60 / 26일선 $341.99 (이격 +4.9%)"
+      "desc": "현재가 $358.75 / 26일선 $341.99 (이격 +4.9%)"
     },
     "tenkan": {
-      "val": "$341.37",
+      "val": "$341.75",
       "status": "status-bear",
       "badge": "DEAD CROSS",
-      "desc": "9일 전환선 $341.37 하단 역배열"
+      "desc": "9일 전환선 $341.75 하단 역배열"
     },
     "cloud": {
       "val": "$411.00",
@@ -41,10 +42,10 @@
       "desc": "일목 구름대(401.7~411.0) 하단 붕괴"
     },
     "vol": {
-      "val": "32% (20D)",
+      "val": "37% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 32% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 37% (매도세 고갈 완벽)"
     },
     "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
   },
@@ -3388,9 +3389,9 @@
     {
       "time": "2026-08-21",
       "open": 349.76,
-      "high": 359.11,
+      "high": 359.86,
       "low": 346.9,
-      "close": 358.6
+      "close": 358.75
     }
   ],
   "kijun_line": [
@@ -7210,7 +7211,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 341.37
+      "value": 341.75
     }
   ],
   "span_a_line": [
@@ -9120,7 +9121,7 @@
     },
     {
       "time": "2026-09-28",
-      "value": 341.68
+      "value": 341.87
     }
   ],
   "span_b_line": [
@@ -12836,7 +12837,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 327.93
+      "value": 327.94
     }
   ],
   "sma60": [
@@ -14610,7 +14611,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 373.77
+      "value": 373.78
     }
   ],
   "volume": [
@@ -16996,7 +16997,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 10361476.0,
+      "value": 11972704.0,
       "color": "#059669"
     }
   ]

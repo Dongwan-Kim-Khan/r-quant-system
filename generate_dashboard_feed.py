@@ -252,18 +252,27 @@ def compute_all_indicators(ticker):
             quant_score_text = f"{bull_score} / 100 pt (HOLD)"
             action_directive = "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
             
-        # Indicator Detail Cards
-        kijun_status = "status-bull" if -0.5 <= kijun_gap <= 4.0 else ("status-bear" if kijun_gap < -0.5 else "status-neutral")
-        kijun_badge = "SUPPORTED" if -0.5 <= kijun_gap <= 4.0 else ("BREAKDOWN" if kijun_gap < -0.5 else "OVERHEATED")
-        kijun_desc = f"현재가 ${close:,.2f} / 26일선 ${kijun:,.2f} (이격 {kijun_gap:+.1f}%)"
+        # Indicator Detail Cards (Customized for Strategy 1 vs Strategy 2)
+        if is_sniper_active:
+            kijun_status = "status-bull" if kijun_gap >= -0.5 else "status-neutral"
+            kijun_badge = "STAGE 2 MOMENTUM" if kijun_gap > 4.0 else "SUPPORTED"
+            kijun_desc = f"26일 기준선(${kijun:,.2f}) 대비 {kijun_gap:+.1f}% 상방 도약 가속 구간"
+            
+            cloud_status = "status-bull"
+            cloud_badge = "TRAMPOLINE BOUNCE"
+            cloud_desc = f"일목 구름대({round(cloud_bottom,1)}~{round(cloud_top,1)}) {trampoline_days_ago}일 전 지지 반등 확인 완료"
+        else:
+            kijun_status = "status-bull" if -0.5 <= kijun_gap <= 4.0 else ("status-bear" if kijun_gap < -0.5 else "status-neutral")
+            kijun_badge = "SUPPORTED" if -0.5 <= kijun_gap <= 4.0 else ("BREAKDOWN" if kijun_gap < -0.5 else "OVERHEATED")
+            kijun_desc = f"현재가 ${close:,.2f} / 26일선 ${kijun:,.2f} (이격 {kijun_gap:+.1f}%)"
+            
+            cloud_status = "status-bull" if close >= cloud_top else ("status-bear" if close < cloud_bottom else "status-neutral")
+            cloud_badge = "ABOVE CLOUD" if close >= cloud_top else ("BELOW CLOUD" if close < cloud_bottom else "INSIDE CLOUD")
+            cloud_desc = f"일목 구름대({round(cloud_bottom,1)}~{round(cloud_top,1)}) {'상단 안착' if close >= cloud_top else ('하단 붕괴' if close < cloud_bottom else '내부 횡보')}"
         
         tenkan_status = "status-bull" if tenkan >= kijun else "status-bear"
         tenkan_badge = "GOLDEN CROSS" if tenkan >= kijun else "DEAD CROSS"
         tenkan_desc = f"9일 전환선 ${tenkan:,.2f} {'상단 정배열' if tenkan >= kijun else '하단 역배열'}"
-        
-        cloud_status = "status-bull" if close >= cloud_top else ("status-bear" if close < cloud_bottom else "status-neutral")
-        cloud_badge = "ABOVE CLOUD" if close >= cloud_top else ("BELOW CLOUD" if close < cloud_bottom else "INSIDE CLOUD")
-        cloud_desc = f"일목 구름대({round(cloud_bottom,1)}~{round(cloud_top,1)}) {'상단 안착' if close >= cloud_top else ('하단 붕괴' if close < cloud_bottom else '내부 횡보')}"
         
         vol_status = "status-bull" if vol_ratio <= 0.75 else ("status-neutral" if vol_ratio <= 1.2 else "status-bear")
         vol_badge = "VOLUME DRY" if vol_ratio <= 0.75 else ("NORMAL VOL" if vol_ratio <= 1.2 else "HIGH VOL")
@@ -274,6 +283,7 @@ def compute_all_indicators(ticker):
             "score": quant_score_text,
             "bull_score": bull_score,
             "bear_score": bear_score,
+            "sniper_score": sniper_score,
             "type": quant_type,
             "is_sniper": is_sniper_active,
             "trampoline_detected": trampoline_detected,
@@ -382,9 +392,9 @@ def build_dashboard_data():
         is_sn = c["is_sniper"]
         s_score = c.get("sniper_score", 95 if is_sn else 0)
         
-        # Strategy 1 (Classic Pullback Accumulation): Bull trend, Kijun gap -0.8% ~ +4.0%, Dry volume
-        is_strat1 = (b_score >= 75) and (-0.8 <= kgap <= 4.0) and (v_ratio <= 0.85)
-        # Strategy 2 (Cloud Bounce Sniper): Cloud trampoline launch detected, High momentum
+        # Strategy 1 (Classic Pullback Accumulation): Bull trend, Bull Score >= 80, Kijun gap -0.8% ~ +4.0%, Dry volume
+        is_strat1 = (b_score >= 80) and (-0.8 <= kgap <= 4.0) and (v_ratio <= 0.85)
+        # Strategy 2 (Cloud Bounce Sniper): Cloud trampoline launch detected, Sniper Score >= 85
         is_strat2 = bool(is_sn) and (s_score >= 85)
         
         item_score = 100 if (is_strat1 and is_strat2) else (b_score if is_strat1 else s_score)

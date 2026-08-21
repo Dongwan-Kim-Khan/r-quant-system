@@ -1,6 +1,6 @@
 {
   "ticker": "COIN",
-  "latest_close": 188.65,
+  "latest_close": 189.66,
   "kijun": 164.85,
   "tenkan": 168.3,
   "span_a": 160.33,
@@ -9,8 +9,8 @@
   "future_span_b_latest": 164.85,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 1.73,
-  "kijun_gap_pct": 14.44,
-  "vol_ratio": 0.87,
+  "kijun_gap_pct": 15.05,
+  "vol_ratio": 0.91,
   "bull_score": 45,
   "bear_score": 0,
   "is_sniper": true,
@@ -19,14 +19,15 @@
     "score": "100 / 100 pt (SNIPER_BUY)",
     "bull_score": 45,
     "bear_score": 0,
+    "sniper_score": 100,
     "type": "BULL",
     "is_sniper": true,
     "trampoline_detected": true,
     "kijun": {
-      "val": "$164.85 (+14.4%)",
-      "status": "status-neutral",
-      "badge": "OVERHEATED",
-      "desc": "현재가 $188.65 / 26일선 $164.85 (이격 +14.4%)"
+      "val": "$164.85 (+15.1%)",
+      "status": "status-bull",
+      "badge": "STAGE 2 MOMENTUM",
+      "desc": "26일 기준선($164.85) 대비 +15.1% 상방 도약 가속 구간"
     },
     "tenkan": {
       "val": "$168.30",
@@ -37,16 +38,16 @@
     "cloud": {
       "val": "$180.76",
       "status": "status-bull",
-      "badge": "ABOVE CLOUD",
-      "desc": "일목 구름대(160.3~180.8) 상단 안착"
+      "badge": "TRAMPOLINE BOUNCE",
+      "desc": "일목 구름대(160.3~180.8) 0일 전 지지 반등 확인 완료"
     },
     "vol": {
-      "val": "87% (20D)",
+      "val": "91% (20D)",
       "status": "status-neutral",
       "badge": "NORMAL VOL",
-      "desc": "20일 평균 거래량 대비 87% (통상 거래량)"
+      "desc": "20일 평균 거래량 대비 91% (통상 거래량)"
     },
-    "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 상방 시세 분출(기준선 대비 +14.4%). 목표 +15% / 손절 -4%."
+    "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 상방 시세 분출(기준선 대비 +15.1%). 목표 +15% / 손절 -4%."
   },
   "status_tag": "BULL",
   "status_text": "Sniper Alert (구름대 도약 2단계 특급 매수)",
@@ -3390,7 +3391,7 @@
       "open": 180.06,
       "high": 190.58,
       "low": 179.2,
-      "close": 188.65
+      "close": 189.66
     }
   ],
   "kijun_line": [
@@ -12836,7 +12837,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 155.9
+      "value": 155.96
     }
   ],
   "sma60": [
@@ -14610,7 +14611,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 160.11
+      "value": 160.13
     }
   ],
   "volume": [
@@ -16996,7 +16997,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 7524828.0,
+      "value": 7892460.0,
       "color": "#059669"
     }
   ]
