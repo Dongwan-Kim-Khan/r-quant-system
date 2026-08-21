@@ -1,4 +1,4 @@
-﻿"""
+"""
 Automated Test Suite for Universal Stock Search & Dynamic Quant Rating Engine.
 """
 import os
@@ -95,6 +95,15 @@ def test_server_search_and_chart_endpoints():
     assert chart_res["ticker"] == "AAPL"
     assert "candles" in chart_res
     print(f"  - GET /api/chart/애플: Resolved to AAPL (${chart_res['latest_close']:,.2f}, Score: {chart_res['intelligence']['score']})")
+    # 3. Non-existent ticker handling
+    from fastapi import HTTPException
+    try:
+        get_ticker_chart("ZZZZZ99")
+        assert False, "Expected 404 HTTPException for non-existent ticker"
+    except HTTPException as e:
+        assert e.status_code == 404
+        print(f"  - GET /api/chart/ZZZZZ99: 404 Handled Cleanly ({e.detail})")
+
     print("  -> PASSED: Server search and dynamic chart endpoints verified.")
 
 if __name__ == "__main__":

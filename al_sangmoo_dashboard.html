@@ -901,19 +901,23 @@
 
         function selectStock(ticker, price) {
             currentSelectedTicker = ticker;
-            currentSelectedPrice = price || 100.0;
-
             document.getElementById("curTicker").textContent = ticker;
-            document.getElementById("curPrice").textContent = `$${currentSelectedPrice.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-
             document.getElementById("qbTicker").textContent = ticker;
-            document.getElementById("qbPrice").textContent = `$${currentSelectedPrice.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-            
-            const buyInput = document.getElementById("qbBuyPrice");
-            if (buyInput) {
-                buyInput.value = currentSelectedPrice.toFixed(2);
+
+            if (price !== null && price !== undefined && Number(price) > 0) {
+                currentSelectedPrice = Number(price);
+                const formattedPrice = `$${currentSelectedPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                document.getElementById("curPrice").textContent = formattedPrice;
+                document.getElementById("qbPrice").textContent = formattedPrice;
+                const buyInput = document.getElementById("qbBuyPrice");
+                if (buyInput) {
+                    buyInput.value = currentSelectedPrice.toFixed(2);
+                }
+                updateTargetStopLive();
+            } else {
+                document.getElementById("curPrice").textContent = "Loading...";
+                document.getElementById("qbPrice").textContent = "Loading...";
             }
-            updateTargetStopLive();
 
             // Update Decoder Cards
             updateDecoderUI(ticker);
@@ -928,14 +932,16 @@
                 info = liveChartData.intelligence;
             } else if (window.GLOBAL_DASHBOARD_DATA && window.GLOBAL_DASHBOARD_DATA.charts && window.GLOBAL_DASHBOARD_DATA.charts[ticker] && window.GLOBAL_DASHBOARD_DATA.charts[ticker].intelligence) {
                 info = window.GLOBAL_DASHBOARD_DATA.charts[ticker].intelligence;
+            } else if (STOCK_INTELLIGENCE[ticker]) {
+                info = STOCK_INTELLIGENCE[ticker];
             } else {
-                info = STOCK_INTELLIGENCE[ticker] || {
-                    verdict: "Tactical Evaluation", score: "80 / 100 pt (BULL_BUY)", type: "BULL",
-                    kijun: { val: "26일선 지지 확인", status: "status-bull", badge: "SUPPORTED", desc: "26일 기준선 상단에서 지지력을 확보했습니다." },
-                    tenkan: { val: "전환선 정배열", status: "status-bull", badge: "GOLDEN CROSS", desc: "9일 전환선이 기준선 상단에 위치합니다." },
-                    cloud: { val: "구름대 상단 안착", status: "status-bull", badge: "ABOVE CLOUD", desc: "일목 선행스팬 구름대 상단에 안착했습니다." },
-                    vol: { val: "거래량 59% (20D)", status: "status-bull", badge: "VOLUME DRY", desc: "20일 평균 거래량 대비 매도세가 고갈되었습니다." },
-                    action: "26일 기준선 지지 및 손절선(-3%) 원칙에 따라 1차 분할 매수 적합."
+                info = {
+                    verdict: "Quant Analyzing...", score: "Computing / 100 pt", type: "HOLD",
+                    kijun: { val: "계산 중...", status: "status-neutral", badge: "CALCULATING", desc: "26일 기준선(생명선) 지지 상태를 실시간 분석 중입니다." },
+                    tenkan: { val: "계산 중...", status: "status-neutral", badge: "CALCULATING", desc: "9일 전환선 정배열 상태를 분석 중입니다." },
+                    cloud: { val: "계산 중...", status: "status-neutral", badge: "CALCULATING", desc: "일목 선행스팬 구름대 상단 안착 여부를 계산 중입니다." },
+                    vol: { val: "계산 중...", status: "status-neutral", badge: "CALCULATING", desc: "20일 평균 거래량 대비 매도세 마름 비율을 계산 중입니다." },
+                    action: "거래소 시세 데이터 및 17년 퀀트 지표를 실시간 다운로드/연산 중입니다."
                 };
             }
 
@@ -1021,11 +1027,22 @@
                     chartObj = window.__DASHBOARD_CACHE__.charts[ticker];
                 }
 
-                if (chartObj) {
-                    updateDecoderUI(ticker, chartObj);
-                }
-
                 if (chartObj && chartObj.candles && chartObj.candles.length > 0) {
+                    updateDecoderUI(ticker, chartObj);
+
+                    // Dynamically update real-time stock price and quick buy inputs
+                    if (chartObj.latest_close !== undefined) {
+                        currentSelectedPrice = Number(chartObj.latest_close);
+                        const formattedPrice = `$${currentSelectedPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                        document.getElementById("curPrice").textContent = formattedPrice;
+                        document.getElementById("qbPrice").textContent = formattedPrice;
+                        const buyInput = document.getElementById("qbBuyPrice");
+                        if (buyInput) {
+                            buyInput.value = currentSelectedPrice.toFixed(2);
+                        }
+                        updateTargetStopLive();
+                    }
+
                     candleSeries.setData(chartObj.candles);
                     kijunSeries.setData(chartObj.kijun_line || []);
                     tenkanSeries.setData(chartObj.tenkan_line || []);
@@ -1097,58 +1114,74 @@
                         to: totalBars + 26
                     });
                 } else {
-                    renderSyntheticChart(ticker, currentSelectedPrice);
+                    // Ticker Not Found / API Failure Error State
+                    renderNotFoundState(ticker);
                 }
             } catch (e) {
-                renderSyntheticChart(ticker, currentSelectedPrice);
+                renderNotFoundState(ticker);
             }
         }
 
-        function renderSyntheticChart(ticker, basePrice) {
-            const candles = [];
-            const vol = [];
-            const kijun = [];
-            const tenkan = [];
-            const spanA = [];
-            const spanB = [];
-            const sma20 = [];
-            const sma60 = [];
+        function renderNotFoundState(ticker) {
+            // Clear series to prevent showing wrong ticker chart
+            candleSeries.setData([]);
+            kijunSeries.setData([]);
+            tenkanSeries.setData([]);
+            spanASeries.setData([]);
+            spanBSeries.setData([]);
+            sma20Series.setData([]);
+            sma60Series.setData([]);
+            volumeSeries.setData([]);
 
-            let price = basePrice * 0.92;
-            const now = new Date();
+            document.getElementById("curPrice").textContent = "N/A (조회 불가)";
+            document.getElementById("qbPrice").textContent = "N/A";
+            const buyInput = document.getElementById("qbBuyPrice");
+            if (buyInput) buyInput.value = "";
+            const tgtEl = document.getElementById("qbTargetVal");
+            const stopEl = document.getElementById("qbStopVal");
+            if (tgtEl) tgtEl.textContent = "-";
+            if (stopEl) stopEl.textContent = "-";
 
-            for (let i = 60; i >= 0; i--) {
-                const d = new Date(now);
-                d.setDate(d.getDate() - i);
-                const timeStr = d.toISOString().split('T')[0];
+            const banner = document.getElementById("verdictBanner");
+            const score = document.getElementById("verdictScore");
+            const title = document.getElementById("verdictTitle");
 
-                const delta = (Math.random() - 0.48) * (basePrice * 0.02);
-                const open = price;
-                const close = open + delta;
-                const high = Math.max(open, close) + Math.random() * (basePrice * 0.01);
-                const low = Math.min(open, close) - Math.random() * (basePrice * 0.01);
-                price = close;
+            title.textContent = `Quant Rating: [종목 조회 실패]`;
+            score.textContent = "0 / 100 pt (NOT FOUND)";
+            banner.style.borderLeftColor = "var(--accent-red)";
+            score.style.color = "var(--accent-red)";
 
-                candles.push({ time: timeStr, open, high, low, close });
-                kijun.push({ time: timeStr, value: close * 0.985 });
-                tenkan.push({ time: timeStr, value: close * 0.995 });
-                spanA.push({ time: timeStr, value: close * 0.97 });
-                spanB.push({ time: timeStr, value: close * 0.95 });
-                sma20.push({ time: timeStr, value: close * 0.98 });
-                sma60.push({ time: timeStr, value: close * 0.96 });
-                vol.push({ time: timeStr, value: Math.floor(Math.random() * 5000000) + 1000000, color: close >= open ? '#10b981' : '#ef4444' });
+            document.getElementById("sigKijunBadge").className = "status-badge status-bad";
+            document.getElementById("sigKijunBadge").textContent = "NOT FOUND";
+            document.getElementById("sigKijunVal").textContent = "시세 없음";
+            document.getElementById("sigKijunDesc").textContent = `'${ticker}' 종목의 시세 데이터를 거래소에서 불러올 수 없습니다.`;
+
+            document.getElementById("sigTenkanBadge").className = "status-badge status-neutral";
+            document.getElementById("sigTenkanBadge").textContent = "N/A";
+            document.getElementById("sigTenkanVal").textContent = "N/A";
+            document.getElementById("sigTenkanDesc").textContent = "티커 심볼 또는 한글 종목명을 다시 확인해 주세요.";
+
+            document.getElementById("sigCloudBadge").className = "status-badge status-neutral";
+            document.getElementById("sigCloudBadge").textContent = "N/A";
+            document.getElementById("sigCloudVal").textContent = "N/A";
+            document.getElementById("sigCloudDesc").textContent = "한국 주식은 한글명(예: 삼전, 하이닉스) 또는 6자리 코드(005930)를 입력하세요.";
+
+            document.getElementById("sigVolBadge").className = "status-badge status-neutral";
+            document.getElementById("sigVolBadge").textContent = "N/A";
+            document.getElementById("sigVolVal").textContent = "N/A";
+            document.getElementById("sigVolDesc").textContent = "미국 주식은 영문 티커(예: AAPL, TSM, PLTR)를 입력하세요.";
+
+            const fcBadge = document.getElementById("sigFutureCloudBadge");
+            if (fcBadge) {
+                fcBadge.textContent = "N/A";
+                fcBadge.className = "status-badge status-neutral";
             }
+            const fcVal = document.getElementById("sigFutureCloudVal");
+            if (fcVal) fcVal.textContent = "미래 구름대 산출 불가";
+            const fcDesc = document.getElementById("sigFutureCloudDesc");
+            if (fcDesc) fcDesc.textContent = "데이터가 부족하거나 상장 폐지된 종목입니다.";
 
-            candleSeries.setData(candles);
-            kijunSeries.setData(kijun);
-            tenkanSeries.setData(tenkan);
-            spanASeries.setData(spanA);
-            spanBSeries.setData(spanB);
-            sma20Series.setData(sma20);
-            sma60Series.setData(sma60);
-            volumeSeries.setData(vol);
-            mainChart.timeScale().fitContent();
-            volumeChart.timeScale().fitContent();
+            document.getElementById("actionDirectiveText").textContent = `🚨 '${ticker}' 종목을 찾을 수 없습니다. 올바른 티커 심볼이나 한글 종목명으로 다시 검색해 주세요.`;
         }
 
         async function loadDashboard() {
