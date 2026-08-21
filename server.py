@@ -14,6 +14,9 @@ from datetime import datetime
 
 import db_manager
 from al_sangmoo.api.hub import hub
+from al_sangmoo.backtest.engine import run_backtest_simulation
+from al_sangmoo.domain.quant.multi_timeframe import calculate_mtf_consensus
+from al_sangmoo.domain.risk.position_sizer import calculate_dynamic_position_size, calculate_atr
 from generate_dashboard_feed import compute_all_indicators, build_dashboard_data
 
 # Windows encoding fix
@@ -220,6 +223,47 @@ async def trigger_scan_now():
         }
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+@app.get("/api/backtest/{ticker}")
+def get_backtest_report(ticker: str, period: str = "2y"):
+    ticker_upper = ticker.strip().upper()
+    if not TICKER_REGEX.match(ticker_upper):
+        raise HTTPException(status_code=400, detail="유효하지 않은 티커 심볼 형식입니다.")
+    try:
+        report = run_backtest_simulation(ticker_upper, period=period)
+        return report
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"백테스트 실행 실패: {str(e)}")
+
+@app.get("/api/quant/mtf/{ticker}")
+def get_mtf_consensus(ticker: str):
+    ticker_upper = ticker.strip().upper()
+    if not TICKER_REGEX.match(ticker_upper):
+        raise HTTPException(status_code=400, detail="유효하지 않은 티커 심볼 형식입니다.")
+    try:
+        mtf_data = calculate_mtf_consensus(ticker_upper)
+        return mtf_data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"MTF 분석 실패: {str(e)}")
+
+@app.get("/api/risk/size/{ticker}")
+def get_recommended_position_size(ticker: str, equity: float = 100000.0, msi: float = 50.0):
+    ticker_upper = ticker.strip().upper()
+    if not TICKER_REGEX.match(ticker_upper):
+        raise HTTPException(status_code=400, detail="유효하지 않은 티커 심볼 형식입니다.")
+    try:
+        df = yf.download(ticker_upper, period="3mo", interval="1d", progress=False)
+        if df.empty:
+            raise HTTPException(status_code=404, detail="종목 데이터를 찾을 수 없습니다.")
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
+        cur_price = float(df['Close'].iloc[-1])
+        atr_14 = calculate_atr(df, window=14)
+        sizing = calculate_dynamic_position_size(portfolio_equity=equity, current_price=cur_price, atr_14=atr_14, msi_score=msi)
+        sizing["ticker"] = ticker_upper
+        return sizing
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"포지션 사이징 계산 실패: {str(e)}")
 
 if __name__ == "__main__":
     uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)
