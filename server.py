@@ -100,13 +100,15 @@ def get_dashboard_summary():
     matrix = db_manager.get_recommendations_matrix()
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
-    # Read full feed from dashboard_data.json (macro, kpis, strategies, charts)
+    # Read feed from dashboard_data.json (macro, kpis, strategies)
+    # Note: charts (~10MB for 60 stocks) are NOT included here to keep
+    # the response lightweight. Individual charts are served via /api/chart/{ticker}.
     macro_info = {}
     kpis = {}
     primary_accumulation = []
     sniper_radar = []
     signal_tracker = []
-    charts = {}
+    chart_intelligence = {}
     if os.path.exists(DASHBOARD_JSON):
         try:
             with open(DASHBOARD_JSON, "r", encoding="utf-8") as f:
@@ -116,7 +118,19 @@ def get_dashboard_summary():
                 primary_accumulation = feed.get("primary_accumulation", [])
                 sniper_radar = feed.get("sniper_radar", [])
                 signal_tracker = feed.get("signal_tracker", [])
-                charts = feed.get("charts", {})
+                # Extract only lightweight intelligence metadata per ticker
+                for ticker, chart_obj in feed.get("charts", {}).items():
+                    if isinstance(chart_obj, dict) and "intelligence" in chart_obj:
+                        chart_intelligence[ticker] = {
+                            "intelligence": chart_obj["intelligence"],
+                            "latest_close": chart_obj.get("latest_close"),
+                            "kijun": chart_obj.get("kijun"),
+                            "tenkan": chart_obj.get("tenkan"),
+                            "kijun_gap_pct": chart_obj.get("kijun_gap_pct"),
+                            "vol_ratio": chart_obj.get("vol_ratio"),
+                            "future_cloud_type": chart_obj.get("future_cloud_type"),
+                            "status_text": chart_obj.get("status_text"),
+                        }
         except Exception:
             pass
             
@@ -140,7 +154,7 @@ def get_dashboard_summary():
         "primary_accumulation": primary_accumulation,
         "sniper_radar": sniper_radar,
         "signal_tracker": signal_tracker,
-        "charts": charts,
+        "chart_intelligence": chart_intelligence,
         "last_updated": now_str
     }
 

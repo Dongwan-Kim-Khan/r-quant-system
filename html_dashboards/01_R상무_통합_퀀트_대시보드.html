@@ -1172,6 +1172,10 @@
                 const res = await fetch('/api/dashboard');
                 if (res.ok) {
                     const data = await res.json();
+                    // Map lightweight chart_intelligence to charts key for decoder UI fallback
+                    if (data.chart_intelligence && !data.charts) {
+                        data.charts = data.chart_intelligence;
+                    }
                     window.__DASHBOARD_CACHE__ = data;
                     isBackendOnline = true;
                     document.getElementById("serverStatusText").textContent = "API ACTIVE";
