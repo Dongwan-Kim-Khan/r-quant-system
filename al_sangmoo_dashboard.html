@@ -521,7 +521,7 @@
                 <span style="font-size:11px; color:#94a3af; font-family:'JetBrains Mono';">3-COLUMN QUANT MATRIX | DUAL-STRATEGY & GOLDEN INTERSECTION</span>
             </div>
             
-            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:12px; margin-top:6px;">
+            <div style="display:grid; grid-template-columns: 1.15fr 0.85fr 1.15fr; gap:12px; margin-top:6px;">
                 
                 <!-- [LEFT] Strategy I: Primary Accumulation (기준선 눌림목 1차 분할 매수) -->
                 <div style="background:#0f172a; border:1px solid #1e293b; border-top:3px solid var(--accent-green); border-radius:4px; padding:12px; display:flex; flex-direction:column;">
@@ -631,37 +631,7 @@
                 </div>
             </div>
 
-            <!-- 2. Live Quantitative Signal Tracker (Bloomberg Terminal Style) -->
-            <div class="panel">
-                <div class="panel-header">
-                    <span>LIVE QUANTITATIVE SIGNAL TRACKER</span>
-                    <span style="font-size:10px; color:#94a3b8; font-family:'JetBrains Mono';">HISTORICAL EXECUTION ARCHIVE</span>
-                </div>
-                <div style="overflow-x: auto; max-height: 320px;">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>DATE</th>
-                                <th>ASSET (TICKER)</th>
-                                <th>ORIGIN</th>
-                                <th>STRATEGY</th>
-                                <th>ENTRY</th>
-                                <th>TARGET (+15%)</th>
-                                <th>STOP (-4%)</th>
-                                <th>STATUS</th>
-                            </tr>
-                        </thead>
-                        <tbody id="matrixTableBody">
-                            <!-- Populated dynamically via JavaScript -->
-                            <tr>
-                                <td colspan="8" style="text-align:center; color:var(--text-secondary); padding:20px; font-family:'JetBrains Mono';">LIVE 퀀트 시그널 데이터를 실시간 연동 중입니다...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- 3. Daily Quant Recommendations History (일자별 추천 종목 이력) -->
+            <!-- 2. Daily Quant Recommendations History (일자별 추천 종목 이력) -->
             <div class="panel" style="margin-top:12px;">
                 <div class="panel-header">
                     <span>DAILY RECOMMENDATIONS HISTORY (일자별 추천 종목 이력)</span>
@@ -1501,16 +1471,28 @@
                 const originClass = (item.origin === 'VIKINGS_LIVE') ? 'origin-vikings' : 'origin-quant';
                 const originText = (item.origin === 'VIKINGS_LIVE') ? '[VIKINGS LIVE]' : '[UNIVERSE SCAN]';
                 const isActive = (currentSelectedTicker === item.ticker) ? 'active' : '';
+                const targetPrice = item.target_price ? Number(item.target_price).toFixed(2) : (Number(item.price) * 1.15).toFixed(2);
+                const stopPrice = item.stop_price ? Number(item.stop_price).toFixed(2) : (Number(item.price) * 0.96).toFixed(2);
+                
                 return `
                     <div class="rec-item ${isActive}" data-ticker="${item.ticker}" onclick="selectStock('${item.ticker}', ${item.price})">
-                        <div>
-                            <div style="display:flex; align-items:center; gap:6px;">
-                                <span class="rec-item-title" style="color:${colorTheme};">${item.ticker} <span class="rec-item-sub">${item.name}</span></span>
-                                <span class="origin-badge ${originClass}">${originText}</span>
+                        <div style="flex:1;">
+                            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:2px;">
+                                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                                    <span class="rec-item-title" style="color:${colorTheme};">${item.ticker}</span>
+                                    <span class="rec-item-sub" style="font-size:11px; font-weight:600;">${item.name}</span>
+                                    <span class="origin-badge ${originClass}" style="font-size:9px; padding:1px 5px;">${originText}</span>
+                                </div>
+                                <div class="rec-item-price" style="color:${colorTheme};">$${Number(item.price).toFixed(2)}</div>
                             </div>
-                            <div class="rec-item-sub">SCORE: ${item.score}/100 | KIJUN: ${item.kijun_gap >= 0 ? '+' : ''}${Number(item.kijun_gap).toFixed(1)}% | VOL: ${item.vol_ratio}%</div>
+                            <div class="rec-item-sub" style="font-size:11px; display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
+                                <span>SCORE: <strong style="color:#f8fafc;">${item.score}pt</strong> | 26D: <strong style="color:#38bdf8;">${item.kijun_gap >= 0 ? '+' : ''}${Number(item.kijun_gap).toFixed(1)}%</strong> | VOL: <strong>${item.vol_ratio}%</strong></span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; font-size:10px; font-family:'JetBrains Mono'; margin-top:4px; padding-top:4px; border-top:1px dashed #1e293b;">
+                                <span style="color:#94a3b8;">TP(+15%): <strong style="color:#34d399;">$${targetPrice}</strong></span>
+                                <span style="color:#94a3b8;">SL(-4%): <strong style="color:#f87171;">$${stopPrice}</strong></span>
+                            </div>
                         </div>
-                        <div class="rec-item-price" style="color:${colorTheme};">$${Number(item.price).toFixed(2)}</div>
                     </div>
                 `;
             };
@@ -1545,50 +1527,7 @@
                 }
             }
 
-            // 3. Live Quantitative Signal Tracker Table
-            const matrixBody = document.getElementById("matrixTableBody");
-            if (matrixBody) {
-                const signals = data.signal_tracker || [];
-                if (signals.length > 0) {
-                    matrixBody.innerHTML = signals.map(sig => {
-                        const originClass = (sig.origin === 'VIKINGS_LIVE') ? 'origin-vikings' : 'origin-quant';
-                        const originText = (sig.origin === 'VIKINGS_LIVE') ? '[VIKINGS LIVE]' : '[UNIVERSE SCAN]';
-                        const stratClass = (sig.strategy_code === 'STRATEGY_2_SNIPER') ? 'strategy-sniper-pill' : 'strategy-pullback-pill';
-                        const stratLabel = (sig.strategy_code === 'STRATEGY_2_SNIPER') ? 'STRAT II (SNIPER)' : 'STRAT I (PULLBACK)';
-                        return `
-                            <tr>
-                                <td style="font-family:'JetBrains Mono'; font-weight:700; color:#cbd5e1;">${sig.date}</td>
-                                <td>
-                                    <strong style="font-family:'JetBrains Mono'; color:#38bdf8; cursor:pointer;" onclick="selectStock('${sig.ticker}', ${sig.entry_price})">${sig.ticker}</strong>
-                                    <span style="font-size:11px; color:#94a3b8; margin-left:4px;">${sig.name}</span>
-                                </td>
-                                <td><span class="origin-badge ${originClass}">${originText}</span></td>
-                                <td><span class="strategy-pill ${stratClass}">${stratLabel}</span></td>
-                                <td style="font-family:'JetBrains Mono';">$${Number(sig.entry_price).toFixed(2)}</td>
-                                <td style="font-family:'JetBrains Mono'; color:#34d399; font-weight:700;">$${Number(sig.target_price).toFixed(2)}</td>
-                                <td style="font-family:'JetBrains Mono'; color:#f87171; font-weight:700;">$${Number(sig.stop_price).toFixed(2)}</td>
-                                <td><span style="color:#34d399; font-weight:700; font-family:'JetBrains Mono'; font-size:11px;">${sig.status}</span></td>
-                            </tr>
-                        `;
-                    }).join('');
-                } else if (data.matrix && data.matrix.length > 0) {
-                    // Fallback to legacy matrix rows if signal_tracker is empty
-                    matrixBody.innerHTML = data.matrix.map(m => `
-                        <tr>
-                            <td style="font-family:'JetBrains Mono'; font-weight:700; color:#cbd5e1;">${m.date}</td>
-                            <td><span class="ticker-pill bull" onclick="selectStock('${m.bull_1}', ${m.bull_1_price})">${m.bull_1}</span></td>
-                            <td><span class="origin-badge origin-vikings">[VIKINGS LIVE]</span></td>
-                            <td><span class="strategy-pill strategy-pullback-pill">STRAT I</span></td>
-                            <td style="font-family:'JetBrains Mono';">$${Number(m.bull_1_price).toFixed(2)}</td>
-                            <td style="font-family:'JetBrains Mono'; color:#34d399;">$${(Number(m.bull_1_price)*1.15).toFixed(2)}</td>
-                            <td style="font-family:'JetBrains Mono'; color:#f87171;">$${(Number(m.bull_1_price)*0.96).toFixed(2)}</td>
-                            <td><span style="color:#34d399; font-weight:700; font-family:'JetBrains Mono'; font-size:11px;">ACTIVE</span></td>
-                        </tr>
-                    `).join('');
-                }
-            }
-
-            // 4. Render Portfolio
+            // 3. Render Portfolio
             const pBody = document.getElementById("portfolioTableBody");
             const holdings = (data.portfolio && data.portfolio.holdings) || [];
             
