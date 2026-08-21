@@ -143,15 +143,63 @@ def compute_all_indicators(ticker):
         future_cloud_type = "양운 (상승 지지 구름대)" if is_future_bull_cloud else "음운 (하락 저항 구름대)"
         future_cloud_gap = abs(future_a_latest - future_b_latest)
         
-        if close >= cloud_top and -0.5 <= kijun_gap <= 4.0:
-            status_tag = "BULL_ACCUMULATION"
-            status_text = "26일 기준선 지지 및 일목 구름대 상단 안착 (1차 분할 매수 적합)"
-        elif close < kijun or close < cloud_bottom:
-            status_tag = "BEAR_BREAKDOWN"
-            status_text = "26일 기준선(생명선) 이탈 붕괴 (리스크 경보 / 물타기 금지)"
+        # 17-Year Quant Exact Scoring
+        bull_score = 0
+        if close >= cloud_top: bull_score += 35
+        if -0.5 <= kijun_gap <= 4.0: bull_score += 35
+        if vol_ratio <= 0.75: bull_score += 20
+        if tenkan >= kijun: bull_score += 10
+        
+        bear_score = 0
+        if close < kijun: bear_score += 40
+        if close < cloud_bottom: bear_score += 35
+        if kijun_gap < -2.0: bear_score += 15
+        
+        if bull_score >= 70:
+            quant_type = "BULL"
+            quant_verdict = "Bull Accumulation (1차 분할 매수 적합)"
+            quant_score_text = f"{bull_score} / 100 pt (BULL_BUY)"
+            action_directive = "26일 기준선 및 일목 구름대 상단 안착 확인. 거시 변동성 진정 시 1차 분할 매수 적합."
+        elif bear_score >= 50:
+            quant_type = "BEAR"
+            quant_verdict = "Risk Breakdown (생명선 붕괴 / 매수 금지)"
+            quant_score_text = f"{bull_score} / 100 pt (BEAR_EXIT)"
+            action_directive = "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
         else:
-            status_tag = "NEUTRAL"
-            status_text = "박스권 에너지 응축 및 추세 수렴 구간 (관망 유지)"
+            quant_type = "NEUTRAL"
+            quant_verdict = "Neutral Consolidation (박스권 수렴)"
+            quant_score_text = f"{bull_score} / 100 pt (HOLD)"
+            action_directive = "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
+            
+        # Indicator Detail Cards
+        kijun_status = "status-bull" if -0.5 <= kijun_gap <= 4.0 else ("status-bear" if kijun_gap < -0.5 else "status-neutral")
+        kijun_badge = "SUPPORTED" if -0.5 <= kijun_gap <= 4.0 else ("BREAKDOWN" if kijun_gap < -0.5 else "OVERHEATED")
+        kijun_desc = f"현재가 ${close:,.2f} / 26일선 ${kijun:,.2f} (이격 {kijun_gap:+.1f}%)"
+        
+        tenkan_status = "status-bull" if tenkan >= kijun else "status-bear"
+        tenkan_badge = "GOLDEN CROSS" if tenkan >= kijun else "DEAD CROSS"
+        tenkan_desc = f"9일 전환선 ${tenkan:,.2f} {'상단 정배열' if tenkan >= kijun else '하단 역배열'}"
+        
+        cloud_status = "status-bull" if close >= cloud_top else ("status-bear" if close < cloud_bottom else "status-neutral")
+        cloud_badge = "ABOVE CLOUD" if close >= cloud_top else ("BELOW CLOUD" if close < cloud_bottom else "INSIDE CLOUD")
+        cloud_desc = f"일목 구름대({round(cloud_bottom,1)}~{round(cloud_top,1)}) {'상단 안착' if close >= cloud_top else ('하단 붕괴' if close < cloud_bottom else '내부 횡보')}"
+        
+        vol_status = "status-bull" if vol_ratio <= 0.75 else ("status-neutral" if vol_ratio <= 1.2 else "status-bear")
+        vol_badge = "VOLUME DRY" if vol_ratio <= 0.75 else ("NORMAL VOL" if vol_ratio <= 1.2 else "HIGH VOL")
+        vol_desc = f"20일 평균 거래량 대비 {round(vol_ratio*100)}% ({'매도세 고갈 완벽' if vol_ratio <= 0.75 else '통상 거래량'})"
+        
+        intelligence = {
+            "verdict": quant_verdict,
+            "score": quant_score_text,
+            "bull_score": bull_score,
+            "bear_score": bear_score,
+            "type": quant_type,
+            "kijun": {"val": f"${kijun:,.2f} ({kijun_gap:+.1f}%)", "status": kijun_status, "badge": kijun_badge, "desc": kijun_desc},
+            "tenkan": {"val": f"${tenkan:,.2f}", "status": tenkan_status, "badge": tenkan_badge, "desc": tenkan_desc},
+            "cloud": {"val": f"${cloud_top:,.2f}", "status": cloud_status, "badge": cloud_badge, "desc": cloud_desc},
+            "vol": {"val": f"{round(vol_ratio*100)}% (20D)", "status": vol_status, "badge": vol_badge, "desc": vol_desc},
+            "action": action_directive
+        }
             
         return {
             "ticker": ticker,
@@ -166,8 +214,11 @@ def compute_all_indicators(ticker):
             "future_cloud_gap": round(future_cloud_gap, 2),
             "kijun_gap_pct": round(kijun_gap, 2),
             "vol_ratio": round(vol_ratio, 2),
-            "status_tag": status_tag,
-            "status_text": status_text,
+            "bull_score": bull_score,
+            "bear_score": bear_score,
+            "intelligence": intelligence,
+            "status_tag": quant_type,
+            "status_text": quant_verdict,
             "timeframe": "1D",
             "period": "2Y",
             "candles": candles,
