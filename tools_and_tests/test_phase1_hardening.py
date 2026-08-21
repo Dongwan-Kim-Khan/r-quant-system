@@ -2,6 +2,7 @@
 import sys
 import time
 import json
+import asyncio
 import threading
 import tempfile
 import sqlite3
@@ -92,39 +93,42 @@ def test_atomic_json_persistence():
 def test_api_endpoints_integrity():
     print("\n[Test 3] Verifying API Endpoint Functionality & Contract Stability...")
     
-    # 1. Reset portfolio
-    res = reset_portfolio()
-    assert res["status"] == "success"
-    print("  - POST /api/portfolio/reset handler: OK")
-    
-    # 2. Buy order (with custom price and fractional shares)
-    buy_payload = BuyOrder(ticker="AMZN", buy_price=258.50, quantity=1.5)
-    buy_res = buy_stock(buy_payload)
-    pos_id = buy_res["id"]
-    assert buy_res["status"] == "success"
-    print(f"  - POST /api/portfolio/buy handler (AMZN 1.5 shares @ $258.50): Position #{pos_id} OK")
-    
-    # 3. Get portfolio
-    p_data = get_portfolio()
-    assert len(p_data["holdings"]) == 1
-    assert p_data["holdings"][0]["ticker"] == "AMZN"
-    assert p_data["holdings"][0]["quantity"] == 1.5
-    print("  - GET /api/portfolio handler: Verified 1.5 shares of AMZN")
-    
-    # 4. Sell order
-    sell_payload = SellOrder(sell_price=270.00, reason="TEST_TP")
-    sell_res = sell_stock(position_id=pos_id, order=sell_payload)
-    assert sell_res["status"] == "success"
-    print(f"  - POST /api/portfolio/sell/{pos_id} handler: OK")
-    
-    # 5. Recommendations matrix
-    m_data = get_recommendation_matrix()
-    assert isinstance(m_data, list)
-    print("  - GET /api/recommendations/matrix handler: OK")
-    
-    # 6. Reset again to clean state
-    reset_portfolio()
-    print("  -> PASSED: All REST endpoints executed with 0 runtime errors.")
+    async def run_api_tests():
+        # 1. Reset portfolio
+        res = await reset_portfolio()
+        assert res["status"] == "success"
+        print("  - POST /api/portfolio/reset handler: OK")
+        
+        # 2. Buy order (with custom price and fractional shares)
+        buy_payload = BuyOrder(ticker="AMZN", buy_price=258.50, quantity=1.5)
+        buy_res = await buy_stock(buy_payload)
+        pos_id = buy_res["id"]
+        assert buy_res["status"] == "success"
+        print(f"  - POST /api/portfolio/buy handler (AMZN 1.5 shares @ $258.50): Position #{pos_id} OK")
+        
+        # 3. Get portfolio
+        p_data = get_portfolio()
+        assert len(p_data["holdings"]) == 1
+        assert p_data["holdings"][0]["ticker"] == "AMZN"
+        assert p_data["holdings"][0]["quantity"] == 1.5
+        print("  - GET /api/portfolio handler: Verified 1.5 shares of AMZN")
+        
+        # 4. Sell order
+        sell_payload = SellOrder(sell_price=270.00, reason="TEST_TP")
+        sell_res = await sell_stock(position_id=pos_id, order=sell_payload)
+        assert sell_res["status"] == "success"
+        print(f"  - POST /api/portfolio/sell/{pos_id} handler: OK")
+        
+        # 5. Recommendations matrix
+        m_data = get_recommendation_matrix()
+        assert isinstance(m_data, list)
+        print("  - GET /api/recommendations/matrix handler: OK")
+        
+        # 6. Reset again to clean state
+        await reset_portfolio()
+        print("  -> PASSED: All REST endpoints executed with 0 runtime errors.")
+
+    asyncio.run(run_api_tests())
 
 def test_50_thread_db_concurrency():
     print("\n[Test 4] 50-Thread High-Concurrency Stress Test on SQLite WAL...")

@@ -3,7 +3,7 @@ import sys
 import re
 import json
 import sqlite3
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -13,6 +13,7 @@ import yfinance as yf
 from datetime import datetime
 
 import db_manager
+from al_sangmoo.api.hub import hub
 from generate_dashboard_feed import compute_all_indicators, build_dashboard_data
 
 # Windows encoding fix
@@ -118,12 +119,27 @@ def get_dashboard_summary():
         "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
 
+@app.websocket("/ws/live_feed")
+async def websocket_live_feed(websocket: WebSocket):
+    await hub.connect(websocket)
+    try:
+        p_data = db_manager.get_live_portfolio()
+        await websocket.send_json({"event": "connected", "data": {"portfolio": p_data}})
+        while True:
+            msg = await websocket.receive_text()
+            if msg == "ping":
+                await websocket.send_text("pong")
+    except WebSocketDisconnect:
+        await hub.disconnect(websocket)
+    except Exception:
+        await hub.disconnect(websocket)
+
 @app.get("/api/portfolio")
 def get_portfolio():
     return db_manager.get_live_portfolio()
 
 @app.post("/api/portfolio/buy")
-def buy_stock(order: BuyOrder):
+async def buy_stock(order: BuyOrder):
     ticker_clean = order.ticker.strip().upper()
     if not TICKER_REGEX.match(ticker_clean):
         raise HTTPException(status_code=400, detail="유효하지 않은 티커 심볼 형식입니다.")
@@ -134,10 +150,12 @@ def buy_stock(order: BuyOrder):
         quantity=order.quantity,
         buy_date=order.buy_date
     )
+    p_data = db_manager.get_live_portfolio()
+    await hub.broadcast("portfolio_update", p_data)
     return {"status": "success", "id": inserted_id, "message": f"{ticker_clean} {order.quantity}주 매수 등록 완료!"}
 
 @app.post("/api/portfolio/sell/{position_id}")
-def sell_stock(position_id: int, order: SellOrder):
+async def sell_stock(position_id: int, order: SellOrder):
     if position_id <= 0:
         raise HTTPException(status_code=400, detail="유효하지 않은 포지션 ID입니다.")
         
@@ -149,11 +167,15 @@ def sell_stock(position_id: int, order: SellOrder):
     )
     if not success:
         raise HTTPException(status_code=404, detail="포지션을 찾을 수 없습니다.")
+    p_data = db_manager.get_live_portfolio()
+    await hub.broadcast("portfolio_update", p_data)
     return {"status": "success", "message": f"포지션 #{position_id} 매도 완료 처리되었습니다."}
 
 @app.post("/api/portfolio/reset")
-def reset_portfolio():
+async def reset_portfolio():
     db_manager.reset_all_holdings()
+    p_data = db_manager.get_live_portfolio()
+    await hub.broadcast("portfolio_update", p_data)
     return {"status": "success", "message": "포트폴리오 계좌가 성공적으로 초기화(비우기)되었습니다."}
 
 @app.get("/api/recommendations/matrix")
@@ -181,7 +203,7 @@ def get_ticker_chart(ticker: str):
     return data
 
 @app.post("/api/scan_now")
-def trigger_scan_now():
+async def trigger_scan_now():
     try:
         import al_sangmoo_daily_bot
         bull_picks, neutral_picks, bear_picks, macro_climate = al_sangmoo_daily_bot.scan_and_select_2x2x2()
@@ -190,6 +212,7 @@ def trigger_scan_now():
         data = build_dashboard_data()
         global CHART_CACHE
         CHART_CACHE = data.get("charts", {})
+        await hub.broadcast("live_feed_update", data)
         return {
             "status": "success",
             "message": f"{today_str} 실시간 3-Gate 스캔 & 대시보드 갱신 완료!",
