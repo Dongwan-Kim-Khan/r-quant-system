@@ -3,55 +3,65 @@
   "title": "[바이킹스] 시장이 쫄아있는 근본적인 이유ㅣ[버디버디] NH투자증권 백찬규 센터장/하나증권 박승진 실장 초대석",
   "url": "https://www.youtube.com/watch?v=G7rMcAiS6rI",
   "macro_gauges": {
-    "vix": {
-      "val": 16.01,
-      "delta": "+7.5%",
-      "status": "NORMAL",
-      "label": "VIX 공포지수"
-    },
     "us10y": {
       "val": 4.696,
       "delta": "+0.04%p",
-      "status": "HIGH_BURDEN",
+      "status": "CRITICAL_BURDEN",
       "label": "미국채 10년물"
     },
+    "dxy": {
+      "val": 98.75,
+      "delta": "-0.2%",
+      "status": "SOFT_DOLLAR",
+      "label": "달러 인덱스(DXY)"
+    },
+    "vix": {
+      "val": 15.85,
+      "delta": "-1.0%",
+      "status": "CALM",
+      "label": "VIX 공포지수"
+    },
     "wti": {
-      "val": 86.18,
-      "delta": "-1.9%",
-      "status": "ELEVATED",
+      "val": 86.39,
+      "delta": "-1.6%",
+      "status": "INFLATION_SHOCK",
       "label": "WTI 국제유가"
+    },
+    "gold": {
+      "val": 4633.3,
+      "delta": "+2.6%",
+      "status": "HEDGE_DEMAND",
+      "label": "국제 금시세"
     }
   },
   "macro_climate": {
-    "msi_score": 82.9,
+    "msi_score": 74.9,
     "msi_breakdown": {
-      "m_hard": 30.0,
-      "m_hard_max": 40,
-      "vix_pts": 5.0,
-      "us10y_pts": 15.0,
+      "m_hard": 35.0,
+      "m_hard_max": 60,
+      "us10y_pts": 25.0,
+      "dxy_pts": 0.0,
+      "vix_pts": 0.0,
       "wti_pts": 10.0,
-      "m_nlp": 29.9,
-      "m_nlp_max": 30,
+      "m_nlp": 24.9,
+      "m_nlp_max": 25,
       "def_count": 42,
       "buy_count": 0,
-      "m_shock": 20.0,
-      "m_shock_max": 20,
-      "m_trend": 3.0,
-      "m_trend_max": 10
+      "m_shock": 15.0,
+      "m_shock_max": 15
     },
-    "macro_stance": "CASH_EXIT",
-    "macro_stance_kr": "현금화 / 숏 헤지 주간 (Red 81~100점)",
-    "macro_headline": "[거시 게이트 0단계: 위험 경보 (MSI 82.9점) / 현금 비중 50% 이상 확보]",
-    "macro_action_directive": "거시 위험 지수(MSI 82.9점)가 위험 구간에 진입했습니다. 신규 매수를 전면 중단하고 보유 종목 차익/손절 관리에 집중하십시오.",
+    "macro_stance": "DEFENSE_HOLD",
+    "macro_stance_kr": "신규 매수 보류 / 관망·현금 유지 주간 (Orange 50~74점)",
+    "macro_headline": "[거시 게이트 0단계: 거시 위험 지수 74.9점 / 신규 매수 보류 및 관망 권고]",
+    "macro_action_directive": "거시 위험 지수(MSI 74.9점: 10년물 금리 4.696%, 유가 $86.39) 및 방송 지침상, 현재 장세는 신규 매수를 쉬어가고 관망해야 하는 장세입니다. 다만 거시 리스크 진정 시 즉시 공략할 최우선 1순위 후보 종목을 사전 선별합니다.",
     "external_shocks": [
       "지정학적 분쟁 및 전쟁 리스크",
       "무역 분쟁 및 관세 불확실성",
-      "금리 경로 및 통화정책 영향권",
-      "인플레이션 및 원자재 변동성"
+      "금리 경로 및 통화정책 영향권"
     ],
     "defense_keyword_count": 42
   },
-  "macro_narrative": "지정학적 분쟁 및 전쟁 리스크 / 무역 분쟁 및 관세 불확실성 / 금리 경로 및 통화정책 영향권 / 인플레이션 및 원자재 변동성",
+  "macro_narrative": "지정학적 분쟁 및 전쟁 리스크 / 무역 분쟁 및 관세 불확실성 / 금리 경로 및 통화정책 영향권",
   "mentioned_stocks": [
     {
       "ticker": "GOOGL",
@@ -194,8 +204,8 @@
       "intent_desc": "진행자 주의 / 하락 우려 (리스크 경고)",
       "positive_reasons": [],
       "caution_reasons": [
-        "떨어",
-        "하락"
+        "하락",
+        "떨어"
       ],
       "sample_context": "서 얘기해 주면은 그 배당적인 측면에서 차기의 배당은 주주 환원율이라고 차기의 배당은 주주 환원율이라고 차기의 배당은 주주 환원율이라고 생각해 볼 수가 있거든요. 그러면은 생각해 볼 수가 있거든요. 그러면은 생각해 볼 수가 있거든요. 그러면은 지금의 삼성전자가 내놓을 주조 환원 지금의 삼성전자가 내놓을 주조 환원 지금의 삼성전자가 내놓을 주조 환원 책은 지난번에 한참 하락했을 때 한 책은 지난번에 한참 하락했을 때 한 책은 지난번에 한참 하락했을 때 한 3.6배 6배 정도까지 PR 기준 3.6배 6배 정"
     }
@@ -231,5 +241,5 @@
     "005930.KS"
   ],
   "transcript_char_count": 140675,
-  "fetched_at": "2026-08-21 14:13:42"
+  "fetched_at": "2026-08-21 17:33:23"
 }

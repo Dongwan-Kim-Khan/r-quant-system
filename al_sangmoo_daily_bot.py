@@ -408,10 +408,12 @@ def generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, por
     mentioned_stocks = stream_info.get("mentioned_stocks", [])
     
     vix = macro_gauges.get("vix", {"val": 15.8, "delta": "+0.4%", "status": "NORMAL"})
-    us10y = macro_gauges.get("us10y", {"val": 4.42, "delta": "+1.2bp", "status": "BURDEN"})
-    wti = macro_gauges.get("wti", {"val": 78.5, "delta": "-0.5%", "status": "STABLE"})
+    us10y = macro_gauges.get("us10y", {"val": 4.69, "delta": "+0.04%p", "status": "CRITICAL_BURDEN"})
+    dxy = macro_gauges.get("dxy", {"val": 99.5, "delta": "+0.1%", "status": "NEUTRAL"})
+    wti = macro_gauges.get("wti", {"val": 86.2, "delta": "-0.5%", "status": "INFLATION_SHOCK"})
+    gold = macro_gauges.get("gold", {"val": 4620.0, "delta": "+0.3%", "status": "STABLE"})
     
-    macro_headline = macro_climate.get("macro_headline", "[거시 게이트 0단계: 이번 주 신규 매수 보류 / 관망·현금 유지 권고]")
+    macro_headline = macro_climate.get("macro_headline", "[거시 게이트 0단계: 거시 위험 지수 경보 / 신규 매수 보류 권고]")
     macro_directive = macro_climate.get("macro_action_directive", "거시 지표 및 방송 지침상 이번 주는 관망 주간입니다.")
     external_shocks = ", ".join(macro_climate.get("external_shocks", ["금리 경로 영향권", "인플레이션 변동성"]))
     
@@ -431,10 +433,10 @@ def generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, por
             .header .meta {{ font-size: 12px; color: #94a3b8; margin-top: 6px; }}
             
             .macro-alert-bar {{ background: #fffbeb; border: 1px solid #fef3c7; border-left: 5px solid #d97706; padding: 14px 18px; font-size: 13px; color: #92400e; font-weight: 600; line-height: 1.5; }}
-            .macro-gauges-grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }}
-            .macro-gauge-box {{ background: #ffffff; border: 1px solid #e2e8f0; border-radius: 2px; padding: 8px 12px; font-size: 12px; }}
-            .macro-gauge-title {{ color: #64748b; font-size: 11px; text-transform: uppercase; font-weight: 600; }}
-            .macro-gauge-val {{ font-family: monospace; font-size: 14px; font-weight: 700; color: #0f172a; margin-top: 2px; }}
+            .macro-gauges-grid {{ display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 10px; }}
+            .macro-gauge-box {{ background: #ffffff; border: 1px solid #e2e8f0; border-radius: 2px; padding: 8px 10px; font-size: 11px; }}
+            .macro-gauge-title {{ color: #64748b; font-size: 10px; text-transform: uppercase; font-weight: 600; }}
+            .macro-gauge-val {{ font-family: monospace; font-size: 13px; font-weight: 700; color: #0f172a; margin-top: 2px; }}
             
             .section {{ padding: 20px 28px; border-bottom: 1px solid #e2e8f0; }}
             .section-title {{ font-size: 14px; font-weight: 700; color: #1e293b; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 14px; padding-bottom: 6px; border-bottom: 2px solid #0f172a; }}
@@ -470,19 +472,27 @@ def generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, por
                 <div style="font-size:14px; font-weight:800; color:#b45309; margin-bottom:4px;">{macro_headline}</div>
                 <div>{macro_directive}</div>
                 
-                <!-- Macro 3 Gauges -->
+                <!-- Macro 5 Gauges -->
                 <div class="macro-gauges-grid">
                     <div class="macro-gauge-box">
-                        <div class="macro-gauge-title">VIX 공포지수</div>
-                        <div class="macro-gauge-val">{vix['val']} <span style="font-size:11px; color:#64748b;">({vix['status']})</span></div>
+                        <div class="macro-gauge-title">10년물 국채금리</div>
+                        <div class="macro-gauge-val">{us10y['val']}% <span style="font-size:10px; color:#b45309;">({us10y['status']})</span></div>
                     </div>
                     <div class="macro-gauge-box">
-                        <div class="macro-gauge-title">미국채 10년물 금리</div>
-                        <div class="macro-gauge-val">{us10y['val']}% <span style="font-size:11px; color:#b45309;">({us10y['status']})</span></div>
+                        <div class="macro-gauge-title">달러 인덱스</div>
+                        <div class="macro-gauge-val">{dxy['val']} <span style="font-size:10px; color:#64748b;">({dxy['status']})</span></div>
+                    </div>
+                    <div class="macro-gauge-box">
+                        <div class="macro-gauge-title">VIX 공포지수</div>
+                        <div class="macro-gauge-val">{vix['val']} <span style="font-size:10px; color:#64748b;">({vix['status']})</span></div>
                     </div>
                     <div class="macro-gauge-box">
                         <div class="macro-gauge-title">WTI 국제유가</div>
-                        <div class="macro-gauge-val">${wti['val']} <span style="font-size:11px; color:#166534;">({wti['status']})</span></div>
+                        <div class="macro-gauge-val">${wti['val']} <span style="font-size:10px; color:#b45309;">({wti['status']})</span></div>
+                    </div>
+                    <div class="macro-gauge-box">
+                        <div class="macro-gauge-title">국제 금시세</div>
+                        <div class="macro-gauge-val">${gold['val']} <span style="font-size:10px; color:#64748b;">({gold['status']})</span></div>
                     </div>
                 </div>
             </div>

@@ -353,75 +353,88 @@
             <!-- MSI 0~100 Visual Gauge Bar -->
             <div style="margin-top:10px;">
                 <div style="display:flex; justify-content:space-between; font-size:10px; color:#94a3b8; font-weight:600; text-transform:uppercase; margin-bottom:3px;">
-                    <span>Active Buy (0~30)</span>
-                    <span>Selective Buy (31~60)</span>
-                    <span style="color:#fbbf24; font-weight:800;">Defense Hold (61~80) [현재]</span>
-                    <span>Cash Exit (81~100)</span>
+                    <span>Active Buy (0~29)</span>
+                    <span>Selective Buy (30~49)</span>
+                    <span style="color:#fbbf24; font-weight:800;">Defense Hold (50~74)</span>
+                    <span style="color:#f87171; font-weight:800;">Cash Exit (75~100)</span>
                 </div>
-                <div style="height:6px; background:linear-gradient(to right, #10b981 0%, #10b981 30%, #eab308 31%, #eab308 60%, #f97316 61%, #f97316 80%, #ef4444 81%, #ef4444 100%); border-radius:3px; position:relative;">
-                    <div id="msiNeedle" style="position:absolute; left:64.8%; top:-4px; width:4px; height:14px; background:#ffffff; border-radius:2px; box-shadow:0 0 6px #ffffff; transform:translateX(-50%);"></div>
+                <div style="height:6px; background:linear-gradient(to right, #10b981 0%, #10b981 30%, #eab308 30%, #eab308 50%, #f97316 50%, #f97316 75%, #ef4444 75%, #ef4444 100%); border-radius:3px; position:relative;">
+                    <div id="msiNeedle" style="position:absolute; left:75.0%; top:-4px; width:4px; height:14px; background:#ffffff; border-radius:2px; box-shadow:0 0 6px #ffffff; transform:translateX(-50%);"></div>
                 </div>
             </div>
 
-            <!-- MSI 4-Factor Mathematical Breakdown Grid -->
-            <div class="macro-banner-grid">
+            <!-- MSI 3-Factor Mathematical Breakdown Grid -->
+            <div class="macro-banner-grid" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-top:12px; background:rgba(0,0,0,0.25); padding:10px 14px; border-radius:2px; font-size:11px;">
                 <div>
-                    <div style="color:#94a3b8; font-size:10px; font-weight:600;">1. 하드 지표 (M_hard: 40%)</div>
-                    <div style="font-weight:700; color:#f8fafc; font-family:'JetBrains Mono';" id="msiHardVal">25.0 / 40.0 pt</div>
-                    <div style="color:#64748b; font-size:10px;" id="msiHardSub">VIX:0 | 10Y:15 | 유가:10</div>
+                    <div style="color:#94a3b8; font-size:10px; font-weight:600;">1. 금융 거시 4대 축 (M_hard: 60%)</div>
+                    <div style="font-weight:700; color:#f8fafc; font-family:'JetBrains Mono';" id="msiHardVal">40.0 / 60.0 pt</div>
+                    <div style="color:#64748b; font-size:10px;" id="msiHardSub">10Y:25.0 | DXY:0.0 | VIX:5.0 | 유가:10.0</div>
                 </div>
                 <div>
-                    <div style="color:#94a3b8; font-size:10px; font-weight:600;">2. 방송 NLP 지침 (M_nlp: 30%)</div>
-                    <div style="font-weight:700; color:#f8fafc; font-family:'JetBrains Mono';" id="msiNlpVal">21.8 / 30.0 pt</div>
-                    <div style="color:#64748b; font-size:10px;" id="msiNlpSub">방어 8회 vs 매수 3회</div>
+                    <div style="color:#94a3b8; font-size:10px; font-weight:600;">2. 방송 육성 지침 (M_nlp: 25%)</div>
+                    <div style="font-weight:700; color:#f8fafc; font-family:'JetBrains Mono';" id="msiNlpVal">20.0 / 25.0 pt</div>
+                    <div style="color:#64748b; font-size:10px;" id="msiNlpSub">방어 42회 vs 매수 0회</div>
                 </div>
                 <div>
-                    <div style="color:#94a3b8; font-size:10px; font-weight:600;">3. 외생 충격 (M_shock: 20%)</div>
-                    <div style="font-weight:700; color:#f8fafc; font-family:'JetBrains Mono';" id="msiShockVal">15.0 / 20.0 pt</div>
-                    <div style="color:#64748b; font-size:10px;" id="msiShockSub">지정학+10 | 관세+5</div>
-                </div>
-                <div>
-                    <div style="color:#94a3b8; font-size:10px; font-weight:600;">4. 지수 추세 (M_trend: 10%)</div>
-                    <div style="font-weight:700; color:#f8fafc; font-family:'JetBrains Mono';" id="msiTrendVal">3.0 / 10.0 pt</div>
-                    <div style="color:#64748b; font-size:10px;">구름대 상단 유지</div>
+                    <div style="color:#94a3b8; font-size:10px; font-weight:600;">3. 외생 충격 (M_shock: 15%)</div>
+                    <div style="font-weight:700; color:#f8fafc; font-family:'JetBrains Mono';" id="msiShockVal">15.0 / 15.0 pt</div>
+                    <div style="color:#64748b; font-size:10px;" id="msiShockSub">지정학+6 | 관세+4 | 금리경로+5</div>
                 </div>
             </div>
         </div>
 
-        <div class="macro-gauges-strip">
-            <!-- Gauge 1: VIX -->
-            <div style="background:#111827; border:1px solid var(--border); border-radius:2px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;">
-                <div>
-                    <div style="font-size:10px; color:#94a3af; text-transform:uppercase; font-weight:600;">VIX 공포지수</div>
-                    <div style="font-size:15px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6;" id="gaugeVixVal">14.25</div>
-                </div>
-                <span id="gaugeVixBadge" style="background:rgba(16,185,129,0.15); color:#34d399; font-size:10px; padding:2px 6px; border-radius:2px; font-weight:700;">CALM</span>
-            </div>
-
-            <!-- Gauge 2: US 10Y -->
+        <div class="macro-gauges-strip" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:8px;">
+            <!-- Gauge 1: US 10Y -->
             <div style="background:#111827; border:1px solid var(--border); border-radius:2px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;">
                 <div>
                     <div style="font-size:10px; color:#94a3af; text-transform:uppercase; font-weight:600;">미국채 10년물 금리</div>
                     <div style="font-size:15px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6;" id="gaugeUs10yVal">4.696%</div>
                 </div>
-                <span id="gaugeUs10yBadge" style="background:rgba(239,68,68,0.15); color:#f87171; font-size:10px; padding:2px 6px; border-radius:2px; font-weight:700;">HIGH BURDEN</span>
+                <span id="gaugeUs10yBadge" style="background:rgba(239,68,68,0.15); color:#f87171; font-size:10px; padding:2px 6px; border-radius:2px; font-weight:700;">CRITICAL</span>
             </div>
 
-            <!-- Gauge 3: WTI -->
+            <!-- Gauge 2: Dollar Index (DXY) -->
+            <div style="background:#111827; border:1px solid var(--border); border-radius:2px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div style="font-size:10px; color:#94a3af; text-transform:uppercase; font-weight:600;">달러 인덱스 (DXY)</div>
+                    <div style="font-size:15px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6;" id="gaugeDxyVal">98.75</div>
+                </div>
+                <span id="gaugeDxyBadge" style="background:rgba(16,185,129,0.15); color:#34d399; font-size:10px; padding:2px 6px; border-radius:2px; font-weight:700;">SOFT</span>
+            </div>
+
+            <!-- Gauge 3: VIX -->
+            <div style="background:#111827; border:1px solid var(--border); border-radius:2px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div style="font-size:10px; color:#94a3af; text-transform:uppercase; font-weight:600;">VIX 공포지수</div>
+                    <div style="font-size:15px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6;" id="gaugeVixVal">15.87</div>
+                </div>
+                <span id="gaugeVixBadge" style="background:rgba(16,185,129,0.15); color:#34d399; font-size:10px; padding:2px 6px; border-radius:2px; font-weight:700;">NORMAL</span>
+            </div>
+
+            <!-- Gauge 4: WTI -->
             <div style="background:#111827; border:1px solid var(--border); border-radius:2px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;">
                 <div>
                     <div style="font-size:10px; color:#94a3af; text-transform:uppercase; font-weight:600;">WTI 국제유가</div>
-                    <div style="font-size:15px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6;" id="gaugeWtiVal">$85.15</div>
+                    <div style="font-size:15px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6;" id="gaugeWtiVal">$86.30</div>
                 </div>
-                <span id="gaugeWtiBadge" style="background:rgba(245,158,11,0.15); color:#fbbf24; font-size:10px; padding:2px 6px; border-radius:2px; font-weight:700;">ELEVATED</span>
+                <span id="gaugeWtiBadge" style="background:rgba(239,68,68,0.15); color:#f87171; font-size:10px; padding:2px 6px; border-radius:2px; font-weight:700;">SHOCK</span>
+            </div>
+
+            <!-- Gauge 5: Gold -->
+            <div style="background:#111827; border:1px solid var(--border); border-radius:2px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div style="font-size:10px; color:#94a3af; text-transform:uppercase; font-weight:600;">국제 금시세</div>
+                    <div style="font-size:15px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6;" id="gaugeGoldVal">$4,628</div>
+                </div>
+                <span id="gaugeGoldBadge" style="background:rgba(59,130,246,0.15); color:#60a5fa; font-size:10px; padding:2px 6px; border-radius:2px; font-weight:700;">STABLE</span>
             </div>
 
             <!-- Live Stream & Narrative -->
-            <div style="background:#111827; border:1px solid var(--border); border-radius:2px; padding:8px 12px; font-size:11px;">
-                <div style="color:#94a3af; font-weight:600;">LIVE BROADCAST & EXTERNAL RISKS:</div>
+            <div style="grid-column: 1 / -1; background:#111827; border:1px solid var(--border); border-radius:2px; padding:8px 12px; font-size:11px;">
+                <div style="color:#94a3af; font-weight:600;">LIVE BROADCAST & MACRO RISK NARRATIVE:</div>
                 <div style="margin-top:2px;">
-                    <a href="https://www.youtube.com/@wepoll_original/streams" target="_blank" id="streamLink" style="color:#60a5fa; text-decoration:none; font-weight:700;">Interest Rates & Oil Prices Tipping Point</a>
-                    <span style="color:#9ca3af; margin-left:6px;" id="macroNarrative">| 지정학적 리스크 / 인플레이션 변동성</span>
+                    <a href="https://www.youtube.com/@wepoll_original/streams" target="_blank" id="streamLink" style="color:#60a5fa; text-decoration:none; font-weight:700;">시장이 쫄아있는 근본적인 이유</a>
+                    <span style="color:#9ca3af; margin-left:6px;" id="macroNarrative">| 지정학적 리스크 / 금리 경로 불확실성</span>
                 </div>
             </div>
         </div>
@@ -1119,27 +1132,38 @@
                     }
                     if (mc.msi_breakdown) {
                         const mb = mc.msi_breakdown;
-                        document.getElementById("msiHardVal").textContent = `${mb.m_hard.toFixed(1)} / 40.0 pt`;
-                        document.getElementById("msiHardSub").textContent = `VIX:${mb.vix_pts} | 10Y:${mb.us10y_pts} | 유가:${mb.wti_pts}`;
-                        document.getElementById("msiNlpVal").textContent = `${mb.m_nlp.toFixed(1)} / 30.0 pt`;
-                        document.getElementById("msiNlpSub").textContent = `방어 ${mb.def_count}회 vs 매수 ${mb.buy_count}회`;
-                        document.getElementById("msiShockVal").textContent = `${mb.m_shock.toFixed(1)} / 20.0 pt`;
-                        document.getElementById("msiTrendVal").textContent = `${mb.m_trend.toFixed(1)} / 10.0 pt`;
+                        document.getElementById("msiHardVal").textContent = `${mb.m_hard.toFixed(1)} / ${mb.m_hard_max || 60}.0 pt`;
+                        document.getElementById("msiHardSub").textContent = `10Y:${mb.us10y_pts !== undefined ? mb.us10y_pts : 0} | DXY:${mb.dxy_pts !== undefined ? mb.dxy_pts : 0} | VIX:${mb.vix_pts !== undefined ? mb.vix_pts : 0} | 유가:${mb.wti_pts !== undefined ? mb.wti_pts : 0}`;
+                        document.getElementById("msiNlpVal").textContent = `${mb.m_nlp.toFixed(1)} / ${mb.m_nlp_max || 25}.0 pt`;
+                        document.getElementById("msiNlpSub").textContent = `방어 ${mb.def_count !== undefined ? mb.def_count : 0}회 vs 매수 ${mb.buy_count !== undefined ? mb.buy_count : 0}회`;
+                        document.getElementById("msiShockVal").textContent = `${mb.m_shock.toFixed(1)} / ${mb.m_shock_max || 15}.0 pt`;
                     }
                 }
                 if (data.macro.macro_gauges) {
                     const mg = data.macro.macro_gauges;
-                    if (mg.vix) {
-                        document.getElementById("gaugeVixVal").textContent = Number(mg.vix.val).toFixed(2);
-                        document.getElementById("gaugeVixBadge").textContent = mg.vix.status || 'NORMAL';
-                    }
                     if (mg.us10y) {
                         document.getElementById("gaugeUs10yVal").textContent = Number(mg.us10y.val).toFixed(3) + '%';
                         document.getElementById("gaugeUs10yBadge").textContent = mg.us10y.status || 'BURDEN';
+                        document.getElementById("gaugeUs10yBadge").style.color = (mg.us10y.val >= 4.5) ? '#f87171' : ((mg.us10y.val >= 4.3) ? '#fbbf24' : '#34d399');
+                    }
+                    if (mg.dxy) {
+                        document.getElementById("gaugeDxyVal").textContent = Number(mg.dxy.val).toFixed(2);
+                        document.getElementById("gaugeDxyBadge").textContent = mg.dxy.status || 'NEUTRAL';
+                        document.getElementById("gaugeDxyBadge").style.color = (mg.dxy.val >= 103.0) ? '#f87171' : '#34d399';
+                    }
+                    if (mg.vix) {
+                        document.getElementById("gaugeVixVal").textContent = Number(mg.vix.val).toFixed(2);
+                        document.getElementById("gaugeVixBadge").textContent = mg.vix.status || 'NORMAL';
+                        document.getElementById("gaugeVixBadge").style.color = (mg.vix.val >= 20.0) ? '#f87171' : '#34d399';
                     }
                     if (mg.wti) {
                         document.getElementById("gaugeWtiVal").textContent = '$' + Number(mg.wti.val).toFixed(2);
                         document.getElementById("gaugeWtiBadge").textContent = mg.wti.status || 'STABLE';
+                        document.getElementById("gaugeWtiBadge").style.color = (mg.wti.val >= 82.0) ? '#f87171' : '#34d399';
+                    }
+                    if (mg.gold) {
+                        document.getElementById("gaugeGoldVal").textContent = '$' + Number(mg.gold.val).toFixed(0);
+                        document.getElementById("gaugeGoldBadge").textContent = mg.gold.status || 'STABLE';
                     }
                 }
                 if (data.macro.macro_narrative) document.getElementById("macroNarrative").textContent = "| " + data.macro.macro_narrative;

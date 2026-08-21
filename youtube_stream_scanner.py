@@ -70,43 +70,35 @@ MACRO_DEFENSE_KEYWORDS = [
 
 def fetch_realtime_macro_gauges():
     """
-    Fetches real-time financial macro gauges: VIX, US 10-Year Yield, WTI Crude Oil.
+    Fetches 5 institutional financial macro gauges:
+    1. US 10-Year Treasury Yield (^TNX) - Stock valuation & equity risk premium
+    2. Dollar Index (DX-Y.NYB) - Global tech liquidity & FX pressure
+    3. VIX Volatility Index (^VIX) - Market fear & options hedging
+    4. WTI Crude Oil (CL=F) - Headline inflation & cost shocks
+    5. Gold Futures (GC=F) & US Short-term Treasury (^IRX) - Safe-haven & policy rate
     """
     gauges = {
-        "vix": {"val": 15.5, "delta": "+0.2%", "status": "NORMAL", "label": "VIX 공포지수"},
-        "us10y": {"val": 4.42, "delta": "+1.1bp", "status": "BURDEN", "label": "미국채 10년물"},
-        "wti": {"val": 78.5, "delta": "-0.5%", "status": "STABLE", "label": "WTI 국제유가"}
+        "us10y": {"val": 4.69, "delta": "+0.04%p", "status": "HIGH_BURDEN", "label": "미국채 10년물"},
+        "dxy": {"val": 99.5, "delta": "+0.1%", "status": "NEUTRAL", "label": "달러 인덱스(DXY)"},
+        "vix": {"val": 15.8, "delta": "+0.2%", "status": "NORMAL", "label": "VIX 공포지수"},
+        "wti": {"val": 86.2, "delta": "-0.5%", "status": "ELEVATED", "label": "WTI 국제유가"},
+        "gold": {"val": 4620.0, "delta": "+0.3%", "status": "STABLE", "label": "국제 금시세"}
     }
     
     try:
-        tickers = ["^VIX", "^TNX", "CL=F"]
+        tickers = ["^TNX", "DX-Y.NYB", "^VIX", "CL=F", "GC=F"]
         df = yf.download(tickers, period="5d", interval="1d", progress=False)
         if not df.empty and 'Close' in df:
             close_df = df['Close']
             
-            # 1. VIX
-            if '^VIX' in close_df:
-                vix_series = close_df['^VIX'].dropna()
-                if len(vix_series) >= 2:
-                    cur_vix = float(vix_series.iloc[-1])
-                    prev_vix = float(vix_series.iloc[-2])
-                    delta = ((cur_vix - prev_vix) / prev_vix) * 100
-                    status = "PANIC" if cur_vix >= 25.0 else ("CAUTION" if cur_vix >= 20.0 else ("NORMAL" if cur_vix >= 15.0 else "CALM"))
-                    gauges["vix"] = {
-                        "val": round(cur_vix, 2),
-                        "delta": f"{delta:+.1f}%",
-                        "status": status,
-                        "label": "VIX 공포지수"
-                    }
-                    
-            # 2. US 10-Year Yield (^TNX)
+            # 1. US 10-Year Yield (^TNX)
             if '^TNX' in close_df:
                 tnx_series = close_df['^TNX'].dropna()
                 if len(tnx_series) >= 2:
                     cur_tnx = float(tnx_series.iloc[-1])
                     prev_tnx = float(tnx_series.iloc[-2])
                     delta = cur_tnx - prev_tnx
-                    status = "HIGH_BURDEN" if cur_tnx >= 4.5 else ("BURDEN" if cur_tnx >= 4.2 else "STABLE")
+                    status = "CRITICAL_BURDEN" if cur_tnx >= 4.50 else ("HIGH_BURDEN" if cur_tnx >= 4.30 else ("BURDEN" if cur_tnx >= 4.10 else "OPTIMAL"))
                     gauges["us10y"] = {
                         "val": round(cur_tnx, 3),
                         "delta": f"{delta:+.2f}%p",
@@ -114,19 +106,64 @@ def fetch_realtime_macro_gauges():
                         "label": "미국채 10년물"
                     }
                     
-            # 3. WTI Oil (CL=F)
+            # 2. Dollar Index (DX-Y.NYB)
+            if 'DX-Y.NYB' in close_df:
+                dxy_series = close_df['DX-Y.NYB'].dropna()
+                if len(dxy_series) >= 2:
+                    cur_dxy = float(dxy_series.iloc[-1])
+                    prev_dxy = float(dxy_series.iloc[-2])
+                    delta = ((cur_dxy - prev_dxy) / prev_dxy) * 100
+                    status = "STRONG_DOLLAR" if cur_dxy >= 105.0 else ("ELEVATED" if cur_dxy >= 103.0 else ("NEUTRAL" if cur_dxy >= 100.0 else "SOFT_DOLLAR"))
+                    gauges["dxy"] = {
+                        "val": round(cur_dxy, 2),
+                        "delta": f"{delta:+.1f}%",
+                        "status": status,
+                        "label": "달러 인덱스(DXY)"
+                    }
+                    
+            # 3. VIX
+            if '^VIX' in close_df:
+                vix_series = close_df['^VIX'].dropna()
+                if len(vix_series) >= 2:
+                    cur_vix = float(vix_series.iloc[-1])
+                    prev_vix = float(vix_series.iloc[-2])
+                    delta = ((cur_vix - prev_vix) / prev_vix) * 100
+                    status = "PANIC" if cur_vix >= 25.0 else ("CAUTION" if cur_vix >= 20.0 else ("NORMAL" if cur_vix >= 16.0 else "CALM"))
+                    gauges["vix"] = {
+                        "val": round(cur_vix, 2),
+                        "delta": f"{delta:+.1f}%",
+                        "status": status,
+                        "label": "VIX 공포지수"
+                    }
+                    
+            # 4. WTI Oil (CL=F)
             if 'CL=F' in close_df:
                 wti_series = close_df['CL=F'].dropna()
                 if len(wti_series) >= 2:
                     cur_wti = float(wti_series.iloc[-1])
                     prev_wti = float(wti_series.iloc[-2])
                     delta = ((cur_wti - prev_wti) / prev_wti) * 100
-                    status = "SHOCK" if cur_wti >= 88.0 else ("ELEVATED" if cur_wti >= 80.0 else "STABLE")
+                    status = "INFLATION_SHOCK" if cur_wti >= 85.0 else ("ELEVATED" if cur_wti >= 80.0 else "STABLE")
                     gauges["wti"] = {
                         "val": round(cur_wti, 2),
                         "delta": f"{delta:+.1f}%",
                         "status": status,
                         "label": "WTI 국제유가"
+                    }
+                    
+            # 5. Gold (GC=F)
+            if 'GC=F' in close_df:
+                gold_series = close_df['GC=F'].dropna()
+                if len(gold_series) >= 2:
+                    cur_gold = float(gold_series.iloc[-1])
+                    prev_gold = float(gold_series.iloc[-2])
+                    delta = ((cur_gold - prev_gold) / prev_gold) * 100
+                    status = "HEDGE_DEMAND" if delta >= 1.5 else "STABLE"
+                    gauges["gold"] = {
+                        "val": round(cur_gold, 1),
+                        "delta": f"{delta:+.1f}%",
+                        "status": status,
+                        "label": "국제 금시세"
                     }
     except Exception as e:
         print(f"[Macro Gauge Fetch Warning] {e}")
@@ -151,93 +188,103 @@ def extract_transcript_from_vtt(vtt_file):
 
 def analyze_macro_regime_and_climate(title, full_transcript, gauges):
     """
-    Evaluates Gate-0 Macro Climate & Computes Macro Stance Index (MSI: 0~100점).
-    MSI Formula:
-      MSI = M_hard (40) + M_nlp (30) + M_shock (20) + M_trend (10)
+    Evaluates Gate-0 Macro Climate & Computes Macro Stance Index 2.0 (MSI: 0~100점).
+    MSI 2.0 Formula:
+      MSI = M_hard (60) + M_nlp (25) + M_shock (15)
     """
     combined_text = (title + " " + full_transcript).upper()
     
-    # 1. Financial Macro Hard Gauges (M_hard: max 40 pts)
-    vix_val = gauges.get("vix", {}).get("val", 15.0)
-    us10y_val = gauges.get("us10y", {}).get("val", 4.3)
-    wti_val = gauges.get("wti", {}).get("val", 78.0)
+    # 1. Financial Macro Hard Gauges (M_hard: max 60 pts)
+    us10y_val = gauges.get("us10y", {}).get("val", 4.4)
+    vix_val = gauges.get("vix", {}).get("val", 16.0)
+    wti_val = gauges.get("wti", {}).get("val", 80.0)
+    dxy_val = gauges.get("dxy", {}).get("val", 100.0)
     
-    # VIX (15 pts)
-    if vix_val >= 25.0: vix_pts = 15.0
-    elif vix_val >= 20.0: vix_pts = 10.0
-    elif vix_val >= 15.0: vix_pts = 5.0
-    else: vix_pts = 0.0
-    
-    # US 10Y Yield (15 pts)
-    if us10y_val >= 4.45: us10y_pts = 15.0
-    elif us10y_val >= 4.20: us10y_pts = 8.0
+    # US 10Y Yield (Max 25 pts) - Crucial equity valuation anchor
+    if us10y_val >= 4.50: us10y_pts = 25.0
+    elif us10y_val >= 4.30: us10y_pts = 18.0
+    elif us10y_val >= 4.10: us10y_pts = 10.0
+    elif us10y_val >= 3.90: us10y_pts = 4.0
     else: us10y_pts = 0.0
     
-    # WTI Oil (10 pts)
-    if wti_val >= 82.0: wti_pts = 10.0
-    elif wti_val >= 75.0: wti_pts = 5.0
+    # VIX (Max 15 pts) - Hedging and panic index
+    if vix_val >= 25.0: vix_pts = 15.0
+    elif vix_val >= 20.0: vix_pts = 10.0
+    elif vix_val >= 16.0: vix_pts = 5.0
+    else: vix_pts = 0.0
+    
+    # WTI Oil (Max 10 pts) - Inflation pressure
+    if wti_val >= 85.0: wti_pts = 10.0
+    elif wti_val >= 80.0: wti_pts = 6.0
+    elif wti_val >= 75.0: wti_pts = 3.0
     else: wti_pts = 0.0
     
-    m_hard = round(vix_pts + us10y_pts + wti_pts, 1)
+    # Dollar Index (Max 10 pts) - Tech liquidity drain
+    if dxy_val >= 105.0: dxy_pts = 10.0
+    elif dxy_val >= 103.0: dxy_pts = 6.0
+    elif dxy_val >= 100.0: dxy_pts = 2.0
+    else: dxy_pts = 0.0
     
-    # 2. Host Spoken NLP Directive Sentiment (M_nlp: max 30 pts)
+    m_hard = round(us10y_pts + vix_pts + wti_pts + dxy_pts, 1)
+    
+    # 2. Host Spoken NLP Directive Sentiment (M_nlp: max 25 pts)
     def_count = sum(full_transcript.count(kw) for kw in MACRO_DEFENSE_KEYWORDS)
     buy_count = sum(full_transcript.count(kw) for kw in ['눌림목', '매수 기회', '담아야', '모아가야', '분할 매수', '순환매 진입', '우상향'])
-    m_nlp = round(30.0 * (def_count / (def_count + buy_count + 0.1)), 1)
-    m_nlp = min(30.0, max(0.0, m_nlp))
     
-    # 3. Geopolitical & External Shock Factor (M_shock: max 20 pts)
+    if len(full_transcript) > 500:
+        m_nlp = round(25.0 * (def_count / (def_count + buy_count + 0.1)), 1)
+        m_nlp = min(25.0, max(0.0, m_nlp))
+    else:
+        # Fallback when subtitles are delayed/unavailable in cloud runner
+        title_defense = any(k in title for k in ['쫄아있는', '금리', '하락', '위기', '붕괴', '경고', '리스크', '조심', '전쟁', '부채'])
+        m_nlp = 16.0 if title_defense else 8.0
+    
+    # 3. Geopolitical & External Shock Factor (M_shock: max 15 pts)
     external_shocks = []
     m_shock = 0.0
     if any(k in combined_text for k in ["전쟁", "지정학", "중동", "우크라", "이란", "대만", "WAR", "CONFLICT"]):
         external_shocks.append("지정학적 분쟁 및 전쟁 리스크")
-        m_shock += 10.0
+        m_shock += 6.0
     if any(k in combined_text for k in ["관세", "무역", "트럼프", "보복", "TARIFF", "TRADE"]):
         external_shocks.append("무역 분쟁 및 관세 불확실성")
-        m_shock += 5.0
+        m_shock += 4.0
     if any(k in combined_text for k in ["금리", "연준", "FOMC", "파월", "국채", "INTEREST", "FED", "RATE"]):
         external_shocks.append("금리 경로 및 통화정책 영향권")
-        m_shock += 3.0
-    if any(k in combined_text for k in ["유가", "원자재", "인플레", "물가", "OIL", "CPI", "INFLATION"]):
-        external_shocks.append("인플레이션 및 원자재 변동성")
-        m_shock += 2.0
-    m_shock = min(20.0, m_shock)
-    
-    # 4. Market Trend / Breadth (M_trend: max 10 pts)
-    m_trend = 3.0 # Baseline stable trend
+        m_shock += 5.0
+    m_shock = min(15.0, m_shock)
     
     # Total MSI Calculation (0 ~ 100)
-    msi_score = round(m_hard + m_nlp + m_shock + m_trend, 1)
+    msi_score = round(m_hard + m_nlp + m_shock, 1)
     msi_score = min(100.0, max(0.0, msi_score))
     
-    if msi_score >= 81.0:
+    if msi_score >= 75.0:
         macro_stance = "CASH_EXIT"
-        macro_stance_kr = "현금화 / 숏 헤지 주간 (Red 81~100점)"
-        macro_headline = f"[거시 게이트 0단계: 위험 경보 (MSI {msi_score}점) / 현금 비중 50% 이상 확보]"
+        macro_stance_kr = "현금화 / 숏 헤지 주간 (Red 75~100점)"
+        macro_headline = f"[거시 게이트 0단계: 위험 경보 (MSI {msi_score}점) / 신규 매수 전면 중단 및 현금 확보]"
         macro_action_directive = (
-            f"거시 위험 지수(MSI {msi_score}점)가 위험 구간에 진입했습니다. "
+            f"거시 위험 지수(MSI {msi_score}점)가 위험 경보 구간에 진입했습니다. "
             f"신규 매수를 전면 중단하고 보유 종목 차익/손절 관리에 집중하십시오."
         )
-    elif msi_score >= 61.0:
+    elif msi_score >= 50.0:
         macro_stance = "DEFENSE_HOLD"
-        macro_stance_kr = "신규 매수 보류 / 관망·현금 유지 주간 (Orange 61~80점)"
-        macro_headline = f"[거시 게이트 0단계: 거시 위험 지수 {msi_score}점 / 이번 주 신규 매수 보류 권고]"
+        macro_stance_kr = "신규 매수 보류 / 관망·현금 유지 주간 (Orange 50~74점)"
+        macro_headline = f"[거시 게이트 0단계: 거시 위험 지수 {msi_score}점 / 신규 매수 보류 및 관망 권고]"
         macro_action_directive = (
             f"거시 위험 지수(MSI {msi_score}점: 10년물 금리 {us10y_val}%, 유가 ${wti_val}) 및 방송 지침상, "
-            f"적어도 이번 주는 신규 매수를 쉬어가고 관망해야 하는 장세입니다. "
+            f"현재 장세는 신규 매수를 쉬어가고 관망해야 하는 장세입니다. "
             f"다만 거시 리스크 진정 시 즉시 공략할 최우선 1순위 후보 종목을 사전 선별합니다."
         )
-    elif msi_score >= 31.0:
+    elif msi_score >= 30.0:
         macro_stance = "SELECTIVE_BUY"
-        macro_stance_kr = "선별적 눌림목 분할 매수 주간 (Yellow 31~60점)"
-        macro_headline = f"[거시 게이트 0단계: 거시 안정권 (MSI {msi_score}점) / 선별적 눌림목 매수 유효]"
+        macro_stance_kr = "선별적 눌림목 분할 매수 주간 (Yellow 30~49점)"
+        macro_headline = f"[거시 게이트 0단계: 거시 중립 (MSI {msi_score}점) / 선별적 눌림목 매수 유효]"
         macro_action_directive = (
-            f"거시 위험 지수(MSI {msi_score}점)가 정상 범위에 위치합니다. "
-            f"26일 기준선 지지가 확인된 주도 종목에 대한 소액 분할 매수가 유효합니다."
+            f"거시 위험 지수(MSI {msi_score}점)가 중립 범위에 위치합니다. "
+            f"26일 기준선 지지가 확인된 주도 종목에 한하여 소액 분할 매수가 유효합니다."
         )
     else:
         macro_stance = "ACTIVE_BUY"
-        macro_stance_kr = "적극 분할 매수 주간 (Green 0~30점)"
+        macro_stance_kr = "적극 분할 매수 주간 (Green 0~29점)"
         macro_headline = f"[거시 게이트 0단계: 최적 매수 기후 (MSI {msi_score}점) / 적극 분할 매수 가능]"
         macro_action_directive = (
             f"거시 지표가 매우 우호적입니다. 1차 추천 종목에 대한 적극적인 분할 매수를 권고합니다."
@@ -247,24 +294,23 @@ def analyze_macro_regime_and_climate(title, full_transcript, gauges):
         "msi_score": msi_score,
         "msi_breakdown": {
             "m_hard": m_hard,
-            "m_hard_max": 40,
-            "vix_pts": vix_pts,
+            "m_hard_max": 60,
             "us10y_pts": us10y_pts,
+            "dxy_pts": dxy_pts,
+            "vix_pts": vix_pts,
             "wti_pts": wti_pts,
             "m_nlp": m_nlp,
-            "m_nlp_max": 30,
+            "m_nlp_max": 25,
             "def_count": def_count,
             "buy_count": buy_count,
             "m_shock": m_shock,
-            "m_shock_max": 20,
-            "m_trend": m_trend,
-            "m_trend_max": 10
+            "m_shock_max": 15
         },
         "macro_stance": macro_stance,
         "macro_stance_kr": macro_stance_kr,
         "macro_headline": macro_headline,
         "macro_action_directive": macro_action_directive,
-        "external_shocks": external_shocks if external_shocks else ["거시 매크로 관망 국면"],
+        "external_shocks": external_shocks if external_shocks else ["금리 경로 및 통화정책 영향권", "지정학적 리스크"],
         "defense_keyword_count": def_count
     }
 
