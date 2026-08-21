@@ -47,8 +47,14 @@ def test_dashboard_json_structure_and_origin():
     assert "primary_accumulation" in data, "Missing primary_accumulation in dashboard_data.json"
     assert "sniper_radar" in data, "Missing sniper_radar in dashboard_data.json"
     assert "signal_tracker" in data, "Missing signal_tracker in dashboard_data.json"
-    assert "charts" in data, "Missing charts in dashboard_data.json"
-    assert len(data["charts"]) >= 50, f"Expected charts for at least 50 universe stocks, got {len(data['charts'])}"
+    assert "chart_intelligence" in data, "Missing chart_intelligence in dashboard_data.json"
+    assert len(data["chart_intelligence"]) >= 50, f"Expected chart intelligence for at least 50 stocks, got {len(data['chart_intelligence'])}"
+    
+    # Check modular individual chart directory
+    charts_dir = os.path.join(BASE_DIR, "data", "charts")
+    assert os.path.exists(charts_dir), "data/charts directory must exist"
+    chart_files = [f for f in os.listdir(charts_dir) if f.endswith(".json")]
+    assert len(chart_files) >= 50, f"Expected at least 50 chart files in data/charts, got {len(chart_files)}"
     
     # Check origin tagging
     for item in data.get("signal_tracker", []):

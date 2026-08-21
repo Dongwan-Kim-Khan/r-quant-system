@@ -65,6 +65,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 HISTORY_CSV = os.path.join(BASE_DIR, "trade_history.csv")
 OUTPUT_JSON = os.path.join(BASE_DIR, "dashboard_data.json")
 STREAM_CACHE = os.path.join(BASE_DIR, "wepoll_latest_stream.json")
+CHARTS_DIR = os.path.join(BASE_DIR, "data", "charts")
 
 from concurrent.futures import ThreadPoolExecutor
 from al_sangmoo.core.constants import WATCHLIST, STOCK_DICT
@@ -449,22 +450,51 @@ def build_dashboard_data():
                 if d:
                     chart_data[tk] = d
 
+    # 1. Save individual modular chart files into data/charts/{ticker}.json
+    os.makedirs(CHARTS_DIR, exist_ok=True)
+    chart_intelligence = {}
+    for ticker, c_obj in chart_data.items():
+        if isinstance(c_obj, dict):
+            # Save individual ticker chart cache
+            ticker_chart_path = os.path.join(CHARTS_DIR, f"{ticker}.json")
+            atomic_save_json(ticker_chart_path, c_obj)
+            
+            # Extract lightweight intelligence metadata for instant dashboard loading
+            chart_intelligence[ticker] = {
+                "intelligence": c_obj.get("intelligence", {}),
+                "latest_close": c_obj.get("latest_close"),
+                "kijun": c_obj.get("kijun"),
+                "tenkan": c_obj.get("tenkan"),
+                "kijun_gap_pct": c_obj.get("kijun_gap_pct"),
+                "vol_ratio": c_obj.get("vol_ratio"),
+                "future_cloud_type": c_obj.get("future_cloud_type"),
+                "future_cloud_gap": c_obj.get("future_cloud_gap"),
+                "future_span_a_latest": c_obj.get("future_span_a_latest"),
+                "future_span_b_latest": c_obj.get("future_span_b_latest"),
+                "status_text": c_obj.get("status_text"),
+                "status_tag": c_obj.get("status_tag"),
+                "bull_score": c_obj.get("bull_score"),
+                "bear_score": c_obj.get("bear_score"),
+                "is_sniper": c_obj.get("is_sniper", False)
+            }
+
+    # 2. Build lightweight executive summary payload (under 50KB)
     payload = {
         "macro": macro_info,
         "kpis": kpis,
         "trades": trades,
         "matrix": matrix,
         "portfolio": portfolio,
-        "charts": chart_data,
         "primary_accumulation": primary_accumulation_picks,
         "sniper_radar": sniper_radar_picks,
-        "signal_tracker": signal_tracker
+        "signal_tracker": signal_tracker,
+        "chart_intelligence": chart_intelligence
     }
     
     out_path = os.path.join(BASE_DIR, OUTPUT_JSON)
     atomic_save_json(out_path, payload)
         
-    print(f"Successfully generated dashboard feed: {out_path} (60-Universe: {len(primary_accumulation_picks)} Primary Picks, {len(sniper_radar_picks)} Sniper Alerts, {len(signal_tracker)} Signal Tracks)")
+    print(f"Successfully generated modular feed: {out_path} (Size: {os.path.getsize(out_path)/1024:.1f} KB, Charts: {len(chart_data)} saved in {CHARTS_DIR})")
     return payload
 
 if __name__ == "__main__":

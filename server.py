@@ -22,7 +22,7 @@ from al_sangmoo.domain.risk.macro_guardrail import evaluate_macro_circuit_breake
 from al_sangmoo.domain.quant.ticker_resolver import resolve_ticker, search_ticker_suggestions
 from al_sangmoo.infrastructure.brokers.paper_broker import default_broker
 from al_sangmoo.infrastructure.backup import create_sqlite_backup, list_backups
-from generate_dashboard_feed import compute_all_indicators, build_dashboard_data
+from generate_dashboard_feed import compute_all_indicators, build_dashboard_data, atomic_save_json
 
 # Windows encoding fix
 if sys.platform.startswith('win'):
@@ -44,11 +44,26 @@ app.add_middleware(
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DASHBOARD_HTML = os.path.join(BASE_DIR, "al_sangmoo_dashboard.html")
 DASHBOARD_JSON = os.path.join(BASE_DIR, "dashboard_data.json")
+CHARTS_DIR = os.path.join(BASE_DIR, "data", "charts")
 
-# In-Memory Fast Cache for Charts (instant responses)
+# In-Memory Fast Caches for Sub-Millisecond Instant Responses
 CHART_CACHE = {}
+FEED_CACHE = {}
+LAST_FEED_MTIME = 0
 
 TICKER_REGEX = re.compile(r'^[A-Za-z0-9.\^=-]{1,15}$')
+
+def load_feed_cache():
+    global FEED_CACHE, LAST_FEED_MTIME
+    if os.path.exists(DASHBOARD_JSON):
+        try:
+            mtime = os.path.getmtime(DASHBOARD_JSON)
+            if mtime != LAST_FEED_MTIME or not FEED_CACHE:
+                with open(DASHBOARD_JSON, "r", encoding="utf-8") as f:
+                    FEED_CACHE = json.load(f)
+                LAST_FEED_MTIME = mtime
+        except Exception:
+            pass
 
 class BuyOrder(BaseModel):
     ticker: str = Field(..., min_length=1, max_length=15)
@@ -75,15 +90,8 @@ def startup_event():
             [{"ticker": "META", "close": 568.97}, {"ticker": "TSLA", "close": 342.27}]
         )
         
-    # Pre-warm chart cache from dashboard_data.json
-    global CHART_CACHE
-    if os.path.exists(DASHBOARD_JSON):
-        try:
-            with open(DASHBOARD_JSON, "r", encoding="utf-8") as f:
-                feed = json.load(f)
-                CHART_CACHE = feed.get("charts", {})
-        except Exception:
-            pass
+    # Pre-warm lightweight feed cache (<150KB)
+    load_feed_cache()
     print("Al-Sangmoo Quant Portfolio Server Ready on http://0.0.0.0:8000 (Local & LAN Access Available)")
 
 @app.get("/", response_class=HTMLResponse)
@@ -100,41 +108,17 @@ def get_dashboard_summary():
     matrix = db_manager.get_recommendations_matrix()
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
-    # Read feed from dashboard_data.json (macro, kpis, strategies)
-    # Note: charts (~10MB for 60 stocks) are NOT included here to keep
-    # the response lightweight. Individual charts are served via /api/chart/{ticker}.
-    macro_info = {}
-    kpis = {}
-    primary_accumulation = []
-    sniper_radar = []
-    signal_tracker = []
-    chart_intelligence = {}
-    if os.path.exists(DASHBOARD_JSON):
-        try:
-            with open(DASHBOARD_JSON, "r", encoding="utf-8") as f:
-                feed = json.load(f)
-                macro_info = feed.get("macro", {})
-                kpis = feed.get("kpis", {})
-                primary_accumulation = feed.get("primary_accumulation", [])
-                sniper_radar = feed.get("sniper_radar", [])
-                signal_tracker = feed.get("signal_tracker", [])
-                # Extract only lightweight intelligence metadata per ticker
-                for ticker, chart_obj in feed.get("charts", {}).items():
-                    if isinstance(chart_obj, dict) and "intelligence" in chart_obj:
-                        chart_intelligence[ticker] = {
-                            "intelligence": chart_obj["intelligence"],
-                            "latest_close": chart_obj.get("latest_close"),
-                            "kijun": chart_obj.get("kijun"),
-                            "tenkan": chart_obj.get("tenkan"),
-                            "kijun_gap_pct": chart_obj.get("kijun_gap_pct"),
-                            "vol_ratio": chart_obj.get("vol_ratio"),
-                            "future_cloud_type": chart_obj.get("future_cloud_type"),
-                            "status_text": chart_obj.get("status_text"),
-                        }
-        except Exception:
-            pass
+    # Ensure fresh feed cache
+    load_feed_cache()
+    
+    macro_info = FEED_CACHE.get("macro", {})
+    kpis = dict(FEED_CACHE.get("kpis", {}))
+    primary_accumulation = FEED_CACHE.get("primary_accumulation", [])
+    sniper_radar = FEED_CACHE.get("sniper_radar", [])
+    signal_tracker = FEED_CACHE.get("signal_tracker", [])
+    chart_intelligence = FEED_CACHE.get("chart_intelligence", {})
             
-    # Always stamp live current server time
+    # Always stamp live current server time & active holdings
     kpis["last_updated"] = now_str
     kpis["active_positions"] = len(portfolio.get("holdings", []))
             
@@ -235,11 +219,22 @@ def get_ticker_chart(ticker: str):
     if not TICKER_REGEX.match(ticker_resolved):
         raise HTTPException(status_code=400, detail=f"유효하지 않은 티커 심볼 형식입니다: '{ticker}'")
         
-    # 1. Return from memory cache if available for instant sub-5ms load
+    # 1. Return from in-memory fast cache (instant sub-millisecond)
     if ticker_resolved in CHART_CACHE:
         return CHART_CACHE[ticker_resolved]
         
-    # 2. Otherwise compute live via pure quant engine
+    # 2. Check modular individual chart file cache (data/charts/{ticker_resolved}.json)
+    chart_file = os.path.join(CHARTS_DIR, f"{ticker_resolved}.json")
+    if os.path.exists(chart_file):
+        try:
+            with open(chart_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                CHART_CACHE[ticker_resolved] = data
+                return data
+        except Exception:
+            pass
+        
+    # 3. Live On-Demand Computation via Real-Time Market API
     data = compute_all_indicators(ticker_resolved)
     if not data:
         # Fallback to uppercase raw ticker
@@ -251,6 +246,13 @@ def get_ticker_chart(ticker: str):
                 
     if not data:
         raise HTTPException(status_code=404, detail=f"'{ticker}' ({ticker_resolved}) 종목의 시세 데이터를 불러올 수 없습니다.")
+        
+    # Cache individual chart file for subsequent instant loads
+    try:
+        os.makedirs(CHARTS_DIR, exist_ok=True)
+        atomic_save_json(os.path.join(CHARTS_DIR, f"{ticker_resolved}.json"), data)
+    except Exception:
+        pass
         
     # Manage LRU cache size (max 150 items)
     if len(CHART_CACHE) > 150:
