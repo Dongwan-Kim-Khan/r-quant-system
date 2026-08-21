@@ -549,7 +549,7 @@ def generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, por
             html += f"""
                         <tr>
                             <td><strong>{p['ticker']}</strong></td>
-                            <td>{p['quantity']:.0f}주</td>
+                            <td>{f"{p['quantity']:.4f}".rstrip('0').rstrip('.')}주</td>
                             <td>${p['buy_price']:,.2f}</td>
                             <td>${p['cur_price']:,.2f}</td>
                             <td style="color:{pnl_color}; font-weight:700;">{p['pnl_pct']:+.2f}%</td>
@@ -700,7 +700,8 @@ def print_markdown_briefing(today_str, bull_picks, neutral_picks, bear_picks, po
 """
     if portfolio_alerts:
         for p in portfolio_alerts:
-            md += f"* **{p['ticker']}** ({p['quantity']:.0f}주) [{p['badge']}] (수익률 {p['pnl_pct']:+.2f}%)\n"
+            qty_str = f"{p['quantity']:.4f}".rstrip('0').rstrip('.')
+            md += f"* **{p['ticker']}** ({qty_str}주) [{p['badge']}] (수익률 {p['pnl_pct']:+.2f}%)\n"
             md += f"  - 매수가: ${p['buy_price']:,.2f} | 현재가: ${p['cur_price']:,.2f}\n"
             md += f"  - 목표가(+15%): ${p['target_price']:,.2f} | 손절가(-3%): ${p['stop_loss_price']:,.2f}\n"
             md += f"  - 대응 지침: {p['advice']}\n\n"
