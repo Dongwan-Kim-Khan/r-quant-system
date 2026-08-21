@@ -17,6 +17,10 @@ from al_sangmoo.api.hub import hub
 from al_sangmoo.backtest.engine import run_backtest_simulation
 from al_sangmoo.domain.quant.multi_timeframe import calculate_mtf_consensus
 from al_sangmoo.domain.risk.position_sizer import calculate_dynamic_position_size, calculate_atr
+from al_sangmoo.domain.risk.order_guardrail import validate_pre_trade_guardrail
+from al_sangmoo.domain.risk.macro_guardrail import evaluate_macro_circuit_breaker
+from al_sangmoo.infrastructure.brokers.paper_broker import default_broker
+from al_sangmoo.infrastructure.backup import create_sqlite_backup, list_backups
 from generate_dashboard_feed import compute_all_indicators, build_dashboard_data
 
 # Windows encoding fix
@@ -264,6 +268,65 @@ def get_recommended_position_size(ticker: str, equity: float = 100000.0, msi: fl
         return sizing
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"포지션 사이징 계산 실패: {str(e)}")
+
+@app.get("/api/risk/circuit_breaker")
+def get_circuit_breaker_status(msi: float = None):
+    portfolio = db_manager.get_live_portfolio()
+    holdings = portfolio.get("holdings", [])
+    
+    # Read MSI from stream cache if not provided
+    if msi is None:
+        msi_val = 50.0
+        if os.path.exists(DASHBOARD_JSON):
+            try:
+                with open(DASHBOARD_JSON, "r", encoding="utf-8") as f:
+                    d = json.load(f)
+                    msi_val = float(d.get("macro", {}).get("macro_climate", {}).get("msi_score", 50.0))
+            except Exception:
+                pass
+        msi = msi_val
+        
+    evaluation = evaluate_macro_circuit_breaker(msi_score=msi, holdings=holdings)
+    return evaluation
+
+@app.post("/api/broker/order")
+async def execute_broker_order(order: BuyOrder):
+    portfolio = db_manager.get_live_portfolio()
+    balance = default_broker.get_account_balance()
+    holdings = portfolio.get("holdings", [])
+    
+    # Evaluate pre-trade guardrails
+    validation = validate_pre_trade_guardrail(
+        ticker=order.ticker,
+        price=order.buy_price,
+        quantity=order.quantity,
+        total_equity=balance["total_equity"],
+        active_holdings=holdings
+    )
+    if not validation["allowed"]:
+        raise HTTPException(status_code=400, detail=validation["reason"])
+        
+    execution = default_broker.submit_buy_order(
+        ticker=order.ticker,
+        price=order.buy_price,
+        quantity=order.quantity
+    )
+    
+    p_data = db_manager.get_live_portfolio()
+    await hub.broadcast("portfolio_update", p_data)
+    return execution
+
+@app.post("/api/backup/snapshot")
+def trigger_database_backup():
+    try:
+        res = create_sqlite_backup()
+        return res
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/backup/list")
+def get_backup_list():
+    return {"backups": list_backups()}
 
 if __name__ == "__main__":
     uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)
