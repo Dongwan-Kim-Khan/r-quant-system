@@ -56,7 +56,7 @@ def send_email_report(subject, html_body, receiver=None):
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"] = f"Al-Sangmoo Quant Engine <{gmail_user}>"
+        msg["From"] = f"R-Sangmoo Quant Engine <{gmail_user}>"
         msg["To"] = receiver
         
         part = MIMEText(html_body, "html", "utf-8")
@@ -478,7 +478,7 @@ def generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, por
     <body>
         <div class="container">
             <div class="header">
-                <h1>AL-SANGMOO QUANTITATIVE TACTICAL REPORT</h1>
+                <h1>R-SANGMOO QUANTITATIVE TACTICAL REPORT</h1>
                 <div class="meta">발행일시: {today_str} 12:30 KST | 분석 모듈: 3단계 게이트 의사결정 파이프라인 (거시 기후 ➔ 문맥 NLP ➔ 17년 퀀트)</div>
             </div>
             
@@ -639,12 +639,12 @@ def generate_email_content(today_str, bull_picks, neutral_picks, bear_picks, por
                 <div class="section-title">4. Model Governance & Verification</div>
                 <div style="font-size:12px; color:#475569;">
                     • <strong>전수 포워드 트래킹 상태:</strong> {health_status}<br>
-                    • <strong>시스템 아키텍처:</strong> Gate 0 (거시 기후) ➔ Gate 1 (방송 문맥 NLP) ➔ Gate 2 (알상무 17년 퀀트)
+                    • <strong>시스템 아키텍처:</strong> Gate 0 (거시 기후) ➔ Gate 1 (방송 문맥 NLP) ➔ Gate 2 (R상무 17년 퀀트)
                 </div>
             </div>
             
             <div class="footer">
-                Al-Sangmoo Quantitative Risk Engine • Confidential Portfolio Report • Generated Daily at 12:30 KST
+                R-Sangmoo Quantitative Risk Engine • Confidential Portfolio Report • Generated Daily at 12:30 KST
             </div>
         </div>
     </body>
@@ -673,7 +673,7 @@ def print_markdown_briefing(today_str, bull_picks, neutral_picks, bear_picks, po
     rec_list = [f"{m['ticker']}(+{m['net_sentiment']} / {', '.join(m.get('positive_reasons', []))})" for m in mentioned_stocks if m.get('host_intent') == 'BULLISH_RECOMMENDED']
     rec_summary_str = " | ".join(rec_list[:5]) if rec_list else "방송 본문 문맥 분석 완료"
 
-    md = f"""# AL-SANGMOO QUANTITATIVE TACTICAL REPORT ({today_str})
+    md = f"""# R-SANGMOO QUANTITATIVE TACTICAL REPORT ({today_str})
 
 발행일시: {today_str} 12:30 KST | 3단계 게이트 의사결정 파이프라인 (거시 기후 ➔ 문맥 NLP ➔ 17년 퀀트)
 
@@ -740,13 +740,13 @@ def print_markdown_briefing(today_str, bull_picks, neutral_picks, bear_picks, po
 ## 4. Model Governance & Verification
 
 * 모델 검증 상태: `{health_status}`
-* 시스템 아키텍처: Gate 0 (거시 기후) ➔ Gate 1 (방송 문맥 NLP) ➔ Gate 2 (알상무 17년 퀀트)
+* 시스템 아키텍처: Gate 0 (거시 기후) ➔ Gate 1 (방송 문맥 NLP) ➔ Gate 2 (R상무 17년 퀀트)
 """
     print(md)
 
 def main():
     today_str = datetime.now().strftime("%Y-%m-%d")
-    print(f"[Al-Sangmoo Quant Bot] Executing pipeline for {today_str}...")
+    print(f"[R-Sangmoo Quant Bot] Executing pipeline for {today_str}...")
     
     # 1. Fetch latest YouTube stream, Real-time Macro Gauges & Gate-0 Macro Climate
     stream_info = youtube_stream_scanner.fetch_latest_wepoll_stream()
@@ -784,7 +784,7 @@ def main():
     with open(out_html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
         
-    subject = f"[Al-Sangmoo Quant Tactical Report] {today_str} Macro Regime & Tactical 2+2+2 Matrix"
+    subject = f"[R-Sangmoo Quant Tactical Report] {today_str} Macro Regime & Tactical 2+2+2 Matrix"
     send_email_report(subject, html_content)
     
     # 8. Print Markdown Briefing

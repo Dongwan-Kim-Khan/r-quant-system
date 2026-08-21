@@ -1,7 +1,7 @@
 {
-  "video_id": "G7rMcAiS6rI",
-  "title": "[바이킹스] 시장이 쫄아있는 근본적인 이유ㅣ[버디버디] NH투자증권 백찬규 센터장/하나증권 박승진 실장 초대석",
-  "url": "https://www.youtube.com/watch?v=G7rMcAiS6rI",
+  "video_id": "LImnhlhG-ng",
+  "title": "금리, 주주환원, 순환매 / 시장을 지배할 지표는?",
+  "url": "https://www.youtube.com/watch?v=LImnhlhG-ng",
   "macro_gauges": {
     "us10y": {
       "val": 4.696,
@@ -10,32 +10,32 @@
       "label": "미국채 10년물"
     },
     "dxy": {
-      "val": 98.71,
-      "delta": "-0.2%",
+      "val": 98.61,
+      "delta": "-0.3%",
       "status": "SOFT_DOLLAR",
       "label": "달러 인덱스(DXY)"
     },
     "vix": {
-      "val": 15.83,
-      "delta": "-1.1%",
+      "val": 15.73,
+      "delta": "-1.7%",
       "status": "CALM",
       "label": "VIX 공포지수"
     },
     "wti": {
-      "val": 86.14,
-      "delta": "-1.9%",
+      "val": 86.76,
+      "delta": "-1.2%",
       "status": "INFLATION_SHOCK",
       "label": "WTI 국제유가"
     },
     "gold": {
-      "val": 4637.0,
-      "delta": "+2.7%",
+      "val": 4645.4,
+      "delta": "+2.9%",
       "status": "HEDGE_DEMAND",
       "label": "국제 금시세"
     }
   },
   "macro_climate": {
-    "msi_score": 74.9,
+    "msi_score": 56.0,
     "msi_breakdown": {
       "m_hard": 35.0,
       "m_hard_max": 60,
@@ -43,203 +43,39 @@
       "dxy_pts": 0.0,
       "vix_pts": 0.0,
       "wti_pts": 10.0,
-      "m_nlp": 24.9,
+      "m_nlp": 16.0,
       "m_nlp_max": 25,
-      "def_count": 42,
+      "def_count": 0,
       "buy_count": 0,
-      "m_shock": 15.0,
+      "m_shock": 5.0,
       "m_shock_max": 15
     },
     "macro_stance": "DEFENSE_HOLD",
     "macro_stance_kr": "신규 매수 보류 / 관망·현금 유지 주간 (Orange 50~74점)",
-    "macro_headline": "[거시 게이트 0단계: 거시 위험 지수 74.9점 / 신규 매수 보류 및 관망 권고]",
-    "macro_action_directive": "거시 위험 지수(MSI 74.9점: 10년물 금리 4.696%, 유가 $86.14) 및 방송 지침상, 현재 장세는 신규 매수를 쉬어가고 관망해야 하는 장세입니다. 다만 거시 리스크 진정 시 즉시 공략할 최우선 1순위 후보 종목을 사전 선별합니다.",
+    "macro_headline": "[거시 게이트 0단계: 거시 위험 지수 56.0점 / 신규 매수 보류 및 관망 권고]",
+    "macro_action_directive": "거시 위험 지수(MSI 56.0점: 10년물 금리 4.696%, 유가 $86.76) 및 방송 지침상, 현재 장세는 신규 매수를 쉬어가고 관망해야 하는 장세입니다. 다만 거시 리스크 진정 시 즉시 공략할 최우선 1순위 후보 종목을 사전 선별합니다.",
     "external_shocks": [
-      "지정학적 분쟁 및 전쟁 리스크",
-      "무역 분쟁 및 관세 불확실성",
       "금리 경로 및 통화정책 영향권"
     ],
-    "defense_keyword_count": 42
+    "defense_keyword_count": 0
   },
-  "macro_narrative": "지정학적 분쟁 및 전쟁 리스크 / 무역 분쟁 및 관세 불확실성 / 금리 경로 및 통화정책 영향권",
-  "mentioned_stocks": [
-    {
-      "ticker": "GOOGL",
-      "mentions": 18,
-      "pos_score": 6,
-      "neg_score": 0,
-      "net_sentiment": 6,
-      "host_intent": "BULLISH_RECOMMENDED",
-      "intent_desc": "진행자 적극 추천 / 긍정 주목 (순환매·매수 유망)",
-      "positive_reasons": [
-        "성장"
-      ],
-      "caution_reasons": [],
-      "sample_context": "으로 보이는 거죠. 자 그러면 만약에 채권에 들어갈 비용이 그러면 만약에 채권에 들어갈 비용이 그러면 만약에 채권에 들어갈 비용이 어느 정도 있다. 내가 국채로 살래? 어느 정도 있다. 내가 국채로 살래? 어느 정도 있다. 내가 국채로 살래? 아니면 구글 같은 회사를 살래? 너 아니면 구글 같은 회사를 살래? 너 아니면 구글 같은 회사를 살래? 너 너 선택해. 근데 구글이라는이 기업 너 선택해. 근데 구글이라는이 기업 너 선택해. 근데 구글이라는이 기업 자체가 성장률도 막 보여주고 있어. 자체가 성장"
-    },
-    {
-      "ticker": "MSFT",
-      "mentions": 18,
-      "pos_score": 3,
-      "neg_score": 0,
-      "net_sentiment": 3,
-      "host_intent": "BULLISH_RECOMMENDED",
-      "intent_desc": "진행자 적극 추천 / 긍정 주목 (순환매·매수 유망)",
-      "positive_reasons": [
-        "실적"
-      ],
-      "caution_reasons": [],
-      "sample_context": "gt; 거기다가 지금 아이퍼스러들이 지금 현금흐름들이 이분기 실적 통해가지고 현금흐름들이 이분기 실적 통해가지고 현금흐름들이 이분기 실적 통해가지고 저희가 본 것들을 보면은 다 지금 저희가 본 것들을 보면은 다 지금 저희가 본 것들을 보면은 다 지금 마이크로소프트 빼고는 다 말랐잖아요. 마이크로소프트 빼고는 다 말랐잖아요. 마이크로소프트 빼고는 다 말랐잖아요. &gt;&gt; 마르면서 회사 출조자들를 더 좀 &gt;&gt; 마르면서 회사 출조자들를 더 좀 &gt;&gt; 마르면서 회사 출조자들를 더 좀 발행을"
-    },
-    {
-      "ticker": "000660.KS",
-      "mentions": 12,
-      "pos_score": 1,
-      "neg_score": 0,
-      "net_sentiment": 1,
-      "host_intent": "NEUTRAL_WATCH",
-      "intent_desc": "진행자 단순 언급 / 수급 관망",
-      "positive_reasons": [
-        "수급"
-      ],
-      "caution_reasons": [],
-      "sample_context": "; 수급적인 요구는 굳이 굳이 얘기한다면 &gt;&gt; 지금은 사실은 그게 더 큰 거 &gt;&gt; 지금은 사실은 그게 더 큰 거 &gt;&gt; 지금은 사실은 그게 더 큰 거 같아요. 하는 책 같아요. 하는 책 같아요. 하는 책 &gt;&gt; 하이닉스가 40조원 내놨었고 그래서 &gt;&gt; 하이닉스가 40조원 내놨었고 그래서 &gt;&gt; 하이닉스가 40조원 내놨었고 그래서 어제 아주 뜨겁게 상승을 했죠. 그럼 어제 아주 뜨겁게 상승을 했죠. 그럼 어제 아주 뜨겁게 상승을 했죠. 그럼 이제"
-    },
-    {
-      "ticker": "AMZN",
-      "mentions": 15,
-      "pos_score": 0,
-      "neg_score": 0,
-      "net_sentiment": 0,
-      "host_intent": "NEUTRAL_WATCH",
-      "intent_desc": "진행자 단순 언급 / 수급 관망",
-      "positive_reasons": [],
-      "caution_reasons": [],
-      "sample_context": ""
-    },
-    {
-      "ticker": "MU",
-      "mentions": 15,
-      "pos_score": 0,
-      "neg_score": 0,
-      "net_sentiment": 0,
-      "host_intent": "NEUTRAL_WATCH",
-      "intent_desc": "진행자 단순 언급 / 수급 관망",
-      "positive_reasons": [],
-      "caution_reasons": [],
-      "sample_context": ""
-    },
-    {
-      "ticker": "AAPL",
-      "mentions": 9,
-      "pos_score": 0,
-      "neg_score": 0,
-      "net_sentiment": 0,
-      "host_intent": "NEUTRAL_WATCH",
-      "intent_desc": "진행자 단순 언급 / 수급 관망",
-      "positive_reasons": [],
-      "caution_reasons": [],
-      "sample_context": ""
-    },
-    {
-      "ticker": "META",
-      "mentions": 3,
-      "pos_score": 0,
-      "neg_score": 0,
-      "net_sentiment": 0,
-      "host_intent": "NEUTRAL_WATCH",
-      "intent_desc": "진행자 단순 언급 / 수급 관망",
-      "positive_reasons": [],
-      "caution_reasons": [],
-      "sample_context": ""
-    },
-    {
-      "ticker": "AMD",
-      "mentions": 3,
-      "pos_score": 0,
-      "neg_score": 0,
-      "net_sentiment": 0,
-      "host_intent": "NEUTRAL_WATCH",
-      "intent_desc": "진행자 단순 언급 / 수급 관망",
-      "positive_reasons": [],
-      "caution_reasons": [],
-      "sample_context": ""
-    },
-    {
-      "ticker": "ARM",
-      "mentions": 21,
-      "pos_score": 0,
-      "neg_score": 2,
-      "net_sentiment": -2,
-      "host_intent": "BEARISH_CAUTION",
-      "intent_desc": "진행자 주의 / 하락 우려 (리스크 경고)",
-      "positive_reasons": [],
-      "caution_reasons": [
-        "빠지"
-      ],
-      "sample_context": "시장이 워낙 이게 가지고. 어, 근데 시장이 워낙 이게 가지고. 어, 근데 시장이 워낙 이게 위축되다 보니까 야, 암이고 뭐고 위축되다 보니까 야, 암이고 뭐고 위축되다 보니까 야, 암이고 뭐고 내가 지금 시장 보고 암 걸리겠다 내가 지금 시장 보고 암 걸리겠다 내가 지금 시장 보고 암 걸리겠다 해가지고 그냥 -23% 해가지고 그냥 -23% 해가지고 그냥 -23% 밀어버렸습니다. 예. 자, 그래서 밀어버렸습니다. 예. 자, 그래서 밀어버렸습니다. 예. 자, 그래서 아, 모더나가 조금 빠지는 아주 아"
-    },
-    {
-      "ticker": "AVGO",
-      "mentions": 39,
-      "pos_score": 0,
-      "neg_score": 4,
-      "net_sentiment": -4,
-      "host_intent": "BEARISH_CAUTION",
-      "intent_desc": "진행자 주의 / 하락 우려 (리스크 경고)",
-      "positive_reasons": [],
-      "caution_reasons": [
-        "조정",
-        "부담"
-      ],
-      "sample_context": "시장의 심리가 좀 일단 조정이 나오고 시장의 심리가 좀 위축이 되다 보니까 정부 부채에 위축이 되다 보니까 정부 부채에 위축이 되다 보니까 정부 부채에 대해서 이야기 그리고 오늘 제가 대해서 이야기 그리고 오늘 제가 대해서 이야기 그리고 오늘 제가 브로드컴에 대한 자금 조달 이런 브로드컴에 대한 자금 조달 이런 브로드컴에 대한 자금 조달 이런 부분도 조금은 좀 연결이 좀 될 거 부분도 조금은 좀 연결이 좀 될 거 부분도 조금은 좀 연결이 좀 될 거 같은데 그러한 약간의 부담을 더 좀 같은데 그러한 약간"
-    },
-    {
-      "ticker": "005930.KS",
-      "mentions": 27,
-      "pos_score": 0,
-      "neg_score": 4,
-      "net_sentiment": -4,
-      "host_intent": "BEARISH_CAUTION",
-      "intent_desc": "진행자 주의 / 하락 우려 (리스크 경고)",
-      "positive_reasons": [],
-      "caution_reasons": [
-        "하락",
-        "떨어"
-      ],
-      "sample_context": "서 얘기해 주면은 그 배당적인 측면에서 차기의 배당은 주주 환원율이라고 차기의 배당은 주주 환원율이라고 차기의 배당은 주주 환원율이라고 생각해 볼 수가 있거든요. 그러면은 생각해 볼 수가 있거든요. 그러면은 생각해 볼 수가 있거든요. 그러면은 지금의 삼성전자가 내놓을 주조 환원 지금의 삼성전자가 내놓을 주조 환원 지금의 삼성전자가 내놓을 주조 환원 책은 지난번에 한참 하락했을 때 한 책은 지난번에 한참 하락했을 때 한 책은 지난번에 한참 하락했을 때 한 3.6배 6배 정도까지 PR 기준 3.6배 6배 정"
-    }
-  ],
-  "bullish_stream_tickers": [
-    "GOOGL",
-    "MSFT"
-  ],
-  "neutral_stream_tickers": [
-    "000660.KS",
-    "AMZN",
-    "MU",
-    "AAPL",
-    "META",
-    "AMD"
-  ],
-  "bearish_stream_tickers": [
-    "ARM",
-    "AVGO",
-    "005930.KS"
-  ],
+  "macro_narrative": "금리 경로 및 통화정책 영향권",
+  "mentioned_stocks": [],
+  "bullish_stream_tickers": [],
+  "neutral_stream_tickers": [],
+  "bearish_stream_tickers": [],
   "live_stream_tickers": [
-    "GOOGL",
-    "MSFT",
-    "000660.KS",
+    "NVDA",
     "AMZN",
-    "MU",
-    "AAPL",
+    "MSFT",
+    "GOOGL",
     "META",
+    "MU",
     "AMD",
-    "ARM",
-    "AVGO",
-    "005930.KS"
+    "TSLA",
+    "PLTR",
+    "VST"
   ],
-  "transcript_char_count": 140675,
-  "fetched_at": "2026-08-21 17:39:35"
+  "transcript_char_count": 0,
+  "fetched_at": "2026-08-21 19:37:09"
 }

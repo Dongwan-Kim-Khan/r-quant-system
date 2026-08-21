@@ -40,12 +40,12 @@ def test_send():
         
     try:
         msg = MIMEMultipart()
-        msg["Subject"] = "🧪 [알상무 퀀트] 이메일 발송 연동 테스트 성공!"
-        msg["From"] = f"알상무 퀀트 봇 <{gmail_user}>"
+        msg["Subject"] = "🧪 [R상무 퀀트] 이메일 발송 연동 테스트 성공!"
+        msg["From"] = f"R상무 퀀트 봇 <{gmail_user}>"
         msg["To"] = receiver
         
         body = """
-        <h2>🎉 알상무 퀀트 모닝 브리핑 이메일 연동 성공!</h2>
+        <h2>🎉 R상무 퀀트 모닝 브리핑 이메일 연동 성공!</h2>
         <p>축하합니다. 이메일 SMTP 발송 설정이 정상적으로 완료되었습니다.</p>
         <p>이제 매일 아침 8시 30분에 <strong>2+2+2 자동 추천 6종목 및 보유 종목 매도/익절 알림</strong>이 본 메일함으로 자동 전송됩니다.</p>
         """
