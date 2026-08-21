@@ -1,6 +1,6 @@
 {
   "ticker": "NOW",
-  "latest_close": 130.22,
+  "latest_close": 128.69,
   "kijun": 111.34,
   "tenkan": 124.37,
   "span_a": 104.07,
@@ -9,8 +9,8 @@
   "future_span_b_latest": 110.27,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 7.58,
-  "kijun_gap_pct": 16.95,
-  "vol_ratio": 0.05,
+  "kijun_gap_pct": 15.58,
+  "vol_ratio": 0.08,
   "bull_score": 65,
   "bear_score": 0,
   "is_sniper": false,
@@ -21,12 +21,12 @@
     "bear_score": 0,
     "type": "NEUTRAL",
     "is_sniper": false,
-    "trampoline_detected": false,
+    "trampoline_detected": true,
     "kijun": {
-      "val": "$111.34 (+17.0%)",
+      "val": "$111.34 (+15.6%)",
       "status": "status-neutral",
       "badge": "OVERHEATED",
-      "desc": "현재가 $130.22 / 26일선 $111.34 (이격 +17.0%)"
+      "desc": "현재가 $128.69 / 26일선 $111.34 (이격 +15.6%)"
     },
     "tenkan": {
       "val": "$124.37",
@@ -41,10 +41,10 @@
       "desc": "일목 구름대(104.1~112.3) 상단 안착"
     },
     "vol": {
-      "val": "5% (20D)",
+      "val": "8% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 5% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 8% (매도세 고갈 완벽)"
     },
     "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
   },
@@ -3387,10 +3387,10 @@
     },
     {
       "time": "2026-08-21",
-      "open": 128.15,
+      "open": 130.29,
       "high": 131.0,
-      "low": 129.12,
-      "close": 130.22
+      "low": 127.65,
+      "close": 128.69
     }
   ],
   "kijun_line": [
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 120.03
+      "value": 119.95
     }
   ],
   "sma60": [
@@ -14610,7 +14610,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 110.36
+      "value": 110.33
     }
   ],
   "volume": [
@@ -16996,8 +16996,8 @@
     },
     {
       "time": "2026-08-21",
-      "value": 1097947.0,
-      "color": "#059669"
+      "value": 1775558.0,
+      "color": "#dc2626"
     }
   ]
 }

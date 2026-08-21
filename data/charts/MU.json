@@ -1,6 +1,6 @@
 {
   "ticker": "MU",
-  "latest_close": 972.52,
+  "latest_close": 977.84,
   "kijun": 887.01,
   "tenkan": 940.38,
   "span_a": 992.83,
@@ -9,8 +9,8 @@
   "future_span_b_latest": 996.34,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 82.65,
-  "kijun_gap_pct": 9.64,
-  "vol_ratio": 0.08,
+  "kijun_gap_pct": 10.24,
+  "vol_ratio": 0.13,
   "bull_score": 30,
   "bear_score": 0,
   "is_sniper": false,
@@ -23,10 +23,10 @@
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$887.01 (+9.6%)",
+      "val": "$887.01 (+10.2%)",
       "status": "status-neutral",
       "badge": "OVERHEATED",
-      "desc": "현재가 $972.52 / 26일선 $887.01 (이격 +9.6%)"
+      "desc": "현재가 $977.84 / 26일선 $887.01 (이격 +10.2%)"
     },
     "tenkan": {
       "val": "$940.38",
@@ -41,10 +41,10 @@
       "desc": "일목 구름대(882.5~992.8) 내부 횡보"
     },
     "vol": {
-      "val": "8% (20D)",
+      "val": "13% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 8% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 13% (매도세 고갈 완벽)"
     },
     "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
   },
@@ -2078,7 +2078,7 @@
     },
     {
       "time": "2025-11-20",
-      "open": 230.01,
+      "open": 230.02,
       "high": 230.37,
       "low": 199.4,
       "close": 201.17
@@ -3389,8 +3389,8 @@
       "time": "2026-08-21",
       "open": 989.67,
       "high": 989.96,
-      "low": 972.1,
-      "close": 972.52
+      "low": 970.94,
+      "close": 977.84
     }
   ],
   "kijun_line": [
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 896.53
+      "value": 896.8
     }
   ],
   "sma60": [
@@ -14610,7 +14610,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 965.7
+      "value": 965.79
     }
   ],
   "volume": [
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 3206934.0,
+      "value": 4843082.0,
       "color": "#dc2626"
     }
   ]

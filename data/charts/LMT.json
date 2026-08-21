@@ -1,38 +1,38 @@
 {
   "ticker": "LMT",
-  "latest_close": 569.53,
+  "latest_close": 568.13,
   "kijun": 549.95,
-  "tenkan": 590.89,
+  "tenkan": 589.71,
   "span_a": 524.95,
   "span_b": 520.52,
-  "future_span_a_latest": 570.42,
+  "future_span_a_latest": 569.83,
   "future_span_b_latest": 549.95,
   "future_cloud_type": "양운 (상승 지지 구름대)",
-  "future_cloud_gap": 20.47,
-  "kijun_gap_pct": 3.56,
-  "vol_ratio": 0.09,
+  "future_cloud_gap": 19.88,
+  "kijun_gap_pct": 3.31,
+  "vol_ratio": 0.12,
   "bull_score": 100,
   "bear_score": 0,
-  "is_sniper": false,
+  "is_sniper": true,
   "intelligence": {
-    "verdict": "Bull Accumulation (1차 분할 매수 적합)",
-    "score": "100 / 100 pt (BULL_BUY)",
+    "verdict": "Sniper Alert (구름대 도약 2단계 특급 매수)",
+    "score": "95 / 100 pt (SNIPER_BUY)",
     "bull_score": 100,
     "bear_score": 0,
     "type": "BULL",
-    "is_sniper": false,
-    "trampoline_detected": false,
+    "is_sniper": true,
+    "trampoline_detected": true,
     "kijun": {
-      "val": "$549.95 (+3.6%)",
+      "val": "$549.95 (+3.3%)",
       "status": "status-bull",
       "badge": "SUPPORTED",
-      "desc": "현재가 $569.53 / 26일선 $549.95 (이격 +3.6%)"
+      "desc": "현재가 $568.13 / 26일선 $549.95 (이격 +3.3%)"
     },
     "tenkan": {
-      "val": "$590.89",
+      "val": "$589.71",
       "status": "status-bull",
       "badge": "GOLDEN CROSS",
-      "desc": "9일 전환선 $590.89 상단 정배열"
+      "desc": "9일 전환선 $589.71 상단 정배열"
     },
     "cloud": {
       "val": "$524.95",
@@ -41,15 +41,15 @@
       "desc": "일목 구름대(520.5~525.0) 상단 안착"
     },
     "vol": {
-      "val": "9% (20D)",
+      "val": "12% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 9% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 12% (매도세 고갈 완벽)"
     },
-    "action": "26일 기준선 및 일목 구름대 상단 안착 확인. 거시 변동성 진정 시 1차 분할 매수 적합."
+    "action": "[전략 2 스나이퍼] 10일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 +3.3%) 안착. 목표 +15% / 손절 -4%."
   },
   "status_tag": "BULL",
-  "status_text": "Bull Accumulation (1차 분할 매수 적합)",
+  "status_text": "Sniper Alert (구름대 도약 2단계 특급 매수)",
   "timeframe": "1D",
   "period": "2Y",
   "candles": [
@@ -1547,7 +1547,7 @@
     {
       "time": "2025-08-05",
       "open": 412.21,
-      "high": 418.78,
+      "high": 418.77,
       "low": 410.78,
       "close": 416.99
     },
@@ -3387,10 +3387,10 @@
     },
     {
       "time": "2026-08-21",
-      "open": 586.67,
+      "open": 571.48,
       "high": 572.95,
-      "low": 569.03,
-      "close": 569.53
+      "low": 566.68,
+      "close": 568.13
     }
   ],
   "kijun_line": [
@@ -7210,7 +7210,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 590.89
+      "value": 589.71
     }
   ],
   "span_a_line": [
@@ -9120,7 +9120,7 @@
     },
     {
       "time": "2026-09-28",
-      "value": 570.42
+      "value": 569.83
     }
   ],
   "span_b_line": [
@@ -11592,7 +11592,7 @@
     },
     {
       "time": "2025-05-27",
-      "value": 455.21
+      "value": 455.22
     },
     {
       "time": "2025-05-28",
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 587.84
+      "value": 587.77
     }
   ],
   "sma60": [
@@ -14610,7 +14610,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 544.23
+      "value": 544.21
     }
   ],
   "volume": [
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 98378.0,
+      "value": 129821.0,
       "color": "#dc2626"
     }
   ]

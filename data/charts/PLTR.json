@@ -1,6 +1,6 @@
 {
   "ticker": "PLTR",
-  "latest_close": 173.95,
+  "latest_close": 173.04,
   "kijun": 149.03,
   "tenkan": 174.26,
   "span_a": 126.7,
@@ -9,8 +9,8 @@
   "future_span_b_latest": 143.27,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 18.37,
-  "kijun_gap_pct": 16.72,
-  "vol_ratio": 0.08,
+  "kijun_gap_pct": 16.1,
+  "vol_ratio": 0.1,
   "bull_score": 65,
   "bear_score": 0,
   "is_sniper": false,
@@ -23,10 +23,10 @@
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$149.03 (+16.7%)",
+      "val": "$149.03 (+16.1%)",
       "status": "status-neutral",
       "badge": "OVERHEATED",
-      "desc": "현재가 $173.95 / 26일선 $149.03 (이격 +16.7%)"
+      "desc": "현재가 $173.04 / 26일선 $149.03 (이격 +16.1%)"
     },
     "tenkan": {
       "val": "$174.26",
@@ -41,10 +41,10 @@
       "desc": "일목 구름대(126.7~135.0) 상단 안착"
     },
     "vol": {
-      "val": "8% (20D)",
+      "val": "10% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 8% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 10% (매도세 고갈 완벽)"
     },
     "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
   },
@@ -3389,8 +3389,8 @@
       "time": "2026-08-21",
       "open": 173.98,
       "high": 175.15,
-      "low": 172.88,
-      "close": 173.95
+      "low": 172.55,
+      "close": 173.04
     }
   ],
   "kijun_line": [
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 156.97
+      "value": 156.93
     }
   ],
   "sma60": [
@@ -14610,7 +14610,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 139.52
+      "value": 139.51
     }
   ],
   "volume": [
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 3469122.0,
+      "value": 4486144.0,
       "color": "#dc2626"
     }
   ]

@@ -249,7 +249,7 @@
     "active_positions": 11,
     "closed_trades": 1,
     "win_rate": "0.0%",
-    "last_updated": "2026-08-21 22:39:03"
+    "last_updated": "2026-08-21 22:53:51"
   },
   "trades": [
     {
@@ -478,132 +478,702 @@
     {
       "ticker": "ETN",
       "name": "이튼",
-      "price": 416.8,
+      "price": 420.3,
       "score": 100,
-      "kijun_gap": -0.2,
-      "vol_ratio": 9,
+      "kijun_gap": 0.64,
+      "vol_ratio": 13,
       "origin": "QUANT_DISCOVERY",
       "origin_label": "60종목 퀀트 발굴",
-      "is_sniper": false,
-      "action": "26일 기준선 및 일목 구름대 상단 안착 확인. 거시 변동성 진정 시 1차 분할 매수 적합.",
-      "target_price": 479.32,
-      "stop_price": 400.13
+      "is_sniper": true,
+      "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 +0.6%) 안착. 목표 +15% / 손절 -4%.",
+      "target_price": 483.34,
+      "stop_price": 403.49
     },
     {
       "ticker": "AMZN",
       "name": "아마존",
-      "price": 257.43,
+      "price": 258.92,
       "score": 100,
-      "kijun_gap": 0.29,
-      "vol_ratio": 14,
+      "kijun_gap": 0.87,
+      "vol_ratio": 19,
       "origin": "VIKINGS_LIVE",
       "origin_label": "바이킹스 라이브",
-      "is_sniper": false,
-      "action": "26일 기준선 및 일목 구름대 상단 안착 확인. 거시 변동성 진정 시 1차 분할 매수 적합.",
-      "target_price": 296.04,
-      "stop_price": 247.13
+      "is_sniper": true,
+      "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 +0.9%) 안착. 목표 +15% / 손절 -4%.",
+      "target_price": 297.76,
+      "stop_price": 248.56
     },
     {
       "ticker": "JPM",
       "name": "제이피모건",
-      "price": 354.2,
+      "price": 355.25,
       "score": 100,
-      "kijun_gap": 0.98,
-      "vol_ratio": 18,
+      "kijun_gap": 1.28,
+      "vol_ratio": 22,
       "origin": "QUANT_DISCOVERY",
       "origin_label": "60종목 퀀트 발굴",
-      "is_sniper": false,
-      "action": "26일 기준선 및 일목 구름대 상단 안착 확인. 거시 변동성 진정 시 1차 분할 매수 적합.",
-      "target_price": 407.33,
-      "stop_price": 340.03
+      "is_sniper": true,
+      "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 +1.3%) 안착. 목표 +15% / 손절 -4%.",
+      "target_price": 408.54,
+      "stop_price": 341.04
     },
     {
       "ticker": "V",
       "name": "비자",
-      "price": 368.89,
+      "price": 367.94,
       "score": 100,
-      "kijun_gap": 2.31,
-      "vol_ratio": 12,
+      "kijun_gap": 2.05,
+      "vol_ratio": 14,
       "origin": "QUANT_DISCOVERY",
       "origin_label": "60종목 퀀트 발굴",
-      "is_sniper": false,
-      "action": "26일 기준선 및 일목 구름대 상단 안착 확인. 거시 변동성 진정 시 1차 분할 매수 적합.",
-      "target_price": 424.22,
-      "stop_price": 354.13
+      "is_sniper": true,
+      "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 +2.0%) 안착. 목표 +15% / 손절 -4%.",
+      "target_price": 423.13,
+      "stop_price": 353.22
     },
     {
       "ticker": "RTX",
       "name": "알티엑스",
-      "price": 213.03,
+      "price": 212.58,
       "score": 100,
-      "kijun_gap": 2.47,
-      "vol_ratio": 11,
+      "kijun_gap": 2.25,
+      "vol_ratio": 13,
       "origin": "QUANT_DISCOVERY",
       "origin_label": "60종목 퀀트 발굴",
       "is_sniper": false,
       "action": "26일 기준선 및 일목 구름대 상단 안착 확인. 거시 변동성 진정 시 1차 분할 매수 적합.",
-      "target_price": 244.98,
-      "stop_price": 204.51
+      "target_price": 244.47,
+      "stop_price": 204.08
     },
     {
       "ticker": "JNJ",
       "name": "존슨앤존슨",
-      "price": 268.27,
+      "price": 269.34,
       "score": 100,
-      "kijun_gap": 2.8,
-      "vol_ratio": 13,
+      "kijun_gap": 3.2,
+      "vol_ratio": 14,
       "origin": "QUANT_DISCOVERY",
       "origin_label": "60종목 퀀트 발굴",
-      "is_sniper": false,
-      "action": "26일 기준선 및 일목 구름대 상단 안착 확인. 거시 변동성 진정 시 1차 분할 매수 적합.",
-      "target_price": 308.51,
-      "stop_price": 257.54
+      "is_sniper": true,
+      "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 +3.2%) 안착. 목표 +15% / 손절 -4%.",
+      "target_price": 309.74,
+      "stop_price": 258.57
     },
     {
       "ticker": "LMT",
       "name": "록히드마틴",
-      "price": 569.53,
+      "price": 568.13,
       "score": 100,
-      "kijun_gap": 3.56,
-      "vol_ratio": 9,
+      "kijun_gap": 3.31,
+      "vol_ratio": 12,
       "origin": "QUANT_DISCOVERY",
       "origin_label": "60종목 퀀트 발굴",
-      "is_sniper": false,
-      "action": "26일 기준선 및 일목 구름대 상단 안착 확인. 거시 변동성 진정 시 1차 분할 매수 적합.",
-      "target_price": 654.96,
-      "stop_price": 546.75
-    },
-    {
-      "ticker": "LLY",
-      "name": "일라이릴리",
-      "price": 1245.27,
-      "score": 100,
-      "kijun_gap": 3.76,
-      "vol_ratio": 13,
-      "origin": "QUANT_DISCOVERY",
-      "origin_label": "60종목 퀀트 발굴",
-      "is_sniper": false,
-      "action": "26일 기준선 및 일목 구름대 상단 안착 확인. 거시 변동성 진정 시 1차 분할 매수 적합.",
-      "target_price": 1432.06,
-      "stop_price": 1195.46
+      "is_sniper": true,
+      "action": "[전략 2 스나이퍼] 10일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 +3.3%) 안착. 목표 +15% / 손절 -4%.",
+      "target_price": 653.35,
+      "stop_price": 545.4
     },
     {
       "ticker": "NVDA",
       "name": "엔비디아",
-      "price": 217.3,
+      "price": 216.26,
       "score": 100,
-      "kijun_gap": 3.99,
+      "kijun_gap": 3.49,
+      "vol_ratio": 17,
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "is_sniper": true,
+      "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 +3.5%) 안착. 목표 +15% / 손절 -4%.",
+      "target_price": 248.7,
+      "stop_price": 207.61
+    },
+    {
+      "ticker": "LLY",
+      "name": "일라이릴리",
+      "price": 1246.43,
+      "score": 100,
+      "kijun_gap": 3.86,
+      "vol_ratio": 16,
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "is_sniper": true,
+      "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 +3.9%) 안착. 목표 +15% / 손절 -4%.",
+      "target_price": 1433.39,
+      "stop_price": 1196.57
+    },
+    {
+      "ticker": "NOC",
+      "name": "노스롭그루먼",
+      "price": 557.77,
+      "score": 100,
+      "kijun_gap": 3.91,
+      "vol_ratio": 16,
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "is_sniper": true,
+      "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 +3.9%) 안착. 목표 +15% / 손절 -4%.",
+      "target_price": 641.44,
+      "stop_price": 535.46
+    },
+    {
+      "ticker": "OKLO",
+      "name": "오클로",
+      "price": 43.11,
+      "score": 65,
+      "kijun_gap": 0.15,
+      "vol_ratio": 12,
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "is_sniper": false,
+      "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지.",
+      "target_price": 49.58,
+      "stop_price": 41.39
+    },
+    {
+      "ticker": "QCOM",
+      "name": "퀄컴",
+      "price": 161.23,
+      "score": 65,
+      "kijun_gap": 0.29,
+      "vol_ratio": 11,
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "is_sniper": false,
+      "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지.",
+      "target_price": 185.41,
+      "stop_price": 154.78
+    },
+    {
+      "ticker": "RKLB",
+      "name": "로켓랩",
+      "price": 73.76,
+      "score": 65,
+      "kijun_gap": 1.72,
       "vol_ratio": 13,
       "origin": "QUANT_DISCOVERY",
       "origin_label": "60종목 퀀트 발굴",
       "is_sniper": false,
-      "action": "26일 기준선 및 일목 구름대 상단 안착 확인. 거시 변동성 진정 시 1차 분할 매수 적합.",
-      "target_price": 249.89,
-      "stop_price": 208.61
+      "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지.",
+      "target_price": 84.82,
+      "stop_price": 70.81
+    },
+    {
+      "ticker": "ASML",
+      "name": "에이에스엠엘",
+      "price": 1749.28,
+      "score": 65,
+      "kijun_gap": 2.09,
+      "vol_ratio": 9,
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "is_sniper": false,
+      "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지.",
+      "target_price": 2011.67,
+      "stop_price": 1679.31
+    },
+    {
+      "ticker": "PANW",
+      "name": "팔로알토",
+      "price": 345.64,
+      "score": 65,
+      "kijun_gap": -2.28,
+      "vol_ratio": 12,
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "is_sniper": false,
+      "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간.",
+      "target_price": 397.49,
+      "stop_price": 331.81
+    },
+    {
+      "ticker": "ISRG",
+      "name": "인튜이티브서지컬",
+      "price": 375.52,
+      "score": 65,
+      "kijun_gap": 2.33,
+      "vol_ratio": 13,
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "is_sniper": false,
+      "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지.",
+      "target_price": 431.85,
+      "stop_price": 360.5
+    },
+    {
+      "ticker": "CEG",
+      "name": "콘스텔레이션",
+      "price": 271.91,
+      "score": 65,
+      "kijun_gap": 2.39,
+      "vol_ratio": 11,
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "is_sniper": false,
+      "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지.",
+      "target_price": 312.7,
+      "stop_price": 261.03
+    },
+    {
+      "ticker": "TSM",
+      "name": "대만반도체",
+      "price": 420.27,
+      "score": 65,
+      "kijun_gap": 3.93,
+      "vol_ratio": 15,
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "is_sniper": false,
+      "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지.",
+      "target_price": 483.31,
+      "stop_price": 403.46
+    },
+    {
+      "ticker": "MA",
+      "name": "마스터카드",
+      "price": 576.11,
+      "score": 65,
+      "kijun_gap": 4.06,
+      "vol_ratio": 13,
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "is_sniper": false,
+      "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지.",
+      "target_price": 662.53,
+      "stop_price": 553.07
+    },
+    {
+      "ticker": "NET",
+      "name": "클라우드플레어",
+      "price": 277.84,
+      "score": 65,
+      "kijun_gap": -4.67,
+      "vol_ratio": 7,
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "is_sniper": false,
+      "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간.",
+      "target_price": 319.52,
+      "stop_price": 266.73
+    },
+    {
+      "ticker": "CVX",
+      "name": "셰브론",
+      "price": 206.5,
+      "score": 65,
+      "kijun_gap": 5.12,
+      "vol_ratio": 14,
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "is_sniper": false,
+      "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지.",
+      "target_price": 237.47,
+      "stop_price": 198.24
+    },
+    {
+      "ticker": "XOM",
+      "name": "엑슨모빌",
+      "price": 166.6,
+      "score": 65,
+      "kijun_gap": 6.14,
+      "vol_ratio": 16,
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "is_sniper": false,
+      "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지.",
+      "target_price": 191.59,
+      "stop_price": 159.94
+    },
+    {
+      "ticker": "DIS",
+      "name": "디즈니",
+      "price": 107.3,
+      "score": 65,
+      "kijun_gap": 6.67,
+      "vol_ratio": 10,
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "is_sniper": false,
+      "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지.",
+      "target_price": 123.39,
+      "stop_price": 103.01
+    },
+    {
+      "ticker": "SNOW",
+      "name": "스노우플레이크",
+      "price": 318.04,
+      "score": 65,
+      "kijun_gap": 6.81,
+      "vol_ratio": 7,
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "is_sniper": false,
+      "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지.",
+      "target_price": 365.75,
+      "stop_price": 305.32
+    },
+    {
+      "ticker": "MSFT",
+      "name": "마이크로소프트",
+      "price": 481.83,
+      "score": 65,
+      "kijun_gap": 8.34,
+      "vol_ratio": 11,
+      "origin": "VIKINGS_LIVE",
+      "origin_label": "바이킹스 라이브",
+      "is_sniper": false,
+      "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지.",
+      "target_price": 554.1,
+      "stop_price": 462.56
+    },
+    {
+      "ticker": "HOOD",
+      "name": "로빈후드",
+      "price": 106.96,
+      "score": 65,
+      "kijun_gap": 11.48,
+      "vol_ratio": 74,
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "is_sniper": false,
+      "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지.",
+      "target_price": 123.0,
+      "stop_price": 102.68
+    },
+    {
+      "ticker": "CRM",
+      "name": "세일즈포스",
+      "price": 206.63,
+      "score": 65,
+      "kijun_gap": 13.8,
+      "vol_ratio": 8,
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "is_sniper": false,
+      "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지.",
+      "target_price": 237.62,
+      "stop_price": 198.36
+    },
+    {
+      "ticker": "COIN",
+      "name": "코인베이스",
+      "price": 189.48,
+      "score": 65,
+      "kijun_gap": 15.21,
+      "vol_ratio": 69,
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "is_sniper": false,
+      "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지.",
+      "target_price": 217.9,
+      "stop_price": 181.9
+    },
+    {
+      "ticker": "NOW",
+      "name": "서비스나우",
+      "price": 128.69,
+      "score": 65,
+      "kijun_gap": 15.58,
+      "vol_ratio": 8,
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "is_sniper": false,
+      "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지.",
+      "target_price": 147.99,
+      "stop_price": 123.54
+    },
+    {
+      "ticker": "PLTR",
+      "name": "팔란티어",
+      "price": 173.04,
+      "score": 65,
+      "kijun_gap": 16.1,
+      "vol_ratio": 10,
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "is_sniper": false,
+      "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지.",
+      "target_price": 199.0,
+      "stop_price": 166.12
+    },
+    {
+      "ticker": "MRVL",
+      "name": "마벨",
+      "price": 246.5,
+      "score": 65,
+      "kijun_gap": 18.68,
+      "vol_ratio": 16,
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "is_sniper": false,
+      "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지.",
+      "target_price": 283.47,
+      "stop_price": 236.64
     }
   ],
-  "sniper_radar": [],
+  "sniper_radar": [
+    {
+      "ticker": "NVDA",
+      "name": "엔비디아",
+      "price": 216.26,
+      "score": 100,
+      "kijun_gap": 3.49,
+      "vol_ratio": 17,
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "is_sniper": true,
+      "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 +3.5%) 안착. 목표 +15% / 손절 -4%.",
+      "target_price": 248.7,
+      "stop_price": 207.61
+    },
+    {
+      "ticker": "AMZN",
+      "name": "아마존",
+      "price": 258.92,
+      "score": 100,
+      "kijun_gap": 0.87,
+      "vol_ratio": 19,
+      "origin": "VIKINGS_LIVE",
+      "origin_label": "바이킹스 라이브",
+      "is_sniper": true,
+      "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 +0.9%) 안착. 목표 +15% / 손절 -4%.",
+      "target_price": 297.76,
+      "stop_price": 248.56
+    },
+    {
+      "ticker": "ETN",
+      "name": "이튼",
+      "price": 420.3,
+      "score": 100,
+      "kijun_gap": 0.64,
+      "vol_ratio": 13,
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "is_sniper": true,
+      "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 +0.6%) 안착. 목표 +15% / 손절 -4%.",
+      "target_price": 483.34,
+      "stop_price": 403.49
+    },
+    {
+      "ticker": "JPM",
+      "name": "제이피모건",
+      "price": 355.25,
+      "score": 100,
+      "kijun_gap": 1.28,
+      "vol_ratio": 22,
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "is_sniper": true,
+      "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 +1.3%) 안착. 목표 +15% / 손절 -4%.",
+      "target_price": 408.54,
+      "stop_price": 341.04
+    },
+    {
+      "ticker": "V",
+      "name": "비자",
+      "price": 367.94,
+      "score": 100,
+      "kijun_gap": 2.05,
+      "vol_ratio": 14,
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "is_sniper": true,
+      "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 +2.0%) 안착. 목표 +15% / 손절 -4%.",
+      "target_price": 423.13,
+      "stop_price": 353.22
+    },
+    {
+      "ticker": "LMT",
+      "name": "록히드마틴",
+      "price": 568.13,
+      "score": 100,
+      "kijun_gap": 3.31,
+      "vol_ratio": 12,
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "is_sniper": true,
+      "action": "[전략 2 스나이퍼] 10일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 +3.3%) 안착. 목표 +15% / 손절 -4%.",
+      "target_price": 653.35,
+      "stop_price": 545.4
+    },
+    {
+      "ticker": "NOC",
+      "name": "노스롭그루먼",
+      "price": 557.77,
+      "score": 100,
+      "kijun_gap": 3.91,
+      "vol_ratio": 16,
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "is_sniper": true,
+      "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 +3.9%) 안착. 목표 +15% / 손절 -4%.",
+      "target_price": 641.44,
+      "stop_price": 535.46
+    },
+    {
+      "ticker": "LLY",
+      "name": "일라이릴리",
+      "price": 1246.43,
+      "score": 100,
+      "kijun_gap": 3.86,
+      "vol_ratio": 16,
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "is_sniper": true,
+      "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 +3.9%) 안착. 목표 +15% / 손절 -4%.",
+      "target_price": 1433.39,
+      "stop_price": 1196.57
+    },
+    {
+      "ticker": "JNJ",
+      "name": "존슨앤존슨",
+      "price": 269.34,
+      "score": 100,
+      "kijun_gap": 3.2,
+      "vol_ratio": 14,
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "is_sniper": true,
+      "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 +3.2%) 안착. 목표 +15% / 손절 -4%.",
+      "target_price": 309.74,
+      "stop_price": 258.57
+    }
+  ],
   "signal_tracker": [
+    {
+      "date": "2026-08-21",
+      "ticker": "NVDA",
+      "name": "엔비디아",
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "strategy": "전략 2 (스나이퍼)",
+      "strategy_code": "STRATEGY_2_SNIPER",
+      "entry_price": 216.26,
+      "target_price": 248.7,
+      "stop_price": 207.61,
+      "score": 95,
+      "status": "ACTIVE_SNIPER",
+      "status_label": "ACTIVE_SNIPER"
+    },
+    {
+      "date": "2026-08-21",
+      "ticker": "AMZN",
+      "name": "아마존",
+      "origin": "VIKINGS_LIVE",
+      "origin_label": "바이킹스 라이브",
+      "strategy": "전략 2 (스나이퍼)",
+      "strategy_code": "STRATEGY_2_SNIPER",
+      "entry_price": 258.92,
+      "target_price": 297.76,
+      "stop_price": 248.56,
+      "score": 95,
+      "status": "ACTIVE_SNIPER",
+      "status_label": "ACTIVE_SNIPER"
+    },
+    {
+      "date": "2026-08-21",
+      "ticker": "ETN",
+      "name": "이튼",
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "strategy": "전략 2 (스나이퍼)",
+      "strategy_code": "STRATEGY_2_SNIPER",
+      "entry_price": 420.3,
+      "target_price": 483.34,
+      "stop_price": 403.49,
+      "score": 95,
+      "status": "ACTIVE_SNIPER",
+      "status_label": "ACTIVE_SNIPER"
+    },
+    {
+      "date": "2026-08-21",
+      "ticker": "JPM",
+      "name": "제이피모건",
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "strategy": "전략 2 (스나이퍼)",
+      "strategy_code": "STRATEGY_2_SNIPER",
+      "entry_price": 355.25,
+      "target_price": 408.54,
+      "stop_price": 341.04,
+      "score": 95,
+      "status": "ACTIVE_SNIPER",
+      "status_label": "ACTIVE_SNIPER"
+    },
+    {
+      "date": "2026-08-21",
+      "ticker": "V",
+      "name": "비자",
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "strategy": "전략 2 (스나이퍼)",
+      "strategy_code": "STRATEGY_2_SNIPER",
+      "entry_price": 367.94,
+      "target_price": 423.13,
+      "stop_price": 353.22,
+      "score": 95,
+      "status": "ACTIVE_SNIPER",
+      "status_label": "ACTIVE_SNIPER"
+    },
+    {
+      "date": "2026-08-21",
+      "ticker": "LMT",
+      "name": "록히드마틴",
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "strategy": "전략 2 (스나이퍼)",
+      "strategy_code": "STRATEGY_2_SNIPER",
+      "entry_price": 568.13,
+      "target_price": 653.35,
+      "stop_price": 545.4,
+      "score": 95,
+      "status": "ACTIVE_SNIPER",
+      "status_label": "ACTIVE_SNIPER"
+    },
+    {
+      "date": "2026-08-21",
+      "ticker": "NOC",
+      "name": "노스롭그루먼",
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "strategy": "전략 2 (스나이퍼)",
+      "strategy_code": "STRATEGY_2_SNIPER",
+      "entry_price": 557.77,
+      "target_price": 641.44,
+      "stop_price": 535.46,
+      "score": 95,
+      "status": "ACTIVE_SNIPER",
+      "status_label": "ACTIVE_SNIPER"
+    },
+    {
+      "date": "2026-08-21",
+      "ticker": "LLY",
+      "name": "일라이릴리",
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "strategy": "전략 2 (스나이퍼)",
+      "strategy_code": "STRATEGY_2_SNIPER",
+      "entry_price": 1246.43,
+      "target_price": 1433.39,
+      "stop_price": 1196.57,
+      "score": 95,
+      "status": "ACTIVE_SNIPER",
+      "status_label": "ACTIVE_SNIPER"
+    },
+    {
+      "date": "2026-08-21",
+      "ticker": "JNJ",
+      "name": "존슨앤존슨",
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "strategy": "전략 2 (스나이퍼)",
+      "strategy_code": "STRATEGY_2_SNIPER",
+      "entry_price": 269.34,
+      "target_price": 309.74,
+      "stop_price": 258.57,
+      "score": 95,
+      "status": "ACTIVE_SNIPER",
+      "status_label": "ACTIVE_SNIPER"
+    },
     {
       "date": "2026-08-21",
       "ticker": "ETN",
@@ -612,9 +1182,9 @@
       "origin_label": "60종목 퀀트 발굴",
       "strategy": "전략 1 (정석 눌림목)",
       "strategy_code": "STRATEGY_1_PULLBACK",
-      "entry_price": 416.8,
-      "target_price": 479.32,
-      "stop_price": 400.13,
+      "entry_price": 420.3,
+      "target_price": 483.34,
+      "stop_price": 403.49,
       "score": 100,
       "status": "ACTIVE_BUY",
       "status_label": "ACTIVE_BUY"
@@ -627,9 +1197,9 @@
       "origin_label": "바이킹스 라이브",
       "strategy": "전략 1 (정석 눌림목)",
       "strategy_code": "STRATEGY_1_PULLBACK",
-      "entry_price": 257.43,
-      "target_price": 296.04,
-      "stop_price": 247.13,
+      "entry_price": 258.92,
+      "target_price": 297.76,
+      "stop_price": 248.56,
       "score": 100,
       "status": "ACTIVE_BUY",
       "status_label": "ACTIVE_BUY"
@@ -642,9 +1212,9 @@
       "origin_label": "60종목 퀀트 발굴",
       "strategy": "전략 1 (정석 눌림목)",
       "strategy_code": "STRATEGY_1_PULLBACK",
-      "entry_price": 354.2,
-      "target_price": 407.33,
-      "stop_price": 340.03,
+      "entry_price": 355.25,
+      "target_price": 408.54,
+      "stop_price": 341.04,
       "score": 100,
       "status": "ACTIVE_BUY",
       "status_label": "ACTIVE_BUY"
@@ -657,9 +1227,9 @@
       "origin_label": "60종목 퀀트 발굴",
       "strategy": "전략 1 (정석 눌림목)",
       "strategy_code": "STRATEGY_1_PULLBACK",
-      "entry_price": 368.89,
-      "target_price": 424.22,
-      "stop_price": 354.13,
+      "entry_price": 367.94,
+      "target_price": 423.13,
+      "stop_price": 353.22,
       "score": 100,
       "status": "ACTIVE_BUY",
       "status_label": "ACTIVE_BUY"
@@ -672,9 +1242,9 @@
       "origin_label": "60종목 퀀트 발굴",
       "strategy": "전략 1 (정석 눌림목)",
       "strategy_code": "STRATEGY_1_PULLBACK",
-      "entry_price": 213.03,
-      "target_price": 244.98,
-      "stop_price": 204.51,
+      "entry_price": 212.58,
+      "target_price": 244.47,
+      "stop_price": 204.08,
       "score": 100,
       "status": "ACTIVE_BUY",
       "status_label": "ACTIVE_BUY"
@@ -687,9 +1257,9 @@
       "origin_label": "60종목 퀀트 발굴",
       "strategy": "전략 1 (정석 눌림목)",
       "strategy_code": "STRATEGY_1_PULLBACK",
-      "entry_price": 268.27,
-      "target_price": 308.51,
-      "stop_price": 257.54,
+      "entry_price": 269.34,
+      "target_price": 309.74,
+      "stop_price": 258.57,
       "score": 100,
       "status": "ACTIVE_BUY",
       "status_label": "ACTIVE_BUY"
@@ -702,24 +1272,9 @@
       "origin_label": "60종목 퀀트 발굴",
       "strategy": "전략 1 (정석 눌림목)",
       "strategy_code": "STRATEGY_1_PULLBACK",
-      "entry_price": 569.53,
-      "target_price": 654.96,
-      "stop_price": 546.75,
-      "score": 100,
-      "status": "ACTIVE_BUY",
-      "status_label": "ACTIVE_BUY"
-    },
-    {
-      "date": "2026-08-21",
-      "ticker": "LLY",
-      "name": "일라이릴리",
-      "origin": "QUANT_DISCOVERY",
-      "origin_label": "60종목 퀀트 발굴",
-      "strategy": "전략 1 (정석 눌림목)",
-      "strategy_code": "STRATEGY_1_PULLBACK",
-      "entry_price": 1245.27,
-      "target_price": 1432.06,
-      "stop_price": 1195.46,
+      "entry_price": 568.13,
+      "target_price": 653.35,
+      "stop_price": 545.4,
       "score": 100,
       "status": "ACTIVE_BUY",
       "status_label": "ACTIVE_BUY"
@@ -732,10 +1287,70 @@
       "origin_label": "60종목 퀀트 발굴",
       "strategy": "전략 1 (정석 눌림목)",
       "strategy_code": "STRATEGY_1_PULLBACK",
-      "entry_price": 217.3,
-      "target_price": 249.89,
-      "stop_price": 208.61,
+      "entry_price": 216.26,
+      "target_price": 248.7,
+      "stop_price": 207.61,
       "score": 100,
+      "status": "ACTIVE_BUY",
+      "status_label": "ACTIVE_BUY"
+    },
+    {
+      "date": "2026-08-21",
+      "ticker": "LLY",
+      "name": "일라이릴리",
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "strategy": "전략 1 (정석 눌림목)",
+      "strategy_code": "STRATEGY_1_PULLBACK",
+      "entry_price": 1246.43,
+      "target_price": 1433.39,
+      "stop_price": 1196.57,
+      "score": 100,
+      "status": "ACTIVE_BUY",
+      "status_label": "ACTIVE_BUY"
+    },
+    {
+      "date": "2026-08-21",
+      "ticker": "NOC",
+      "name": "노스롭그루먼",
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "strategy": "전략 1 (정석 눌림목)",
+      "strategy_code": "STRATEGY_1_PULLBACK",
+      "entry_price": 557.77,
+      "target_price": 641.44,
+      "stop_price": 535.46,
+      "score": 100,
+      "status": "ACTIVE_BUY",
+      "status_label": "ACTIVE_BUY"
+    },
+    {
+      "date": "2026-08-21",
+      "ticker": "OKLO",
+      "name": "오클로",
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "strategy": "전략 1 (정석 눌림목)",
+      "strategy_code": "STRATEGY_1_PULLBACK",
+      "entry_price": 43.11,
+      "target_price": 49.58,
+      "stop_price": 41.39,
+      "score": 65,
+      "status": "ACTIVE_BUY",
+      "status_label": "ACTIVE_BUY"
+    },
+    {
+      "date": "2026-08-21",
+      "ticker": "QCOM",
+      "name": "퀄컴",
+      "origin": "QUANT_DISCOVERY",
+      "origin_label": "60종목 퀀트 발굴",
+      "strategy": "전략 1 (정석 눌림목)",
+      "strategy_code": "STRATEGY_1_PULLBACK",
+      "entry_price": 161.23,
+      "target_price": 185.41,
+      "stop_price": 154.78,
+      "score": 65,
       "status": "ACTIVE_BUY",
       "status_label": "ACTIVE_BUY"
     }
@@ -743,18 +1358,18 @@
   "chart_intelligence": {
     "NVDA": {
       "intelligence": {
-        "verdict": "Bull Accumulation (1차 분할 매수 적합)",
-        "score": "100 / 100 pt (BULL_BUY)",
+        "verdict": "Sniper Alert (구름대 도약 2단계 특급 매수)",
+        "score": "95 / 100 pt (SNIPER_BUY)",
         "bull_score": 100,
         "bear_score": 0,
         "type": "BULL",
-        "is_sniper": false,
-        "trampoline_detected": false,
+        "is_sniper": true,
+        "trampoline_detected": true,
         "kijun": {
-          "val": "$208.96 (+4.0%)",
+          "val": "$208.96 (+3.5%)",
           "status": "status-bull",
           "badge": "SUPPORTED",
-          "desc": "현재가 $217.30 / 26일선 $208.96 (이격 +4.0%)"
+          "desc": "현재가 $216.26 / 26일선 $208.96 (이격 +3.5%)"
         },
         "tenkan": {
           "val": "$221.79",
@@ -769,27 +1384,27 @@
           "desc": "일목 구름대(202.2~213.0) 상단 안착"
         },
         "vol": {
-          "val": "13% (20D)",
+          "val": "17% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 13% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 17% (매도세 고갈 완벽)"
         },
-        "action": "26일 기준선 및 일목 구름대 상단 안착 확인. 거시 변동성 진정 시 1차 분할 매수 적합."
+        "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 +3.5%) 안착. 목표 +15% / 손절 -4%."
       },
-      "latest_close": 217.3,
+      "latest_close": 216.26,
       "kijun": 208.96,
       "tenkan": 221.79,
-      "kijun_gap_pct": 3.99,
-      "vol_ratio": 0.13,
+      "kijun_gap_pct": 3.49,
+      "vol_ratio": 0.17,
       "future_cloud_type": "양운 (상승 지지 구름대)",
       "future_cloud_gap": 6.52,
       "future_span_a_latest": 215.38,
       "future_span_b_latest": 208.86,
-      "status_text": "Bull Accumulation (1차 분할 매수 적합)",
+      "status_text": "Sniper Alert (구름대 도약 2단계 특급 매수)",
       "status_tag": "BULL",
       "bull_score": 100,
       "bear_score": 0,
-      "is_sniper": false
+      "is_sniper": true
     },
     "MSFT": {
       "intelligence": {
@@ -801,10 +1416,10 @@
         "is_sniper": false,
         "trampoline_detected": false,
         "kijun": {
-          "val": "$444.72 (+8.9%)",
+          "val": "$444.72 (+8.3%)",
           "status": "status-neutral",
           "badge": "OVERHEATED",
-          "desc": "현재가 $484.10 / 26일선 $444.72 (이격 +8.9%)"
+          "desc": "현재가 $481.83 / 26일선 $444.72 (이격 +8.3%)"
         },
         "tenkan": {
           "val": "$490.32",
@@ -819,18 +1434,18 @@
           "desc": "일목 구름대(384.4~407.0) 상단 안착"
         },
         "vol": {
-          "val": "9% (20D)",
+          "val": "11% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 9% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 11% (매도세 고갈 완벽)"
         },
         "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
       },
-      "latest_close": 484.1,
+      "latest_close": 481.83,
       "kijun": 444.72,
       "tenkan": 490.32,
-      "kijun_gap_pct": 8.85,
-      "vol_ratio": 0.09,
+      "kijun_gap_pct": 8.34,
+      "vol_ratio": 0.11,
       "future_cloud_type": "양운 (상승 지지 구름대)",
       "future_cloud_gap": 36.87,
       "future_span_a_latest": 467.52,
@@ -843,24 +1458,24 @@
     },
     "AMZN": {
       "intelligence": {
-        "verdict": "Bull Accumulation (1차 분할 매수 적합)",
-        "score": "100 / 100 pt (BULL_BUY)",
+        "verdict": "Sniper Alert (구름대 도약 2단계 특급 매수)",
+        "score": "95 / 100 pt (SNIPER_BUY)",
         "bull_score": 100,
         "bear_score": 0,
         "type": "BULL",
-        "is_sniper": false,
-        "trampoline_detected": false,
+        "is_sniper": true,
+        "trampoline_detected": true,
         "kijun": {
-          "val": "$256.68 (+0.3%)",
+          "val": "$256.68 (+0.9%)",
           "status": "status-bull",
           "badge": "SUPPORTED",
-          "desc": "현재가 $257.43 / 26일선 $256.68 (이격 +0.3%)"
+          "desc": "현재가 $258.92 / 26일선 $256.68 (이격 +0.9%)"
         },
         "tenkan": {
-          "val": "$268.04",
+          "val": "$267.94",
           "status": "status-bull",
           "badge": "GOLDEN CROSS",
-          "desc": "9일 전환선 $268.04 상단 정배열"
+          "desc": "9일 전환선 $267.94 상단 정배열"
         },
         "cloud": {
           "val": "$252.06",
@@ -869,27 +1484,27 @@
           "desc": "일목 구름대(245.0~252.1) 상단 안착"
         },
         "vol": {
-          "val": "14% (20D)",
+          "val": "19% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 14% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 19% (매도세 고갈 완벽)"
         },
-        "action": "26일 기준선 및 일목 구름대 상단 안착 확인. 거시 변동성 진정 시 1차 분할 매수 적합."
+        "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 +0.9%) 안착. 목표 +15% / 손절 -4%."
       },
-      "latest_close": 257.43,
+      "latest_close": 258.92,
       "kijun": 256.68,
-      "tenkan": 268.04,
-      "kijun_gap_pct": 0.29,
-      "vol_ratio": 0.14,
+      "tenkan": 267.94,
+      "kijun_gap_pct": 0.87,
+      "vol_ratio": 0.19,
       "future_cloud_type": "양운 (상승 지지 구름대)",
-      "future_cloud_gap": 5.98,
-      "future_span_a_latest": 262.36,
+      "future_cloud_gap": 5.93,
+      "future_span_a_latest": 262.31,
       "future_span_b_latest": 256.38,
-      "status_text": "Bull Accumulation (1차 분할 매수 적합)",
+      "status_text": "Sniper Alert (구름대 도약 2단계 특급 매수)",
       "status_tag": "BULL",
       "bull_score": 100,
       "bear_score": 0,
-      "is_sniper": false
+      "is_sniper": true
     },
     "AAPL": {
       "intelligence": {
@@ -899,12 +1514,12 @@
         "bear_score": 55,
         "type": "BEAR",
         "is_sniper": false,
-        "trampoline_detected": false,
+        "trampoline_detected": true,
         "kijun": {
-          "val": "$322.01 (-4.2%)",
+          "val": "$322.01 (-4.4%)",
           "status": "status-bear",
           "badge": "BREAKDOWN",
-          "desc": "현재가 $308.48 / 26일선 $322.01 (이격 -4.2%)"
+          "desc": "현재가 $307.76 / 26일선 $322.01 (이격 -4.4%)"
         },
         "tenkan": {
           "val": "$310.43",
@@ -919,18 +1534,18 @@
           "desc": "일목 구름대(304.0~312.3) 내부 횡보"
         },
         "vol": {
-          "val": "14% (20D)",
+          "val": "17% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 14% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 17% (매도세 고갈 완벽)"
         },
         "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
       },
-      "latest_close": 308.48,
+      "latest_close": 307.76,
       "kijun": 322.01,
       "tenkan": 310.43,
-      "kijun_gap_pct": -4.2,
-      "vol_ratio": 0.14,
+      "kijun_gap_pct": -4.43,
+      "vol_ratio": 0.17,
       "future_cloud_type": "양운 (상승 지지 구름대)",
       "future_cloud_gap": 7.32,
       "future_span_a_latest": 316.22,
@@ -949,12 +1564,12 @@
         "bear_score": 90,
         "type": "BEAR",
         "is_sniper": false,
-        "trampoline_detected": false,
+        "trampoline_detected": true,
         "kijun": {
-          "val": "$349.69 (-2.3%)",
+          "val": "$349.69 (-2.2%)",
           "status": "status-bear",
           "badge": "BREAKDOWN",
-          "desc": "현재가 $341.78 / 26일선 $349.69 (이격 -2.3%)"
+          "desc": "현재가 $341.88 / 26일선 $349.69 (이격 -2.2%)"
         },
         "tenkan": {
           "val": "$347.69",
@@ -969,18 +1584,18 @@
           "desc": "일목 구름대(358.1~369.3) 하단 붕괴"
         },
         "vol": {
-          "val": "13% (20D)",
+          "val": "15% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 13% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 15% (매도세 고갈 완벽)"
         },
         "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
       },
-      "latest_close": 341.78,
+      "latest_close": 341.88,
       "kijun": 349.69,
       "tenkan": 347.69,
-      "kijun_gap_pct": -2.26,
-      "vol_ratio": 0.13,
+      "kijun_gap_pct": -2.23,
+      "vol_ratio": 0.15,
       "future_cloud_type": "음운 (하락 저항 구름대)",
       "future_cloud_gap": 1.0,
       "future_span_a_latest": 348.69,
@@ -1001,10 +1616,10 @@
         "is_sniper": false,
         "trampoline_detected": false,
         "kijun": {
-          "val": "$590.18 (-6.9%)",
+          "val": "$590.18 (-6.6%)",
           "status": "status-bear",
           "badge": "BREAKDOWN",
-          "desc": "현재가 $549.60 / 26일선 $590.18 (이격 -6.9%)"
+          "desc": "현재가 $551.41 / 26일선 $590.18 (이격 -6.6%)"
         },
         "tenkan": {
           "val": "$574.85",
@@ -1019,18 +1634,18 @@
           "desc": "일목 구름대(613.1~622.4) 하단 붕괴"
         },
         "vol": {
-          "val": "11% (20D)",
+          "val": "15% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 11% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 15% (매도세 고갈 완벽)"
         },
         "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
       },
-      "latest_close": 549.6,
+      "latest_close": 551.41,
       "kijun": 590.18,
       "tenkan": 574.85,
-      "kijun_gap_pct": -6.88,
-      "vol_ratio": 0.11,
+      "kijun_gap_pct": -6.57,
+      "vol_ratio": 0.15,
       "future_cloud_type": "음운 (하락 저항 구름대)",
       "future_cloud_gap": 22.77,
       "future_span_a_latest": 582.52,
@@ -1051,16 +1666,16 @@
         "is_sniper": false,
         "trampoline_detected": false,
         "kijun": {
-          "val": "$341.99 (+2.0%)",
+          "val": "$341.99 (+2.8%)",
           "status": "status-bull",
           "badge": "SUPPORTED",
-          "desc": "현재가 $348.80 / 26일선 $341.99 (이격 +2.0%)"
+          "desc": "현재가 $351.60 / 26일선 $341.99 (이격 +2.8%)"
         },
         "tenkan": {
-          "val": "$337.63",
+          "val": "$337.67",
           "status": "status-bear",
           "badge": "DEAD CROSS",
-          "desc": "9일 전환선 $337.63 하단 역배열"
+          "desc": "9일 전환선 $337.67 하단 역배열"
         },
         "cloud": {
           "val": "$411.00",
@@ -1069,21 +1684,21 @@
           "desc": "일목 구름대(401.7~411.0) 하단 붕괴"
         },
         "vol": {
-          "val": "10% (20D)",
+          "val": "17% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 10% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 17% (매도세 고갈 완벽)"
         },
         "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
       },
-      "latest_close": 348.8,
+      "latest_close": 351.6,
       "kijun": 341.99,
-      "tenkan": 337.63,
-      "kijun_gap_pct": 1.99,
-      "vol_ratio": 0.1,
+      "tenkan": 337.67,
+      "kijun_gap_pct": 2.81,
+      "vol_ratio": 0.17,
       "future_cloud_type": "음운 (하락 저항 구름대)",
-      "future_cloud_gap": 25.31,
-      "future_span_a_latest": 339.81,
+      "future_cloud_gap": 25.29,
+      "future_span_a_latest": 339.83,
       "future_span_b_latest": 365.12,
       "status_text": "Neutral Consolidation (박스권 수렴)",
       "status_tag": "NEUTRAL",
@@ -1101,10 +1716,10 @@
         "is_sniper": false,
         "trampoline_detected": false,
         "kijun": {
-          "val": "$149.03 (+16.7%)",
+          "val": "$149.03 (+16.1%)",
           "status": "status-neutral",
           "badge": "OVERHEATED",
-          "desc": "현재가 $173.95 / 26일선 $149.03 (이격 +16.7%)"
+          "desc": "현재가 $173.04 / 26일선 $149.03 (이격 +16.1%)"
         },
         "tenkan": {
           "val": "$174.26",
@@ -1119,18 +1734,18 @@
           "desc": "일목 구름대(126.7~135.0) 상단 안착"
         },
         "vol": {
-          "val": "8% (20D)",
+          "val": "10% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 8% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 10% (매도세 고갈 완벽)"
         },
         "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
       },
-      "latest_close": 173.95,
+      "latest_close": 173.04,
       "kijun": 149.03,
       "tenkan": 174.26,
-      "kijun_gap_pct": 16.72,
-      "vol_ratio": 0.08,
+      "kijun_gap_pct": 16.1,
+      "vol_ratio": 0.1,
       "future_cloud_type": "양운 (상승 지지 구름대)",
       "future_cloud_gap": 18.37,
       "future_span_a_latest": 161.65,
@@ -1151,10 +1766,10 @@
         "is_sniper": false,
         "trampoline_detected": false,
         "kijun": {
-          "val": "$136.88 (+7.5%)",
+          "val": "$136.88 (+7.4%)",
           "status": "status-neutral",
           "badge": "OVERHEATED",
-          "desc": "현재가 $147.10 / 26일선 $136.88 (이격 +7.5%)"
+          "desc": "현재가 $147.03 / 26일선 $136.88 (이격 +7.4%)"
         },
         "tenkan": {
           "val": "$148.34",
@@ -1169,18 +1784,18 @@
           "desc": "일목 구름대(153.9~186.5) 하단 붕괴"
         },
         "vol": {
-          "val": "8% (20D)",
+          "val": "13% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 8% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 13% (매도세 고갈 완벽)"
         },
         "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
       },
-      "latest_close": 147.1,
+      "latest_close": 147.03,
       "kijun": 136.88,
       "tenkan": 148.34,
-      "kijun_gap_pct": 7.47,
-      "vol_ratio": 0.08,
+      "kijun_gap_pct": 7.41,
+      "vol_ratio": 0.13,
       "future_cloud_type": "음운 (하락 저항 구름대)",
       "future_cloud_gap": 24.51,
       "future_span_a_latest": 142.61,
@@ -1199,12 +1814,12 @@
         "bear_score": 0,
         "type": "NEUTRAL",
         "is_sniper": false,
-        "trampoline_detected": false,
+        "trampoline_detected": true,
         "kijun": {
-          "val": "$181.57 (+14.5%)",
+          "val": "$181.57 (+13.8%)",
           "status": "status-neutral",
           "badge": "OVERHEATED",
-          "desc": "현재가 $207.82 / 26일선 $181.57 (이격 +14.5%)"
+          "desc": "현재가 $206.63 / 26일선 $181.57 (이격 +13.8%)"
         },
         "tenkan": {
           "val": "$198.95",
@@ -1219,18 +1834,18 @@
           "desc": "일목 구름대(164.8~178.6) 상단 안착"
         },
         "vol": {
-          "val": "5% (20D)",
+          "val": "8% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 5% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 8% (매도세 고갈 완벽)"
         },
         "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
       },
-      "latest_close": 207.82,
+      "latest_close": 206.63,
       "kijun": 181.57,
       "tenkan": 198.95,
-      "kijun_gap_pct": 14.45,
-      "vol_ratio": 0.05,
+      "kijun_gap_pct": 13.8,
+      "vol_ratio": 0.08,
       "future_cloud_type": "양운 (상승 지지 구름대)",
       "future_cloud_gap": 13.1,
       "future_span_a_latest": 190.26,
@@ -1244,17 +1859,17 @@
     "TSM": {
       "intelligence": {
         "verdict": "Neutral Consolidation (박스권 수렴)",
-        "score": "30 / 100 pt (HOLD)",
-        "bull_score": 30,
+        "score": "65 / 100 pt (HOLD)",
+        "bull_score": 65,
         "bear_score": 35,
         "type": "NEUTRAL",
         "is_sniper": false,
         "trampoline_detected": false,
         "kijun": {
-          "val": "$404.38 (+4.1%)",
-          "status": "status-neutral",
-          "badge": "OVERHEATED",
-          "desc": "현재가 $420.92 / 26일선 $404.38 (이격 +4.1%)"
+          "val": "$404.38 (+3.9%)",
+          "status": "status-bull",
+          "badge": "SUPPORTED",
+          "desc": "현재가 $420.27 / 26일선 $404.38 (이격 +3.9%)"
         },
         "tenkan": {
           "val": "$421.88",
@@ -1269,25 +1884,25 @@
           "desc": "일목 구름대(431.6~436.5) 하단 붕괴"
         },
         "vol": {
-          "val": "10% (20D)",
+          "val": "15% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 10% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 15% (매도세 고갈 완벽)"
         },
         "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
       },
-      "latest_close": 420.92,
+      "latest_close": 420.27,
       "kijun": 404.38,
       "tenkan": 421.88,
-      "kijun_gap_pct": 4.09,
-      "vol_ratio": 0.1,
+      "kijun_gap_pct": 3.93,
+      "vol_ratio": 0.15,
       "future_cloud_type": "음운 (하락 저항 구름대)",
       "future_cloud_gap": 12.73,
       "future_span_a_latest": 413.13,
       "future_span_b_latest": 425.86,
       "status_text": "Neutral Consolidation (박스권 수렴)",
       "status_tag": "NEUTRAL",
-      "bull_score": 30,
+      "bull_score": 65,
       "bear_score": 35,
       "is_sniper": false
     },
@@ -1299,12 +1914,12 @@
         "bear_score": 90,
         "type": "BEAR",
         "is_sniper": false,
-        "trampoline_detected": false,
+        "trampoline_detected": true,
         "kijun": {
-          "val": "$395.17 (-5.6%)",
+          "val": "$395.17 (-6.6%)",
           "status": "status-bear",
           "badge": "BREAKDOWN",
-          "desc": "현재가 $372.89 / 26일선 $395.17 (이격 -5.6%)"
+          "desc": "현재가 $368.97 / 26일선 $395.17 (이격 -6.6%)"
         },
         "tenkan": {
           "val": "$392.18",
@@ -1319,18 +1934,18 @@
           "desc": "일목 구름대(385.2~425.3) 하단 붕괴"
         },
         "vol": {
-          "val": "18% (20D)",
+          "val": "24% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 18% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 24% (매도세 고갈 완벽)"
         },
         "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
       },
-      "latest_close": 372.89,
+      "latest_close": 368.97,
       "kijun": 395.17,
       "tenkan": 392.18,
-      "kijun_gap_pct": -5.64,
-      "vol_ratio": 0.18,
+      "kijun_gap_pct": -6.63,
+      "vol_ratio": 0.24,
       "future_cloud_type": "음운 (하락 저항 구름대)",
       "future_cloud_gap": 0.9,
       "future_span_a_latest": 393.68,
@@ -1349,12 +1964,12 @@
         "bear_score": 55,
         "type": "BEAR",
         "is_sniper": false,
-        "trampoline_detected": false,
+        "trampoline_detected": true,
         "kijun": {
-          "val": "$492.75 (-4.8%)",
+          "val": "$492.75 (-4.6%)",
           "status": "status-bear",
           "badge": "BREAKDOWN",
-          "desc": "현재가 $469.02 / 26일선 $492.75 (이격 -4.8%)"
+          "desc": "현재가 $470.23 / 26일선 $492.75 (이격 -4.6%)"
         },
         "tenkan": {
           "val": "$488.81",
@@ -1369,18 +1984,18 @@
           "desc": "일목 구름대(461.7~522.0) 내부 횡보"
         },
         "vol": {
-          "val": "7% (20D)",
+          "val": "10% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 7% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 10% (매도세 고갈 완벽)"
         },
         "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
       },
-      "latest_close": 469.02,
+      "latest_close": 470.23,
       "kijun": 492.75,
       "tenkan": 488.81,
-      "kijun_gap_pct": -4.82,
-      "vol_ratio": 0.07,
+      "kijun_gap_pct": -4.57,
+      "vol_ratio": 0.1,
       "future_cloud_type": "음운 (하락 저항 구름대)",
       "future_cloud_gap": 13.6,
       "future_span_a_latest": 490.78,
@@ -1393,18 +2008,18 @@
     },
     "QCOM": {
       "intelligence": {
-        "verdict": "Risk Breakdown (생명선 붕괴 / 매수 금지)",
-        "score": "65 / 100 pt (BEAR_EXIT)",
+        "verdict": "Neutral Consolidation (박스권 수렴)",
+        "score": "65 / 100 pt (HOLD)",
         "bull_score": 65,
-        "bear_score": 75,
-        "type": "BEAR",
+        "bear_score": 35,
+        "type": "NEUTRAL",
         "is_sniper": false,
         "trampoline_detected": false,
         "kijun": {
-          "val": "$160.77 (-0.0%)",
+          "val": "$160.77 (+0.3%)",
           "status": "status-bull",
           "badge": "SUPPORTED",
-          "desc": "현재가 $160.75 / 26일선 $160.77 (이격 -0.0%)"
+          "desc": "현재가 $161.23 / 26일선 $160.77 (이격 +0.3%)"
         },
         "tenkan": {
           "val": "$161.85",
@@ -1419,26 +2034,26 @@
           "desc": "일목 구름대(191.9~211.6) 하단 붕괴"
         },
         "vol": {
-          "val": "9% (20D)",
+          "val": "11% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 9% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 11% (매도세 고갈 완벽)"
         },
-        "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
+        "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
       },
-      "latest_close": 160.75,
+      "latest_close": 161.23,
       "kijun": 160.77,
       "tenkan": 161.85,
-      "kijun_gap_pct": -0.01,
-      "vol_ratio": 0.09,
+      "kijun_gap_pct": 0.29,
+      "vol_ratio": 0.11,
       "future_cloud_type": "음운 (하락 저항 구름대)",
       "future_cloud_gap": 26.86,
       "future_span_a_latest": 161.31,
       "future_span_b_latest": 188.17,
-      "status_text": "Risk Breakdown (생명선 붕괴 / 매수 금지)",
-      "status_tag": "BEAR",
+      "status_text": "Neutral Consolidation (박스권 수렴)",
+      "status_tag": "NEUTRAL",
       "bull_score": 65,
-      "bear_score": 75,
+      "bear_score": 35,
       "is_sniper": false
     },
     "ARM": {
@@ -1451,10 +2066,10 @@
         "is_sniper": false,
         "trampoline_detected": false,
         "kijun": {
-          "val": "$259.34 (-2.4%)",
+          "val": "$259.34 (-3.8%)",
           "status": "status-bear",
           "badge": "BREAKDOWN",
-          "desc": "현재가 $253.20 / 26일선 $259.34 (이격 -2.4%)"
+          "desc": "현재가 $249.43 / 26일선 $259.34 (이격 -3.8%)"
         },
         "tenkan": {
           "val": "$265.85",
@@ -1469,18 +2084,18 @@
           "desc": "일목 구름대(324.3~325.5) 하단 붕괴"
         },
         "vol": {
-          "val": "5% (20D)",
+          "val": "8% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 5% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 8% (매도세 고갈 완벽)"
         },
         "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
       },
-      "latest_close": 253.2,
+      "latest_close": 249.43,
       "kijun": 259.34,
       "tenkan": 265.85,
-      "kijun_gap_pct": -2.37,
-      "vol_ratio": 0.05,
+      "kijun_gap_pct": -3.82,
+      "vol_ratio": 0.08,
       "future_cloud_type": "음운 (하락 저항 구름대)",
       "future_cloud_gap": 73.45,
       "future_span_a_latest": 262.6,
@@ -1501,10 +2116,10 @@
         "is_sniper": false,
         "trampoline_detected": false,
         "kijun": {
-          "val": "$887.01 (+9.6%)",
+          "val": "$887.01 (+10.2%)",
           "status": "status-neutral",
           "badge": "OVERHEATED",
-          "desc": "현재가 $972.52 / 26일선 $887.01 (이격 +9.6%)"
+          "desc": "현재가 $977.84 / 26일선 $887.01 (이격 +10.2%)"
         },
         "tenkan": {
           "val": "$940.38",
@@ -1519,18 +2134,18 @@
           "desc": "일목 구름대(882.5~992.8) 내부 횡보"
         },
         "vol": {
-          "val": "8% (20D)",
+          "val": "13% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 8% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 13% (매도세 고갈 완벽)"
         },
         "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
       },
-      "latest_close": 972.52,
+      "latest_close": 977.84,
       "kijun": 887.01,
       "tenkan": 940.38,
-      "kijun_gap_pct": 9.64,
-      "vol_ratio": 0.08,
+      "kijun_gap_pct": 10.24,
+      "vol_ratio": 0.13,
       "future_cloud_type": "음운 (하락 저항 구름대)",
       "future_cloud_gap": 82.65,
       "future_span_a_latest": 913.69,
@@ -1551,10 +2166,10 @@
         "is_sniper": false,
         "trampoline_detected": false,
         "kijun": {
-          "val": "$94.68 (-4.2%)",
+          "val": "$94.68 (-3.5%)",
           "status": "status-bear",
           "badge": "BREAKDOWN",
-          "desc": "현재가 $90.69 / 26일선 $94.68 (이격 -4.2%)"
+          "desc": "현재가 $91.32 / 26일선 $94.68 (이격 -3.5%)"
         },
         "tenkan": {
           "val": "$98.71",
@@ -1569,18 +2184,18 @@
           "desc": "일목 구름대(115.2~117.5) 하단 붕괴"
         },
         "vol": {
-          "val": "15% (20D)",
+          "val": "21% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 15% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 21% (매도세 고갈 완벽)"
         },
         "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
       },
-      "latest_close": 90.69,
+      "latest_close": 91.32,
       "kijun": 94.68,
       "tenkan": 98.71,
-      "kijun_gap_pct": -4.21,
-      "vol_ratio": 0.15,
+      "kijun_gap_pct": -3.55,
+      "vol_ratio": 0.21,
       "future_cloud_type": "음운 (하락 저항 구름대)",
       "future_cloud_gap": 15.38,
       "future_span_a_latest": 96.69,
@@ -1601,10 +2216,10 @@
         "is_sniper": false,
         "trampoline_detected": false,
         "kijun": {
-          "val": "$280.20 (-5.6%)",
+          "val": "$280.20 (-5.3%)",
           "status": "status-bear",
           "badge": "BREAKDOWN",
-          "desc": "현재가 $264.54 / 26일선 $280.20 (이격 -5.6%)"
+          "desc": "현재가 $265.30 / 26일선 $280.20 (이격 -5.3%)"
         },
         "tenkan": {
           "val": "$276.97",
@@ -1619,18 +2234,18 @@
           "desc": "일목 구름대(300.6~302.4) 하단 붕괴"
         },
         "vol": {
-          "val": "8% (20D)",
+          "val": "11% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 8% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 11% (매도세 고갈 완벽)"
         },
         "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
       },
-      "latest_close": 264.54,
+      "latest_close": 265.3,
       "kijun": 280.2,
       "tenkan": 276.97,
-      "kijun_gap_pct": -5.59,
-      "vol_ratio": 0.08,
+      "kijun_gap_pct": -5.32,
+      "vol_ratio": 0.11,
       "future_cloud_type": "음운 (하락 저항 구름대)",
       "future_cloud_gap": 19.74,
       "future_span_a_latest": 278.58,
@@ -1749,12 +2364,12 @@
         "bear_score": 0,
         "type": "NEUTRAL",
         "is_sniper": false,
-        "trampoline_detected": false,
+        "trampoline_detected": true,
         "kijun": {
-          "val": "$1,713.49 (+2.2%)",
+          "val": "$1,713.49 (+2.1%)",
           "status": "status-bull",
           "badge": "SUPPORTED",
-          "desc": "현재가 $1,750.68 / 26일선 $1,713.49 (이격 +2.2%)"
+          "desc": "현재가 $1,749.28 / 26일선 $1,713.49 (이격 +2.1%)"
         },
         "tenkan": {
           "val": "$1,818.68",
@@ -1769,18 +2384,18 @@
           "desc": "일목 구름대(1681.2~1813.2) 내부 횡보"
         },
         "vol": {
-          "val": "6% (20D)",
+          "val": "9% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 6% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 9% (매도세 고갈 완벽)"
         },
         "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
       },
-      "latest_close": 1750.68,
+      "latest_close": 1749.28,
       "kijun": 1713.49,
       "tenkan": 1818.68,
-      "kijun_gap_pct": 2.17,
-      "vol_ratio": 0.06,
+      "kijun_gap_pct": 2.09,
+      "vol_ratio": 0.09,
       "future_cloud_type": "양운 (상승 지지 구름대)",
       "future_cloud_gap": 2.08,
       "future_span_a_latest": 1766.09,
@@ -1801,10 +2416,10 @@
         "is_sniper": false,
         "trampoline_detected": false,
         "kijun": {
-          "val": "$505.87 (-2.8%)",
+          "val": "$505.87 (-3.2%)",
           "status": "status-bear",
           "badge": "BREAKDOWN",
-          "desc": "현재가 $491.90 / 26일선 $505.87 (이격 -2.8%)"
+          "desc": "현재가 $489.50 / 26일선 $505.87 (이격 -3.2%)"
         },
         "tenkan": {
           "val": "$525.31",
@@ -1819,18 +2434,18 @@
           "desc": "일목 구름대(561.8~590.3) 하단 붕괴"
         },
         "vol": {
-          "val": "9% (20D)",
+          "val": "12% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 9% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 12% (매도세 고갈 완벽)"
         },
         "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
       },
-      "latest_close": 491.9,
+      "latest_close": 489.5,
       "kijun": 505.87,
       "tenkan": 525.31,
-      "kijun_gap_pct": -2.76,
-      "vol_ratio": 0.09,
+      "kijun_gap_pct": -3.24,
+      "vol_ratio": 0.12,
       "future_cloud_type": "음운 (하락 저항 구름대)",
       "future_cloud_gap": 71.78,
       "future_span_a_latest": 515.59,
@@ -1851,10 +2466,10 @@
         "is_sniper": false,
         "trampoline_detected": false,
         "kijun": {
-          "val": "$297.89 (+4.8%)",
+          "val": "$297.89 (+4.4%)",
           "status": "status-neutral",
           "badge": "OVERHEATED",
-          "desc": "현재가 $312.32 / 26일선 $297.89 (이격 +4.8%)"
+          "desc": "현재가 $311.10 / 26일선 $297.89 (이격 +4.4%)"
         },
         "tenkan": {
           "val": "$324.12",
@@ -1869,18 +2484,18 @@
           "desc": "일목 구름대(344.2~356.8) 하단 붕괴"
         },
         "vol": {
-          "val": "8% (20D)",
+          "val": "10% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 8% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 10% (매도세 고갈 완벽)"
         },
         "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
       },
-      "latest_close": 312.32,
+      "latest_close": 311.1,
       "kijun": 297.89,
       "tenkan": 324.12,
-      "kijun_gap_pct": 4.84,
-      "vol_ratio": 0.08,
+      "kijun_gap_pct": 4.43,
+      "vol_ratio": 0.1,
       "future_cloud_type": "음운 (하락 저항 구름대)",
       "future_cloud_gap": 33.5,
       "future_span_a_latest": 311.0,
@@ -1901,16 +2516,16 @@
         "is_sniper": false,
         "trampoline_detected": false,
         "kijun": {
-          "val": "$195.18 (-4.8%)",
+          "val": "$195.18 (-5.7%)",
           "status": "status-bear",
           "badge": "BREAKDOWN",
-          "desc": "현재가 $185.77 / 26일선 $195.18 (이격 -4.8%)"
+          "desc": "현재가 $184.15 / 26일선 $195.18 (이격 -5.7%)"
         },
         "tenkan": {
-          "val": "$199.55",
+          "val": "$199.32",
           "status": "status-bull",
           "badge": "GOLDEN CROSS",
-          "desc": "9일 전환선 $199.55 상단 정배열"
+          "desc": "9일 전환선 $199.32 상단 정배열"
         },
         "cloud": {
           "val": "$241.05",
@@ -1919,21 +2534,21 @@
           "desc": "일목 구름대(237.1~241.0) 하단 붕괴"
         },
         "vol": {
-          "val": "6% (20D)",
+          "val": "8% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 6% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 8% (매도세 고갈 완벽)"
         },
         "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
       },
-      "latest_close": 185.77,
+      "latest_close": 184.15,
       "kijun": 195.18,
-      "tenkan": 199.55,
-      "kijun_gap_pct": -4.82,
-      "vol_ratio": 0.06,
+      "tenkan": 199.32,
+      "kijun_gap_pct": -5.65,
+      "vol_ratio": 0.08,
       "future_cloud_type": "음운 (하락 저항 구름대)",
-      "future_cloud_gap": 40.95,
-      "future_span_a_latest": 197.37,
+      "future_cloud_gap": 41.07,
+      "future_span_a_latest": 197.25,
       "future_span_b_latest": 238.32,
       "status_text": "Risk Breakdown (생명선 붕괴 / 매수 금지)",
       "status_tag": "BEAR",
@@ -1949,12 +2564,12 @@
         "bear_score": 0,
         "type": "NEUTRAL",
         "is_sniper": false,
-        "trampoline_detected": false,
+        "trampoline_detected": true,
         "kijun": {
-          "val": "$32.85 (+13.1%)",
+          "val": "$32.85 (+13.3%)",
           "status": "status-neutral",
           "badge": "OVERHEATED",
-          "desc": "현재가 $37.16 / 26일선 $32.85 (이격 +13.1%)"
+          "desc": "현재가 $37.21 / 26일선 $32.85 (이격 +13.3%)"
         },
         "tenkan": {
           "val": "$36.62",
@@ -1969,18 +2584,18 @@
           "desc": "일목 구름대(30.8~38.0) 내부 횡보"
         },
         "vol": {
-          "val": "8% (20D)",
+          "val": "12% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 8% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 12% (매도세 고갈 완벽)"
         },
         "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
       },
-      "latest_close": 37.16,
+      "latest_close": 37.21,
       "kijun": 32.85,
       "tenkan": 36.62,
-      "kijun_gap_pct": 13.14,
-      "vol_ratio": 0.08,
+      "kijun_gap_pct": 13.29,
+      "vol_ratio": 0.12,
       "future_cloud_type": "양운 (상승 지지 구름대)",
       "future_cloud_gap": 0.57,
       "future_span_a_latest": 34.73,
@@ -1999,12 +2614,12 @@
         "bear_score": 0,
         "type": "NEUTRAL",
         "is_sniper": false,
-        "trampoline_detected": false,
+        "trampoline_detected": true,
         "kijun": {
-          "val": "$207.71 (+18.5%)",
+          "val": "$207.71 (+18.7%)",
           "status": "status-neutral",
           "badge": "OVERHEATED",
-          "desc": "현재가 $246.10 / 26일선 $207.71 (이격 +18.5%)"
+          "desc": "현재가 $246.50 / 26일선 $207.71 (이격 +18.7%)"
         },
         "tenkan": {
           "val": "$229.47",
@@ -2019,18 +2634,18 @@
           "desc": "일목 구름대(240.6~243.9) 상단 안착"
         },
         "vol": {
-          "val": "10% (20D)",
+          "val": "16% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 10% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 16% (매도세 고갈 완벽)"
         },
         "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
       },
-      "latest_close": 246.1,
+      "latest_close": 246.5,
       "kijun": 207.71,
       "tenkan": 229.47,
-      "kijun_gap_pct": 18.48,
-      "vol_ratio": 0.1,
+      "kijun_gap_pct": 18.68,
+      "vol_ratio": 0.16,
       "future_cloud_type": "음운 (하락 저항 구름대)",
       "future_cloud_gap": 27.76,
       "future_span_a_latest": 218.59,
@@ -2051,16 +2666,16 @@
         "is_sniper": false,
         "trampoline_detected": false,
         "kijun": {
-          "val": "$152.25 (-8.4%)",
+          "val": "$152.25 (-8.8%)",
           "status": "status-bear",
           "badge": "BREAKDOWN",
-          "desc": "현재가 $139.41 / 26일선 $152.25 (이격 -8.4%)"
+          "desc": "현재가 $138.87 / 26일선 $152.25 (이격 -8.8%)"
         },
         "tenkan": {
-          "val": "$144.15",
+          "val": "$144.14",
           "status": "status-bear",
           "badge": "DEAD CROSS",
-          "desc": "9일 전환선 $144.15 하단 역배열"
+          "desc": "9일 전환선 $144.14 하단 역배열"
         },
         "cloud": {
           "val": "$156.45",
@@ -2069,18 +2684,18 @@
           "desc": "일목 구름대(151.9~156.4) 하단 붕괴"
         },
         "vol": {
-          "val": "9% (20D)",
+          "val": "17% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 9% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 17% (매도세 고갈 완벽)"
         },
         "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
       },
-      "latest_close": 139.41,
+      "latest_close": 138.87,
       "kijun": 152.25,
-      "tenkan": 144.15,
-      "kijun_gap_pct": -8.44,
-      "vol_ratio": 0.09,
+      "tenkan": 144.14,
+      "kijun_gap_pct": -8.79,
+      "vol_ratio": 0.17,
       "future_cloud_type": "음운 (하락 저항 구름대)",
       "future_cloud_gap": 4.85,
       "future_span_a_latest": 148.2,
@@ -2099,12 +2714,12 @@
         "bear_score": 0,
         "type": "NEUTRAL",
         "is_sniper": false,
-        "trampoline_detected": false,
+        "trampoline_detected": true,
         "kijun": {
-          "val": "$265.57 (+3.4%)",
+          "val": "$265.57 (+2.4%)",
           "status": "status-bull",
           "badge": "SUPPORTED",
-          "desc": "현재가 $274.56 / 26일선 $265.57 (이격 +3.4%)"
+          "desc": "현재가 $271.91 / 26일선 $265.57 (이격 +2.4%)"
         },
         "tenkan": {
           "val": "$275.69",
@@ -2119,18 +2734,18 @@
           "desc": "일목 구름대(253.1~278.0) 내부 횡보"
         },
         "vol": {
-          "val": "8% (20D)",
+          "val": "11% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 8% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 11% (매도세 고갈 완벽)"
         },
         "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
       },
-      "latest_close": 274.56,
+      "latest_close": 271.91,
       "kijun": 265.57,
       "tenkan": 275.69,
-      "kijun_gap_pct": 3.39,
-      "vol_ratio": 0.08,
+      "kijun_gap_pct": 2.39,
+      "vol_ratio": 0.11,
       "future_cloud_type": "양운 (상승 지지 구름대)",
       "future_cloud_gap": 13.21,
       "future_span_a_latest": 270.63,
@@ -2149,12 +2764,12 @@
         "bear_score": 90,
         "type": "BEAR",
         "is_sniper": false,
-        "trampoline_detected": false,
+        "trampoline_detected": true,
         "kijun": {
-          "val": "$1,019.33 (-4.9%)",
+          "val": "$1,019.33 (-5.6%)",
           "status": "status-bear",
           "badge": "BREAKDOWN",
-          "desc": "현재가 $969.06 / 26일선 $1,019.33 (이격 -4.9%)"
+          "desc": "현재가 $962.76 / 26일선 $1,019.33 (이격 -5.6%)"
         },
         "tenkan": {
           "val": "$1,021.01",
@@ -2169,18 +2784,18 @@
           "desc": "일목 구름대(1025.8~1061.9) 하단 붕괴"
         },
         "vol": {
-          "val": "8% (20D)",
+          "val": "10% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 8% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 10% (매도세 고갈 완벽)"
         },
         "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
       },
-      "latest_close": 969.06,
+      "latest_close": 962.76,
       "kijun": 1019.33,
       "tenkan": 1021.01,
-      "kijun_gap_pct": -4.93,
-      "vol_ratio": 0.08,
+      "kijun_gap_pct": -5.55,
+      "vol_ratio": 0.1,
       "future_cloud_type": "음운 (하락 저항 구름대)",
       "future_cloud_gap": 5.58,
       "future_span_a_latest": 1020.17,
@@ -2193,18 +2808,18 @@
     },
     "ETN": {
       "intelligence": {
-        "verdict": "Bull Accumulation (1차 분할 매수 적합)",
-        "score": "100 / 100 pt (BULL_BUY)",
+        "verdict": "Sniper Alert (구름대 도약 2단계 특급 매수)",
+        "score": "95 / 100 pt (SNIPER_BUY)",
         "bull_score": 100,
-        "bear_score": 40,
+        "bear_score": 0,
         "type": "BULL",
-        "is_sniper": false,
-        "trampoline_detected": false,
+        "is_sniper": true,
+        "trampoline_detected": true,
         "kijun": {
-          "val": "$417.63 (-0.2%)",
+          "val": "$417.63 (+0.6%)",
           "status": "status-bull",
           "badge": "SUPPORTED",
-          "desc": "현재가 $416.80 / 26일선 $417.63 (이격 -0.2%)"
+          "desc": "현재가 $420.30 / 26일선 $417.63 (이격 +0.6%)"
         },
         "tenkan": {
           "val": "$446.57",
@@ -2219,27 +2834,27 @@
           "desc": "일목 구름대(401.2~404.0) 상단 안착"
         },
         "vol": {
-          "val": "9% (20D)",
+          "val": "13% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 9% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 13% (매도세 고갈 완벽)"
         },
-        "action": "26일 기준선 및 일목 구름대 상단 안착 확인. 거시 변동성 진정 시 1차 분할 매수 적합."
+        "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 +0.6%) 안착. 목표 +15% / 손절 -4%."
       },
-      "latest_close": 416.8,
+      "latest_close": 420.3,
       "kijun": 417.63,
       "tenkan": 446.57,
-      "kijun_gap_pct": -0.2,
-      "vol_ratio": 0.09,
+      "kijun_gap_pct": 0.64,
+      "vol_ratio": 0.13,
       "future_cloud_type": "양운 (상승 지지 구름대)",
       "future_cloud_gap": 14.47,
       "future_span_a_latest": 432.1,
       "future_span_b_latest": 417.63,
-      "status_text": "Bull Accumulation (1차 분할 매수 적합)",
+      "status_text": "Sniper Alert (구름대 도약 2단계 특급 매수)",
       "status_tag": "BULL",
       "bull_score": 100,
-      "bear_score": 40,
-      "is_sniper": false
+      "bear_score": 0,
+      "is_sniper": true
     },
     "CCJ": {
       "intelligence": {
@@ -2251,16 +2866,16 @@
         "is_sniper": false,
         "trampoline_detected": false,
         "kijun": {
-          "val": "$91.95 (+9.5%)",
+          "val": "$92.39 (+9.5%)",
           "status": "status-neutral",
           "badge": "OVERHEATED",
-          "desc": "현재가 $100.73 / 26일선 $91.95 (이격 +9.5%)"
+          "desc": "현재가 $101.16 / 26일선 $92.39 (이격 +9.5%)"
         },
         "tenkan": {
-          "val": "$97.33",
+          "val": "$97.77",
           "status": "status-bull",
           "badge": "GOLDEN CROSS",
-          "desc": "9일 전환선 $97.33 상단 정배열"
+          "desc": "9일 전환선 $97.77 상단 정배열"
         },
         "cloud": {
           "val": "$105.58",
@@ -2269,21 +2884,21 @@
           "desc": "일목 구름대(96.1~105.6) 내부 횡보"
         },
         "vol": {
-          "val": "9% (20D)",
+          "val": "19% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 9% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 19% (매도세 고갈 완벽)"
         },
         "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
       },
-      "latest_close": 100.73,
-      "kijun": 91.95,
-      "tenkan": 97.33,
-      "kijun_gap_pct": 9.55,
-      "vol_ratio": 0.09,
+      "latest_close": 101.16,
+      "kijun": 92.39,
+      "tenkan": 97.77,
+      "kijun_gap_pct": 9.49,
+      "vol_ratio": 0.19,
       "future_cloud_type": "음운 (하락 저항 구름대)",
-      "future_cloud_gap": 2.68,
-      "future_span_a_latest": 94.64,
+      "future_cloud_gap": 2.24,
+      "future_span_a_latest": 95.08,
       "future_span_b_latest": 97.32,
       "status_text": "Neutral Consolidation (박스권 수렴)",
       "status_tag": "NEUTRAL",
@@ -2301,10 +2916,10 @@
         "is_sniper": false,
         "trampoline_detected": false,
         "kijun": {
-          "val": "$43.05 (+0.4%)",
+          "val": "$43.05 (+0.2%)",
           "status": "status-bull",
           "badge": "SUPPORTED",
-          "desc": "현재가 $43.21 / 26일선 $43.05 (이격 +0.4%)"
+          "desc": "현재가 $43.11 / 26일선 $43.05 (이격 +0.2%)"
         },
         "tenkan": {
           "val": "$44.24",
@@ -2319,18 +2934,18 @@
           "desc": "일목 구름대(49.5~60.5) 하단 붕괴"
         },
         "vol": {
-          "val": "5% (20D)",
+          "val": "12% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 5% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 12% (매도세 고갈 완벽)"
         },
         "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
       },
-      "latest_close": 43.21,
+      "latest_close": 43.11,
       "kijun": 43.05,
       "tenkan": 44.24,
-      "kijun_gap_pct": 0.37,
-      "vol_ratio": 0.05,
+      "kijun_gap_pct": 0.15,
+      "vol_ratio": 0.12,
       "future_cloud_type": "음운 (하락 저항 구름대)",
       "future_cloud_gap": 6.16,
       "future_span_a_latest": 43.64,
@@ -2349,12 +2964,12 @@
         "bear_score": 0,
         "type": "NEUTRAL",
         "is_sniper": false,
-        "trampoline_detected": false,
+        "trampoline_detected": true,
         "kijun": {
-          "val": "$156.96 (+6.6%)",
+          "val": "$156.96 (+6.1%)",
           "status": "status-neutral",
           "badge": "OVERHEATED",
-          "desc": "현재가 $167.38 / 26일선 $156.96 (이격 +6.6%)"
+          "desc": "현재가 $166.60 / 26일선 $156.96 (이격 +6.1%)"
         },
         "tenkan": {
           "val": "$162.53",
@@ -2369,18 +2984,18 @@
           "desc": "일목 구름대(141.7~148.4) 상단 안착"
         },
         "vol": {
-          "val": "13% (20D)",
+          "val": "16% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 13% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 16% (매도세 고갈 완벽)"
         },
         "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
       },
-      "latest_close": 167.38,
+      "latest_close": 166.6,
       "kijun": 156.96,
       "tenkan": 162.53,
-      "kijun_gap_pct": 6.64,
-      "vol_ratio": 0.13,
+      "kijun_gap_pct": 6.14,
+      "vol_ratio": 0.16,
       "future_cloud_type": "양운 (상승 지지 구름대)",
       "future_cloud_gap": 8.39,
       "future_span_a_latest": 159.75,
@@ -2399,12 +3014,12 @@
         "bear_score": 0,
         "type": "NEUTRAL",
         "is_sniper": false,
-        "trampoline_detected": false,
+        "trampoline_detected": true,
         "kijun": {
-          "val": "$196.44 (+5.2%)",
+          "val": "$196.44 (+5.1%)",
           "status": "status-neutral",
           "badge": "OVERHEATED",
-          "desc": "현재가 $206.55 / 26일선 $196.44 (이격 +5.2%)"
+          "desc": "현재가 $206.50 / 26일선 $196.44 (이격 +5.1%)"
         },
         "tenkan": {
           "val": "$200.53",
@@ -2419,18 +3034,18 @@
           "desc": "일목 구름대(175.8~180.3) 상단 안착"
         },
         "vol": {
-          "val": "11% (20D)",
+          "val": "14% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 11% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 14% (매도세 고갈 완벽)"
         },
         "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
       },
-      "latest_close": 206.55,
+      "latest_close": 206.5,
       "kijun": 196.44,
       "tenkan": 200.53,
-      "kijun_gap_pct": 5.15,
-      "vol_ratio": 0.11,
+      "kijun_gap_pct": 5.12,
+      "vol_ratio": 0.14,
       "future_cloud_type": "양운 (상승 지지 구름대)",
       "future_cloud_gap": 12.32,
       "future_span_a_latest": 198.48,
@@ -2449,18 +3064,18 @@
         "bear_score": 55,
         "type": "BEAR",
         "is_sniper": false,
-        "trampoline_detected": false,
+        "trampoline_detected": true,
         "kijun": {
-          "val": "$200.82 (-5.7%)",
+          "val": "$200.82 (-6.0%)",
           "status": "status-bear",
           "badge": "BREAKDOWN",
-          "desc": "현재가 $189.32 / 26일선 $200.82 (이격 -5.7%)"
+          "desc": "현재가 $188.81 / 26일선 $200.82 (이격 -6.0%)"
         },
         "tenkan": {
-          "val": "$207.84",
+          "val": "$207.25",
           "status": "status-bull",
           "badge": "GOLDEN CROSS",
-          "desc": "9일 전환선 $207.84 상단 정배열"
+          "desc": "9일 전환선 $207.25 상단 정배열"
         },
         "cloud": {
           "val": "$192.61",
@@ -2469,21 +3084,21 @@
           "desc": "일목 구름대(164.4~192.6) 내부 횡보"
         },
         "vol": {
-          "val": "13% (20D)",
+          "val": "19% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 13% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 19% (매도세 고갈 완벽)"
         },
         "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
       },
-      "latest_close": 189.32,
+      "latest_close": 188.81,
       "kijun": 200.82,
-      "tenkan": 207.84,
-      "kijun_gap_pct": -5.73,
-      "vol_ratio": 0.13,
+      "tenkan": 207.25,
+      "kijun_gap_pct": -5.98,
+      "vol_ratio": 0.19,
       "future_cloud_type": "양운 (상승 지지 구름대)",
-      "future_cloud_gap": 13.36,
-      "future_span_a_latest": 204.33,
+      "future_cloud_gap": 13.07,
+      "future_span_a_latest": 204.04,
       "future_span_b_latest": 190.97,
       "status_text": "Risk Breakdown (생명선 붕괴 / 매수 금지)",
       "status_tag": "BEAR",
@@ -2493,24 +3108,24 @@
     },
     "PANW": {
       "intelligence": {
-        "verdict": "Neutral Consolidation (박스권 수렴)",
-        "score": "65 / 100 pt (HOLD)",
+        "verdict": "Risk Breakdown (생명선 붕괴 / 매수 금지)",
+        "score": "65 / 100 pt (BEAR_EXIT)",
         "bull_score": 65,
-        "bear_score": 40,
-        "type": "NEUTRAL",
+        "bear_score": 55,
+        "type": "BEAR",
         "is_sniper": false,
-        "trampoline_detected": false,
+        "trampoline_detected": true,
         "kijun": {
-          "val": "$353.71 (-1.5%)",
+          "val": "$353.71 (-2.3%)",
           "status": "status-bear",
           "badge": "BREAKDOWN",
-          "desc": "현재가 $348.32 / 26일선 $353.71 (이격 -1.5%)"
+          "desc": "현재가 $345.64 / 26일선 $353.71 (이격 -2.3%)"
         },
         "tenkan": {
-          "val": "$373.28",
+          "val": "$370.95",
           "status": "status-bull",
           "badge": "GOLDEN CROSS",
-          "desc": "9일 전환선 $373.28 상단 정배열"
+          "desc": "9일 전환선 $370.95 상단 정배열"
         },
         "cloud": {
           "val": "$325.61",
@@ -2519,26 +3134,26 @@
           "desc": "일목 구름대(272.8~325.6) 상단 안착"
         },
         "vol": {
-          "val": "9% (20D)",
+          "val": "12% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 9% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 12% (매도세 고갈 완벽)"
         },
-        "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
+        "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
       },
-      "latest_close": 348.32,
+      "latest_close": 345.64,
       "kijun": 353.71,
-      "tenkan": 373.28,
-      "kijun_gap_pct": -1.52,
-      "vol_ratio": 0.09,
+      "tenkan": 370.95,
+      "kijun_gap_pct": -2.28,
+      "vol_ratio": 0.12,
       "future_cloud_type": "양운 (상승 지지 구름대)",
-      "future_cloud_gap": 38.48,
-      "future_span_a_latest": 363.5,
+      "future_cloud_gap": 37.31,
+      "future_span_a_latest": 362.33,
       "future_span_b_latest": 325.01,
-      "status_text": "Neutral Consolidation (박스권 수렴)",
-      "status_tag": "NEUTRAL",
+      "status_text": "Risk Breakdown (생명선 붕괴 / 매수 금지)",
+      "status_tag": "BEAR",
       "bull_score": 65,
-      "bear_score": 40,
+      "bear_score": 55,
       "is_sniper": false
     },
     "NOW": {
@@ -2549,12 +3164,12 @@
         "bear_score": 0,
         "type": "NEUTRAL",
         "is_sniper": false,
-        "trampoline_detected": false,
+        "trampoline_detected": true,
         "kijun": {
-          "val": "$111.34 (+17.0%)",
+          "val": "$111.34 (+15.6%)",
           "status": "status-neutral",
           "badge": "OVERHEATED",
-          "desc": "현재가 $130.22 / 26일선 $111.34 (이격 +17.0%)"
+          "desc": "현재가 $128.69 / 26일선 $111.34 (이격 +15.6%)"
         },
         "tenkan": {
           "val": "$124.37",
@@ -2569,18 +3184,18 @@
           "desc": "일목 구름대(104.1~112.3) 상단 안착"
         },
         "vol": {
-          "val": "5% (20D)",
+          "val": "8% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 5% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 8% (매도세 고갈 완벽)"
         },
         "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
       },
-      "latest_close": 130.22,
+      "latest_close": 128.69,
       "kijun": 111.34,
       "tenkan": 124.37,
-      "kijun_gap_pct": 16.95,
-      "vol_ratio": 0.05,
+      "kijun_gap_pct": 15.58,
+      "vol_ratio": 0.08,
       "future_cloud_type": "양운 (상승 지지 구름대)",
       "future_cloud_gap": 7.58,
       "future_span_a_latest": 117.85,
@@ -2601,10 +3216,10 @@
         "is_sniper": false,
         "trampoline_detected": false,
         "kijun": {
-          "val": "$72.52 (+3.1%)",
+          "val": "$72.52 (+1.7%)",
           "status": "status-bull",
           "badge": "SUPPORTED",
-          "desc": "현재가 $74.76 / 26일선 $72.52 (이격 +3.1%)"
+          "desc": "현재가 $73.76 / 26일선 $72.52 (이격 +1.7%)"
         },
         "tenkan": {
           "val": "$78.65",
@@ -2619,18 +3234,18 @@
           "desc": "일목 구름대(88.5~108.5) 하단 붕괴"
         },
         "vol": {
-          "val": "9% (20D)",
+          "val": "13% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 9% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 13% (매도세 고갈 완벽)"
         },
         "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
       },
-      "latest_close": 74.76,
+      "latest_close": 73.76,
       "kijun": 72.52,
       "tenkan": 78.65,
-      "kijun_gap_pct": 3.1,
-      "vol_ratio": 0.09,
+      "kijun_gap_pct": 1.72,
+      "vol_ratio": 0.13,
       "future_cloud_type": "음운 (하락 저항 구름대)",
       "future_cloud_gap": 13.41,
       "future_span_a_latest": 75.58,
@@ -2651,10 +3266,10 @@
         "is_sniper": false,
         "trampoline_detected": false,
         "kijun": {
-          "val": "$39.88 (+9.7%)",
+          "val": "$39.88 (+7.1%)",
           "status": "status-neutral",
           "badge": "OVERHEATED",
-          "desc": "현재가 $43.73 / 26일선 $39.88 (이격 +9.7%)"
+          "desc": "현재가 $42.70 / 26일선 $39.88 (이격 +7.1%)"
         },
         "tenkan": {
           "val": "$44.14",
@@ -2669,18 +3284,18 @@
           "desc": "일목 구름대(46.2~54.2) 하단 붕괴"
         },
         "vol": {
-          "val": "9% (20D)",
+          "val": "17% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 9% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 17% (매도세 고갈 완벽)"
         },
         "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
       },
-      "latest_close": 43.73,
+      "latest_close": 42.7,
       "kijun": 39.88,
       "tenkan": 44.14,
-      "kijun_gap_pct": 9.66,
-      "vol_ratio": 0.09,
+      "kijun_gap_pct": 7.09,
+      "vol_ratio": 0.17,
       "future_cloud_type": "음운 (하락 저항 구름대)",
       "future_cloud_gap": 5.87,
       "future_span_a_latest": 42.01,
@@ -2701,16 +3316,16 @@
         "is_sniper": false,
         "trampoline_detected": false,
         "kijun": {
-          "val": "$297.77 (+7.1%)",
+          "val": "$297.77 (+6.8%)",
           "status": "status-neutral",
           "badge": "OVERHEATED",
-          "desc": "현재가 $318.92 / 26일선 $297.77 (이격 +7.1%)"
+          "desc": "현재가 $318.04 / 26일선 $297.77 (이격 +6.8%)"
         },
         "tenkan": {
-          "val": "$329.14",
+          "val": "$328.08",
           "status": "status-bull",
           "badge": "GOLDEN CROSS",
-          "desc": "9일 전환선 $329.14 상단 정배열"
+          "desc": "9일 전환선 $328.08 상단 정배열"
         },
         "cloud": {
           "val": "$257.22",
@@ -2719,21 +3334,21 @@
           "desc": "일목 구름대(210.6~257.2) 상단 안착"
         },
         "vol": {
-          "val": "3% (20D)",
+          "val": "7% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 3% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 7% (매도세 고갈 완벽)"
         },
         "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
       },
-      "latest_close": 318.92,
+      "latest_close": 318.04,
       "kijun": 297.77,
-      "tenkan": 329.14,
-      "kijun_gap_pct": 7.1,
-      "vol_ratio": 0.03,
+      "tenkan": 328.08,
+      "kijun_gap_pct": 6.81,
+      "vol_ratio": 0.07,
       "future_cloud_type": "양운 (상승 지지 구름대)",
-      "future_cloud_gap": 33.74,
-      "future_span_a_latest": 313.45,
+      "future_cloud_gap": 33.21,
+      "future_span_a_latest": 312.92,
       "future_span_b_latest": 279.72,
       "status_text": "Neutral Consolidation (박스권 수렴)",
       "status_tag": "NEUTRAL",
@@ -2754,13 +3369,13 @@
           "val": "$291.46 (-4.7%)",
           "status": "status-bear",
           "badge": "BREAKDOWN",
-          "desc": "현재가 $277.89 / 26일선 $291.46 (이격 -4.7%)"
+          "desc": "현재가 $277.84 / 26일선 $291.46 (이격 -4.7%)"
         },
         "tenkan": {
-          "val": "$304.62",
+          "val": "$303.12",
           "status": "status-bull",
           "badge": "GOLDEN CROSS",
-          "desc": "9일 전환선 $304.62 상단 정배열"
+          "desc": "9일 전환선 $303.12 상단 정배열"
         },
         "cloud": {
           "val": "$258.49",
@@ -2769,21 +3384,21 @@
           "desc": "일목 구름대(238.4~258.5) 상단 안착"
         },
         "vol": {
-          "val": "5% (20D)",
+          "val": "7% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 5% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 7% (매도세 고갈 완벽)"
         },
         "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
       },
-      "latest_close": 277.89,
+      "latest_close": 277.84,
       "kijun": 291.46,
-      "tenkan": 304.62,
-      "kijun_gap_pct": -4.65,
-      "vol_ratio": 0.05,
+      "tenkan": 303.12,
+      "kijun_gap_pct": -4.67,
+      "vol_ratio": 0.07,
       "future_cloud_type": "양운 (상승 지지 구름대)",
-      "future_cloud_gap": 25.77,
-      "future_span_a_latest": 298.04,
+      "future_cloud_gap": 25.02,
+      "future_span_a_latest": 297.29,
       "future_span_b_latest": 272.27,
       "status_text": "Risk Breakdown (생명선 붕괴 / 매수 금지)",
       "status_tag": "BEAR",
@@ -2801,10 +3416,10 @@
         "is_sniper": false,
         "trampoline_detected": false,
         "kijun": {
-          "val": "$368.46 (-16.8%)",
+          "val": "$368.46 (-17.8%)",
           "status": "status-bear",
           "badge": "BREAKDOWN",
-          "desc": "현재가 $306.65 / 26일선 $368.46 (이격 -16.8%)"
+          "desc": "현재가 $303.01 / 26일선 $368.46 (이격 -17.8%)"
         },
         "tenkan": {
           "val": "$314.47",
@@ -2819,18 +3434,18 @@
           "desc": "일목 구름대(493.6~520.2) 하단 붕괴"
         },
         "vol": {
-          "val": "11% (20D)",
+          "val": "16% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 11% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 16% (매도세 고갈 완벽)"
         },
         "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
       },
-      "latest_close": 306.65,
+      "latest_close": 303.01,
       "kijun": 368.46,
       "tenkan": 314.47,
-      "kijun_gap_pct": -16.78,
-      "vol_ratio": 0.11,
+      "kijun_gap_pct": -17.76,
+      "vol_ratio": 0.16,
       "future_cloud_type": "음운 (하락 저항 구름대)",
       "future_cloud_gap": 96.26,
       "future_span_a_latest": 341.47,
@@ -2843,18 +3458,18 @@
     },
     "JPM": {
       "intelligence": {
-        "verdict": "Bull Accumulation (1차 분할 매수 적합)",
-        "score": "100 / 100 pt (BULL_BUY)",
+        "verdict": "Sniper Alert (구름대 도약 2단계 특급 매수)",
+        "score": "95 / 100 pt (SNIPER_BUY)",
         "bull_score": 100,
         "bear_score": 0,
         "type": "BULL",
-        "is_sniper": false,
-        "trampoline_detected": false,
+        "is_sniper": true,
+        "trampoline_detected": true,
         "kijun": {
-          "val": "$350.77 (+1.0%)",
+          "val": "$350.77 (+1.3%)",
           "status": "status-bull",
           "badge": "SUPPORTED",
-          "desc": "현재가 $354.20 / 26일선 $350.77 (이격 +1.0%)"
+          "desc": "현재가 $355.25 / 26일선 $350.77 (이격 +1.3%)"
         },
         "tenkan": {
           "val": "$359.02",
@@ -2869,42 +3484,42 @@
           "desc": "일목 구름대(321.8~333.9) 상단 안착"
         },
         "vol": {
-          "val": "18% (20D)",
+          "val": "22% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 18% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 22% (매도세 고갈 완벽)"
         },
-        "action": "26일 기준선 및 일목 구름대 상단 안착 확인. 거시 변동성 진정 시 1차 분할 매수 적합."
+        "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 +1.3%) 안착. 목표 +15% / 손절 -4%."
       },
-      "latest_close": 354.2,
+      "latest_close": 355.25,
       "kijun": 350.77,
       "tenkan": 359.02,
-      "kijun_gap_pct": 0.98,
-      "vol_ratio": 0.18,
+      "kijun_gap_pct": 1.28,
+      "vol_ratio": 0.22,
       "future_cloud_type": "양운 (상승 지지 구름대)",
       "future_cloud_gap": 17.9,
       "future_span_a_latest": 354.9,
       "future_span_b_latest": 337.0,
-      "status_text": "Bull Accumulation (1차 분할 매수 적합)",
+      "status_text": "Sniper Alert (구름대 도약 2단계 특급 매수)",
       "status_tag": "BULL",
       "bull_score": 100,
       "bear_score": 0,
-      "is_sniper": false
+      "is_sniper": true
     },
     "V": {
       "intelligence": {
-        "verdict": "Bull Accumulation (1차 분할 매수 적합)",
-        "score": "100 / 100 pt (BULL_BUY)",
+        "verdict": "Sniper Alert (구름대 도약 2단계 특급 매수)",
+        "score": "95 / 100 pt (SNIPER_BUY)",
         "bull_score": 100,
         "bear_score": 0,
         "type": "BULL",
-        "is_sniper": false,
-        "trampoline_detected": false,
+        "is_sniper": true,
+        "trampoline_detected": true,
         "kijun": {
-          "val": "$360.57 (+2.3%)",
+          "val": "$360.57 (+2.0%)",
           "status": "status-bull",
           "badge": "SUPPORTED",
-          "desc": "현재가 $368.89 / 26일선 $360.57 (이격 +2.3%)"
+          "desc": "현재가 $367.94 / 26일선 $360.57 (이격 +2.0%)"
         },
         "tenkan": {
           "val": "$364.35",
@@ -2919,27 +3534,27 @@
           "desc": "일목 구름대(336.4~347.3) 상단 안착"
         },
         "vol": {
-          "val": "12% (20D)",
+          "val": "14% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 12% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 14% (매도세 고갈 완벽)"
         },
-        "action": "26일 기준선 및 일목 구름대 상단 안착 확인. 거시 변동성 진정 시 1차 분할 매수 적합."
+        "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 +2.0%) 안착. 목표 +15% / 손절 -4%."
       },
-      "latest_close": 368.89,
+      "latest_close": 367.94,
       "kijun": 360.57,
       "tenkan": 364.35,
-      "kijun_gap_pct": 2.31,
-      "vol_ratio": 0.12,
+      "kijun_gap_pct": 2.05,
+      "vol_ratio": 0.14,
       "future_cloud_type": "양운 (상승 지지 구름대)",
       "future_cloud_gap": 17.61,
       "future_span_a_latest": 362.46,
       "future_span_b_latest": 344.84,
-      "status_text": "Bull Accumulation (1차 분할 매수 적합)",
+      "status_text": "Sniper Alert (구름대 도약 2단계 특급 매수)",
       "status_tag": "BULL",
       "bull_score": 100,
       "bear_score": 0,
-      "is_sniper": false
+      "is_sniper": true
     },
     "MA": {
       "intelligence": {
@@ -2951,10 +3566,10 @@
         "is_sniper": false,
         "trampoline_detected": false,
         "kijun": {
-          "val": "$553.66 (+4.3%)",
+          "val": "$553.66 (+4.1%)",
           "status": "status-neutral",
           "badge": "OVERHEATED",
-          "desc": "현재가 $577.47 / 26일선 $553.66 (이격 +4.3%)"
+          "desc": "현재가 $576.11 / 26일선 $553.66 (이격 +4.1%)"
         },
         "tenkan": {
           "val": "$569.49",
@@ -2969,18 +3584,18 @@
           "desc": "일목 구름대(507.7~524.9) 상단 안착"
         },
         "vol": {
-          "val": "11% (20D)",
+          "val": "13% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 11% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 13% (매도세 고갈 완벽)"
         },
         "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
       },
-      "latest_close": 577.47,
+      "latest_close": 576.11,
       "kijun": 553.66,
       "tenkan": 569.49,
-      "kijun_gap_pct": 4.3,
-      "vol_ratio": 0.11,
+      "kijun_gap_pct": 4.06,
+      "vol_ratio": 0.13,
       "future_cloud_type": "양운 (상승 지지 구름대)",
       "future_cloud_gap": 29.13,
       "future_span_a_latest": 561.58,
@@ -3001,16 +3616,16 @@
         "is_sniper": false,
         "trampoline_detected": true,
         "kijun": {
-          "val": "$162.21 (+14.2%)",
+          "val": "$164.46 (+15.2%)",
           "status": "status-neutral",
           "badge": "OVERHEATED",
-          "desc": "현재가 $185.18 / 26일선 $162.21 (이격 +14.2%)"
+          "desc": "현재가 $189.48 / 26일선 $164.46 (이격 +15.2%)"
         },
         "tenkan": {
-          "val": "$165.66",
+          "val": "$167.92",
           "status": "status-bull",
           "badge": "GOLDEN CROSS",
-          "desc": "9일 전환선 $165.66 상단 정배열"
+          "desc": "9일 전환선 $167.92 상단 정배열"
         },
         "cloud": {
           "val": "$180.76",
@@ -3019,22 +3634,22 @@
           "desc": "일목 구름대(160.3~180.8) 상단 안착"
         },
         "vol": {
-          "val": "42% (20D)",
+          "val": "69% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 42% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 69% (매도세 고갈 완벽)"
         },
         "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
       },
-      "latest_close": 185.18,
-      "kijun": 162.21,
-      "tenkan": 165.66,
-      "kijun_gap_pct": 14.16,
-      "vol_ratio": 0.42,
+      "latest_close": 189.48,
+      "kijun": 164.46,
+      "tenkan": 167.92,
+      "kijun_gap_pct": 15.21,
+      "vol_ratio": 0.69,
       "future_cloud_type": "양운 (상승 지지 구름대)",
       "future_cloud_gap": 1.73,
-      "future_span_a_latest": 163.93,
-      "future_span_b_latest": 162.21,
+      "future_span_a_latest": 166.19,
+      "future_span_b_latest": 164.46,
       "status_text": "Neutral Consolidation (박스권 수렴)",
       "status_tag": "NEUTRAL",
       "bull_score": 65,
@@ -3044,73 +3659,73 @@
     "HOOD": {
       "intelligence": {
         "verdict": "Neutral Consolidation (박스권 수렴)",
-        "score": "30 / 100 pt (HOLD)",
-        "bull_score": 30,
+        "score": "65 / 100 pt (HOLD)",
+        "bull_score": 65,
         "bear_score": 0,
         "type": "NEUTRAL",
         "is_sniper": false,
         "trampoline_detected": false,
         "kijun": {
-          "val": "$95.94 (+7.1%)",
+          "val": "$95.94 (+11.5%)",
           "status": "status-neutral",
           "badge": "OVERHEATED",
-          "desc": "현재가 $102.80 / 26일선 $95.94 (이격 +7.1%)"
+          "desc": "현재가 $106.96 / 26일선 $95.94 (이격 +11.5%)"
         },
         "tenkan": {
-          "val": "$97.12",
+          "val": "$99.67",
           "status": "status-bull",
           "badge": "GOLDEN CROSS",
-          "desc": "9일 전환선 $97.12 상단 정배열"
+          "desc": "9일 전환선 $99.67 상단 정배열"
         },
         "cloud": {
           "val": "$105.97",
-          "status": "status-neutral",
-          "badge": "INSIDE CLOUD",
-          "desc": "일목 구름대(96.6~106.0) 내부 횡보"
+          "status": "status-bull",
+          "badge": "ABOVE CLOUD",
+          "desc": "일목 구름대(96.6~106.0) 상단 안착"
         },
         "vol": {
-          "val": "38% (20D)",
+          "val": "74% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 38% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 74% (매도세 고갈 완벽)"
         },
         "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
       },
-      "latest_close": 102.8,
+      "latest_close": 106.96,
       "kijun": 95.94,
-      "tenkan": 97.12,
-      "kijun_gap_pct": 7.14,
-      "vol_ratio": 0.38,
+      "tenkan": 99.67,
+      "kijun_gap_pct": 11.48,
+      "vol_ratio": 0.74,
       "future_cloud_type": "음운 (하락 저항 구름대)",
-      "future_cloud_gap": 2.96,
-      "future_span_a_latest": 96.53,
+      "future_cloud_gap": 1.68,
+      "future_span_a_latest": 97.81,
       "future_span_b_latest": 99.49,
       "status_text": "Neutral Consolidation (박스권 수렴)",
       "status_tag": "NEUTRAL",
-      "bull_score": 30,
+      "bull_score": 65,
       "bear_score": 0,
       "is_sniper": false
     },
     "MSTR": {
       "intelligence": {
         "verdict": "Neutral Consolidation (박스권 수렴)",
-        "score": "30 / 100 pt (HOLD)",
-        "bull_score": 30,
+        "score": "10 / 100 pt (HOLD)",
+        "bull_score": 10,
         "bear_score": 0,
         "type": "NEUTRAL",
         "is_sniper": false,
         "trampoline_detected": false,
         "kijun": {
-          "val": "$104.49 (+13.3%)",
+          "val": "$105.09 (+14.2%)",
           "status": "status-neutral",
           "badge": "OVERHEATED",
-          "desc": "현재가 $118.41 / 26일선 $104.49 (이격 +13.3%)"
+          "desc": "현재가 $120.06 / 26일선 $105.09 (이격 +14.2%)"
         },
         "tenkan": {
-          "val": "$105.72",
+          "val": "$106.32",
           "status": "status-bull",
           "badge": "GOLDEN CROSS",
-          "desc": "9일 전환선 $105.72 상단 정배열"
+          "desc": "9일 전환선 $106.32 상단 정배열"
         },
         "cloud": {
           "val": "$139.40",
@@ -3119,48 +3734,48 @@
           "desc": "일목 구름대(103.2~139.4) 내부 횡보"
         },
         "vol": {
-          "val": "54% (20D)",
-          "status": "status-bull",
-          "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 54% (매도세 고갈 완벽)"
+          "val": "76% (20D)",
+          "status": "status-neutral",
+          "badge": "NORMAL VOL",
+          "desc": "20일 평균 거래량 대비 76% (통상 거래량)"
         },
         "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
       },
-      "latest_close": 118.41,
-      "kijun": 104.49,
-      "tenkan": 105.72,
-      "kijun_gap_pct": 13.32,
-      "vol_ratio": 0.54,
+      "latest_close": 120.06,
+      "kijun": 105.09,
+      "tenkan": 106.32,
+      "kijun_gap_pct": 14.24,
+      "vol_ratio": 0.76,
       "future_cloud_type": "음운 (하락 저항 구름대)",
-      "future_cloud_gap": 3.92,
-      "future_span_a_latest": 105.11,
+      "future_cloud_gap": 3.32,
+      "future_span_a_latest": 105.7,
       "future_span_b_latest": 109.03,
       "status_text": "Neutral Consolidation (박스권 수렴)",
       "status_tag": "NEUTRAL",
-      "bull_score": 30,
+      "bull_score": 10,
       "bear_score": 0,
       "is_sniper": false
     },
     "LMT": {
       "intelligence": {
-        "verdict": "Bull Accumulation (1차 분할 매수 적합)",
-        "score": "100 / 100 pt (BULL_BUY)",
+        "verdict": "Sniper Alert (구름대 도약 2단계 특급 매수)",
+        "score": "95 / 100 pt (SNIPER_BUY)",
         "bull_score": 100,
         "bear_score": 0,
         "type": "BULL",
-        "is_sniper": false,
-        "trampoline_detected": false,
+        "is_sniper": true,
+        "trampoline_detected": true,
         "kijun": {
-          "val": "$549.95 (+3.6%)",
+          "val": "$549.95 (+3.3%)",
           "status": "status-bull",
           "badge": "SUPPORTED",
-          "desc": "현재가 $569.53 / 26일선 $549.95 (이격 +3.6%)"
+          "desc": "현재가 $568.13 / 26일선 $549.95 (이격 +3.3%)"
         },
         "tenkan": {
-          "val": "$590.89",
+          "val": "$589.71",
           "status": "status-bull",
           "badge": "GOLDEN CROSS",
-          "desc": "9일 전환선 $590.89 상단 정배열"
+          "desc": "9일 전환선 $589.71 상단 정배열"
         },
         "cloud": {
           "val": "$524.95",
@@ -3169,27 +3784,27 @@
           "desc": "일목 구름대(520.5~525.0) 상단 안착"
         },
         "vol": {
-          "val": "9% (20D)",
+          "val": "12% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 9% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 12% (매도세 고갈 완벽)"
         },
-        "action": "26일 기준선 및 일목 구름대 상단 안착 확인. 거시 변동성 진정 시 1차 분할 매수 적합."
+        "action": "[전략 2 스나이퍼] 10일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 +3.3%) 안착. 목표 +15% / 손절 -4%."
       },
-      "latest_close": 569.53,
+      "latest_close": 568.13,
       "kijun": 549.95,
-      "tenkan": 590.89,
-      "kijun_gap_pct": 3.56,
-      "vol_ratio": 0.09,
+      "tenkan": 589.71,
+      "kijun_gap_pct": 3.31,
+      "vol_ratio": 0.12,
       "future_cloud_type": "양운 (상승 지지 구름대)",
-      "future_cloud_gap": 20.47,
-      "future_span_a_latest": 570.42,
+      "future_cloud_gap": 19.88,
+      "future_span_a_latest": 569.83,
       "future_span_b_latest": 549.95,
-      "status_text": "Bull Accumulation (1차 분할 매수 적합)",
+      "status_text": "Sniper Alert (구름대 도약 2단계 특급 매수)",
       "status_tag": "BULL",
       "bull_score": 100,
       "bear_score": 0,
-      "is_sniper": false
+      "is_sniper": true
     },
     "RTX": {
       "intelligence": {
@@ -3201,10 +3816,10 @@
         "is_sniper": false,
         "trampoline_detected": false,
         "kijun": {
-          "val": "$207.90 (+2.5%)",
+          "val": "$207.90 (+2.3%)",
           "status": "status-bull",
           "badge": "SUPPORTED",
-          "desc": "현재가 $213.03 / 26일선 $207.90 (이격 +2.5%)"
+          "desc": "현재가 $212.58 / 26일선 $207.90 (이격 +2.3%)"
         },
         "tenkan": {
           "val": "$219.29",
@@ -3219,18 +3834,18 @@
           "desc": "일목 구름대(186.4~193.7) 상단 안착"
         },
         "vol": {
-          "val": "11% (20D)",
+          "val": "13% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 11% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 13% (매도세 고갈 완벽)"
         },
         "action": "26일 기준선 및 일목 구름대 상단 안착 확인. 거시 변동성 진정 시 1차 분할 매수 적합."
       },
-      "latest_close": 213.03,
+      "latest_close": 212.58,
       "kijun": 207.9,
       "tenkan": 219.29,
-      "kijun_gap_pct": 2.47,
-      "vol_ratio": 0.11,
+      "kijun_gap_pct": 2.25,
+      "vol_ratio": 0.13,
       "future_cloud_type": "양운 (상승 지지 구름대)",
       "future_cloud_gap": 12.22,
       "future_span_a_latest": 213.59,
@@ -3243,24 +3858,24 @@
     },
     "NOC": {
       "intelligence": {
-        "verdict": "Neutral Consolidation (박스권 수렴)",
-        "score": "65 / 100 pt (HOLD)",
-        "bull_score": 65,
+        "verdict": "Sniper Alert (구름대 도약 2단계 특급 매수)",
+        "score": "95 / 100 pt (SNIPER_BUY)",
+        "bull_score": 100,
         "bear_score": 0,
-        "type": "NEUTRAL",
-        "is_sniper": false,
-        "trampoline_detected": false,
+        "type": "BULL",
+        "is_sniper": true,
+        "trampoline_detected": true,
         "kijun": {
-          "val": "$536.76 (+4.8%)",
-          "status": "status-neutral",
-          "badge": "OVERHEATED",
-          "desc": "현재가 $562.68 / 26일선 $536.76 (이격 +4.8%)"
+          "val": "$536.76 (+3.9%)",
+          "status": "status-bull",
+          "badge": "SUPPORTED",
+          "desc": "현재가 $557.77 / 26일선 $536.76 (이격 +3.9%)"
         },
         "tenkan": {
-          "val": "$578.60",
+          "val": "$575.52",
           "status": "status-bull",
           "badge": "GOLDEN CROSS",
-          "desc": "9일 전환선 $578.60 상단 정배열"
+          "desc": "9일 전환선 $575.52 상단 정배열"
         },
         "cloud": {
           "val": "$536.08",
@@ -3269,27 +3884,27 @@
           "desc": "일목 구름대(530.8~536.1) 상단 안착"
         },
         "vol": {
-          "val": "10% (20D)",
+          "val": "16% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 10% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 16% (매도세 고갈 완벽)"
         },
-        "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
+        "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 +3.9%) 안착. 목표 +15% / 손절 -4%."
       },
-      "latest_close": 562.68,
+      "latest_close": 557.77,
       "kijun": 536.76,
-      "tenkan": 578.6,
-      "kijun_gap_pct": 4.83,
-      "vol_ratio": 0.1,
+      "tenkan": 575.52,
+      "kijun_gap_pct": 3.91,
+      "vol_ratio": 0.16,
       "future_cloud_type": "양운 (상승 지지 구름대)",
-      "future_cloud_gap": 20.92,
-      "future_span_a_latest": 557.68,
+      "future_cloud_gap": 19.38,
+      "future_span_a_latest": 556.14,
       "future_span_b_latest": 536.76,
-      "status_text": "Neutral Consolidation (박스권 수렴)",
-      "status_tag": "NEUTRAL",
-      "bull_score": 65,
+      "status_text": "Sniper Alert (구름대 도약 2단계 특급 매수)",
+      "status_tag": "BULL",
+      "bull_score": 100,
       "bear_score": 0,
-      "is_sniper": false
+      "is_sniper": true
     },
     "GE": {
       "intelligence": {
@@ -3299,12 +3914,12 @@
         "bear_score": 55,
         "type": "BEAR",
         "is_sniper": false,
-        "trampoline_detected": false,
+        "trampoline_detected": true,
         "kijun": {
           "val": "$363.72 (-4.1%)",
           "status": "status-bear",
           "badge": "BREAKDOWN",
-          "desc": "현재가 $348.64 / 26일선 $363.72 (이격 -4.1%)"
+          "desc": "현재가 $348.79 / 26일선 $363.72 (이격 -4.1%)"
         },
         "tenkan": {
           "val": "$359.57",
@@ -3319,18 +3934,18 @@
           "desc": "일목 구름대(330.8~354.3) 내부 횡보"
         },
         "vol": {
-          "val": "13% (20D)",
+          "val": "16% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 13% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 16% (매도세 고갈 완벽)"
         },
         "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
       },
-      "latest_close": 348.64,
+      "latest_close": 348.79,
       "kijun": 363.72,
       "tenkan": 359.57,
-      "kijun_gap_pct": -4.15,
-      "vol_ratio": 0.13,
+      "kijun_gap_pct": -4.1,
+      "vol_ratio": 0.16,
       "future_cloud_type": "양운 (상승 지지 구름대)",
       "future_cloud_gap": 8.3,
       "future_span_a_latest": 361.64,
@@ -3343,18 +3958,18 @@
     },
     "LLY": {
       "intelligence": {
-        "verdict": "Bull Accumulation (1차 분할 매수 적합)",
-        "score": "100 / 100 pt (BULL_BUY)",
+        "verdict": "Sniper Alert (구름대 도약 2단계 특급 매수)",
+        "score": "95 / 100 pt (SNIPER_BUY)",
         "bull_score": 100,
         "bear_score": 0,
         "type": "BULL",
-        "is_sniper": false,
-        "trampoline_detected": false,
+        "is_sniper": true,
+        "trampoline_detected": true,
         "kijun": {
-          "val": "$1,200.11 (+3.8%)",
+          "val": "$1,200.11 (+3.9%)",
           "status": "status-bull",
           "badge": "SUPPORTED",
-          "desc": "현재가 $1,245.27 / 26일선 $1,200.11 (이격 +3.8%)"
+          "desc": "현재가 $1,246.43 / 26일선 $1,200.11 (이격 +3.9%)"
         },
         "tenkan": {
           "val": "$1,228.08",
@@ -3369,27 +3984,27 @@
           "desc": "일목 구름대(1094.0~1176.4) 상단 안착"
         },
         "vol": {
-          "val": "13% (20D)",
+          "val": "16% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 13% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 16% (매도세 고갈 완벽)"
         },
-        "action": "26일 기준선 및 일목 구름대 상단 안착 확인. 거시 변동성 진정 시 1차 분할 매수 적합."
+        "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 +3.9%) 안착. 목표 +15% / 손절 -4%."
       },
-      "latest_close": 1245.27,
+      "latest_close": 1246.43,
       "kijun": 1200.11,
       "tenkan": 1228.08,
-      "kijun_gap_pct": 3.76,
-      "vol_ratio": 0.13,
+      "kijun_gap_pct": 3.86,
+      "vol_ratio": 0.16,
       "future_cloud_type": "양운 (상승 지지 구름대)",
       "future_cloud_gap": 28.93,
       "future_span_a_latest": 1214.09,
       "future_span_b_latest": 1185.16,
-      "status_text": "Bull Accumulation (1차 분할 매수 적합)",
+      "status_text": "Sniper Alert (구름대 도약 2단계 특급 매수)",
       "status_tag": "BULL",
       "bull_score": 100,
       "bear_score": 0,
-      "is_sniper": false
+      "is_sniper": true
     },
     "UNH": {
       "intelligence": {
@@ -3399,12 +4014,12 @@
         "bear_score": 90,
         "type": "BEAR",
         "is_sniper": false,
-        "trampoline_detected": false,
+        "trampoline_detected": true,
         "kijun": {
-          "val": "$410.65 (-4.8%)",
+          "val": "$410.65 (-5.4%)",
           "status": "status-bear",
           "badge": "BREAKDOWN",
-          "desc": "현재가 $390.75 / 26일선 $410.65 (이격 -4.8%)"
+          "desc": "현재가 $388.41 / 26일선 $410.65 (이격 -5.4%)"
         },
         "tenkan": {
           "val": "$397.36",
@@ -3419,18 +4034,18 @@
           "desc": "일목 구름대(408.9~434.0) 하단 붕괴"
         },
         "vol": {
-          "val": "12% (20D)",
+          "val": "17% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 12% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 17% (매도세 고갈 완벽)"
         },
         "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
       },
-      "latest_close": 390.75,
+      "latest_close": 388.41,
       "kijun": 410.65,
       "tenkan": 397.36,
-      "kijun_gap_pct": -4.85,
-      "vol_ratio": 0.12,
+      "kijun_gap_pct": -5.42,
+      "vol_ratio": 0.17,
       "future_cloud_type": "음운 (하락 저항 구름대)",
       "future_cloud_gap": 18.72,
       "future_span_a_latest": 404.01,
@@ -3443,18 +4058,18 @@
     },
     "JNJ": {
       "intelligence": {
-        "verdict": "Bull Accumulation (1차 분할 매수 적합)",
-        "score": "100 / 100 pt (BULL_BUY)",
+        "verdict": "Sniper Alert (구름대 도약 2단계 특급 매수)",
+        "score": "95 / 100 pt (SNIPER_BUY)",
         "bull_score": 100,
         "bear_score": 0,
         "type": "BULL",
-        "is_sniper": false,
-        "trampoline_detected": false,
+        "is_sniper": true,
+        "trampoline_detected": true,
         "kijun": {
-          "val": "$260.98 (+2.8%)",
+          "val": "$260.98 (+3.2%)",
           "status": "status-bull",
           "badge": "SUPPORTED",
-          "desc": "현재가 $268.27 / 26일선 $260.98 (이격 +2.8%)"
+          "desc": "현재가 $269.34 / 26일선 $260.98 (이격 +3.2%)"
         },
         "tenkan": {
           "val": "$265.86",
@@ -3469,27 +4084,27 @@
           "desc": "일목 구름대(244.3~253.1) 상단 안착"
         },
         "vol": {
-          "val": "13% (20D)",
+          "val": "14% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 13% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 14% (매도세 고갈 완벽)"
         },
-        "action": "26일 기준선 및 일목 구름대 상단 안착 확인. 거시 변동성 진정 시 1차 분할 매수 적합."
+        "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 +3.2%) 안착. 목표 +15% / 손절 -4%."
       },
-      "latest_close": 268.27,
+      "latest_close": 269.34,
       "kijun": 260.98,
       "tenkan": 265.86,
-      "kijun_gap_pct": 2.8,
-      "vol_ratio": 0.13,
+      "kijun_gap_pct": 3.2,
+      "vol_ratio": 0.14,
       "future_cloud_type": "양운 (상승 지지 구름대)",
       "future_cloud_gap": 11.44,
       "future_span_a_latest": 263.42,
       "future_span_b_latest": 251.99,
-      "status_text": "Bull Accumulation (1차 분할 매수 적합)",
+      "status_text": "Sniper Alert (구름대 도약 2단계 특급 매수)",
       "status_tag": "BULL",
       "bull_score": 100,
       "bear_score": 0,
-      "is_sniper": false
+      "is_sniper": true
     },
     "ISRG": {
       "intelligence": {
@@ -3501,10 +4116,10 @@
         "is_sniper": false,
         "trampoline_detected": false,
         "kijun": {
-          "val": "$366.96 (+2.2%)",
+          "val": "$366.96 (+2.3%)",
           "status": "status-bull",
           "badge": "SUPPORTED",
-          "desc": "현재가 $374.92 / 26일선 $366.96 (이격 +2.2%)"
+          "desc": "현재가 $375.52 / 26일선 $366.96 (이격 +2.3%)"
         },
         "tenkan": {
           "val": "$386.29",
@@ -3519,18 +4134,18 @@
           "desc": "일목 구름대(411.2~420.8) 하단 붕괴"
         },
         "vol": {
-          "val": "9% (20D)",
+          "val": "13% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 9% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 13% (매도세 고갈 완벽)"
         },
         "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
       },
-      "latest_close": 374.92,
+      "latest_close": 375.52,
       "kijun": 366.96,
       "tenkan": 386.29,
-      "kijun_gap_pct": 2.17,
-      "vol_ratio": 0.09,
+      "kijun_gap_pct": 2.33,
+      "vol_ratio": 0.13,
       "future_cloud_type": "음운 (하락 저항 구름대)",
       "future_cloud_gap": 9.58,
       "future_span_a_latest": 376.62,
@@ -3551,10 +4166,10 @@
         "is_sniper": false,
         "trampoline_detected": false,
         "kijun": {
-          "val": "$951.43 (-1.1%)",
+          "val": "$951.43 (-1.0%)",
           "status": "status-bear",
           "badge": "BREAKDOWN",
-          "desc": "현재가 $940.93 / 26일선 $951.43 (이격 -1.1%)"
+          "desc": "현재가 $941.79 / 26일선 $951.43 (이격 -1.0%)"
         },
         "tenkan": {
           "val": "$952.24",
@@ -3569,18 +4184,18 @@
           "desc": "일목 구름대(943.2~1000.3) 하단 붕괴"
         },
         "vol": {
-          "val": "27% (20D)",
+          "val": "31% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 27% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 31% (매도세 고갈 완벽)"
         },
         "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
       },
-      "latest_close": 940.93,
+      "latest_close": 941.79,
       "kijun": 951.43,
       "tenkan": 952.24,
-      "kijun_gap_pct": -1.1,
-      "vol_ratio": 0.27,
+      "kijun_gap_pct": -1.01,
+      "vol_ratio": 0.31,
       "future_cloud_type": "양운 (상승 지지 구름대)",
       "future_cloud_gap": 2.05,
       "future_span_a_latest": 951.83,
@@ -3601,16 +4216,16 @@
         "is_sniper": false,
         "trampoline_detected": false,
         "kijun": {
-          "val": "$110.47 (-6.4%)",
+          "val": "$110.35 (-7.0%)",
           "status": "status-bear",
           "badge": "BREAKDOWN",
-          "desc": "현재가 $103.43 / 26일선 $110.47 (이격 -6.4%)"
+          "desc": "현재가 $102.67 / 26일선 $110.35 (이격 -7.0%)"
         },
         "tenkan": {
-          "val": "$109.86",
+          "val": "$109.74",
           "status": "status-bear",
           "badge": "DEAD CROSS",
-          "desc": "9일 전환선 $109.86 하단 역배열"
+          "desc": "9일 전환선 $109.74 하단 역배열"
         },
         "cloud": {
           "val": "$121.21",
@@ -3619,22 +4234,22 @@
           "desc": "일목 구름대(113.9~121.2) 하단 붕괴"
         },
         "vol": {
-          "val": "22% (20D)",
+          "val": "35% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 22% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 35% (매도세 고갈 완벽)"
         },
         "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
       },
-      "latest_close": 103.43,
-      "kijun": 110.47,
-      "tenkan": 109.86,
-      "kijun_gap_pct": -6.37,
-      "vol_ratio": 0.22,
+      "latest_close": 102.67,
+      "kijun": 110.35,
+      "tenkan": 109.74,
+      "kijun_gap_pct": -6.96,
+      "vol_ratio": 0.35,
       "future_cloud_type": "음운 (하락 저항 구름대)",
       "future_cloud_gap": 2.73,
-      "future_span_a_latest": 110.16,
-      "future_span_b_latest": 112.9,
+      "future_span_a_latest": 110.04,
+      "future_span_b_latest": 112.77,
       "status_text": "Risk Breakdown (생명선 붕괴 / 매수 금지)",
       "status_tag": "BEAR",
       "bull_score": 20,
@@ -3651,10 +4266,10 @@
         "is_sniper": false,
         "trampoline_detected": false,
         "kijun": {
-          "val": "$73.12 (+9.5%)",
+          "val": "$73.12 (+8.8%)",
           "status": "status-neutral",
           "badge": "OVERHEATED",
-          "desc": "현재가 $80.07 / 26일선 $73.12 (이격 +9.5%)"
+          "desc": "현재가 $79.57 / 26일선 $73.12 (이격 +8.8%)"
         },
         "tenkan": {
           "val": "$77.37",
@@ -3669,18 +4284,18 @@
           "desc": "일목 구름대(76.0~82.8) 내부 횡보"
         },
         "vol": {
-          "val": "9% (20D)",
+          "val": "12% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 9% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 12% (매도세 고갈 완벽)"
         },
         "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
       },
-      "latest_close": 80.07,
+      "latest_close": 79.57,
       "kijun": 73.12,
       "tenkan": 77.37,
-      "kijun_gap_pct": 9.5,
-      "vol_ratio": 0.09,
+      "kijun_gap_pct": 8.82,
+      "vol_ratio": 0.12,
       "future_cloud_type": "양운 (상승 지지 구름대)",
       "future_cloud_gap": 1.33,
       "future_span_a_latest": 75.24,
@@ -3701,10 +4316,10 @@
         "is_sniper": false,
         "trampoline_detected": true,
         "kijun": {
-          "val": "$100.59 (+7.0%)",
+          "val": "$100.59 (+6.7%)",
           "status": "status-neutral",
           "badge": "OVERHEATED",
-          "desc": "현재가 $107.59 / 26일선 $100.59 (이격 +7.0%)"
+          "desc": "현재가 $107.30 / 26일선 $100.59 (이격 +6.7%)"
         },
         "tenkan": {
           "val": "$105.36",
@@ -3719,18 +4334,18 @@
           "desc": "일목 구름대(98.3~102.2) 상단 안착"
         },
         "vol": {
-          "val": "8% (20D)",
+          "val": "10% (20D)",
           "status": "status-bull",
           "badge": "VOLUME DRY",
-          "desc": "20일 평균 거래량 대비 8% (매도세 고갈 완벽)"
+          "desc": "20일 평균 거래량 대비 10% (매도세 고갈 완벽)"
         },
         "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
       },
-      "latest_close": 107.59,
+      "latest_close": 107.3,
       "kijun": 100.59,
       "tenkan": 105.36,
-      "kijun_gap_pct": 6.96,
-      "vol_ratio": 0.08,
+      "kijun_gap_pct": 6.67,
+      "vol_ratio": 0.1,
       "future_cloud_type": "양운 (상승 지지 구름대)",
       "future_cloud_gap": 2.39,
       "future_span_a_latest": 102.98,

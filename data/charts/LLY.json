@@ -1,6 +1,6 @@
 {
   "ticker": "LLY",
-  "latest_close": 1245.27,
+  "latest_close": 1246.43,
   "kijun": 1200.11,
   "tenkan": 1228.08,
   "span_a": 1176.44,
@@ -9,24 +9,24 @@
   "future_span_b_latest": 1185.16,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 28.93,
-  "kijun_gap_pct": 3.76,
-  "vol_ratio": 0.13,
+  "kijun_gap_pct": 3.86,
+  "vol_ratio": 0.16,
   "bull_score": 100,
   "bear_score": 0,
-  "is_sniper": false,
+  "is_sniper": true,
   "intelligence": {
-    "verdict": "Bull Accumulation (1차 분할 매수 적합)",
-    "score": "100 / 100 pt (BULL_BUY)",
+    "verdict": "Sniper Alert (구름대 도약 2단계 특급 매수)",
+    "score": "95 / 100 pt (SNIPER_BUY)",
     "bull_score": 100,
     "bear_score": 0,
     "type": "BULL",
-    "is_sniper": false,
-    "trampoline_detected": false,
+    "is_sniper": true,
+    "trampoline_detected": true,
     "kijun": {
-      "val": "$1,200.11 (+3.8%)",
+      "val": "$1,200.11 (+3.9%)",
       "status": "status-bull",
       "badge": "SUPPORTED",
-      "desc": "현재가 $1,245.27 / 26일선 $1,200.11 (이격 +3.8%)"
+      "desc": "현재가 $1,246.43 / 26일선 $1,200.11 (이격 +3.9%)"
     },
     "tenkan": {
       "val": "$1,228.08",
@@ -41,15 +41,15 @@
       "desc": "일목 구름대(1094.0~1176.4) 상단 안착"
     },
     "vol": {
-      "val": "13% (20D)",
+      "val": "16% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 13% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 16% (매도세 고갈 완벽)"
     },
-    "action": "26일 기준선 및 일목 구름대 상단 안착 확인. 거시 변동성 진정 시 1차 분할 매수 적합."
+    "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 +3.9%) 안착. 목표 +15% / 손절 -4%."
   },
   "status_tag": "BULL",
-  "status_text": "Bull Accumulation (1차 분할 매수 적합)",
+  "status_text": "Sniper Alert (구름대 도약 2단계 특급 매수)",
   "timeframe": "1D",
   "period": "2Y",
   "candles": [
@@ -63,7 +63,7 @@
     {
       "time": "2024-09-27",
       "open": 881.28,
-      "high": 888.77,
+      "high": 888.76,
       "low": 863.52,
       "close": 865.67
     },
@@ -86,7 +86,7 @@
       "open": 867.85,
       "high": 881.01,
       "low": 866.57,
-      "close": 878.76
+      "close": 878.77
     },
     {
       "time": "2024-10-03",
@@ -280,7 +280,7 @@
     {
       "time": "2024-11-11",
       "open": 819.82,
-      "high": 832.35,
+      "high": 832.34,
       "low": 813.24,
       "close": 820.94
     },
@@ -772,7 +772,7 @@
       "open": 881.41,
       "high": 902.45,
       "low": 881.41,
-      "close": 892.35
+      "close": 892.36
     },
     {
       "time": "2025-02-26",
@@ -1122,7 +1122,7 @@
       "open": 772.33,
       "high": 776.13,
       "low": 764.17,
-      "close": 768.58
+      "close": 768.59
     },
     {
       "time": "2025-05-08",
@@ -1360,7 +1360,7 @@
       "open": 787.24,
       "high": 792.05,
       "low": 781.59,
-      "close": 788.4
+      "close": 788.41
     },
     {
       "time": "2025-06-27",
@@ -3387,10 +3387,10 @@
     },
     {
       "time": "2026-08-21",
-      "open": 1274.13,
-      "high": 1248.06,
+      "open": 1232.0,
+      "high": 1250.41,
       "low": 1230.0,
-      "close": 1245.27
+      "close": 1246.43
     }
   ],
   "kijun_line": [
@@ -7688,7 +7688,7 @@
     },
     {
       "time": "2025-04-25",
-      "value": 849.61
+      "value": 849.6
     },
     {
       "time": "2025-04-28",
@@ -10126,7 +10126,7 @@
     },
     {
       "time": "2025-12-10",
-      "value": 792.78
+      "value": 792.79
     },
     {
       "time": "2025-12-11",
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 1196.41
+      "value": 1196.46
     }
   ],
   "sma60": [
@@ -14610,7 +14610,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 1167.05
+      "value": 1167.07
     }
   ],
   "volume": [
@@ -16996,8 +16996,8 @@
     },
     {
       "time": "2026-08-21",
-      "value": 369126.0,
-      "color": "#dc2626"
+      "value": 445204.0,
+      "color": "#059669"
     }
   ]
 }

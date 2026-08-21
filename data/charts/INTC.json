@@ -1,6 +1,6 @@
 {
   "ticker": "INTC",
-  "latest_close": 90.69,
+  "latest_close": 91.32,
   "kijun": 94.68,
   "tenkan": 98.71,
   "span_a": 115.15,
@@ -9,8 +9,8 @@
   "future_span_b_latest": 112.07,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 15.38,
-  "kijun_gap_pct": -4.21,
-  "vol_ratio": 0.15,
+  "kijun_gap_pct": -3.55,
+  "vol_ratio": 0.21,
   "bull_score": 30,
   "bear_score": 90,
   "is_sniper": false,
@@ -23,10 +23,10 @@
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$94.68 (-4.2%)",
+      "val": "$94.68 (-3.5%)",
       "status": "status-bear",
       "badge": "BREAKDOWN",
-      "desc": "현재가 $90.69 / 26일선 $94.68 (이격 -4.2%)"
+      "desc": "현재가 $91.32 / 26일선 $94.68 (이격 -3.5%)"
     },
     "tenkan": {
       "val": "$98.71",
@@ -41,10 +41,10 @@
       "desc": "일목 구름대(115.2~117.5) 하단 붕괴"
     },
     "vol": {
-      "val": "15% (20D)",
+      "val": "21% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 15% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 21% (매도세 고갈 완벽)"
     },
     "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
   },
@@ -3390,7 +3390,7 @@
       "open": 92.77,
       "high": 92.77,
       "low": 90.56,
-      "close": 90.69
+      "close": 91.32
     }
   ],
   "kijun_line": [
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 95.73
+      "value": 95.76
     }
   ],
   "sma60": [
@@ -14610,7 +14610,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 108.52
+      "value": 108.53
     }
   ],
   "volume": [
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 16913129.0,
+      "value": 23034576.0,
       "color": "#dc2626"
     }
   ]

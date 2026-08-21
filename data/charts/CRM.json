@@ -1,6 +1,6 @@
 {
   "ticker": "CRM",
-  "latest_close": 207.82,
+  "latest_close": 206.63,
   "kijun": 181.57,
   "tenkan": 198.95,
   "span_a": 164.83,
@@ -9,8 +9,8 @@
   "future_span_b_latest": 177.16,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 13.1,
-  "kijun_gap_pct": 14.45,
-  "vol_ratio": 0.05,
+  "kijun_gap_pct": 13.8,
+  "vol_ratio": 0.08,
   "bull_score": 65,
   "bear_score": 0,
   "is_sniper": false,
@@ -21,12 +21,12 @@
     "bear_score": 0,
     "type": "NEUTRAL",
     "is_sniper": false,
-    "trampoline_detected": false,
+    "trampoline_detected": true,
     "kijun": {
-      "val": "$181.57 (+14.5%)",
+      "val": "$181.57 (+13.8%)",
       "status": "status-neutral",
       "badge": "OVERHEATED",
-      "desc": "현재가 $207.82 / 26일선 $181.57 (이격 +14.5%)"
+      "desc": "현재가 $206.63 / 26일선 $181.57 (이격 +13.8%)"
     },
     "tenkan": {
       "val": "$198.95",
@@ -41,10 +41,10 @@
       "desc": "일목 구름대(164.8~178.6) 상단 안착"
     },
     "vol": {
-      "val": "5% (20D)",
+      "val": "8% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 5% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 8% (매도세 고갈 완벽)"
     },
     "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
   },
@@ -526,7 +526,7 @@
       "time": "2025-01-02",
       "open": 332.44,
       "high": 335.02,
-      "low": 324.03,
+      "low": 324.04,
       "close": 326.85
     },
     {
@@ -1288,7 +1288,7 @@
     {
       "time": "2025-06-11",
       "open": 265.83,
-      "high": 266.83,
+      "high": 266.82,
       "low": 262.77,
       "close": 263.26
     },
@@ -1483,7 +1483,7 @@
     },
     {
       "time": "2025-07-23",
-      "open": 261.71,
+      "open": 261.7,
       "high": 266.23,
       "low": 260.3,
       "close": 264.98
@@ -3387,10 +3387,10 @@
     },
     {
       "time": "2026-08-21",
-      "open": 205.22,
+      "open": 205.58,
       "high": 207.99,
-      "low": 205.21,
-      "close": 207.82
+      "low": 204.73,
+      "close": 206.63
     }
   ],
   "kijun_line": [
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 192.5
+      "value": 192.44
     }
   ],
   "sma60": [
@@ -14610,7 +14610,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 176.59
+      "value": 176.57
     }
   ],
   "volume": [
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 587099.0,
+      "value": 991730.0,
       "color": "#059669"
     }
   ]

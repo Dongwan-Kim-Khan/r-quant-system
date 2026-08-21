@@ -1,6 +1,6 @@
 {
   "ticker": "ISRG",
-  "latest_close": 374.92,
+  "latest_close": 375.52,
   "kijun": 366.96,
   "tenkan": 386.29,
   "span_a": 411.17,
@@ -9,8 +9,8 @@
   "future_span_b_latest": 386.21,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 9.58,
-  "kijun_gap_pct": 2.17,
-  "vol_ratio": 0.09,
+  "kijun_gap_pct": 2.33,
+  "vol_ratio": 0.13,
   "bull_score": 65,
   "bear_score": 35,
   "is_sniper": false,
@@ -23,10 +23,10 @@
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$366.96 (+2.2%)",
+      "val": "$366.96 (+2.3%)",
       "status": "status-bull",
       "badge": "SUPPORTED",
-      "desc": "현재가 $374.92 / 26일선 $366.96 (이격 +2.2%)"
+      "desc": "현재가 $375.52 / 26일선 $366.96 (이격 +2.3%)"
     },
     "tenkan": {
       "val": "$386.29",
@@ -41,10 +41,10 @@
       "desc": "일목 구름대(411.2~420.8) 하단 붕괴"
     },
     "vol": {
-      "val": "9% (20D)",
+      "val": "13% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 9% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 13% (매도세 고갈 완벽)"
     },
     "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
   },
@@ -3388,9 +3388,9 @@
     {
       "time": "2026-08-21",
       "open": 375.57,
-      "high": 375.86,
+      "high": 376.85,
       "low": 367.24,
-      "close": 374.92
+      "close": 375.52
     }
   ],
   "kijun_line": [
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 378.49
+      "value": 378.52
     }
   ],
   "sma60": [
@@ -14610,7 +14610,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 392.99
+      "value": 393.0
     }
   ],
   "volume": [
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 275106.0,
+      "value": 376595.0,
       "color": "#dc2626"
     }
   ]

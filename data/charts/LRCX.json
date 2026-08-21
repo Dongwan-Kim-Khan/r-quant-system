@@ -1,6 +1,6 @@
 {
   "ticker": "LRCX",
-  "latest_close": 312.32,
+  "latest_close": 311.1,
   "kijun": 297.89,
   "tenkan": 324.12,
   "span_a": 356.84,
@@ -9,8 +9,8 @@
   "future_span_b_latest": 344.5,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 33.5,
-  "kijun_gap_pct": 4.84,
-  "vol_ratio": 0.08,
+  "kijun_gap_pct": 4.43,
+  "vol_ratio": 0.1,
   "bull_score": 30,
   "bear_score": 35,
   "is_sniper": false,
@@ -23,10 +23,10 @@
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$297.89 (+4.8%)",
+      "val": "$297.89 (+4.4%)",
       "status": "status-neutral",
       "badge": "OVERHEATED",
-      "desc": "현재가 $312.32 / 26일선 $297.89 (이격 +4.8%)"
+      "desc": "현재가 $311.10 / 26일선 $297.89 (이격 +4.4%)"
     },
     "tenkan": {
       "val": "$324.12",
@@ -41,10 +41,10 @@
       "desc": "일목 구름대(344.2~356.8) 하단 붕괴"
     },
     "vol": {
-      "val": "8% (20D)",
+      "val": "10% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 8% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 10% (매도세 고갈 완벽)"
     },
     "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
   },
@@ -930,7 +930,7 @@
     },
     {
       "time": "2025-03-28",
-      "open": 74.03,
+      "open": 74.04,
       "high": 74.7,
       "low": 71.65,
       "close": 72.03
@@ -1756,7 +1756,7 @@
     },
     {
       "time": "2025-09-17",
-      "open": 120.15,
+      "open": 120.16,
       "high": 122.6,
       "low": 118.85,
       "close": 121.23
@@ -3389,8 +3389,8 @@
       "time": "2026-08-21",
       "open": 316.66,
       "high": 319.1,
-      "low": 311.88,
-      "close": 312.32
+      "low": 310.93,
+      "close": 311.1
     }
   ],
   "kijun_line": [
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 307.81
+      "value": 307.75
     }
   ],
   "sma60": [
@@ -14610,7 +14610,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 335.06
+      "value": 335.04
     }
   ],
   "volume": [
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 824762.0,
+      "value": 1060176.0,
       "color": "#dc2626"
     }
   ]

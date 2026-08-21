@@ -1,6 +1,6 @@
 {
   "ticker": "MRVL",
-  "latest_close": 246.1,
+  "latest_close": 246.5,
   "kijun": 207.71,
   "tenkan": 229.47,
   "span_a": 240.62,
@@ -9,8 +9,8 @@
   "future_span_b_latest": 246.35,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 27.76,
-  "kijun_gap_pct": 18.48,
-  "vol_ratio": 0.1,
+  "kijun_gap_pct": 18.68,
+  "vol_ratio": 0.16,
   "bull_score": 65,
   "bear_score": 0,
   "is_sniper": false,
@@ -21,12 +21,12 @@
     "bear_score": 0,
     "type": "NEUTRAL",
     "is_sniper": false,
-    "trampoline_detected": false,
+    "trampoline_detected": true,
     "kijun": {
-      "val": "$207.71 (+18.5%)",
+      "val": "$207.71 (+18.7%)",
       "status": "status-neutral",
       "badge": "OVERHEATED",
-      "desc": "현재가 $246.10 / 26일선 $207.71 (이격 +18.5%)"
+      "desc": "현재가 $246.50 / 26일선 $207.71 (이격 +18.7%)"
     },
     "tenkan": {
       "val": "$229.47",
@@ -41,10 +41,10 @@
       "desc": "일목 구름대(240.6~243.9) 상단 안착"
     },
     "vol": {
-      "val": "10% (20D)",
+      "val": "16% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 10% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 16% (매도세 고갈 완벽)"
     },
     "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
   },
@@ -1729,7 +1729,7 @@
     {
       "time": "2025-09-11",
       "open": 66.86,
-      "high": 68.06,
+      "high": 68.05,
       "low": 66.22,
       "close": 66.45
     },
@@ -3390,7 +3390,7 @@
       "open": 252.39,
       "high": 252.52,
       "low": 245.1,
-      "close": 246.1
+      "close": 246.5
     }
   ],
   "kijun_line": [
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 210.87
+      "value": 210.89
     }
   ],
   "sma60": [
@@ -14610,7 +14610,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 238.49
+      "value": 238.5
     }
   ],
   "volume": [
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 2331915.0,
+      "value": 3626474.0,
       "color": "#dc2626"
     }
   ]

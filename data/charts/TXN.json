@@ -1,6 +1,6 @@
 {
   "ticker": "TXN",
-  "latest_close": 264.54,
+  "latest_close": 265.3,
   "kijun": 280.2,
   "tenkan": 276.97,
   "span_a": 300.62,
@@ -9,8 +9,8 @@
   "future_span_b_latest": 298.32,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 19.74,
-  "kijun_gap_pct": -5.59,
-  "vol_ratio": 0.08,
+  "kijun_gap_pct": -5.32,
+  "vol_ratio": 0.11,
   "bull_score": 20,
   "bear_score": 90,
   "is_sniper": false,
@@ -23,10 +23,10 @@
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$280.20 (-5.6%)",
+      "val": "$280.20 (-5.3%)",
       "status": "status-bear",
       "badge": "BREAKDOWN",
-      "desc": "현재가 $264.54 / 26일선 $280.20 (이격 -5.6%)"
+      "desc": "현재가 $265.30 / 26일선 $280.20 (이격 -5.3%)"
     },
     "tenkan": {
       "val": "$276.97",
@@ -41,10 +41,10 @@
       "desc": "일목 구름대(300.6~302.4) 하단 붕괴"
     },
     "vol": {
-      "val": "8% (20D)",
+      "val": "11% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 8% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 11% (매도세 고갈 완벽)"
     },
     "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
   },
@@ -3390,7 +3390,7 @@
       "open": 269.78,
       "high": 269.79,
       "low": 264.32,
-      "close": 264.54
+      "close": 265.3
     }
   ],
   "kijun_line": [
@@ -7684,7 +7684,7 @@
     },
     {
       "time": "2025-04-24",
-      "value": 178.44
+      "value": 178.45
     },
     {
       "time": "2025-04-25",
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 275.78
+      "value": 275.81
     }
   ],
   "sma60": [
@@ -14610,7 +14610,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 290.41
+      "value": 290.43
     }
   ],
   "volume": [
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 570756.0,
+      "value": 735341.0,
       "color": "#dc2626"
     }
   ]

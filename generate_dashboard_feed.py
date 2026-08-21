@@ -202,11 +202,11 @@ def compute_all_indicators(ticker):
         if kijun_gap < -2.0: bear_score += 15
         
         # Strategy 2: 2-Phase Cloud Trampoline Launch Evaluation
-        # Lookback 6 bars to check if a Cloud Bounce Launch happened
+        # Lookback 14 bars to check if a Cloud Bounce Launch happened
         trampoline_detected = False
         trampoline_days_ago = 0
         n_bars = len(df_clean)
-        for b_offset in range(1, min(7, n_bars)):
+        for b_offset in range(1, min(15, n_bars)):
             hist_bar = df_clean.iloc[-b_offset]
             h_open = float(hist_bar['Open'])
             h_close = float(hist_bar['Close'])
@@ -216,19 +216,19 @@ def compute_all_indicators(ticker):
             h_cloud_top = max(h_sp_a, h_sp_b)
             if h_cloud_top > 0:
                 h_touch_gap = (h_low - h_cloud_top) / h_cloud_top
-                h_body_pct = (h_close - h_open) / h_open
-                if (-0.015 <= h_touch_gap <= 0.030) and (h_body_pct >= 0.025):
+                h_close_gap = (h_close - h_cloud_top) / h_cloud_top
+                if (-0.035 <= h_touch_gap <= 0.060) and (h_close_gap >= -0.015):
                     trampoline_detected = True
                     trampoline_days_ago = b_offset - 1
                     break
         
-        is_sniper_active = trampoline_detected and (-0.5 <= kijun_gap <= 4.0) and (vol_ratio <= 0.85) and (close >= cloud_top)
+        is_sniper_active = trampoline_detected and (-1.0 <= kijun_gap <= 4.5) and (close >= cloud_top * 0.98) and (bull_score >= 65)
         
         if is_sniper_active:
             quant_type = "BULL"
             quant_verdict = "Sniper Alert (구름대 도약 2단계 특급 매수)"
             quant_score_text = f"95 / 100 pt (SNIPER_BUY)"
-            action_directive = f"[전략 2 스나이퍼] {trampoline_days_ago}일 전 구름대 지지 도약 확인 후 26일선 눌림목(거래량 {round(vol_ratio*100)}%) 안착. 목표 +15% / 손절 -4%."
+            action_directive = f"[전략 2 스나이퍼] {trampoline_days_ago}일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 {kijun_gap:+.1f}%) 안착. 목표 +15% / 손절 -4%."
         elif bull_score >= 70:
             quant_type = "BULL"
             quant_verdict = "Bull Accumulation (1차 분할 매수 적합)"
@@ -387,7 +387,7 @@ def build_dashboard_data():
         
         if c["is_sniper"]:
             sniper_radar_picks.append(item)
-        elif c["bull_score"] >= 70:
+        if c["bull_score"] >= 65:
             primary_accumulation_picks.append(item)
             
     # Sort Primary Accumulation by score desc, then by kijun gap asc

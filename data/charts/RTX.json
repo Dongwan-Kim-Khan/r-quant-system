@@ -1,6 +1,6 @@
 {
   "ticker": "RTX",
-  "latest_close": 213.03,
+  "latest_close": 212.58,
   "kijun": 207.9,
   "tenkan": 219.29,
   "span_a": 193.71,
@@ -9,8 +9,8 @@
   "future_span_b_latest": 201.38,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 12.22,
-  "kijun_gap_pct": 2.47,
-  "vol_ratio": 0.11,
+  "kijun_gap_pct": 2.25,
+  "vol_ratio": 0.13,
   "bull_score": 100,
   "bear_score": 0,
   "is_sniper": false,
@@ -23,10 +23,10 @@
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$207.90 (+2.5%)",
+      "val": "$207.90 (+2.3%)",
       "status": "status-bull",
       "badge": "SUPPORTED",
-      "desc": "현재가 $213.03 / 26일선 $207.90 (이격 +2.5%)"
+      "desc": "현재가 $212.58 / 26일선 $207.90 (이격 +2.3%)"
     },
     "tenkan": {
       "val": "$219.29",
@@ -41,10 +41,10 @@
       "desc": "일목 구름대(186.4~193.7) 상단 안착"
     },
     "vol": {
-      "val": "11% (20D)",
+      "val": "13% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 11% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 13% (매도세 고갈 완벽)"
     },
     "action": "26일 기준선 및 일목 구름대 상단 안착 확인. 거시 변동성 진정 시 1차 분할 매수 적합."
   },
@@ -3387,10 +3387,10 @@
     },
     {
       "time": "2026-08-21",
-      "open": 218.97,
+      "open": 213.36,
       "high": 213.52,
       "low": 212.32,
-      "close": 213.03
+      "close": 212.58
     }
   ],
   "kijun_line": [
@@ -3888,11 +3888,11 @@
     },
     {
       "time": "2025-03-26",
-      "value": 126.28
+      "value": 126.27
     },
     {
       "time": "2025-03-27",
-      "value": 126.28
+      "value": 126.27
     },
     {
       "time": "2025-03-28",
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 219.09
+      "value": 219.07
     }
   ],
   "sma60": [
@@ -14610,7 +14610,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 198.56
+      "value": 198.55
     }
   ],
   "volume": [
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 541181.0,
+      "value": 624829.0,
       "color": "#dc2626"
     }
   ]

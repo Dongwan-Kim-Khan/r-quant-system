@@ -1,6 +1,6 @@
 {
   "ticker": "JPM",
-  "latest_close": 354.2,
+  "latest_close": 355.25,
   "kijun": 350.77,
   "tenkan": 359.02,
   "span_a": 333.93,
@@ -9,24 +9,24 @@
   "future_span_b_latest": 337.0,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 17.9,
-  "kijun_gap_pct": 0.98,
-  "vol_ratio": 0.18,
+  "kijun_gap_pct": 1.28,
+  "vol_ratio": 0.22,
   "bull_score": 100,
   "bear_score": 0,
-  "is_sniper": false,
+  "is_sniper": true,
   "intelligence": {
-    "verdict": "Bull Accumulation (1차 분할 매수 적합)",
-    "score": "100 / 100 pt (BULL_BUY)",
+    "verdict": "Sniper Alert (구름대 도약 2단계 특급 매수)",
+    "score": "95 / 100 pt (SNIPER_BUY)",
     "bull_score": 100,
     "bear_score": 0,
     "type": "BULL",
-    "is_sniper": false,
-    "trampoline_detected": false,
+    "is_sniper": true,
+    "trampoline_detected": true,
     "kijun": {
-      "val": "$350.77 (+1.0%)",
+      "val": "$350.77 (+1.3%)",
       "status": "status-bull",
       "badge": "SUPPORTED",
-      "desc": "현재가 $354.20 / 26일선 $350.77 (이격 +1.0%)"
+      "desc": "현재가 $355.25 / 26일선 $350.77 (이격 +1.3%)"
     },
     "tenkan": {
       "val": "$359.02",
@@ -41,15 +41,15 @@
       "desc": "일목 구름대(321.8~333.9) 상단 안착"
     },
     "vol": {
-      "val": "18% (20D)",
+      "val": "22% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 18% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 22% (매도세 고갈 완벽)"
     },
-    "action": "26일 기준선 및 일목 구름대 상단 안착 확인. 거시 변동성 진정 시 1차 분할 매수 적합."
+    "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 +1.3%) 안착. 목표 +15% / 손절 -4%."
   },
   "status_tag": "BULL",
-  "status_text": "Bull Accumulation (1차 분할 매수 적합)",
+  "status_text": "Sniper Alert (구름대 도약 2단계 특급 매수)",
   "timeframe": "1D",
   "period": "2Y",
   "candles": [
@@ -1780,7 +1780,7 @@
       "open": 303.98,
       "high": 307.81,
       "low": 303.75,
-      "close": 306.58
+      "close": 306.57
     },
     {
       "time": "2025-09-23",
@@ -2500,7 +2500,7 @@
       "time": "2026-02-19",
       "open": 304.24,
       "high": 306.23,
-      "low": 302.2,
+      "low": 302.21,
       "close": 305.11
     },
     {
@@ -3387,10 +3387,10 @@
     },
     {
       "time": "2026-08-21",
-      "open": 357.6,
-      "high": 355.56,
+      "open": 354.07,
+      "high": 356.86,
       "low": 352.65,
-      "close": 354.2
+      "close": 355.25
     }
   ],
   "kijun_line": [
@@ -5470,7 +5470,7 @@
     },
     {
       "time": "2024-11-22",
-      "value": 235.5
+      "value": 235.49
     },
     {
       "time": "2024-11-25",
@@ -6346,7 +6346,7 @@
     },
     {
       "time": "2025-10-10",
-      "value": 304.03
+      "value": 304.02
     },
     {
       "time": "2025-10-13",
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 357.21
+      "value": 357.27
     }
   ],
   "sma60": [
@@ -14610,7 +14610,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 336.91
+      "value": 336.93
     }
   ],
   "volume": [
@@ -16996,8 +16996,8 @@
     },
     {
       "time": "2026-08-21",
-      "value": 1052237.0,
-      "color": "#dc2626"
+      "value": 1309281.0,
+      "color": "#059669"
     }
   ]
 }

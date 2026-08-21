@@ -1,6 +1,6 @@
 {
   "ticker": "NFLX",
-  "latest_close": 80.07,
+  "latest_close": 79.57,
   "kijun": 73.12,
   "tenkan": 77.37,
   "span_a": 76.02,
@@ -9,8 +9,8 @@
   "future_span_b_latest": 73.92,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 1.33,
-  "kijun_gap_pct": 9.5,
-  "vol_ratio": 0.09,
+  "kijun_gap_pct": 8.82,
+  "vol_ratio": 0.12,
   "bull_score": 30,
   "bear_score": 0,
   "is_sniper": false,
@@ -23,10 +23,10 @@
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$73.12 (+9.5%)",
+      "val": "$73.12 (+8.8%)",
       "status": "status-neutral",
       "badge": "OVERHEATED",
-      "desc": "현재가 $80.07 / 26일선 $73.12 (이격 +9.5%)"
+      "desc": "현재가 $79.57 / 26일선 $73.12 (이격 +8.8%)"
     },
     "tenkan": {
       "val": "$77.37",
@@ -41,10 +41,10 @@
       "desc": "일목 구름대(76.0~82.8) 내부 횡보"
     },
     "vol": {
-      "val": "9% (20D)",
+      "val": "12% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 9% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 12% (매도세 고갈 완벽)"
     },
     "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
   },
@@ -3389,8 +3389,8 @@
       "time": "2026-08-21",
       "open": 80.27,
       "high": 80.34,
-      "low": 79.42,
-      "close": 80.07
+      "low": 79.28,
+      "close": 79.57
     }
   ],
   "kijun_line": [
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 75.31
+      "value": 75.28
     }
   ],
   "sma60": [
@@ -14610,7 +14610,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 75.99
+      "value": 75.98
     }
   ],
   "volume": [
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 2953660.0,
+      "value": 3823213.0,
       "color": "#dc2626"
     }
   ]

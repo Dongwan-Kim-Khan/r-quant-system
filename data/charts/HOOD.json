@@ -1,50 +1,50 @@
 {
   "ticker": "HOOD",
-  "latest_close": 102.8,
+  "latest_close": 106.96,
   "kijun": 95.94,
-  "tenkan": 97.12,
+  "tenkan": 99.67,
   "span_a": 105.97,
   "span_b": 96.56,
-  "future_span_a_latest": 96.53,
+  "future_span_a_latest": 97.81,
   "future_span_b_latest": 99.49,
   "future_cloud_type": "음운 (하락 저항 구름대)",
-  "future_cloud_gap": 2.96,
-  "kijun_gap_pct": 7.14,
-  "vol_ratio": 0.38,
-  "bull_score": 30,
+  "future_cloud_gap": 1.68,
+  "kijun_gap_pct": 11.48,
+  "vol_ratio": 0.74,
+  "bull_score": 65,
   "bear_score": 0,
   "is_sniper": false,
   "intelligence": {
     "verdict": "Neutral Consolidation (박스권 수렴)",
-    "score": "30 / 100 pt (HOLD)",
-    "bull_score": 30,
+    "score": "65 / 100 pt (HOLD)",
+    "bull_score": 65,
     "bear_score": 0,
     "type": "NEUTRAL",
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$95.94 (+7.1%)",
+      "val": "$95.94 (+11.5%)",
       "status": "status-neutral",
       "badge": "OVERHEATED",
-      "desc": "현재가 $102.80 / 26일선 $95.94 (이격 +7.1%)"
+      "desc": "현재가 $106.96 / 26일선 $95.94 (이격 +11.5%)"
     },
     "tenkan": {
-      "val": "$97.12",
+      "val": "$99.67",
       "status": "status-bull",
       "badge": "GOLDEN CROSS",
-      "desc": "9일 전환선 $97.12 상단 정배열"
+      "desc": "9일 전환선 $99.67 상단 정배열"
     },
     "cloud": {
       "val": "$105.97",
-      "status": "status-neutral",
-      "badge": "INSIDE CLOUD",
-      "desc": "일목 구름대(96.6~106.0) 내부 횡보"
+      "status": "status-bull",
+      "badge": "ABOVE CLOUD",
+      "desc": "일목 구름대(96.6~106.0) 상단 안착"
     },
     "vol": {
-      "val": "38% (20D)",
+      "val": "74% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 38% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 74% (매도세 고갈 완벽)"
     },
     "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
   },
@@ -3388,9 +3388,9 @@
     {
       "time": "2026-08-21",
       "open": 100.88,
-      "high": 102.81,
+      "high": 107.91,
       "low": 98.77,
-      "close": 102.8
+      "close": 106.96
     }
   ],
   "kijun_line": [
@@ -7210,7 +7210,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 97.12
+      "value": 99.67
     }
   ],
   "span_a_line": [
@@ -9120,7 +9120,7 @@
     },
     {
       "time": "2026-09-28",
-      "value": 96.53
+      "value": 97.81
     }
   ],
   "span_b_line": [
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 93.61
+      "value": 93.82
     }
   ],
   "sma60": [
@@ -14610,7 +14610,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 97.95
+      "value": 98.02
     }
   ],
   "volume": [
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 6684386.0,
+      "value": 13154824.0,
       "color": "#059669"
     }
   ]

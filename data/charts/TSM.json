@@ -1,6 +1,6 @@
 {
   "ticker": "TSM",
-  "latest_close": 420.92,
+  "latest_close": 420.27,
   "kijun": 404.38,
   "tenkan": 421.88,
   "span_a": 436.51,
@@ -9,24 +9,24 @@
   "future_span_b_latest": 425.86,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 12.73,
-  "kijun_gap_pct": 4.09,
-  "vol_ratio": 0.1,
-  "bull_score": 30,
+  "kijun_gap_pct": 3.93,
+  "vol_ratio": 0.15,
+  "bull_score": 65,
   "bear_score": 35,
   "is_sniper": false,
   "intelligence": {
     "verdict": "Neutral Consolidation (박스권 수렴)",
-    "score": "30 / 100 pt (HOLD)",
-    "bull_score": 30,
+    "score": "65 / 100 pt (HOLD)",
+    "bull_score": 65,
     "bear_score": 35,
     "type": "NEUTRAL",
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$404.38 (+4.1%)",
-      "status": "status-neutral",
-      "badge": "OVERHEATED",
-      "desc": "현재가 $420.92 / 26일선 $404.38 (이격 +4.1%)"
+      "val": "$404.38 (+3.9%)",
+      "status": "status-bull",
+      "badge": "SUPPORTED",
+      "desc": "현재가 $420.27 / 26일선 $404.38 (이격 +3.9%)"
     },
     "tenkan": {
       "val": "$421.88",
@@ -41,10 +41,10 @@
       "desc": "일목 구름대(431.6~436.5) 하단 붕괴"
     },
     "vol": {
-      "val": "10% (20D)",
+      "val": "15% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 10% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 15% (매도세 고갈 완벽)"
     },
     "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
   },
@@ -1701,7 +1701,7 @@
     {
       "time": "2025-09-05",
       "open": 237.61,
-      "high": 241.87,
+      "high": 241.88,
       "low": 235.3,
       "close": 240.75
     },
@@ -2171,7 +2171,7 @@
       "time": "2025-12-10",
       "open": 302.98,
       "high": 311.53,
-      "low": 300.14,
+      "low": 300.13,
       "close": 307.72
     },
     {
@@ -3387,10 +3387,10 @@
     },
     {
       "time": "2026-08-21",
-      "open": 408.6,
+      "open": 423.02,
       "high": 425.68,
-      "low": 420.72,
-      "close": 420.92
+      "low": 419.49,
+      "close": 420.27
     }
   ],
   "kijun_line": [
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 413.45
+      "value": 413.42
     }
   ],
   "sma60": [
@@ -14610,7 +14610,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 425.06
+      "value": 425.05
     }
   ],
   "volume": [
@@ -16996,8 +16996,8 @@
     },
     {
       "time": "2026-08-21",
-      "value": 1228712.0,
-      "color": "#059669"
+      "value": 1741645.0,
+      "color": "#dc2626"
     }
   ]
 }

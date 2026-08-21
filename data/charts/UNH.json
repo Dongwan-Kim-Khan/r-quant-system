@@ -1,6 +1,6 @@
 {
   "ticker": "UNH",
-  "latest_close": 390.75,
+  "latest_close": 388.41,
   "kijun": 410.65,
   "tenkan": 397.36,
   "span_a": 434.05,
@@ -9,8 +9,8 @@
   "future_span_b_latest": 422.72,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 18.72,
-  "kijun_gap_pct": -4.85,
-  "vol_ratio": 0.12,
+  "kijun_gap_pct": -5.42,
+  "vol_ratio": 0.17,
   "bull_score": 20,
   "bear_score": 90,
   "is_sniper": false,
@@ -21,12 +21,12 @@
     "bear_score": 90,
     "type": "BEAR",
     "is_sniper": false,
-    "trampoline_detected": false,
+    "trampoline_detected": true,
     "kijun": {
-      "val": "$410.65 (-4.8%)",
+      "val": "$410.65 (-5.4%)",
       "status": "status-bear",
       "badge": "BREAKDOWN",
-      "desc": "현재가 $390.75 / 26일선 $410.65 (이격 -4.8%)"
+      "desc": "현재가 $388.41 / 26일선 $410.65 (이격 -5.4%)"
     },
     "tenkan": {
       "val": "$397.36",
@@ -41,10 +41,10 @@
       "desc": "일목 구름대(408.9~434.0) 하단 붕괴"
     },
     "vol": {
-      "val": "12% (20D)",
+      "val": "17% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 12% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 17% (매도세 고갈 완벽)"
     },
     "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
   },
@@ -97,7 +97,7 @@
     },
     {
       "time": "2024-10-04",
-      "open": 568.0,
+      "open": 568.01,
       "high": 571.84,
       "low": 564.47,
       "close": 567.11
@@ -363,7 +363,7 @@
     },
     {
       "time": "2024-11-27",
-      "open": 586.13,
+      "open": 586.14,
       "high": 592.29,
       "low": 581.98,
       "close": 583.59
@@ -980,7 +980,7 @@
     {
       "time": "2025-04-08",
       "open": 562.99,
-      "high": 565.74,
+      "high": 565.73,
       "low": 529.42,
       "close": 534.86
     },
@@ -3387,10 +3387,10 @@
     },
     {
       "time": "2026-08-21",
-      "open": 388.25,
-      "high": 390.75,
+      "open": 386.0,
+      "high": 391.69,
       "low": 386.16,
-      "close": 390.75
+      "close": 388.41
     }
   ],
   "kijun_line": [
@@ -7600,7 +7600,7 @@
     },
     {
       "time": "2025-03-25",
-      "value": 512.15
+      "value": 512.14
     },
     {
       "time": "2025-03-26",
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 406.03
+      "value": 405.92
     }
   ],
   "sma60": [
@@ -14610,7 +14610,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 409.73
+      "value": 409.69
     }
   ],
   "volume": [
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 492409.0,
+      "value": 692911.0,
       "color": "#059669"
     }
   ]

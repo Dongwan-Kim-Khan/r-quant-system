@@ -1,6 +1,6 @@
 {
   "ticker": "CEG",
-  "latest_close": 274.56,
+  "latest_close": 271.91,
   "kijun": 265.57,
   "tenkan": 275.69,
   "span_a": 253.1,
@@ -9,8 +9,8 @@
   "future_span_b_latest": 257.42,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 13.21,
-  "kijun_gap_pct": 3.39,
-  "vol_ratio": 0.08,
+  "kijun_gap_pct": 2.39,
+  "vol_ratio": 0.11,
   "bull_score": 65,
   "bear_score": 0,
   "is_sniper": false,
@@ -21,12 +21,12 @@
     "bear_score": 0,
     "type": "NEUTRAL",
     "is_sniper": false,
-    "trampoline_detected": false,
+    "trampoline_detected": true,
     "kijun": {
-      "val": "$265.57 (+3.4%)",
+      "val": "$265.57 (+2.4%)",
       "status": "status-bull",
       "badge": "SUPPORTED",
-      "desc": "현재가 $274.56 / 26일선 $265.57 (이격 +3.4%)"
+      "desc": "현재가 $271.91 / 26일선 $265.57 (이격 +2.4%)"
     },
     "tenkan": {
       "val": "$275.69",
@@ -41,10 +41,10 @@
       "desc": "일목 구름대(253.1~278.0) 내부 횡보"
     },
     "vol": {
-      "val": "8% (20D)",
+      "val": "11% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 8% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 11% (매도세 고갈 완벽)"
     },
     "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
   },
@@ -903,7 +903,7 @@
     {
       "time": "2025-03-24",
       "open": 226.39,
-      "high": 229.27,
+      "high": 229.28,
       "low": 224.76,
       "close": 226.77
     },
@@ -3389,8 +3389,8 @@
       "time": "2026-08-21",
       "open": 275.5,
       "high": 275.65,
-      "low": 271.8,
-      "close": 274.56
+      "low": 271.24,
+      "close": 271.91
     }
   ],
   "kijun_line": [
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 269.99
+      "value": 269.86
     }
   ],
   "sma60": [
@@ -14610,7 +14610,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 262.98
+      "value": 262.93
     }
   ],
   "volume": [
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 205019.0,
+      "value": 292998.0,
       "color": "#dc2626"
     }
   ]

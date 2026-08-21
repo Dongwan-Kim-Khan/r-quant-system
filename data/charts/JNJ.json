@@ -1,6 +1,6 @@
 {
   "ticker": "JNJ",
-  "latest_close": 268.27,
+  "latest_close": 269.34,
   "kijun": 260.98,
   "tenkan": 265.86,
   "span_a": 253.1,
@@ -9,24 +9,24 @@
   "future_span_b_latest": 251.99,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 11.44,
-  "kijun_gap_pct": 2.8,
-  "vol_ratio": 0.13,
+  "kijun_gap_pct": 3.2,
+  "vol_ratio": 0.14,
   "bull_score": 100,
   "bear_score": 0,
-  "is_sniper": false,
+  "is_sniper": true,
   "intelligence": {
-    "verdict": "Bull Accumulation (1차 분할 매수 적합)",
-    "score": "100 / 100 pt (BULL_BUY)",
+    "verdict": "Sniper Alert (구름대 도약 2단계 특급 매수)",
+    "score": "95 / 100 pt (SNIPER_BUY)",
     "bull_score": 100,
     "bear_score": 0,
     "type": "BULL",
-    "is_sniper": false,
-    "trampoline_detected": false,
+    "is_sniper": true,
+    "trampoline_detected": true,
     "kijun": {
-      "val": "$260.98 (+2.8%)",
+      "val": "$260.98 (+3.2%)",
       "status": "status-bull",
       "badge": "SUPPORTED",
-      "desc": "현재가 $268.27 / 26일선 $260.98 (이격 +2.8%)"
+      "desc": "현재가 $269.34 / 26일선 $260.98 (이격 +3.2%)"
     },
     "tenkan": {
       "val": "$265.86",
@@ -41,15 +41,15 @@
       "desc": "일목 구름대(244.3~253.1) 상단 안착"
     },
     "vol": {
-      "val": "13% (20D)",
+      "val": "14% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 13% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 14% (매도세 고갈 완벽)"
     },
-    "action": "26일 기준선 및 일목 구름대 상단 안착 확인. 거시 변동성 진정 시 1차 분할 매수 적합."
+    "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 26일선 눌림목(이격 +3.2%) 안착. 목표 +15% / 손절 -4%."
   },
   "status_tag": "BULL",
-  "status_text": "Bull Accumulation (1차 분할 매수 적합)",
+  "status_text": "Sniper Alert (구름대 도약 2단계 특급 매수)",
   "timeframe": "1D",
   "period": "2Y",
   "candles": [
@@ -302,7 +302,7 @@
       "time": "2024-11-14",
       "open": 145.83,
       "high": 146.22,
-      "low": 143.52,
+      "low": 143.53,
       "close": 144.58
     },
     {
@@ -1044,7 +1044,7 @@
       "time": "2025-04-22",
       "open": 152.4,
       "high": 153.53,
-      "low": 151.16,
+      "low": 151.15,
       "close": 152.6
     },
     {
@@ -1107,7 +1107,7 @@
       "time": "2025-05-05",
       "open": 151.55,
       "high": 151.67,
-      "low": 149.68,
+      "low": 149.67,
       "close": 149.94
     },
     {
@@ -3387,10 +3387,10 @@
     },
     {
       "time": "2026-08-21",
-      "open": 273.4,
-      "high": 268.99,
+      "open": 267.83,
+      "high": 269.58,
       "low": 267.04,
-      "close": 268.27
+      "close": 269.34
     }
   ],
   "kijun_line": [
@@ -4568,27 +4568,27 @@
     },
     {
       "time": "2025-11-26",
-      "value": 193.5
+      "value": 193.51
     },
     {
       "time": "2025-11-28",
-      "value": 193.5
+      "value": 193.51
     },
     {
       "time": "2025-12-01",
-      "value": 193.5
+      "value": 193.51
     },
     {
       "time": "2025-12-02",
-      "value": 193.5
+      "value": 193.51
     },
     {
       "time": "2025-12-03",
-      "value": 193.5
+      "value": 193.51
     },
     {
       "time": "2025-12-04",
-      "value": 193.5
+      "value": 193.51
     },
     {
       "time": "2025-12-05",
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 262.05
+      "value": 262.1
     }
   ],
   "sma60": [
@@ -14610,7 +14610,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 250.56
+      "value": 250.58
     }
   ],
   "volume": [
@@ -16996,8 +16996,8 @@
     },
     {
       "time": "2026-08-21",
-      "value": 861463.0,
-      "color": "#dc2626"
+      "value": 965932.0,
+      "color": "#059669"
     }
   ]
 }

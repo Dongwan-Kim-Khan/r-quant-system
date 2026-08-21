@@ -349,7 +349,7 @@
         <div class="search-wrapper" style="position:relative; flex:1; max-width:440px; margin:0 16px;">
             <div style="position:relative; display:flex; align-items:center;">
                 <input type="text" id="stockSearchInput" 
-                       placeholder="🔍 종목명 / 티커 검색 (예: AAPL, 애플, 삼전, TSM)  [/]" 
+                       placeholder="[SEARCH] 종목명 / 티커 검색 (예: AAPL, 애플, 삼전, TSM)  [/]" 
                        autocomplete="off" 
                        style="width:100%; background:#1e293b; border:1px solid #334155; color:#f8fafc; padding:8px 36px 8px 12px; font-size:12px; border-radius:4px; font-family:'JetBrains Mono', 'Pretendard', sans-serif; outline:none; transition:border-color 0.2s;" />
                 <span id="searchShortcutKey" style="position:absolute; right:10px; font-size:10px; color:#64748b; background:#0f172a; border:1px solid #334155; padding:1px 5px; border-radius:3px; pointer-events:none; font-family:'JetBrains Mono';">/</span>
@@ -504,8 +504,8 @@
                 <span style="font-size:11px; color:#94a3af; font-family:'JetBrains Mono';">DUAL-STRATEGY ALPHA ENGINE | 1D HORIZON</span>
             </div>
             
-            <!-- Strategy II: Cloud Bounce Sniper Radar (Conditionally rendered) -->
-            <div id="sniperRadarContainer" style="margin-bottom:12px; display:none;">
+            <!-- Strategy II: Cloud Bounce Sniper Radar -->
+            <div id="sniperRadarContainer" style="margin-bottom:12px; display:block;">
                 <div style="background:#1e1b4b; border:1px solid #6366f1; border-left:4px solid #818cf8; border-radius:3px; padding:8px 12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
                     <span style="font-size:12px; font-weight:800; color:#c7d2fe; letter-spacing:0.04em; text-transform:uppercase; font-family:'JetBrains Mono';">
                         STRATEGY II: CLOUD BOUNCE SNIPER RADAR [PROBABILITY: 41.3% | PROFIT FACTOR: 1.60]
@@ -630,6 +630,29 @@
                                 <td style="font-family:'JetBrains Mono'; color:#f87171; font-weight:700;">$249.71</td>
                                 <td><span style="color:#34d399; font-weight:700; font-family:'JetBrains Mono'; font-size:11px;">ACTIVE_BUY</span></td>
                             </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 3. Daily Quant Recommendations History (일자별 추천 종목 이력) -->
+            <div class="panel" style="margin-top:12px;">
+                <div class="panel-header">
+                    <span>DAILY RECOMMENDATIONS HISTORY (일자별 추천 종목 이력)</span>
+                    <span style="font-size:10px; color:#94a3af; font-family:'JetBrains Mono';">HISTORICAL LOG</span>
+                </div>
+                <div style="overflow-x: auto; max-height: 240px;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>DATE</th>
+                                <th>PRIMARY ACCUMULATION (STRAT I)</th>
+                                <th>SNIPER RADAR (STRAT II)</th>
+                                <th>MACRO STANCE</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dailyRecHistoryBody">
+                            <!-- Populated dynamically via JavaScript -->
                         </tbody>
                     </table>
                 </div>
@@ -1324,9 +1347,9 @@
             // 1. Strategy II: Cloud Bounce Sniper Radar
             const sniperContainer = document.getElementById("sniperRadarContainer");
             const sniperCards = document.getElementById("sniperRadarCards");
-            if (data.sniper_radar && data.sniper_radar.length > 0) {
-                if (sniperContainer) sniperContainer.style.display = "block";
-                if (sniperCards) {
+            if (sniperContainer) sniperContainer.style.display = "block";
+            if (sniperCards) {
+                if (data.sniper_radar && data.sniper_radar.length > 0) {
                     sniperCards.innerHTML = data.sniper_radar.map(s => {
                         const originClass = (s.origin === 'VIKINGS_LIVE') ? 'origin-vikings' : 'origin-quant';
                         const originText = (s.origin === 'VIKINGS_LIVE') ? '[VIKINGS LIVE]' : '[UNIVERSE SCAN]';
@@ -1338,15 +1361,19 @@
                                         <span class="rec-item-title" style="color:#f87171;">${s.ticker} <span class="rec-item-sub">${s.name}</span></span>
                                         <span class="origin-badge ${originClass}">${originText}</span>
                                     </div>
-                                    <div class="rec-item-sub">SCORE: 95/100 | TGT: $${Number(s.target_price).toFixed(2)} (+15%) | STP: $${Number(s.stop_price).toFixed(2)} (-4%)</div>
+                                    <div class="rec-item-sub">SCORE: ${s.score || 95}/100 | TGT: $${Number(s.target_price).toFixed(2)} (+15%) | STP: $${Number(s.stop_price).toFixed(2)} (-4%)</div>
                                 </div>
                                 <div class="rec-item-price" style="color:#f87171;">$${Number(s.price).toFixed(2)}</div>
                             </div>
                         `;
                     }).join('');
+                } else {
+                    sniperCards.innerHTML = `
+                        <div style="grid-column: 1 / -1; background:#0f172a; border:1px dashed #334155; border-radius:4px; padding:12px; text-align:center; color:#64748b; font-size:11px; font-family:'JetBrains Mono';">
+                            [MONITORING] 현재 60개 글로벌 유니버스 자산 중 2단계 구름대 지지 반등(Trampoline Bounce) 타점을 실시간 스캔 중입니다.
+                        </div>
+                    `;
                 }
-            } else {
-                if (sniperContainer) sniperContainer.style.display = "none";
             }
 
             // 2. Strategy I: Primary Accumulation Top Picks
@@ -1458,6 +1485,43 @@
                             </tr>
                         `;
                     }).join('');
+                }
+            }
+
+            // 5. Render Daily Quant Recommendations History Table
+            const dailyRecBody = document.getElementById("dailyRecHistoryBody");
+            if (dailyRecBody) {
+                const matrixList = data.matrix || [];
+                if (matrixList.length > 0) {
+                    dailyRecBody.innerHTML = matrixList.map(m => {
+                        const b1 = m.bull_1 ? `<span class="ticker-pill bull" onclick="selectStock('${m.bull_1}', ${m.bull_1_price || 0})">${m.bull_1}</span>` : '';
+                        const b2 = m.bull_2 ? `<span class="ticker-pill bull" onclick="selectStock('${m.bull_2}', ${m.bull_2_price || 0})">${m.bull_2}</span>` : '';
+                        const sn1 = m.sniper_1 ? `<span class="ticker-pill bear" style="background:rgba(239,68,68,0.15); color:#f87171; border-color:#ef4444;" onclick="selectStock('${m.sniper_1}', ${m.sniper_1_price || 0})">${m.sniper_1}</span>` : '';
+                        const sn2 = m.sniper_2 ? `<span class="ticker-pill bear" style="background:rgba(239,68,68,0.15); color:#f87171; border-color:#ef4444;" onclick="selectStock('${m.sniper_2}', ${m.sniper_2_price || 0})">${m.sniper_2}</span>` : '';
+                        const macroStance = m.macro_stance || (m.msi_score ? `MSI ${Number(m.msi_score).toFixed(1)}pt` : 'DEFENSE_HOLD');
+                        
+                        return `
+                            <tr>
+                                <td style="font-family:'JetBrains Mono'; font-weight:700; color:#cbd5e1;">${m.date}</td>
+                                <td><div style="display:flex; gap:6px; flex-wrap:wrap;">${b1} ${b2}</div></td>
+                                <td><div style="display:flex; gap:6px; flex-wrap:wrap;">${sn1 || '<span style="color:#64748b; font-size:11px;">-</span>'} ${sn2}</div></td>
+                                <td><span style="font-family:'JetBrains Mono'; font-size:11px; color:#fbbf24; font-weight:600;">${macroStance}</span></td>
+                            </tr>
+                        `;
+                    }).join('');
+                } else {
+                    const todayStr = (data.last_updated || new Date().toISOString()).slice(0, 10);
+                    const topBull = (data.primary_accumulation || []).slice(0, 4).map(p => `<span class="ticker-pill bull" onclick="selectStock('${p.ticker}', ${p.price})">${p.ticker}</span>`).join(' ');
+                    const topSniper = (data.sniper_radar || []).slice(0, 4).map(s => `<span class="ticker-pill bear" style="background:rgba(239,68,68,0.15); color:#f87171; border-color:#ef4444;" onclick="selectStock('${s.ticker}', ${s.price})">${s.ticker}</span>`).join(' ');
+                    const msiScore = (data.macro && data.macro.macro_climate) ? `${data.macro.macro_climate.macro_stance || 'DEFENSE_HOLD'} (${data.macro.macro_climate.msi_score.toFixed(1)}pt)` : 'DEFENSE_HOLD';
+                    dailyRecBody.innerHTML = `
+                        <tr>
+                            <td style="font-family:'JetBrains Mono'; font-weight:700; color:#cbd5e1;">${todayStr}</td>
+                            <td><div style="display:flex; gap:6px; flex-wrap:wrap;">${topBull || '-'}</div></td>
+                            <td><div style="display:flex; gap:6px; flex-wrap:wrap;">${topSniper || '<span style="color:#64748b; font-size:11px;">-</span>'}</div></td>
+                            <td><span style="font-family:'JetBrains Mono'; font-size:11px; color:#fbbf24; font-weight:600;">${msiScore}</span></td>
+                        </tr>
+                    `;
                 }
             }
         }

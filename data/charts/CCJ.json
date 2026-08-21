@@ -1,16 +1,16 @@
 {
   "ticker": "CCJ",
-  "latest_close": 100.73,
-  "kijun": 91.95,
-  "tenkan": 97.33,
+  "latest_close": 101.16,
+  "kijun": 92.39,
+  "tenkan": 97.77,
   "span_a": 96.14,
   "span_b": 105.58,
-  "future_span_a_latest": 94.64,
+  "future_span_a_latest": 95.08,
   "future_span_b_latest": 97.32,
   "future_cloud_type": "음운 (하락 저항 구름대)",
-  "future_cloud_gap": 2.68,
-  "kijun_gap_pct": 9.55,
-  "vol_ratio": 0.09,
+  "future_cloud_gap": 2.24,
+  "kijun_gap_pct": 9.49,
+  "vol_ratio": 0.19,
   "bull_score": 30,
   "bear_score": 0,
   "is_sniper": false,
@@ -23,16 +23,16 @@
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$91.95 (+9.5%)",
+      "val": "$92.39 (+9.5%)",
       "status": "status-neutral",
       "badge": "OVERHEATED",
-      "desc": "현재가 $100.73 / 26일선 $91.95 (이격 +9.5%)"
+      "desc": "현재가 $101.16 / 26일선 $92.39 (이격 +9.5%)"
     },
     "tenkan": {
-      "val": "$97.33",
+      "val": "$97.77",
       "status": "status-bull",
       "badge": "GOLDEN CROSS",
-      "desc": "9일 전환선 $97.33 상단 정배열"
+      "desc": "9일 전환선 $97.77 상단 정배열"
     },
     "cloud": {
       "val": "$105.58",
@@ -41,10 +41,10 @@
       "desc": "일목 구름대(96.1~105.6) 내부 횡보"
     },
     "vol": {
-      "val": "9% (20D)",
+      "val": "19% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 9% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 19% (매도세 고갈 완벽)"
     },
     "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
   },
@@ -3387,10 +3387,10 @@
     },
     {
       "time": "2026-08-21",
-      "open": 97.0,
-      "high": 100.75,
+      "open": 97.78,
+      "high": 101.63,
       "low": 97.5,
-      "close": 100.73
+      "close": 101.16
     }
   ],
   "kijun_line": [
@@ -5300,7 +5300,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 91.95
+      "value": 92.39
     }
   ],
   "tenkan_line": [
@@ -7210,7 +7210,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 97.33
+      "value": 97.77
     }
   ],
   "span_a_line": [
@@ -9120,7 +9120,7 @@
     },
     {
       "time": "2026-09-28",
-      "value": 94.64
+      "value": 95.08
     }
   ],
   "span_b_line": [
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 94.15
+      "value": 94.17
     }
   ],
   "sma60": [
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 246130.0,
+      "value": 546217.0,
       "color": "#059669"
     }
   ]
