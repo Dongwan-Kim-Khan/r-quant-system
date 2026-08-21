@@ -1,4 +1,4 @@
-﻿"""
+"""
 Pure Quantitative Ichimoku, Kijun-sen, and Volume Dry-Up (VDU) Computation Engine.
 """
 import pandas as pd
@@ -9,16 +9,16 @@ def calculate_ichimoku_indicators(df: pd.DataFrame) -> pd.DataFrame:
     Computes all standard Ichimoku parameters, rolling moving averages, and volume ratios.
     """
     df = df.copy()
-    high_9 = df['High'].rolling(window=9).max()
-    low_9 = df['Low'].rolling(window=9).min()
+    high_9 = df['High'].rolling(window=9, min_periods=5).max()
+    low_9 = df['Low'].rolling(window=9, min_periods=5).min()
     df['Tenkan'] = (high_9 + low_9) / 2
 
-    high_26 = df['High'].rolling(window=26).max()
-    low_26 = df['Low'].rolling(window=26).min()
+    high_26 = df['High'].rolling(window=26, min_periods=10).max()
+    low_26 = df['Low'].rolling(window=26, min_periods=10).min()
     df['Kijun'] = (high_26 + low_26) / 2
 
-    high_52 = df['High'].rolling(window=52).max()
-    low_52 = df['Low'].rolling(window=52).min()
+    high_52 = df['High'].rolling(window=52, min_periods=20).max()
+    low_52 = df['Low'].rolling(window=52, min_periods=20).min()
 
     # Raw Senkou Spans before 26-day forward shift
     df['RawSpanA'] = (df['Tenkan'] + df['Kijun']) / 2
@@ -28,9 +28,9 @@ def calculate_ichimoku_indicators(df: pd.DataFrame) -> pd.DataFrame:
     df['SpanA'] = df['RawSpanA'].shift(26)
     df['SpanB'] = df['RawSpanB'].shift(26)
 
-    df['SMA20'] = df['Close'].rolling(window=20).mean()
-    df['SMA60'] = df['Close'].rolling(window=60).mean()
-    df['Vol_SMA20'] = df['Volume'].rolling(window=20).mean()
+    df['SMA20'] = df['Close'].rolling(window=20, min_periods=10).mean()
+    df['SMA60'] = df['Close'].rolling(window=60, min_periods=20).mean()
+    df['Vol_SMA20'] = df['Volume'].rolling(window=20, min_periods=5).mean()
     df['Vol_Ratio'] = df['Volume'] / df['Vol_SMA20']
     return df
 

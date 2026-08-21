@@ -19,6 +19,7 @@ from al_sangmoo.domain.quant.multi_timeframe import calculate_mtf_consensus
 from al_sangmoo.domain.risk.position_sizer import calculate_dynamic_position_size, calculate_atr
 from al_sangmoo.domain.risk.order_guardrail import validate_pre_trade_guardrail
 from al_sangmoo.domain.risk.macro_guardrail import evaluate_macro_circuit_breaker
+from al_sangmoo.domain.quant.ticker_resolver import resolve_ticker, search_ticker_suggestions
 from al_sangmoo.infrastructure.brokers.paper_broker import default_broker
 from al_sangmoo.infrastructure.backup import create_sqlite_backup, list_backups
 from generate_dashboard_feed import compute_all_indicators, build_dashboard_data
@@ -197,21 +198,40 @@ def get_recommendation_matrix():
         matrix = [matrix] if matrix else []
     return matrix
 
+@app.get("/api/search")
+def search_stock_suggestions(q: str = ""):
+    suggestions = search_ticker_suggestions(q, limit=8)
+    return {"query": q, "suggestions": suggestions}
+
 @app.get("/api/chart/{ticker}")
 def get_ticker_chart(ticker: str):
-    ticker_upper = ticker.strip().upper()
-    if not TICKER_REGEX.match(ticker_upper):
-        raise HTTPException(status_code=400, detail="유효하지 않은 티커 심볼 형식입니다.")
+    ticker_resolved = resolve_ticker(ticker)
+    if not TICKER_REGEX.match(ticker_resolved):
+        raise HTTPException(status_code=400, detail=f"유효하지 않은 티커 심볼 형식입니다: '{ticker}'")
         
-    # 1. Return from memory cache if available for instant load
-    if ticker_upper in CHART_CACHE:
-        return CHART_CACHE[ticker_upper]
+    # 1. Return from memory cache if available for instant sub-5ms load
+    if ticker_resolved in CHART_CACHE:
+        return CHART_CACHE[ticker_resolved]
         
-    # 2. Otherwise compute live
-    data = compute_all_indicators(ticker_upper)
+    # 2. Otherwise compute live via pure quant engine
+    data = compute_all_indicators(ticker_resolved)
     if not data:
-        raise HTTPException(status_code=404, detail="시세 데이터를 불러올 수 없습니다.")
-    CHART_CACHE[ticker_upper] = data
+        # Fallback to uppercase raw ticker
+        raw_upper = ticker.strip().upper()
+        if raw_upper != ticker_resolved:
+            data = compute_all_indicators(raw_upper)
+            if data:
+                ticker_resolved = raw_upper
+                
+    if not data:
+        raise HTTPException(status_code=404, detail=f"'{ticker}' ({ticker_resolved}) 종목의 시세 데이터를 불러올 수 없습니다.")
+        
+    # Manage LRU cache size (max 150 items)
+    if len(CHART_CACHE) > 150:
+        first_key = next(iter(CHART_CACHE))
+        del CHART_CACHE[first_key]
+        
+    CHART_CACHE[ticker_resolved] = data
     return data
 
 @app.post("/api/scan_now")
