@@ -66,11 +66,8 @@ HISTORY_CSV = os.path.join(BASE_DIR, "trade_history.csv")
 OUTPUT_JSON = os.path.join(BASE_DIR, "dashboard_data.json")
 STREAM_CACHE = os.path.join(BASE_DIR, "wepoll_latest_stream.json")
 
-WATCHLIST = [
-    "QQQ", "NVDA", "AMZN", "LLY", "AAPL", "MSFT", "TSLA", "META",
-    "AVGO", "COST", "AMD", "QCOM", "PLTR", "VST", "CEG", "ETN", "GEV",
-    "SMCI", "ARM", "MU", "005930.KS", "000660.KS", "012450.KS"
-]
+from concurrent.futures import ThreadPoolExecutor
+from al_sangmoo.core.constants import WATCHLIST, STOCK_DICT
 
 def compute_all_indicators(ticker):
     try:
@@ -191,7 +188,7 @@ def compute_all_indicators(ticker):
         future_cloud_type = "양운 (상승 지지 구름대)" if is_future_bull_cloud else "음운 (하락 저항 구름대)"
         future_cloud_gap = abs(future_a_latest - future_b_latest)
         
-        # 17-Year Quant Exact Scoring
+        # 17-Year Quant Exact Scoring (Strategy 1)
         bull_score = 0
         if close >= cloud_top: bull_score += 35
         if -0.5 <= kijun_gap <= 4.0: bull_score += 35
@@ -203,7 +200,35 @@ def compute_all_indicators(ticker):
         if close < cloud_bottom: bear_score += 35
         if kijun_gap < -2.0: bear_score += 15
         
-        if bull_score >= 70:
+        # Strategy 2: 2-Phase Cloud Trampoline Launch Evaluation
+        # Lookback 6 bars to check if a Cloud Bounce Launch happened
+        trampoline_detected = False
+        trampoline_days_ago = 0
+        n_bars = len(df_clean)
+        for b_offset in range(1, min(7, n_bars)):
+            hist_bar = df_clean.iloc[-b_offset]
+            h_open = float(hist_bar['Open'])
+            h_close = float(hist_bar['Close'])
+            h_low = float(hist_bar['Low'])
+            h_sp_a = float(hist_bar['SpanA']) if not pd.isna(hist_bar['SpanA']) else h_close
+            h_sp_b = float(hist_bar['SpanB']) if not pd.isna(hist_bar['SpanB']) else h_close
+            h_cloud_top = max(h_sp_a, h_sp_b)
+            if h_cloud_top > 0:
+                h_touch_gap = (h_low - h_cloud_top) / h_cloud_top
+                h_body_pct = (h_close - h_open) / h_open
+                if (-0.015 <= h_touch_gap <= 0.030) and (h_body_pct >= 0.025):
+                    trampoline_detected = True
+                    trampoline_days_ago = b_offset - 1
+                    break
+        
+        is_sniper_active = trampoline_detected and (-0.5 <= kijun_gap <= 4.0) and (vol_ratio <= 0.85) and (close >= cloud_top)
+        
+        if is_sniper_active:
+            quant_type = "BULL"
+            quant_verdict = "Sniper Alert (구름대 도약 2단계 특급 매수)"
+            quant_score_text = f"95 / 100 pt (SNIPER_BUY)"
+            action_directive = f"[전략 2 스나이퍼] {trampoline_days_ago}일 전 구름대 지지 도약 확인 후 26일선 눌림목(거래량 {round(vol_ratio*100)}%) 안착. 목표 +15% / 손절 -4%."
+        elif bull_score >= 70:
             quant_type = "BULL"
             quant_verdict = "Bull Accumulation (1차 분할 매수 적합)"
             quant_score_text = f"{bull_score} / 100 pt (BULL_BUY)"
@@ -242,6 +267,8 @@ def compute_all_indicators(ticker):
             "bull_score": bull_score,
             "bear_score": bear_score,
             "type": quant_type,
+            "is_sniper": is_sniper_active,
+            "trampoline_detected": trampoline_detected,
             "kijun": {"val": f"${kijun:,.2f} ({kijun_gap:+.1f}%)", "status": kijun_status, "badge": kijun_badge, "desc": kijun_desc},
             "tenkan": {"val": f"${tenkan:,.2f}", "status": tenkan_status, "badge": tenkan_badge, "desc": tenkan_desc},
             "cloud": {"val": f"${cloud_top:,.2f}", "status": cloud_status, "badge": cloud_badge, "desc": cloud_desc},
@@ -264,6 +291,7 @@ def compute_all_indicators(ticker):
             "vol_ratio": round(vol_ratio, 2),
             "bull_score": bull_score,
             "bear_score": bear_score,
+            "is_sniper": is_sniper_active,
             "intelligence": intelligence,
             "status_tag": quant_type,
             "status_text": quant_verdict,
@@ -283,7 +311,7 @@ def compute_all_indicators(ticker):
         return None
 
 def build_dashboard_data():
-    print("Building full dashboard data feed...")
+    print(f"Building full dashboard data feed for {len(WATCHLIST)} universe tickers...")
     
     trades = []
     if os.path.exists(HISTORY_CSV):
@@ -295,18 +323,27 @@ def build_dashboard_data():
             
     # Macro context from YouTube stream cache
     macro_info = {}
+    stream_mentioned_tickers = set()
     if os.path.exists(STREAM_CACHE):
         try:
             with open(STREAM_CACHE, "r", encoding="utf-8") as f:
                 macro_info = json.load(f)
+                if "mentioned_stocks" in macro_info:
+                    for s in macro_info["mentioned_stocks"]:
+                        if isinstance(s, dict) and "ticker" in s:
+                            stream_mentioned_tickers.add(s["ticker"])
         except Exception:
             pass
             
     chart_data = {}
-    for t in WATCHLIST:
-        data = compute_all_indicators(t)
-        if data:
-            chart_data[t] = data
+    
+    # Fast Parallel Batch Computation for 60 tickers
+    with ThreadPoolExecutor(max_workers=12) as executor:
+        results = list(executor.map(compute_all_indicators, WATCHLIST))
+        
+    for res in results:
+        if res:
+            chart_data[res["ticker"]] = res
             
     total_trades = len(trades)
     closed = [t for t in trades if str(t.get('status', '')).startswith('CLOSED')]
@@ -320,6 +357,81 @@ def build_dashboard_data():
         "win_rate": f"{win_rate:.1f}%",
         "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
+    
+    # Rank and Categorize Dual Strategy Picks
+    # 1. Strategy 2: Sniper Radar (Cloud Trampoline)
+    sniper_radar_picks = []
+    # 2. Strategy 1: Primary Accumulation (Classic Kijun Pullback)
+    primary_accumulation_picks = []
+    
+    for t, c in chart_data.items():
+        is_stream = t in stream_mentioned_tickers
+        origin_tag = "VIKINGS_LIVE" if is_stream else "QUANT_DISCOVERY"
+        origin_label = "바이킹스 라이브" if is_stream else "60종목 퀀트 발굴"
+        
+        item = {
+            "ticker": t,
+            "name": STOCK_DICT.get(t, [t])[0],
+            "price": c["latest_close"],
+            "score": c["bull_score"],
+            "kijun_gap": c["kijun_gap_pct"],
+            "vol_ratio": round(c["vol_ratio"] * 100),
+            "origin": origin_tag,
+            "origin_label": origin_label,
+            "is_sniper": c["is_sniper"],
+            "action": c["intelligence"]["action"],
+            "target_price": round(c["latest_close"] * 1.15, 2),
+            "stop_price": round(c["latest_close"] * 0.96, 2)
+        }
+        
+        if c["is_sniper"]:
+            sniper_radar_picks.append(item)
+        elif c["bull_score"] >= 70:
+            primary_accumulation_picks.append(item)
+            
+    # Sort Primary Accumulation by score desc, then by kijun gap asc
+    primary_accumulation_picks.sort(key=lambda x: (-x["score"], abs(x["kijun_gap"])))
+    sniper_radar_picks.sort(key=lambda x: -x["score"])
+
+    # Build Unified Signal Tracker (Combining Strategy 2 & Strategy 1)
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    signal_tracker = []
+    
+    # 1. Sniper Radar signals first
+    for s in sniper_radar_picks:
+        signal_tracker.append({
+            "date": today_str,
+            "ticker": s["ticker"],
+            "name": s["name"],
+            "origin": s["origin"],
+            "origin_label": s["origin_label"],
+            "strategy": "전략 2 (스나이퍼)",
+            "strategy_code": "STRATEGY_2_SNIPER",
+            "entry_price": s["price"],
+            "target_price": s["target_price"],
+            "stop_price": s["stop_price"],
+            "score": 95,
+            "status": "ACTIVE_SNIPER",
+            "status_label": "ACTIVE_SNIPER"
+        })
+        
+    # 2. Primary Accumulation signals
+    for p in primary_accumulation_picks[:12]:
+        signal_tracker.append({
+            "date": today_str,
+            "ticker": p["ticker"],
+            "name": p["name"],
+            "origin": p["origin"],
+            "origin_label": p["origin_label"],
+            "strategy": "전략 1 (정석 눌림목)",
+            "strategy_code": "STRATEGY_1_PULLBACK",
+            "entry_price": p["price"],
+            "target_price": p["target_price"],
+            "stop_price": p["stop_price"],
+            "score": p["score"],
+            "status": "ACTIVE_BUY",
+            "status_label": "ACTIVE_BUY"
+        })
     
     # Load 2+2+2 Matrix and Portfolio from DB
     matrix = db_manager.get_recommendations_matrix()
@@ -343,13 +455,16 @@ def build_dashboard_data():
         "trades": trades,
         "matrix": matrix,
         "portfolio": portfolio,
-        "charts": chart_data
+        "charts": chart_data,
+        "primary_accumulation": primary_accumulation_picks,
+        "sniper_radar": sniper_radar_picks,
+        "signal_tracker": signal_tracker
     }
     
     out_path = os.path.join(BASE_DIR, OUTPUT_JSON)
     atomic_save_json(out_path, payload)
         
-    print(f"Successfully generated dashboard feed: {out_path}")
+    print(f"Successfully generated dashboard feed: {out_path} (60-Universe: {len(primary_accumulation_picks)} Primary Picks, {len(sniper_radar_picks)} Sniper Alerts, {len(signal_tracker)} Signal Tracks)")
     return payload
 
 if __name__ == "__main__":

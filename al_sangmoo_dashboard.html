@@ -202,6 +202,28 @@
         .ticker-pill.neutral { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3); }
         .ticker-pill.bear { background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239, 68, 68, 0.3); }
 
+        /* Bloomberg Terminal Badges */
+        .origin-badge {
+            font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
+            padding: 2px 6px; border-radius: 2px; text-transform: uppercase; letter-spacing: 0.02em;
+        }
+        .origin-vikings {
+            background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4);
+        }
+        .origin-quant {
+            background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4);
+        }
+        .strategy-pill {
+            font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
+            padding: 2px 6px; border-radius: 2px; text-transform: uppercase;
+        }
+        .strategy-sniper-pill {
+            background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);
+        }
+        .strategy-pullback-pill {
+            background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);
+        }
+
         /* Right Pane */
         .right-pane {
             background: var(--bg-surface); border: 1px solid var(--border); border-radius: 4px;
@@ -318,7 +340,7 @@
     <!-- Header -->
     <header>
         <div class="brand">
-            <h1>R-SANGMOO QUANT TERMINAL</h1>
+            <h1>R QUANT TERMINAL</h1>
             <span class="badge">R's QUANT 3.5 INSTITUTIONAL</span>
             <div class="live-tag"><div class="live-dot"></div> ACTIVE QUANT ENGINE</div>
         </div>
@@ -474,87 +496,48 @@
         </div>
     </div>
 
-    <!-- Today's 6 Recommendations (2+2+2) -->
+    <!-- Tactical Dual-Strategy Alpha Grid (Bloomberg Terminal Style) -->
     <div class="today-section">
         <div class="today-banner">
             <div class="today-title">
-                <span>Quantitative Tactical Verdict on Live Stream Stocks (2+2+2)</span>
-                <span style="font-size:11px; color:#9ca3af;">Click ticker to inspect TradingView chart & 5-factor quant decoder</span>
+                <span>TACTICAL QUANTITATIVE SIGNALS (60-ASSET GLOBAL UNIVERSE)</span>
+                <span style="font-size:11px; color:#94a3af; font-family:'JetBrains Mono';">DUAL-STRATEGY ALPHA ENGINE | 1D HORIZON</span>
             </div>
-            <div class="today-grid">
-                
-                <!-- Bull 2 -->
-                <div class="rec-card-group" style="border-left: 3px solid var(--accent-green);">
-                    <div class="group-header" style="color:var(--accent-green);">
-                        <span>Primary Accumulation (1차 매수 적합)</span>
-                        <span style="font-size:10px; background:rgba(16,185,129,0.15); padding:1px 5px; border-radius:2px;">Target +15% / Stop -3%</span>
-                    </div>
-                    <div id="todayBullCards">
-                        <div class="rec-item active" onclick="selectStock('AMZN', 261.31)">
-                            <div>
-                                <span class="rec-item-title" style="color:var(--accent-green);">AMZN <span class="rec-item-sub">아마존 (방송 27회)</span></span>
-                                <div class="rec-item-sub">구름대 위 + 기준선 지지 (+1.8%)</div>
+            
+            <!-- Strategy II: Cloud Bounce Sniper Radar (Conditionally rendered) -->
+            <div id="sniperRadarContainer" style="margin-bottom:12px; display:none;">
+                <div style="background:#1e1b4b; border:1px solid #6366f1; border-left:4px solid #818cf8; border-radius:3px; padding:8px 12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:12px; font-weight:800; color:#c7d2fe; letter-spacing:0.04em; text-transform:uppercase; font-family:'JetBrains Mono';">
+                        STRATEGY II: CLOUD BOUNCE SNIPER RADAR [PROBABILITY: 41.3% | PROFIT FACTOR: 1.60]
+                    </span>
+                    <span style="font-size:10px; color:#a5b4fc; font-family:'JetBrains Mono'; font-weight:700;">STAGE 2 PULLBACK EXECUTION</span>
+                </div>
+                <div id="sniperRadarCards" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:10px;">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+
+            <!-- Strategy I: Primary Accumulation Grid -->
+            <div>
+                <div style="background:#0f172a; border:1px solid var(--border); border-left:4px solid var(--accent-green); border-radius:3px; padding:8px 12px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:12px; font-weight:800; color:#34d399; letter-spacing:0.04em; text-transform:uppercase; font-family:'JetBrains Mono';">
+                        STRATEGY I: TACTICAL PRIMARY ACCUMULATION TOP PICKS [KIJUN SUPPORT: -0.5% ~ +4.0%]
+                    </span>
+                    <span style="font-size:10px; color:#94a3b8; font-family:'JetBrains Mono'; font-weight:700;">TARGET: +15.0% | STOP: -4.0%</span>
+                </div>
+                <div id="primaryAccumulationCards" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:10px;">
+                    <!-- Dynamically populated -->
+                    <div class="rec-item active" onclick="selectStock('AMZN', 260.11)">
+                        <div>
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                <span class="rec-item-title" style="color:var(--accent-green);">AMZN</span>
+                                <span class="origin-badge origin-vikings">[VIKINGS LIVE]</span>
                             </div>
-                            <div class="rec-item-price">$261.31</div>
+                            <div class="rec-item-sub">Score: 100/100 | Kijun +1.3% | Vol 59%</div>
                         </div>
-                        <div class="rec-item" onclick="selectStock('NVDA', 225.01)">
-                            <div>
-                                <span class="rec-item-title" style="color:var(--accent-green);">NVDA <span class="rec-item-sub">엔비디아 (방송 30회)</span></span>
-                                <div class="rec-item-sub">구름대 위 + 거래량 마름 (+7.7%)</div>
-                            </div>
-                            <div class="rec-item-price">$225.01</div>
-                        </div>
+                        <div class="rec-item-price">$260.11</div>
                     </div>
                 </div>
-
-                <!-- Neutral 2 -->
-                <div class="rec-card-group" style="border-left: 3px solid var(--accent-yellow);">
-                    <div class="group-header" style="color:var(--accent-yellow);">
-                        <span>Consolidation (중립 관망)</span>
-                        <span style="font-size:10px; background:rgba(245,158,11,0.15); padding:1px 5px; border-radius:2px;">Hold / Observe</span>
-                    </div>
-                    <div id="todayNeutralCards">
-                        <div class="rec-item" onclick="selectStock('AMD', 506.00)">
-                            <div>
-                                <span class="rec-item-title" style="color:var(--accent-yellow);">AMD <span class="rec-item-sub">에이엠디 (방송 9회)</span></span>
-                                <div class="rec-item-sub">구름대 내부 횡보 (+1.4%)</div>
-                            </div>
-                            <div class="rec-item-price">$506.00</div>
-                        </div>
-                        <div class="rec-item" onclick="selectStock('GOOGL', 344.00)">
-                            <div>
-                                <span class="rec-item-title" style="color:var(--accent-yellow);">GOOGL <span class="rec-item-sub">알파벳 (방송 21회)</span></span>
-                                <div class="rec-item-sub">기준선 수렴 (-1.6%)</div>
-                            </div>
-                            <div class="rec-item-price">$344.00</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Bear 2 -->
-                <div class="rec-card-group" style="border-left: 3px solid var(--accent-red);">
-                    <div class="group-header" style="color:var(--accent-red);">
-                        <span>Risk Alert / Short (생명선 붕괴)</span>
-                        <span style="font-size:10px; background:rgba(239,68,68,0.15); padding:1px 5px; border-radius:2px;">Avoid Entry / Hedge</span>
-                    </div>
-                    <div id="todayBearCards">
-                        <div class="rec-item" onclick="selectStock('META', 568.97)">
-                            <div>
-                                <span class="rec-item-title" style="color:var(--accent-red);">META <span class="rec-item-sub">메타 (방송 12회)</span></span>
-                                <div class="rec-item-sub">26일 생명선 붕괴 (-6.0%)</div>
-                            </div>
-                            <div class="rec-item-price">$568.97</div>
-                        </div>
-                        <div class="rec-item" onclick="selectStock('TSLA', 339.30)">
-                            <div>
-                                <span class="rec-item-title" style="color:var(--accent-red);">TSLA <span class="rec-item-sub">테슬라 (방송 3회)</span></span>
-                                <div class="rec-item-sub">26일 기준선 하향 이탈 (-3.6%)</div>
-                            </div>
-                            <div class="rec-item-price">$339.30</div>
-                        </div>
-                    </div>
-                </div>
-
             </div>
         </div>
     </div>
@@ -615,37 +598,37 @@
                 </div>
             </div>
 
-            <!-- 2. Historical 2+2+2 Matrix -->
+            <!-- 2. Live Quantitative Signal Tracker (Bloomberg Terminal Style) -->
             <div class="panel">
                 <div class="panel-header">
-                    <span>Historical Quantitative 2+2+2 Matrix</span>
-                    <span style="font-size:10px; color:#9ca3af;">Click ticker to inspect</span>
+                    <span>LIVE QUANTITATIVE SIGNAL TRACKER</span>
+                    <span style="font-size:10px; color:#94a3b8; font-family:'JetBrains Mono';">HISTORICAL EXECUTION ARCHIVE</span>
                 </div>
-                <div style="overflow-x: auto; max-height: 340px;">
+                <div style="overflow-x: auto; max-height: 320px;">
                     <table>
                         <thead>
                             <tr>
-                                <th>Date</th>
-                                <th style="color:var(--accent-green);">Accumulation (2)</th>
-                                <th style="color:var(--accent-yellow);">Consolidation (2)</th>
-                                <th style="color:var(--accent-red);">Risk / Short (2)</th>
+                                <th>DATE</th>
+                                <th>ASSET (TICKER)</th>
+                                <th>ORIGIN</th>
+                                <th>STRATEGY</th>
+                                <th>ENTRY</th>
+                                <th>TARGET (+15%)</th>
+                                <th>STOP (-4%)</th>
+                                <th>STATUS</th>
                             </tr>
                         </thead>
                         <tbody id="matrixTableBody">
+                            <!-- Populated dynamically via JavaScript -->
                             <tr>
-                                <td style="font-family:'JetBrains Mono'; font-weight:700;">2026-08-18</td>
-                                <td>
-                                    <span class="ticker-pill bull" onclick="selectStock('LLY', 1183.16)">LLY ($1,183.16)</span>
-                                    <span class="ticker-pill bull" onclick="selectStock('AMZN', 261.31)" style="margin-left:4px;">AMZN ($261.31)</span>
-                                </td>
-                                <td>
-                                    <span class="ticker-pill neutral" onclick="selectStock('COST', 953.50)">COST ($953.50)</span>
-                                    <span class="ticker-pill neutral" onclick="selectStock('AVGO', 392.43)" style="margin-left:4px;">AVGO ($392.43)</span>
-                                </td>
-                                <td>
-                                    <span class="ticker-pill bear" onclick="selectStock('VST', 146.11)">VST ($146.11)</span>
-                                    <span class="ticker-pill bear" onclick="selectStock('META', 568.97)" style="margin-left:4px;">META ($568.97)</span>
-                                </td>
+                                <td style="font-family:'JetBrains Mono'; font-weight:700; color:#cbd5e1;">2026-08-21</td>
+                                <td><strong style="font-family:'JetBrains Mono'; color:#38bdf8; cursor:pointer;" onclick="selectStock('AMZN', 260.11)">AMZN</strong></td>
+                                <td><span class="origin-badge origin-vikings">[VIKINGS LIVE]</span></td>
+                                <td><span class="strategy-pill strategy-pullback-pill">STRAT I (PULLBACK)</span></td>
+                                <td style="font-family:'JetBrains Mono';">$260.11</td>
+                                <td style="font-family:'JetBrains Mono'; color:#34d399; font-weight:700;">$299.13</td>
+                                <td style="font-family:'JetBrains Mono'; color:#f87171; font-weight:700;">$249.71</td>
+                                <td><span style="color:#34d399; font-weight:700; font-family:'JetBrains Mono'; font-size:11px;">ACTIVE_BUY</span></td>
                             </tr>
                         </tbody>
                     </table>
@@ -1181,7 +1164,7 @@
             const fcDesc = document.getElementById("sigFutureCloudDesc");
             if (fcDesc) fcDesc.textContent = "데이터가 부족하거나 상장 폐지된 종목입니다.";
 
-            document.getElementById("actionDirectiveText").textContent = `🚨 '${ticker}' 종목을 찾을 수 없습니다. 올바른 티커 심볼이나 한글 종목명으로 다시 검색해 주세요.`;
+            document.getElementById("actionDirectiveText").textContent = `[ERROR] '${ticker}' 종목을 찾을 수 없습니다. 올바른 티커 심볼이나 영문/한글 종목명으로 다시 검색해 주십시오.`;
         }
 
         async function loadDashboard() {
@@ -1284,89 +1267,100 @@
                 const latest = data.matrix[0]; // Today's recommendation
                 
                 // Top 2+2+2 Cards
-                const bullCards = document.getElementById("todayBullCards");
-                const neutralCards = document.getElementById("todayNeutralCards");
-                const bearCards = document.getElementById("todayBearCards");
-                
-                if (bullCards && latest.bull_1 && latest.bull_2) {
-                    bullCards.innerHTML = `
-                        <div class="rec-item ${currentSelectedTicker === latest.bull_1 ? 'active' : ''}" onclick="selectStock('${latest.bull_1}', ${latest.bull_1_price})">
-                            <div>
-                                <span class="rec-item-title" style="color:var(--accent-green);">${latest.bull_1}</span>
-                                <div class="rec-item-sub">1차 매수 적합 (구름대 상단 안착)</div>
+            // Render Dual-Strategy Executive Cards (Bloomberg Terminal Style)
+            const sniperContainer = document.getElementById("sniperRadarContainer");
+            const sniperCards = document.getElementById("sniperRadarCards");
+            const primaryCards = document.getElementById("primaryAccumulationCards");
+            const matrixBody = document.getElementById("matrixTableBody");
+
+            // 1. Strategy II: Cloud Bounce Sniper Radar
+            if (data.sniper_radar && data.sniper_radar.length > 0) {
+                if (sniperContainer) sniperContainer.style.display = "block";
+                if (sniperCards) {
+                    sniperCards.innerHTML = data.sniper_radar.map(s => {
+                        const originClass = (s.origin === 'VIKINGS_LIVE') ? 'origin-vikings' : 'origin-quant';
+                        const originText = (s.origin === 'VIKINGS_LIVE') ? '[VIKINGS LIVE]' : '[UNIVERSE SCAN]';
+                        const isActive = (currentSelectedTicker === s.ticker) ? 'active' : '';
+                        return `
+                            <div class="rec-item ${isActive}" onclick="selectStock('${s.ticker}', ${s.price})">
+                                <div>
+                                    <div style="display:flex; align-items:center; gap:6px;">
+                                        <span class="rec-item-title" style="color:#f87171;">${s.ticker} <span class="rec-item-sub">${s.name}</span></span>
+                                        <span class="origin-badge ${originClass}">${originText}</span>
+                                    </div>
+                                    <div class="rec-item-sub">SCORE: 95/100 | TGT: $${Number(s.target_price).toFixed(2)} (+15%) | STP: $${Number(s.stop_price).toFixed(2)} (-4%)</div>
+                                </div>
+                                <div class="rec-item-price" style="color:#f87171;">$${Number(s.price).toFixed(2)}</div>
                             </div>
-                            <div class="rec-item-price">$${Number(latest.bull_1_price).toFixed(2)}</div>
-                        </div>
-                        <div class="rec-item ${currentSelectedTicker === latest.bull_2 ? 'active' : ''}" onclick="selectStock('${latest.bull_2}', ${latest.bull_2_price})">
-                            <div>
-                                <span class="rec-item-title" style="color:var(--accent-green);">${latest.bull_2}</span>
-                                <div class="rec-item-sub">1차 매수 적합 (26일 기준선 지지)</div>
-                            </div>
-                            <div class="rec-item-price">$${Number(latest.bull_2_price).toFixed(2)}</div>
-                        </div>
-                    `;
+                        `;
+                    }).join('');
                 }
-                
-                if (neutralCards && latest.neutral_1 && latest.neutral_2) {
-                    neutralCards.innerHTML = `
-                        <div class="rec-item ${currentSelectedTicker === latest.neutral_1 ? 'active' : ''}" onclick="selectStock('${latest.neutral_1}', ${latest.neutral_1_price})">
-                            <div>
-                                <span class="rec-item-title" style="color:var(--accent-yellow);">${latest.neutral_1}</span>
-                                <div class="rec-item-sub">중립 관망 (박스권 수렴)</div>
+            } else {
+                if (sniperContainer) sniperContainer.style.display = "none";
+            }
+
+            // 2. Strategy I: Primary Accumulation Top Picks
+            if (data.primary_accumulation && data.primary_accumulation.length > 0) {
+                if (primaryCards) {
+                    primaryCards.innerHTML = data.primary_accumulation.slice(0, 8).map(p => {
+                        const originClass = (p.origin === 'VIKINGS_LIVE') ? 'origin-vikings' : 'origin-quant';
+                        const originText = (p.origin === 'VIKINGS_LIVE') ? '[VIKINGS LIVE]' : '[UNIVERSE SCAN]';
+                        const isActive = (currentSelectedTicker === p.ticker) ? 'active' : '';
+                        return `
+                            <div class="rec-item ${isActive}" onclick="selectStock('${p.ticker}', ${p.price})">
+                                <div>
+                                    <div style="display:flex; align-items:center; gap:6px;">
+                                        <span class="rec-item-title" style="color:var(--accent-green);">${p.ticker} <span class="rec-item-sub">${p.name}</span></span>
+                                        <span class="origin-badge ${originClass}">${originText}</span>
+                                    </div>
+                                    <div class="rec-item-sub">SCORE: ${p.score}/100 | KIJUN: ${p.kijun_gap >= 0 ? '+' : ''}${Number(p.kijun_gap).toFixed(1)}% | VOL: ${p.vol_ratio}%</div>
+                                </div>
+                                <div class="rec-item-price">$${Number(p.price).toFixed(2)}</div>
                             </div>
-                            <div class="rec-item-price">$${Number(latest.neutral_1_price).toFixed(2)}</div>
-                        </div>
-                        <div class="rec-item ${currentSelectedTicker === latest.neutral_2 ? 'active' : ''}" onclick="selectStock('${latest.neutral_2}', ${latest.neutral_2_price})">
-                            <div>
-                                <span class="rec-item-title" style="color:var(--accent-yellow);">${latest.neutral_2}</span>
-                                <div class="rec-item-sub">중립 관망 (방향성 탐색)</div>
-                            </div>
-                            <div class="rec-item-price">$${Number(latest.neutral_2_price).toFixed(2)}</div>
-                        </div>
-                    `;
+                        `;
+                    }).join('');
                 }
-                
-                if (bearCards && latest.bear_1 && latest.bear_2) {
-                    bearCards.innerHTML = `
-                        <div class="rec-item ${currentSelectedTicker === latest.bear_1 ? 'active' : ''}" onclick="selectStock('${latest.bear_1}', ${latest.bear_1_price})">
-                            <div>
-                                <span class="rec-item-title" style="color:var(--accent-red);">${latest.bear_1}</span>
-                                <div class="rec-item-sub">생명선 붕괴 (매수 금지)</div>
-                            </div>
-                            <div class="rec-item-price">$${Number(latest.bear_1_price).toFixed(2)}</div>
-                        </div>
-                        <div class="rec-item ${currentSelectedTicker === latest.bear_2 ? 'active' : ''}" onclick="selectStock('${latest.bear_2}', ${latest.bear_2_price})">
-                            <div>
-                                <span class="rec-item-title" style="color:var(--accent-red);">${latest.bear_2}</span>
-                                <div class="rec-item-sub">구름대 하향 이탈 (숏 우위)</div>
-                            </div>
-                            <div class="rec-item-price">$${Number(latest.bear_2_price).toFixed(2)}</div>
-                        </div>
-                    `;
-                }
-                
-                // Historical Matrix Table (All days: 2026-08-20, 2026-08-19, 2026-08-18...)
-                const mBody = document.getElementById("matrixTableBody");
-                if (mBody) {
-                    mBody.innerHTML = data.matrix.map(m => {
+            }
+
+            // 3. Live Quantitative Signal Tracker Table
+            if (matrixBody) {
+                const signals = data.signal_tracker || [];
+                if (signals.length > 0) {
+                    matrixBody.innerHTML = signals.map(sig => {
+                        const originClass = (sig.origin === 'VIKINGS_LIVE') ? 'origin-vikings' : 'origin-quant';
+                        const originText = (sig.origin === 'VIKINGS_LIVE') ? '[VIKINGS LIVE]' : '[UNIVERSE SCAN]';
+                        const stratClass = (sig.strategy_code === 'STRATEGY_2_SNIPER') ? 'strategy-sniper-pill' : 'strategy-pullback-pill';
+                        const stratLabel = (sig.strategy_code === 'STRATEGY_2_SNIPER') ? 'STRAT II (SNIPER)' : 'STRAT I (PULLBACK)';
                         return `
                             <tr>
-                                <td style="font-family:'JetBrains Mono'; font-weight:700; color:#cbd5e1;">${m.date}</td>
+                                <td style="font-family:'JetBrains Mono'; font-weight:700; color:#cbd5e1;">${sig.date}</td>
                                 <td>
-                                    <span class="ticker-pill bull" onclick="selectStock('${m.bull_1}', ${m.bull_1_price})">${m.bull_1} ($${Number(m.bull_1_price).toFixed(2)})</span>
-                                    <span class="ticker-pill bull" onclick="selectStock('${m.bull_2}', ${m.bull_2_price})" style="margin-left:4px;">${m.bull_2} ($${Number(m.bull_2_price).toFixed(2)})</span>
+                                    <strong style="font-family:'JetBrains Mono'; color:#38bdf8; cursor:pointer;" onclick="selectStock('${sig.ticker}', ${sig.entry_price})">${sig.ticker}</strong>
+                                    <span style="font-size:11px; color:#94a3b8; margin-left:4px;">${sig.name}</span>
                                 </td>
-                                <td>
-                                    <span class="ticker-pill neutral" onclick="selectStock('${m.neutral_1}', ${m.neutral_1_price})">${m.neutral_1} ($${Number(m.neutral_1_price).toFixed(2)})</span>
-                                    <span class="ticker-pill neutral" onclick="selectStock('${m.neutral_2}', ${m.neutral_2_price})" style="margin-left:4px;">${m.neutral_2} ($${Number(m.neutral_2_price).toFixed(2)})</span>
-                                </td>
-                                <td>
-                                    <span class="ticker-pill bear" onclick="selectStock('${m.bear_1}', ${m.bear_1_price})">${m.bear_1} ($${Number(m.bear_1_price).toFixed(2)})</span>
-                                    <span class="ticker-pill bear" onclick="selectStock('${m.bear_2}', ${m.bear_2_price})" style="margin-left:4px;">${m.bear_2} ($${Number(m.bear_2_price).toFixed(2)})</span>
-                                </td>
+                                <td><span class="origin-badge ${originClass}">${originText}</span></td>
+                                <td><span class="strategy-pill ${stratClass}">${stratLabel}</span></td>
+                                <td style="font-family:'JetBrains Mono';">$${Number(sig.entry_price).toFixed(2)}</td>
+                                <td style="font-family:'JetBrains Mono'; color:#34d399; font-weight:700;">$${Number(sig.target_price).toFixed(2)}</td>
+                                <td style="font-family:'JetBrains Mono'; color:#f87171; font-weight:700;">$${Number(sig.stop_price).toFixed(2)}</td>
+                                <td><span style="color:#34d399; font-weight:700; font-family:'JetBrains Mono'; font-size:11px;">${sig.status}</span></td>
                             </tr>
                         `;
                     }).join('');
+                } else if (data.matrix && data.matrix.length > 0) {
+                    // Fallback to legacy matrix rows if signal_tracker is empty
+                    matrixBody.innerHTML = data.matrix.map(m => `
+                        <tr>
+                            <td style="font-family:'JetBrains Mono'; font-weight:700; color:#cbd5e1;">${m.date}</td>
+                            <td><span class="ticker-pill bull" onclick="selectStock('${m.bull_1}', ${m.bull_1_price})">${m.bull_1}</span></td>
+                            <td><span class="origin-badge origin-vikings">[VIKINGS LIVE]</span></td>
+                            <td><span class="strategy-pill strategy-pullback-pill">STRAT I</span></td>
+                            <td style="font-family:'JetBrains Mono';">$${Number(m.bull_1_price).toFixed(2)}</td>
+                            <td style="font-family:'JetBrains Mono'; color:#34d399;">$${(Number(m.bull_1_price)*1.15).toFixed(2)}</td>
+                            <td style="font-family:'JetBrains Mono'; color:#f87171;">$${(Number(m.bull_1_price)*0.96).toFixed(2)}</td>
+                            <td><span style="color:#34d399; font-weight:700; font-family:'JetBrains Mono'; font-size:11px;">ACTIVE</span></td>
+                        </tr>
+                    `).join('');
                 }
             }
 
