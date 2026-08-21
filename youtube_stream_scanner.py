@@ -383,7 +383,7 @@ def parse_live_stream_broadcast():
         sys.executable, "-m", "yt_dlp",
         "--flat-playlist",
         "-J",
-        "--playlist-items", "1:2",
+        "--playlist-items", "1:6",
         CHANNEL_URL
     ]
     
@@ -397,24 +397,43 @@ def parse_live_stream_broadcast():
         if not entries:
             return load_fallback_cache()
             
-        latest = entries[0]
-        v_id = latest.get("id")
-        title = latest.get("title", "")
-        url = f"https://www.youtube.com/watch?v={v_id}"
+        target_entry = None
+        full_transcript = ""
         
-        # Subtitle file
-        vtt_out = os.path.join(BASE_DIR, f"live_sub_{v_id}.ko.vtt")
-        if not os.path.exists(vtt_out):
-            sub_cmd = [
-                sys.executable, "-m", "yt_dlp",
-                "--write-auto-sub", "--sub-lang", "ko", "--skip-download",
-                "--sub-format", "vtt/srt",
-                "-o", os.path.join(BASE_DIR, f"live_sub_{v_id}.%(ext)s"),
-                url
-            ]
-            subprocess.run(sub_cmd, capture_output=True, text=True, encoding="utf-8", errors="ignore", timeout=35)
+        # Iterate over recent streams to find the primary Vikings broadcast with valid subtitles
+        for entry in entries:
+            v_id = entry.get("id")
+            title = entry.get("title", "")
+            if not v_id:
+                continue
+                
+            vtt_out = os.path.join(BASE_DIR, f"live_sub_{v_id}.ko.vtt")
+            if not os.path.exists(vtt_out):
+                sub_cmd = [
+                    sys.executable, "-m", "yt_dlp",
+                    "--write-auto-sub", "--sub-lang", "ko", "--skip-download",
+                    "--sub-format", "vtt/srt",
+                    "-o", os.path.join(BASE_DIR, f"live_sub_{v_id}.%(ext)s"),
+                    f"https://www.youtube.com/watch?v={v_id}"
+                ]
+                subprocess.run(sub_cmd, capture_output=True, text=True, encoding="utf-8", errors="ignore", timeout=35)
+                
+            transcript = extract_transcript_from_vtt(vtt_out)
             
-        full_transcript = extract_transcript_from_vtt(vtt_out)
+            # Prioritize Vikings main market broadcast with rich subtitle transcripts
+            if ("바이킹스" in title or "VIKINGS" in title.upper() or len(transcript) > 5000) and len(transcript) > 0:
+                target_entry = entry
+                full_transcript = transcript
+                break
+                
+        if not target_entry:
+            target_entry = entries[0]
+            v_id = target_entry.get("id")
+            full_transcript = extract_transcript_from_vtt(os.path.join(BASE_DIR, f"live_sub_{v_id}.ko.vtt"))
+            
+        v_id = target_entry.get("id")
+        title = target_entry.get("title", "")
+        url = f"https://www.youtube.com/watch?v={v_id}"
         
         # 2. Contextual Sentiment NLP Analysis
         mentioned_stocks = analyze_contextual_mentions(full_transcript)
