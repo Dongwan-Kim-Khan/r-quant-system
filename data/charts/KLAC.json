@@ -1,6 +1,6 @@
 {
   "ticker": "KLAC",
-  "latest_close": 184.48,
+  "latest_close": 183.73,
   "kijun": 195.18,
   "tenkan": 198.97,
   "span_a": 241.05,
@@ -9,8 +9,8 @@
   "future_span_b_latest": 238.32,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 41.24,
-  "kijun_gap_pct": -5.48,
-  "vol_ratio": 0.09,
+  "kijun_gap_pct": -5.87,
+  "vol_ratio": 0.1,
   "bull_score": 30,
   "bear_score": 90,
   "is_sniper": false,
@@ -23,10 +23,10 @@
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$195.18 (-5.5%)",
+      "val": "$195.18 (-5.9%)",
       "status": "status-bear",
       "badge": "BREAKDOWN",
-      "desc": "현재가 $184.48 / 26일선 $195.18 (이격 -5.5%)"
+      "desc": "현재가 $183.73 / 26일선 $195.18 (이격 -5.9%)"
     },
     "tenkan": {
       "val": "$198.97",
@@ -41,10 +41,10 @@
       "desc": "일목 구름대(237.1~241.0) 하단 붕괴"
     },
     "vol": {
-      "val": "9% (20D)",
+      "val": "10% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 9% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 10% (매도세 고갈 완벽)"
     },
     "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
   },
@@ -3389,8 +3389,8 @@
       "time": "2026-08-21",
       "open": 189.43,
       "high": 189.77,
-      "low": 183.39,
-      "close": 184.48
+      "low": 183.38,
+      "close": 183.73
     }
   ],
   "kijun_line": [
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 192.96
+      "value": 192.93
     }
   ],
   "sma60": [
@@ -14610,7 +14610,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 217.18
+      "value": 217.17
     }
   ],
   "volume": [
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 961542.0,
+      "value": 1082309.0,
       "color": "#dc2626"
     }
   ]

@@ -1,6 +1,6 @@
 {
   "ticker": "GEV",
-  "latest_close": 964.49,
+  "latest_close": 962.12,
   "kijun": 1019.33,
   "tenkan": 1021.01,
   "span_a": 1061.93,
@@ -9,8 +9,8 @@
   "future_span_b_latest": 1025.76,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 5.58,
-  "kijun_gap_pct": -5.38,
-  "vol_ratio": 0.11,
+  "kijun_gap_pct": -5.61,
+  "vol_ratio": 0.13,
   "bull_score": 30,
   "bear_score": 90,
   "is_sniper": false,
@@ -23,10 +23,10 @@
     "is_sniper": false,
     "trampoline_detected": true,
     "kijun": {
-      "val": "$1,019.33 (-5.4%)",
+      "val": "$1,019.33 (-5.6%)",
       "status": "status-bear",
       "badge": "BREAKDOWN",
-      "desc": "현재가 $964.49 / 26일선 $1,019.33 (이격 -5.4%)"
+      "desc": "현재가 $962.12 / 26일선 $1,019.33 (이격 -5.6%)"
     },
     "tenkan": {
       "val": "$1,021.01",
@@ -41,10 +41,10 @@
       "desc": "일목 구름대(1025.8~1061.9) 하단 붕괴"
     },
     "vol": {
-      "val": "11% (20D)",
+      "val": "13% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 11% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 13% (매도세 고갈 완벽)"
     },
     "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
   },
@@ -631,7 +631,7 @@
       "time": "2025-01-27",
       "open": 338.43,
       "high": 351.78,
-      "low": 321.19,
+      "low": 321.18,
       "close": 328.86
     },
     {
@@ -1451,7 +1451,7 @@
       "open": 558.11,
       "high": 564.99,
       "low": 550.51,
-      "close": 559.65
+      "close": 559.66
     },
     {
       "time": "2025-07-17",
@@ -3389,8 +3389,8 @@
       "time": "2026-08-21",
       "open": 974.73,
       "high": 976.87,
-      "low": 960.01,
-      "close": 964.49
+      "low": 955.78,
+      "close": 962.12
     }
   ],
   "kijun_line": [
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 1000.16
+      "value": 1000.04
     }
   ],
   "sma60": [
@@ -14610,7 +14610,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 1020.26
+      "value": 1020.22
     }
   ],
   "volume": [
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 252280.0,
+      "value": 283853.0,
       "color": "#dc2626"
     }
   ]

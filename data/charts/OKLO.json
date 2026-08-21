@@ -1,6 +1,6 @@
 {
   "ticker": "OKLO",
-  "latest_close": 43.38,
+  "latest_close": 43.01,
   "kijun": 43.05,
   "tenkan": 44.24,
   "span_a": 49.51,
@@ -9,24 +9,24 @@
   "future_span_b_latest": 49.81,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 6.16,
-  "kijun_gap_pct": 0.78,
-  "vol_ratio": 0.13,
+  "kijun_gap_pct": -0.09,
+  "vol_ratio": 0.16,
   "bull_score": 65,
-  "bear_score": 35,
+  "bear_score": 75,
   "is_sniper": false,
   "intelligence": {
-    "verdict": "Neutral Consolidation (박스권 수렴)",
-    "score": "65 / 100 pt (HOLD)",
+    "verdict": "Risk Breakdown (생명선 붕괴 / 매수 금지)",
+    "score": "65 / 100 pt (BEAR_EXIT)",
     "bull_score": 65,
-    "bear_score": 35,
-    "type": "NEUTRAL",
+    "bear_score": 75,
+    "type": "BEAR",
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$43.05 (+0.8%)",
+      "val": "$43.05 (-0.1%)",
       "status": "status-bull",
       "badge": "SUPPORTED",
-      "desc": "현재가 $43.38 / 26일선 $43.05 (이격 +0.8%)"
+      "desc": "현재가 $43.01 / 26일선 $43.05 (이격 -0.1%)"
     },
     "tenkan": {
       "val": "$44.24",
@@ -41,15 +41,15 @@
       "desc": "일목 구름대(49.5~60.5) 하단 붕괴"
     },
     "vol": {
-      "val": "13% (20D)",
+      "val": "16% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 13% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 16% (매도세 고갈 완벽)"
     },
-    "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
+    "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
   },
-  "status_tag": "NEUTRAL",
-  "status_text": "Neutral Consolidation (박스권 수렴)",
+  "status_tag": "BEAR",
+  "status_text": "Risk Breakdown (생명선 붕괴 / 매수 금지)",
   "timeframe": "1D",
   "period": "2Y",
   "candles": [
@@ -3390,7 +3390,7 @@
       "open": 42.04,
       "high": 43.68,
       "low": 42.04,
-      "close": 43.38
+      "close": 43.01
     }
   ],
   "kijun_line": [
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 42.85
+      "value": 42.83
     }
   ],
   "sma60": [
@@ -14610,7 +14610,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 50.08
+      "value": 50.07
     }
   ],
   "volume": [
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 1210124.0,
+      "value": 1412117.0,
       "color": "#059669"
     }
   ]

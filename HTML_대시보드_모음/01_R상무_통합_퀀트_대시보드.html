@@ -141,9 +141,14 @@
             background: var(--bg-surface); border: 1px solid var(--border); border-radius: 2px;
             padding: 8px 10px; margin-bottom: 6px; cursor: pointer; transition: all 0.15s;
         }
-        .rec-item:last-child { margin-bottom: 0; }
-        .rec-item:hover, .rec-item.active {
-            border-color: var(--accent-blue); background: #1f2937;
+        .rec-item:hover {
+            border-color: #475569; background: #1e293b;
+        }
+        .rec-item.active {
+            border-color: #38bdf8 !important;
+            background: #1e293b !important;
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.35) !important;
+            transform: translateX(2px);
         }
         .rec-item-title { font-weight: 700; font-size: 13px; font-family: 'JetBrains Mono', monospace; }
         .rec-item-sub { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
@@ -935,6 +940,16 @@
             document.getElementById("curTicker").textContent = ticker;
             document.getElementById("qbTicker").textContent = ticker;
 
+            // Dynamically update active selection highlight on all cards
+            document.querySelectorAll(".rec-item").forEach(card => {
+                const cardTicker = card.getAttribute("data-ticker");
+                if (cardTicker === ticker) {
+                    card.classList.add("active");
+                } else {
+                    card.classList.remove("active");
+                }
+            });
+
             if (price !== null && price !== undefined && Number(price) > 0) {
                 currentSelectedPrice = Number(price);
                 const formattedPrice = `$${currentSelectedPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
@@ -1372,7 +1387,7 @@
                 const originText = (item.origin === 'VIKINGS_LIVE') ? '[VIKINGS LIVE]' : '[UNIVERSE SCAN]';
                 const isActive = (currentSelectedTicker === item.ticker) ? 'active' : '';
                 return `
-                    <div class="rec-item ${isActive}" onclick="selectStock('${item.ticker}', ${item.price})">
+                    <div class="rec-item ${isActive}" data-ticker="${item.ticker}" onclick="selectStock('${item.ticker}', ${item.price})">
                         <div>
                             <div style="display:flex; align-items:center; gap:6px;">
                                 <span class="rec-item-title" style="color:${colorTheme};">${item.ticker} <span class="rec-item-sub">${item.name}</span></span>

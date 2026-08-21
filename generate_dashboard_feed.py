@@ -222,14 +222,21 @@ def compute_all_indicators(ticker):
                     trampoline_days_ago = b_offset - 1
                     break
         
-        is_sniper_active = trampoline_detected and (kijun_gap >= -1.0) and (close >= cloud_top * 0.98) and (bull_score >= 60)
+        # Strategy 2 Specific Sniper Scoring (Max 100 pt)
+        sniper_score = 0
+        if trampoline_detected: sniper_score += 40
+        if close >= cloud_top: sniper_score += 35
+        if kijun_gap >= -0.5: sniper_score += 15
+        if tenkan >= kijun: sniper_score += 10
+        
+        is_sniper_active = (sniper_score >= 85) and trampoline_detected and (close >= cloud_top * 0.98)
         
         if is_sniper_active:
             quant_type = "BULL"
             quant_verdict = "Sniper Alert (구름대 도약 2단계 특급 매수)"
-            quant_score_text = f"95 / 100 pt (SNIPER_BUY)"
+            quant_score_text = f"{sniper_score} / 100 pt (SNIPER_BUY)"
             action_directive = f"[전략 2 스나이퍼] {trampoline_days_ago}일 전 구름대 지지 도약 확인 후 상방 시세 분출(기준선 대비 {kijun_gap:+.1f}%). 목표 +15% / 손절 -4%."
-        elif bull_score >= 70:
+        elif bull_score >= 75:
             quant_type = "BULL"
             quant_verdict = "Bull Accumulation (1차 분할 매수 적합)"
             quant_score_text = f"{bull_score} / 100 pt (BULL_BUY)"
@@ -373,17 +380,20 @@ def build_dashboard_data():
         v_ratio = c["vol_ratio"]
         b_score = c["bull_score"]
         is_sn = c["is_sniper"]
+        s_score = c.get("sniper_score", 95 if is_sn else 0)
         
         # Strategy 1 (Classic Pullback Accumulation): Bull trend, Kijun gap -0.8% ~ +4.0%, Dry volume
-        is_strat1 = (b_score >= 65) and (-0.8 <= kgap <= 4.2) and (v_ratio <= 0.85)
+        is_strat1 = (b_score >= 75) and (-0.8 <= kgap <= 4.0) and (v_ratio <= 0.85)
         # Strategy 2 (Cloud Bounce Sniper): Cloud trampoline launch detected, High momentum
-        is_strat2 = bool(is_sn)
+        is_strat2 = bool(is_sn) and (s_score >= 85)
+        
+        item_score = 100 if (is_strat1 and is_strat2) else (b_score if is_strat1 else s_score)
         
         item = {
             "ticker": t,
             "name": STOCK_DICT.get(t, [t])[0],
             "price": c["latest_close"],
-            "score": b_score,
+            "score": item_score,
             "kijun_gap": kgap,
             "vol_ratio": round(v_ratio * 100),
             "origin": origin_tag,

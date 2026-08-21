@@ -1,6 +1,6 @@
 {
   "ticker": "JNJ",
-  "latest_close": 269.22,
+  "latest_close": 270.44,
   "kijun": 260.98,
   "tenkan": 265.86,
   "span_a": 253.1,
@@ -9,24 +9,24 @@
   "future_span_b_latest": 251.99,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 11.44,
-  "kijun_gap_pct": 3.16,
-  "vol_ratio": 0.15,
+  "kijun_gap_pct": 3.62,
+  "vol_ratio": 0.16,
   "bull_score": 100,
   "bear_score": 0,
   "is_sniper": true,
   "intelligence": {
     "verdict": "Sniper Alert (구름대 도약 2단계 특급 매수)",
-    "score": "95 / 100 pt (SNIPER_BUY)",
+    "score": "100 / 100 pt (SNIPER_BUY)",
     "bull_score": 100,
     "bear_score": 0,
     "type": "BULL",
     "is_sniper": true,
     "trampoline_detected": true,
     "kijun": {
-      "val": "$260.98 (+3.2%)",
+      "val": "$260.98 (+3.6%)",
       "status": "status-bull",
       "badge": "SUPPORTED",
-      "desc": "현재가 $269.22 / 26일선 $260.98 (이격 +3.2%)"
+      "desc": "현재가 $270.44 / 26일선 $260.98 (이격 +3.6%)"
     },
     "tenkan": {
       "val": "$265.86",
@@ -41,12 +41,12 @@
       "desc": "일목 구름대(244.3~253.1) 상단 안착"
     },
     "vol": {
-      "val": "15% (20D)",
+      "val": "16% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 15% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 16% (매도세 고갈 완벽)"
     },
-    "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 상방 시세 분출(기준선 대비 +3.2%). 목표 +15% / 손절 -4%."
+    "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 상방 시세 분출(기준선 대비 +3.6%). 목표 +15% / 손절 -4%."
   },
   "status_tag": "BULL",
   "status_text": "Sniper Alert (구름대 도약 2단계 특급 매수)",
@@ -800,7 +800,7 @@
       "open": 159.57,
       "high": 161.86,
       "low": 159.45,
-      "close": 161.81
+      "close": 161.82
     },
     {
       "time": "2025-03-04",
@@ -3388,9 +3388,9 @@
     {
       "time": "2026-08-21",
       "open": 267.83,
-      "high": 269.98,
+      "high": 270.56,
       "low": 267.04,
-      "close": 269.22
+      "close": 270.44
     }
   ],
   "kijun_line": [
@@ -7436,7 +7436,7 @@
     },
     {
       "time": "2025-01-24",
-      "value": 144.51
+      "value": 144.52
     },
     {
       "time": "2025-01-27",
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 262.1
+      "value": 262.16
     }
   ],
   "sma60": [
@@ -14610,7 +14610,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 250.58
+      "value": 250.6
     }
   ],
   "volume": [
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 1002567.0,
+      "value": 1070069.0,
       "color": "#059669"
     }
   ]

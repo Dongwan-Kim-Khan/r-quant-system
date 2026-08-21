@@ -1,6 +1,6 @@
 {
   "ticker": "QCOM",
-  "latest_close": 160.64,
+  "latest_close": 160.51,
   "kijun": 160.77,
   "tenkan": 161.85,
   "span_a": 191.88,
@@ -9,8 +9,8 @@
   "future_span_b_latest": 188.17,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 26.86,
-  "kijun_gap_pct": -0.08,
-  "vol_ratio": 0.11,
+  "kijun_gap_pct": -0.16,
+  "vol_ratio": 0.12,
   "bull_score": 65,
   "bear_score": 75,
   "is_sniper": false,
@@ -23,10 +23,10 @@
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$160.77 (-0.1%)",
+      "val": "$160.77 (-0.2%)",
       "status": "status-bull",
       "badge": "SUPPORTED",
-      "desc": "현재가 $160.64 / 26일선 $160.77 (이격 -0.1%)"
+      "desc": "현재가 $160.51 / 26일선 $160.77 (이격 -0.2%)"
     },
     "tenkan": {
       "val": "$161.85",
@@ -41,10 +41,10 @@
       "desc": "일목 구름대(191.9~211.6) 하단 붕괴"
     },
     "vol": {
-      "val": "11% (20D)",
+      "val": "12% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 11% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 12% (매도세 고갈 완벽)"
     },
     "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
   },
@@ -3389,8 +3389,8 @@
       "time": "2026-08-21",
       "open": 162.92,
       "high": 163.33,
-      "low": 160.24,
-      "close": 160.64
+      "low": 160.18,
+      "close": 160.51
     }
   ],
   "kijun_line": [
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 160.6
+      "value": 160.59
     }
   ],
   "sma60": [
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 1248130.0,
+      "value": 1340354.0,
       "color": "#dc2626"
     }
   ]

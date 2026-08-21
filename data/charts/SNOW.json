@@ -1,6 +1,6 @@
 {
   "ticker": "SNOW",
-  "latest_close": 320.34,
+  "latest_close": 320.9,
   "kijun": 297.77,
   "tenkan": 328.08,
   "span_a": 257.22,
@@ -9,7 +9,7 @@
   "future_span_b_latest": 279.72,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 33.21,
-  "kijun_gap_pct": 7.58,
+  "kijun_gap_pct": 7.77,
   "vol_ratio": 0.08,
   "bull_score": 65,
   "bear_score": 0,
@@ -23,10 +23,10 @@
     "is_sniper": false,
     "trampoline_detected": false,
     "kijun": {
-      "val": "$297.77 (+7.6%)",
+      "val": "$297.77 (+7.8%)",
       "status": "status-neutral",
       "badge": "OVERHEATED",
-      "desc": "현재가 $320.34 / 26일선 $297.77 (이격 +7.6%)"
+      "desc": "현재가 $320.90 / 26일선 $297.77 (이격 +7.8%)"
     },
     "tenkan": {
       "val": "$328.08",
@@ -3390,7 +3390,7 @@
       "open": 321.66,
       "high": 323.27,
       "low": 314.2,
-      "close": 320.34
+      "close": 320.9
     }
   ],
   "kijun_line": [
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 314.83
+      "value": 314.86
     }
   ],
   "sma60": [
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 373400.0,
+      "value": 408608.0,
       "color": "#dc2626"
     }
   ]

@@ -1,6 +1,6 @@
 {
   "ticker": "DIS",
-  "latest_close": 107.25,
+  "latest_close": 107.53,
   "kijun": 100.59,
   "tenkan": 105.36,
   "span_a": 98.29,
@@ -9,24 +9,24 @@
   "future_span_b_latest": 100.59,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 2.39,
-  "kijun_gap_pct": 6.63,
-  "vol_ratio": 0.1,
+  "kijun_gap_pct": 6.89,
+  "vol_ratio": 0.11,
   "bull_score": 65,
   "bear_score": 0,
   "is_sniper": true,
   "intelligence": {
     "verdict": "Sniper Alert (구름대 도약 2단계 특급 매수)",
-    "score": "95 / 100 pt (SNIPER_BUY)",
+    "score": "100 / 100 pt (SNIPER_BUY)",
     "bull_score": 65,
     "bear_score": 0,
     "type": "BULL",
     "is_sniper": true,
     "trampoline_detected": true,
     "kijun": {
-      "val": "$100.59 (+6.6%)",
+      "val": "$100.59 (+6.9%)",
       "status": "status-neutral",
       "badge": "OVERHEATED",
-      "desc": "현재가 $107.25 / 26일선 $100.59 (이격 +6.6%)"
+      "desc": "현재가 $107.53 / 26일선 $100.59 (이격 +6.9%)"
     },
     "tenkan": {
       "val": "$105.36",
@@ -41,12 +41,12 @@
       "desc": "일목 구름대(98.3~102.2) 상단 안착"
     },
     "vol": {
-      "val": "10% (20D)",
+      "val": "11% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 10% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 11% (매도세 고갈 완벽)"
     },
-    "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 상방 시세 분출(기준선 대비 +6.6%). 목표 +15% / 손절 -4%."
+    "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 상방 시세 분출(기준선 대비 +6.9%). 목표 +15% / 손절 -4%."
   },
   "status_tag": "BULL",
   "status_text": "Sniper Alert (구름대 도약 2단계 특급 매수)",
@@ -3390,7 +3390,7 @@
       "open": 107.57,
       "high": 108.41,
       "low": 106.99,
-      "close": 107.25
+      "close": 107.53
     }
   ],
   "kijun_line": [
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 102.23
+      "value": 102.24
     }
   ],
   "sma60": [
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 1069350.0,
+      "value": 1141576.0,
       "color": "#dc2626"
     }
   ]

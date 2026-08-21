@@ -1,6 +1,6 @@
 {
   "ticker": "ETN",
-  "latest_close": 420.68,
+  "latest_close": 420.54,
   "kijun": 417.63,
   "tenkan": 446.57,
   "span_a": 404.04,
@@ -9,14 +9,14 @@
   "future_span_b_latest": 417.63,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 14.47,
-  "kijun_gap_pct": 0.73,
-  "vol_ratio": 0.14,
+  "kijun_gap_pct": 0.7,
+  "vol_ratio": 0.15,
   "bull_score": 100,
   "bear_score": 0,
   "is_sniper": true,
   "intelligence": {
     "verdict": "Sniper Alert (구름대 도약 2단계 특급 매수)",
-    "score": "95 / 100 pt (SNIPER_BUY)",
+    "score": "100 / 100 pt (SNIPER_BUY)",
     "bull_score": 100,
     "bear_score": 0,
     "type": "BULL",
@@ -26,7 +26,7 @@
       "val": "$417.63 (+0.7%)",
       "status": "status-bull",
       "badge": "SUPPORTED",
-      "desc": "현재가 $420.68 / 26일선 $417.63 (이격 +0.7%)"
+      "desc": "현재가 $420.54 / 26일선 $417.63 (이격 +0.7%)"
     },
     "tenkan": {
       "val": "$446.57",
@@ -41,10 +41,10 @@
       "desc": "일목 구름대(401.2~404.0) 상단 안착"
     },
     "vol": {
-      "val": "14% (20D)",
+      "val": "15% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 14% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 15% (매도세 고갈 완벽)"
     },
     "action": "[전략 2 스나이퍼] 0일 전 구름대 지지 도약 확인 후 상방 시세 분출(기준선 대비 +0.7%). 목표 +15% / 손절 -4%."
   },
@@ -1267,7 +1267,7 @@
     {
       "time": "2025-06-06",
       "open": 326.6,
-      "high": 328.87,
+      "high": 328.86,
       "low": 325.2,
       "close": 326.84
     },
@@ -1329,7 +1329,7 @@
     },
     {
       "time": "2025-06-20",
-      "open": 331.0,
+      "open": 330.99,
       "high": 333.3,
       "low": 326.19,
       "close": 326.63
@@ -3390,7 +3390,7 @@
       "open": 419.5,
       "high": 422.88,
       "low": 416.21,
-      "close": 420.68
+      "close": 420.54
     }
   ],
   "kijun_line": [
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 324433.0,
+      "value": 353975.0,
       "color": "#059669"
     }
   ]

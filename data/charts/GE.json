@@ -1,6 +1,6 @@
 {
   "ticker": "GE",
-  "latest_close": 349.21,
+  "latest_close": 348.6,
   "kijun": 363.72,
   "tenkan": 359.57,
   "span_a": 354.29,
@@ -9,8 +9,8 @@
   "future_span_b_latest": 353.35,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 8.3,
-  "kijun_gap_pct": -3.99,
-  "vol_ratio": 0.17,
+  "kijun_gap_pct": -4.16,
+  "vol_ratio": 0.2,
   "bull_score": 20,
   "bear_score": 55,
   "is_sniper": false,
@@ -23,10 +23,10 @@
     "is_sniper": false,
     "trampoline_detected": true,
     "kijun": {
-      "val": "$363.72 (-4.0%)",
+      "val": "$363.72 (-4.2%)",
       "status": "status-bear",
       "badge": "BREAKDOWN",
-      "desc": "현재가 $349.21 / 26일선 $363.72 (이격 -4.0%)"
+      "desc": "현재가 $348.60 / 26일선 $363.72 (이격 -4.2%)"
     },
     "tenkan": {
       "val": "$359.57",
@@ -41,10 +41,10 @@
       "desc": "일목 구름대(330.8~354.3) 내부 횡보"
     },
     "vol": {
-      "val": "17% (20D)",
+      "val": "20% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 17% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 20% (매도세 고갈 완벽)"
     },
     "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
   },
@@ -3388,9 +3388,9 @@
     {
       "time": "2026-08-21",
       "open": 347.54,
-      "high": 349.4,
+      "high": 350.0,
       "low": 347.34,
-      "close": 349.21
+      "close": 348.6
     }
   ],
   "kijun_line": [
@@ -7628,7 +7628,7 @@
     },
     {
       "time": "2025-04-03",
-      "value": 199.25
+      "value": 199.26
     },
     {
       "time": "2025-04-04",
@@ -12836,7 +12836,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 364.34
+      "value": 364.3
     }
   ],
   "sma60": [
@@ -14610,7 +14610,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 353.45
+      "value": 353.44
     }
   ],
   "volume": [
@@ -16996,7 +16996,7 @@
     },
     {
       "time": "2026-08-21",
-      "value": 605048.0,
+      "value": 684002.0,
       "color": "#059669"
     }
   ]
