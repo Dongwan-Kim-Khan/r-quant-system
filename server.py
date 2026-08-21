@@ -97,6 +97,7 @@ def serve_dashboard():
 def get_dashboard_summary():
     portfolio = db_manager.get_live_portfolio()
     matrix = db_manager.get_recommendations_matrix()
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
     # Read latest macro & KPI feed from dashboard_data.json
     macro_info = {}
@@ -109,6 +110,10 @@ def get_dashboard_summary():
                 kpis = feed.get("kpis", {})
         except Exception:
             pass
+            
+    # Always stamp live current server time
+    kpis["last_updated"] = now_str
+    kpis["active_positions"] = len(portfolio.get("holdings", []))
             
     # Ensure holdings is always a list
     if not isinstance(portfolio.get("holdings"), list):
@@ -123,7 +128,7 @@ def get_dashboard_summary():
         "kpis": kpis,
         "portfolio": portfolio,
         "matrix": matrix,
-        "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        "last_updated": now_str
     }
 
 @app.websocket("/ws/live_feed")

@@ -1169,7 +1169,8 @@
         }
 
         function renderDashboardData(data) {
-            document.getElementById("lastUpdated").textContent = `Updated: ${data.kpis?.last_updated || new Date().toLocaleString()}`;
+            const updatedTime = data.last_updated || data.kpis?.last_updated || new Date().toLocaleString();
+            document.getElementById("lastUpdated").textContent = `Updated: ${updatedTime}`;
 
             // Dynamic Macro Gauges & Gate-0 Climate Strip
             if (data.macro) {
