@@ -197,27 +197,42 @@ def scan_and_select_2x2x2(stream_sentiment_list=None):
         except Exception:
             continue
             
-    # 1. Bull Picks: Host Positively Recommended / Rotation Favored + Chart Validated
+    # 1. Bull Picks: 100% Pure 17-Year Quant Evaluation (구름대 상단 안착, 기준선 지지, 거래량 마름)
+    # Broadcast mentions serve only as the discovery intake trigger; rankings are STRICTLY determined by pure quant score!
+    bull_pool = [c for c in candidates if c['bull_score'] >= 65]
     bull_pool = sorted(
-        [c for c in candidates if c['bull_score'] >= 60 and c['net_sentiment'] >= 0],
-        key=lambda x: (x['net_sentiment'], x['bull_score']),
+        bull_pool,
+        key=lambda x: (
+            x['bull_score'],
+            -abs(x['kijun_gap'] - 1.0), # Closer to +1.0% sweet spot above Kijun
+            -x['vol_ratio'] # Drier volume is better (e.g. 0.5 < 0.7)
+        ),
         reverse=True
     )
     bull_picks = bull_pool[:2]
     if len(bull_picks) < 2:
-        for c in sorted([c for c in candidates if c['bull_score'] >= 60], key=lambda x: x['bull_score'], reverse=True):
+        for c in sorted(candidates, key=lambda x: (x['bull_score'], -abs(x['kijun_gap'])), reverse=True):
             if len(bull_picks) < 2 and c['ticker'] not in [b['ticker'] for b in bull_picks]:
                 bull_picks.append(c)
                 
-    # 2. Bear Picks: Host Caution OR 26-day Kijun-sen breakdown
+    # 2. Bear Picks: 100% Pure Quant Breakdown (26-day Kijun-sen breakdown, cloud collapse)
+    used_bull_tickers = {b['ticker'] for b in bull_picks}
+    bear_pool = [c for c in candidates if c['ticker'] not in used_bull_tickers and c['bear_score'] >= 50]
     bear_pool = sorted(
-        [c for c in candidates if c['bear_score'] >= 50],
-        key=lambda x: (x['bear_score'], -x['net_sentiment']),
+        bear_pool,
+        key=lambda x: (
+            x['bear_score'],
+            -x['kijun_gap'] # Deeper breakdown below Kijun
+        ),
         reverse=True
     )
     bear_picks = bear_pool[:2]
+    if len(bear_picks) < 2:
+        for c in sorted(candidates, key=lambda x: x['bear_score'], reverse=True):
+            if len(bear_picks) < 2 and c['ticker'] not in used_bull_tickers and c['ticker'] not in [b['ticker'] for b in bear_picks]:
+                bear_picks.append(c)
     
-    # 3. Neutral Picks: Consolidation / Wait
+    # 3. Neutral Picks: Consolidation / Wait (Closest to Kijun-sen, in-cloud or mild range)
     used_tickers = {c['ticker'] for c in bull_picks + bear_picks}
     neutral_pool = [c for c in candidates if c['ticker'] not in used_tickers]
     neutral_picks = sorted(neutral_pool, key=lambda x: abs(x['kijun_gap']))[:2]
