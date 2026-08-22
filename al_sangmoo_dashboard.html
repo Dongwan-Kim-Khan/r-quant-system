@@ -965,6 +965,10 @@
         }
 
         function updateDecoderUI(ticker, liveChartData) {
+            const banner = document.getElementById("verdictBanner");
+            const score = document.getElementById("verdictScore");
+            const title = document.getElementById("verdictTitle");
+
             let info = null;
             if (liveChartData && liveChartData.intelligence) {
                 info = liveChartData.intelligence;
@@ -1003,11 +1007,18 @@
             const elFutureCloudTitle = document.getElementById("sigFutureCloudTitle");
             const elVolTitle = document.getElementById("sigVolTitle");
 
+            const safeKijun = info.kijun || { status: "status-good", badge: "SUPPORT", val: "-", desc: "-" };
+            const safeTenkan = info.tenkan || { status: "status-good", badge: "BULLISH", val: "-", desc: "-" };
+            const safeCloud = info.cloud || { status: "status-good", badge: "ABOVE CLOUD", val: "-", desc: "-" };
+            const safeVol = info.vol || { status: "status-good", badge: "OPTIMAL", val: "-", desc: "-" };
+
             if (tierType === 'TIER_1') {
-                title.textContent = `Quant Rating: [Tier 1: 거시 순풍 + 기관 잠행 매집 (최우선 주도주)]`;
-                score.textContent = info.score || "100 / 100 pt (TIER_1_LEADER)";
-                banner.style.borderLeftColor = "#fbbf24";
-                score.style.color = "#fbbf24";
+                if (title) title.textContent = `Quant Rating: [Tier 1: 거시 순풍 + 기관 잠행 매집 (최우선 주도주)]`;
+                if (score) {
+                    score.textContent = info.score || "100 / 100 pt (TIER_1_LEADER)";
+                    score.style.color = "#fbbf24";
+                }
+                if (banner) banner.style.borderLeftColor = "#fbbf24";
                 
                 if (elKijunTitle) elKijunTitle.textContent = "1. 26일 기준선 안전 지지 (-0.8% ~ +3.5%)";
                 if (elTenkanTitle) elTenkanTitle.textContent = "2. 거시 순풍 섹터 (Macro Tailwind)";
@@ -1015,38 +1026,50 @@
                 if (elFutureCloudTitle) elFutureCloudTitle.textContent = "4. 14일 양봉 수급비 우세 (Flow Ratio)";
                 if (elVolTitle) elVolTitle.textContent = "5. 20일 거래량 마름 (매도세 소진 완료)";
                 
-                document.getElementById("sigKijunBadge").className = `status-badge ${info.kijun.status}`;
-                document.getElementById("sigKijunBadge").textContent = info.kijun.badge;
-                document.getElementById("sigKijunVal").textContent = info.kijun.val;
-                document.getElementById("sigKijunDesc").textContent = info.kijun.desc;
+                const bKijun = document.getElementById("sigKijunBadge");
+                if (bKijun) { bKijun.className = `status-badge ${safeKijun.status}`; bKijun.textContent = safeKijun.badge; }
+                const vKijun = document.getElementById("sigKijunVal");
+                if (vKijun) vKijun.textContent = safeKijun.val;
+                const dKijun = document.getElementById("sigKijunDesc");
+                if (dKijun) dKijun.textContent = safeKijun.desc;
 
                 if (info.sector) {
-                    document.getElementById("sigTenkanVal").textContent = `섹터: [${info.sector}]`;
-                    document.getElementById("sigTenkanDesc").textContent = `현재 거시 기후 순풍 및 기관 바스켓 자금 유입 수혜 섹터에 해당합니다.`;
-                    document.getElementById("sigTenkanBadge").className = "status-badge status-good";
-                    document.getElementById("sigTenkanBadge").textContent = "TAILWIND";
+                    const vTenkan = document.getElementById("sigTenkanVal");
+                    if (vTenkan) vTenkan.textContent = `섹터: [${info.sector}]`;
+                    const dTenkan = document.getElementById("sigTenkanDesc");
+                    if (dTenkan) dTenkan.textContent = `현재 거시 기후 순풍 및 기관 바스켓 자금 유입 수혜 섹터에 해당합니다.`;
+                    const bTenkan = document.getElementById("sigTenkanBadge");
+                    if (bTenkan) { bTenkan.className = "status-badge status-good"; bTenkan.textContent = "TAILWIND"; }
                 }
                 if (info.obv_status) {
-                    document.getElementById("sigCloudVal").textContent = `OBV: ${info.obv_label || '[STEALTH ACCUM]'}`;
-                    document.getElementById("sigCloudDesc").textContent = `주가 횡보/눌림목 구간 스마트 머니의 지속적인 바닥 물량 매집이 확인됩니다.`;
-                    document.getElementById("sigCloudBadge").className = "status-badge status-good";
-                    document.getElementById("sigCloudBadge").textContent = info.obv_status;
+                    const vCloud = document.getElementById("sigCloudVal");
+                    if (vCloud) vCloud.textContent = `OBV: ${info.obv_label || '[STEALTH ACCUM]'}`;
+                    const dCloud = document.getElementById("sigCloudDesc");
+                    if (dCloud) dCloud.textContent = `주가 횡보/눌림목 구간 스마트 머니의 지속적인 바닥 물량 매집이 확인됩니다.`;
+                    const bCloud = document.getElementById("sigCloudBadge");
+                    if (bCloud) { bCloud.className = "status-badge status-good"; bCloud.textContent = info.obv_status; }
                 }
                 if (info.flow_label) {
-                    document.getElementById("sigFutureCloudVal").textContent = `양봉 수급비: ${info.flow_label}`;
-                    document.getElementById("sigFutureCloudDesc").textContent = `최근 14거래일간 상승일 거래량이 하락일 거래량을 압도하고 있습니다.`;
-                    document.getElementById("sigFutureCloudBadge").className = "status-badge status-good";
-                    document.getElementById("sigFutureCloudBadge").textContent = "INFLOW";
+                    const vFc = document.getElementById("sigFutureCloudVal");
+                    if (vFc) vFc.textContent = `양봉 수급비: ${info.flow_label}`;
+                    const dFc = document.getElementById("sigFutureCloudDesc");
+                    if (dFc) dFc.textContent = `최근 14거래일간 상승일 거래량이 하락일 거래량을 압도하고 있습니다.`;
+                    const bFc = document.getElementById("sigFutureCloudBadge");
+                    if (bFc) { bFc.className = "status-badge status-good"; bFc.textContent = "INFLOW"; }
                 }
-                document.getElementById("sigVolBadge").className = `status-badge ${info.vol.status}`;
-                document.getElementById("sigVolBadge").textContent = info.vol.badge;
-                document.getElementById("sigVolVal").textContent = info.vol.val;
-                document.getElementById("sigVolDesc").textContent = info.vol.desc;
+                const bVol = document.getElementById("sigVolBadge");
+                if (bVol) { bVol.className = `status-badge ${safeVol.status}`; bVol.textContent = safeVol.badge; }
+                const vVol = document.getElementById("sigVolVal");
+                if (vVol) vVol.textContent = safeVol.val;
+                const dVol = document.getElementById("sigVolDesc");
+                if (dVol) dVol.textContent = safeVol.desc;
             } else if (tierType === 'TIER_3') {
-                title.textContent = `Quant Rating: [Tier 3: 구름대 반등 스나이퍼 (2단계 발사대)]`;
-                score.textContent = info.score || "95 / 100 pt (TIER_3_SNIPER)";
-                banner.style.borderLeftColor = "#f87171";
-                score.style.color = "#f87171";
+                if (title) title.textContent = `Quant Rating: [Tier 3: 구름대 반등 스나이퍼 (2단계 발사대)]`;
+                if (score) {
+                    score.textContent = info.score || "95 / 100 pt (TIER_3_SNIPER)";
+                    score.style.color = "#f87171";
+                }
+                if (banner) banner.style.borderLeftColor = "#f87171";
                 
                 if (elKijunTitle) elKijunTitle.textContent = "1. [2단계] 기준선 돌파 상방 가속 (Stage 2 Launch)";
                 if (elTenkanTitle) elTenkanTitle.textContent = "2. 9일 전환선 상향 모멘텀 (Tenkan Momentum)";
@@ -1054,30 +1077,40 @@
                 if (elFutureCloudTitle) elFutureCloudTitle.textContent = "4. +26일 미래 구름대 발사대 지지";
                 if (elVolTitle) elVolTitle.textContent = "5. 칼손절 기준선 엄수 (-4% 컷 / +15% 목표)";
 
-                document.getElementById("sigKijunBadge").className = `status-badge ${info.kijun.status}`;
-                document.getElementById("sigKijunBadge").textContent = info.kijun.badge;
-                document.getElementById("sigKijunVal").textContent = info.kijun.val;
-                document.getElementById("sigKijunDesc").textContent = info.kijun.desc;
+                const bKijun = document.getElementById("sigKijunBadge");
+                if (bKijun) { bKijun.className = `status-badge ${safeKijun.status}`; bKijun.textContent = safeKijun.badge; }
+                const vKijun = document.getElementById("sigKijunVal");
+                if (vKijun) vKijun.textContent = safeKijun.val;
+                const dKijun = document.getElementById("sigKijunDesc");
+                if (dKijun) dKijun.textContent = safeKijun.desc;
 
-                document.getElementById("sigTenkanBadge").className = `status-badge ${info.tenkan.status}`;
-                document.getElementById("sigTenkanBadge").textContent = info.tenkan.badge;
-                document.getElementById("sigTenkanVal").textContent = info.tenkan.val;
-                document.getElementById("sigTenkanDesc").textContent = info.tenkan.desc;
+                const bTenkan = document.getElementById("sigTenkanBadge");
+                if (bTenkan) { bTenkan.className = `status-badge ${safeTenkan.status}`; bTenkan.textContent = safeTenkan.badge; }
+                const vTenkan = document.getElementById("sigTenkanVal");
+                if (vTenkan) vTenkan.textContent = safeTenkan.val;
+                const dTenkan = document.getElementById("sigTenkanDesc");
+                if (dTenkan) dTenkan.textContent = safeTenkan.desc;
 
-                document.getElementById("sigCloudBadge").className = `status-badge ${info.cloud.status}`;
-                document.getElementById("sigCloudBadge").textContent = info.cloud.badge;
-                document.getElementById("sigCloudVal").textContent = info.cloud.val;
-                document.getElementById("sigCloudDesc").textContent = info.cloud.desc;
+                const bCloud = document.getElementById("sigCloudBadge");
+                if (bCloud) { bCloud.className = `status-badge ${safeCloud.status}`; bCloud.textContent = safeCloud.badge; }
+                const vCloud = document.getElementById("sigCloudVal");
+                if (vCloud) vCloud.textContent = safeCloud.val;
+                const dCloud = document.getElementById("sigCloudDesc");
+                if (dCloud) dCloud.textContent = safeCloud.desc;
 
-                document.getElementById("sigVolBadge").className = `status-badge ${info.vol.status}`;
-                document.getElementById("sigVolBadge").textContent = info.vol.badge;
-                document.getElementById("sigVolVal").textContent = info.vol.val;
-                document.getElementById("sigVolDesc").textContent = info.vol.desc;
+                const bVol = document.getElementById("sigVolBadge");
+                if (bVol) { bVol.className = `status-badge ${safeVol.status}`; bVol.textContent = safeVol.badge; }
+                const vVol = document.getElementById("sigVolVal");
+                if (vVol) vVol.textContent = safeVol.val;
+                const dVol = document.getElementById("sigVolDesc");
+                if (dVol) dVol.textContent = safeVol.desc;
             } else {
-                title.textContent = `Quant Rating: [Tier 2: 정석 기준선 눌림목 (안정 분할 매수)]`;
-                score.textContent = info.score || "85 / 100 pt (TIER_2_PULLBACK)";
-                banner.style.borderLeftColor = "var(--accent-green)";
-                score.style.color = "var(--accent-green)";
+                if (title) title.textContent = `Quant Rating: [Tier 2: 정석 기준선 눌림목 (안정 분할 매수)]`;
+                if (score) {
+                    score.textContent = info.score || "85 / 100 pt (TIER_2_PULLBACK)";
+                    score.style.color = "var(--accent-green)";
+                }
+                if (banner) banner.style.borderLeftColor = "var(--accent-green)";
                 
                 if (elKijunTitle) elKijunTitle.textContent = "1. 26-Day Kijun-sen (생명선 지지 안착)";
                 if (elTenkanTitle) elTenkanTitle.textContent = "2. 9-Day Tenkan-sen (모멘텀 정배열)";
@@ -1085,28 +1118,37 @@
                 if (elFutureCloudTitle) elFutureCloudTitle.textContent = "4. 향후 26일 미래 구름대 (양운 지지)";
                 if (elVolTitle) elVolTitle.textContent = "5. 20일 거래량 마름 (Volume Dry-Up 50% 이하)";
 
-                document.getElementById("sigKijunBadge").className = `status-badge ${info.kijun.status}`;
-                document.getElementById("sigKijunBadge").textContent = info.kijun.badge;
-                document.getElementById("sigKijunVal").textContent = info.kijun.val;
-                document.getElementById("sigKijunDesc").textContent = info.kijun.desc;
+                const bKijun = document.getElementById("sigKijunBadge");
+                if (bKijun) { bKijun.className = `status-badge ${safeKijun.status}`; bKijun.textContent = safeKijun.badge; }
+                const vKijun = document.getElementById("sigKijunVal");
+                if (vKijun) vKijun.textContent = safeKijun.val;
+                const dKijun = document.getElementById("sigKijunDesc");
+                if (dKijun) dKijun.textContent = safeKijun.desc;
 
-                document.getElementById("sigTenkanBadge").className = `status-badge ${info.tenkan.status}`;
-                document.getElementById("sigTenkanBadge").textContent = info.tenkan.badge;
-                document.getElementById("sigTenkanVal").textContent = info.tenkan.val;
-                document.getElementById("sigTenkanDesc").textContent = info.tenkan.desc;
+                const bTenkan = document.getElementById("sigTenkanBadge");
+                if (bTenkan) { bTenkan.className = `status-badge ${safeTenkan.status}`; bTenkan.textContent = safeTenkan.badge; }
+                const vTenkan = document.getElementById("sigTenkanVal");
+                if (vTenkan) vTenkan.textContent = safeTenkan.val;
+                const dTenkan = document.getElementById("sigTenkanDesc");
+                if (dTenkan) dTenkan.textContent = safeTenkan.desc;
 
-                document.getElementById("sigCloudBadge").className = `status-badge ${info.cloud.status}`;
-                document.getElementById("sigCloudBadge").textContent = info.cloud.badge;
-                document.getElementById("sigCloudVal").textContent = info.cloud.val;
-                document.getElementById("sigCloudDesc").textContent = info.cloud.desc;
+                const bCloud = document.getElementById("sigCloudBadge");
+                if (bCloud) { bCloud.className = `status-badge ${safeCloud.status}`; bCloud.textContent = safeCloud.badge; }
+                const vCloud = document.getElementById("sigCloudVal");
+                if (vCloud) vCloud.textContent = safeCloud.val;
+                const dCloud = document.getElementById("sigCloudDesc");
+                if (dCloud) dCloud.textContent = safeCloud.desc;
 
-                document.getElementById("sigVolBadge").className = `status-badge ${info.vol.status}`;
-                document.getElementById("sigVolBadge").textContent = info.vol.badge;
-                document.getElementById("sigVolVal").textContent = info.vol.val;
-                document.getElementById("sigVolDesc").textContent = info.vol.desc;
+                const bVol = document.getElementById("sigVolBadge");
+                if (bVol) { bVol.className = `status-badge ${safeVol.status}`; bVol.textContent = safeVol.badge; }
+                const vVol = document.getElementById("sigVolVal");
+                if (vVol) vVol.textContent = safeVol.val;
+                const dVol = document.getElementById("sigVolDesc");
+                if (dVol) dVol.textContent = safeVol.desc;
             }
 
-            document.getElementById("actionDirectiveText").textContent = info.action;
+            const adText = document.getElementById("actionDirectiveText");
+            if (adText) adText.textContent = info.action || "1차 분할 매수 적합 타점입니다.";
         }
 
         let currentChartAbortController = null;

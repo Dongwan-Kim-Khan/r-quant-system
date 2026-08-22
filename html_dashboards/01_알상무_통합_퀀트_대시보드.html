@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AL-SANGMOO QUANT TERMINAL | Tactical Macro & Sector Allocation</title>
+    <title>R-SANGMOO QUANT TERMINAL | Tactical Macro & Sector Allocation</title>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -141,9 +141,14 @@
             background: var(--bg-surface); border: 1px solid var(--border); border-radius: 2px;
             padding: 8px 10px; margin-bottom: 6px; cursor: pointer; transition: all 0.15s;
         }
-        .rec-item:last-child { margin-bottom: 0; }
-        .rec-item:hover, .rec-item.active {
-            border-color: var(--accent-blue); background: #1f2937;
+        .rec-item:hover {
+            border-color: #475569; background: #1e293b;
+        }
+        .rec-item.active {
+            border-color: #38bdf8 !important;
+            background: #1e293b !important;
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.35) !important;
+            transform: translateX(2px);
         }
         .rec-item-title { font-weight: 700; font-size: 13px; font-family: 'JetBrains Mono', monospace; }
         .rec-item-sub { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
@@ -202,6 +207,28 @@
         .ticker-pill.neutral { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3); }
         .ticker-pill.bear { background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239, 68, 68, 0.3); }
 
+        /* Bloomberg Terminal Badges */
+        .origin-badge {
+            font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
+            padding: 2px 6px; border-radius: 2px; text-transform: uppercase; letter-spacing: 0.02em;
+        }
+        .origin-vikings {
+            background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4);
+        }
+        .origin-quant {
+            background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4);
+        }
+        .strategy-pill {
+            font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
+            padding: 2px 6px; border-radius: 2px; text-transform: uppercase;
+        }
+        .strategy-sniper-pill {
+            background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);
+        }
+        .strategy-pullback-pill {
+            background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);
+        }
+
         /* Right Pane */
         .right-pane {
             background: var(--bg-surface); border: 1px solid var(--border); border-radius: 4px;
@@ -213,6 +240,17 @@
         }
         .ticker-title { font-size: 16px; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
         .ticker-price { font-size: 16px; font-weight: 800; font-family: 'JetBrains Mono', monospace; margin-left: 8px; }
+
+        .tf-btn {
+            background: transparent; border: none; color: #94a3b8;
+            padding: 3px 8px; border-radius: 2px; font-size: 11px; font-weight: 700;
+            font-family: 'JetBrains Mono', monospace; cursor: pointer; transition: all 0.15s ease-in-out;
+        }
+        .tf-btn:hover { color: #f8fafc; background: #1e293b; }
+        .tf-btn.active {
+            background: #38bdf8; color: #0f172a; font-weight: 800;
+            box-shadow: 0 0 8px rgba(56, 189, 248, 0.35);
+        }
 
         .toggle-btn {
             background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary);
@@ -318,10 +356,24 @@
     <!-- Header -->
     <header>
         <div class="brand">
-            <h1>AL-SANGMOO QUANT TERMINAL</h1>
+            <h1>R QUANT TERMINAL</h1>
             <span class="badge">R's QUANT 3.5 INSTITUTIONAL</span>
             <div class="live-tag"><div class="live-dot"></div> ACTIVE QUANT ENGINE</div>
         </div>
+
+        <!-- Universal Stock Search Bar -->
+        <div class="search-wrapper" style="position:relative; flex:1; max-width:440px; margin:0 16px;">
+            <div style="position:relative; display:flex; align-items:center;">
+                <input type="text" id="stockSearchInput" 
+                       placeholder="[SEARCH] 종목명 / 티커 검색 (예: AAPL, 애플, 삼전, TSM)  [/]" 
+                       autocomplete="off" 
+                       style="width:100%; background:#1e293b; border:1px solid #334155; color:#f8fafc; padding:8px 36px 8px 12px; font-size:12px; border-radius:4px; font-family:'JetBrains Mono', 'Pretendard', sans-serif; outline:none; transition:border-color 0.2s;" />
+                <span id="searchShortcutKey" style="position:absolute; right:10px; font-size:10px; color:#64748b; background:#0f172a; border:1px solid #334155; padding:1px 5px; border-radius:3px; pointer-events:none; font-family:'JetBrains Mono';">/</span>
+                <div id="searchSpinner" style="display:none; position:absolute; right:32px; width:12px; height:12px; border:2px solid #38bdf8; border-top-color:transparent; border-radius:50%; animation:spin 0.8s linear infinite;"></div>
+            </div>
+            <div id="searchDropdown" style="display:none; position:absolute; top:100%; left:0; right:0; background:#0f172a; border:1px solid #38bdf8; border-radius:4px; margin-top:4px; max-height:280px; overflow-y:auto; z-index:9999; box-shadow:0 10px 25px rgba(0,0,0,0.5);"></div>
+        </div>
+
         <div class="header-actions">
             <div class="server-status-pill" id="serverStatus">
                 <div class="server-dot" id="serverDot"></div>
@@ -342,12 +394,12 @@
                 <span id="macroHeadline">[거시 게이트 0단계: 이번 주 신규 매수 보류 / 관망·현금 유지 권고]</span>
                 <div style="display:flex; align-items:center; gap:8px;">
                     <span style="font-size:11px; color:#cbd5e1;">Macro Stance Index (MSI):</span>
-                    <span id="msiScoreBadge" style="background:#f59e0b; color:#0f172a; font-size:12px; font-weight:800; padding:2px 8px; border-radius:2px; font-family:'JetBrains Mono';">64.8 / 100</span>
+                    <span id="msiScoreBadge" style="background:#f59e0b; color:#0f172a; font-size:12px; font-weight:800; padding:2px 8px; border-radius:2px; font-family:'JetBrains Mono';">-- / 100</span>
                     <span id="macroStanceBadge" style="background:rgba(245,158,11,0.2); color:#fbbf24; font-size:11px; padding:2px 8px; border-radius:2px; font-family:'JetBrains Mono'; font-weight:700;">DEFENSE HOLD</span>
                 </div>
             </div>
             <div style="font-size:12px; color:#cbd5e1; margin-top:6px; line-height:1.5;" id="macroDirectiveText">
-                거시 위험 지수(MSI 64.8점: 10년물 금리 4.696%, 유가 $85.15) 및 방송 지침상, 적어도 이번 주는 신규 매수를 쉬어가고 관망해야 하는 장세입니다. 다만 거시 리스크 진정 시 즉시 공략할 최우선 1순위 후보 종목을 사전 선별합니다.
+                거시 위험 지수 및 방송 지침 데이터를 불러오는 중입니다...
             </div>
 
             <!-- MSI 0~100 Visual Gauge Bar -->
@@ -359,7 +411,7 @@
                     <span style="color:#f87171; font-weight:800;">Cash Exit (75~100)</span>
                 </div>
                 <div style="height:6px; background:linear-gradient(to right, #10b981 0%, #10b981 30%, #eab308 30%, #eab308 50%, #f97316 50%, #f97316 75%, #ef4444 75%, #ef4444 100%); border-radius:3px; position:relative;">
-                    <div id="msiNeedle" style="position:absolute; left:75.0%; top:-4px; width:4px; height:14px; background:#ffffff; border-radius:2px; box-shadow:0 0 6px #ffffff; transform:translateX(-50%);"></div>
+                    <div id="msiNeedle" style="position:absolute; left:50%; top:-4px; width:4px; height:14px; background:#ffffff; border-radius:2px; box-shadow:0 0 6px #ffffff; transform:translateX(-50%);"></div>
                 </div>
             </div>
 
@@ -367,74 +419,74 @@
             <div class="macro-banner-grid" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-top:12px; background:rgba(0,0,0,0.25); padding:10px 14px; border-radius:2px; font-size:11px;">
                 <div>
                     <div style="color:#94a3b8; font-size:10px; font-weight:600;">1. 금융 거시 4대 축 (M_hard: 60%)</div>
-                    <div style="font-weight:700; color:#f8fafc; font-family:'JetBrains Mono';" id="msiHardVal">40.0 / 60.0 pt</div>
-                    <div style="color:#64748b; font-size:10px;" id="msiHardSub">10Y:25.0 | DXY:0.0 | VIX:5.0 | 유가:10.0</div>
+                    <div style="font-weight:700; color:#f8fafc; font-family:'JetBrains Mono';" id="msiHardVal">-- / 60.0 pt</div>
+                    <div style="color:#64748b; font-size:10px;" id="msiHardSub">Loading...</div>
                 </div>
                 <div>
                     <div style="color:#94a3b8; font-size:10px; font-weight:600;">2. 방송 육성 지침 (M_nlp: 25%)</div>
-                    <div style="font-weight:700; color:#f8fafc; font-family:'JetBrains Mono';" id="msiNlpVal">20.0 / 25.0 pt</div>
-                    <div style="color:#64748b; font-size:10px;" id="msiNlpSub">방어 42회 vs 매수 0회</div>
+                    <div style="font-weight:700; color:#f8fafc; font-family:'JetBrains Mono';" id="msiNlpVal">-- / 25.0 pt</div>
+                    <div style="color:#64748b; font-size:10px;" id="msiNlpSub">Loading...</div>
                 </div>
                 <div>
                     <div style="color:#94a3b8; font-size:10px; font-weight:600;">3. 외생 충격 (M_shock: 15%)</div>
-                    <div style="font-weight:700; color:#f8fafc; font-family:'JetBrains Mono';" id="msiShockVal">15.0 / 15.0 pt</div>
-                    <div style="color:#64748b; font-size:10px;" id="msiShockSub">지정학+6 | 관세+4 | 금리경로+5</div>
+                    <div style="font-weight:700; color:#f8fafc; font-family:'JetBrains Mono';" id="msiShockVal">-- / 15.0 pt</div>
+                    <div style="color:#64748b; font-size:10px;" id="msiShockSub">Loading...</div>
                 </div>
             </div>
         </div>
 
-        <div class="macro-gauges-strip" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:8px;">
+        <div class="macro-gauges-strip" style="display:grid; grid-template-columns: repeat(5, 1fr); gap:10px; width:100%; margin-top:12px;">
             <!-- Gauge 1: US 10Y -->
-            <div style="background:#111827; border:1px solid var(--border); border-radius:2px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;">
+            <div style="background:#111827; border:1px solid var(--border); border-radius:4px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center;">
                 <div>
-                    <div style="font-size:10px; color:#94a3af; text-transform:uppercase; font-weight:600;">미국채 10년물 금리</div>
-                    <div style="font-size:15px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6;" id="gaugeUs10yVal">4.696%</div>
+                    <div style="font-size:11px; color:#94a3af; text-transform:uppercase; font-weight:700; letter-spacing:0.02em;">미국채 10년물 금리</div>
+                    <div style="font-size:17px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6; margin-top:3px;" id="gaugeUs10yVal">4.696%</div>
                 </div>
-                <span id="gaugeUs10yBadge" style="background:rgba(239,68,68,0.15); color:#f87171; font-size:10px; padding:2px 6px; border-radius:2px; font-weight:700;">CRITICAL</span>
+                <span id="gaugeUs10yBadge" style="background:rgba(239,68,68,0.15); color:#f87171; font-size:11px; padding:3px 8px; border-radius:3px; font-weight:700;">CRITICAL</span>
             </div>
 
             <!-- Gauge 2: Dollar Index (DXY) -->
-            <div style="background:#111827; border:1px solid var(--border); border-radius:2px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;">
+            <div style="background:#111827; border:1px solid var(--border); border-radius:4px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center;">
                 <div>
-                    <div style="font-size:10px; color:#94a3af; text-transform:uppercase; font-weight:600;">달러 인덱스 (DXY)</div>
-                    <div style="font-size:15px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6;" id="gaugeDxyVal">98.75</div>
+                    <div style="font-size:11px; color:#94a3af; text-transform:uppercase; font-weight:700; letter-spacing:0.02em;">달러 인덱스 (DXY)</div>
+                    <div style="font-size:17px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6; margin-top:3px;" id="gaugeDxyVal">98.75</div>
                 </div>
-                <span id="gaugeDxyBadge" style="background:rgba(16,185,129,0.15); color:#34d399; font-size:10px; padding:2px 6px; border-radius:2px; font-weight:700;">SOFT</span>
+                <span id="gaugeDxyBadge" style="background:rgba(16,185,129,0.15); color:#34d399; font-size:11px; padding:3px 8px; border-radius:3px; font-weight:700;">SOFT</span>
             </div>
 
             <!-- Gauge 3: VIX -->
-            <div style="background:#111827; border:1px solid var(--border); border-radius:2px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;">
+            <div style="background:#111827; border:1px solid var(--border); border-radius:4px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center;">
                 <div>
-                    <div style="font-size:10px; color:#94a3af; text-transform:uppercase; font-weight:600;">VIX 공포지수</div>
-                    <div style="font-size:15px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6;" id="gaugeVixVal">15.87</div>
+                    <div style="font-size:11px; color:#94a3af; text-transform:uppercase; font-weight:700; letter-spacing:0.02em;">VIX 공포지수</div>
+                    <div style="font-size:17px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6; margin-top:3px;" id="gaugeVixVal">15.87</div>
                 </div>
-                <span id="gaugeVixBadge" style="background:rgba(16,185,129,0.15); color:#34d399; font-size:10px; padding:2px 6px; border-radius:2px; font-weight:700;">NORMAL</span>
+                <span id="gaugeVixBadge" style="background:rgba(16,185,129,0.15); color:#34d399; font-size:11px; padding:3px 8px; border-radius:3px; font-weight:700;">NORMAL</span>
             </div>
 
             <!-- Gauge 4: WTI -->
-            <div style="background:#111827; border:1px solid var(--border); border-radius:2px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;">
+            <div style="background:#111827; border:1px solid var(--border); border-radius:4px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center;">
                 <div>
-                    <div style="font-size:10px; color:#94a3af; text-transform:uppercase; font-weight:600;">WTI 국제유가</div>
-                    <div style="font-size:15px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6;" id="gaugeWtiVal">$86.30</div>
+                    <div style="font-size:11px; color:#94a3af; text-transform:uppercase; font-weight:700; letter-spacing:0.02em;">WTI 국제유가</div>
+                    <div style="font-size:17px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6; margin-top:3px;" id="gaugeWtiVal">$86.30</div>
                 </div>
-                <span id="gaugeWtiBadge" style="background:rgba(239,68,68,0.15); color:#f87171; font-size:10px; padding:2px 6px; border-radius:2px; font-weight:700;">SHOCK</span>
+                <span id="gaugeWtiBadge" style="background:rgba(239,68,68,0.15); color:#f87171; font-size:11px; padding:3px 8px; border-radius:3px; font-weight:700;">SHOCK</span>
             </div>
 
             <!-- Gauge 5: Gold -->
-            <div style="background:#111827; border:1px solid var(--border); border-radius:2px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center;">
+            <div style="background:#111827; border:1px solid var(--border); border-radius:4px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center;">
                 <div>
-                    <div style="font-size:10px; color:#94a3af; text-transform:uppercase; font-weight:600;">국제 금시세</div>
-                    <div style="font-size:15px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6;" id="gaugeGoldVal">$4,628</div>
+                    <div style="font-size:11px; color:#94a3af; text-transform:uppercase; font-weight:700; letter-spacing:0.02em;">국제 금시세</div>
+                    <div style="font-size:17px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6; margin-top:3px;" id="gaugeGoldVal">$4,628</div>
                 </div>
-                <span id="gaugeGoldBadge" style="background:rgba(59,130,246,0.15); color:#60a5fa; font-size:10px; padding:2px 6px; border-radius:2px; font-weight:700;">STABLE</span>
+                <span id="gaugeGoldBadge" style="background:rgba(59,130,246,0.15); color:#60a5fa; font-size:11px; padding:3px 8px; border-radius:3px; font-weight:700;">STABLE</span>
             </div>
 
             <!-- Live Stream & Narrative -->
-            <div style="grid-column: 1 / -1; background:#111827; border:1px solid var(--border); border-radius:2px; padding:8px 12px; font-size:11px;">
-                <div style="color:#94a3af; font-weight:600;">LIVE BROADCAST & MACRO RISK NARRATIVE:</div>
-                <div style="margin-top:2px;">
-                    <a href="https://www.youtube.com/@wepoll_original/streams" target="_blank" id="streamLink" style="color:#60a5fa; text-decoration:none; font-weight:700;">시장이 쫄아있는 근본적인 이유</a>
-                    <span style="color:#9ca3af; margin-left:6px;" id="macroNarrative">| 지정학적 리스크 / 금리 경로 불확실성</span>
+            <div style="grid-column: 1 / -1; background:#111827; border:1px solid var(--border); border-radius:4px; padding:10px 14px; font-size:12px; margin-top:4px;">
+                <div style="color:#94a3af; font-weight:700; font-size:11px;">LIVE BROADCAST & MACRO RISK NARRATIVE:</div>
+                <div style="margin-top:4px;">
+                    <a href="https://www.youtube.com/@wepoll_original/streams" target="_blank" id="streamLink" style="color:#60a5fa; text-decoration:none; font-weight:700; font-size:13px;">시장이 쫄아있는 근본적인 이유</a>
+                    <span style="color:#9ca3af; margin-left:8px;" id="macroNarrative">| 지정학적 리스크 / 금리 경로 불확실성</span>
                 </div>
             </div>
         </div>
@@ -460,84 +512,74 @@
         </div>
     </div>
 
-    <!-- Today's 6 Recommendations (2+2+2) -->
+    <!-- Tactical Dual-Strategy Alpha Grid (Bloomberg Terminal Style) -->
+    <!-- Tactical 3-Tier Institutional Quant Signals (Bloomberg Terminal Style) -->
     <div class="today-section">
         <div class="today-banner">
             <div class="today-title">
-                <span>Quantitative Tactical Verdict on Live Stream Stocks (2+2+2)</span>
-                <span style="font-size:11px; color:#9ca3af;">Click ticker to inspect TradingView chart & 5-factor quant decoder</span>
+                <span>TACTICAL QUANT SIGNALS (60-ASSET GLOBAL UNIVERSE)</span>
+                <span style="font-size:11px; color:#94a3af; font-family:'JetBrains Mono';">3-TIER INSTITUTIONAL QUANT MATRIX | MACRO ROTATION & SMART MONEY ACCUMULATION</span>
             </div>
-            <div class="today-grid">
+            
+            <!-- Slim Macro Rotation Flow Bar -->
+            <div id="macroRotationBar" style="display:flex; justify-content:space-between; align-items:center; background:#0b132b; border:1px solid #1e293b; border-left:3px solid #38bdf8; border-radius:4px; padding:6px 12px; margin-top:8px; font-family:'JetBrains Mono'; font-size:11px;">
+                <div>
+                    <span style="color:#64748b; font-weight:700;">[MACRO ROTATION]</span>
+                    <span style="color:#94a3b8; margin-left:6px;">ACTIVE TAILWIND SECTORS:</span>
+                    <span id="macroTailwindSectors" style="color:#38bdf8; font-weight:800; margin-left:4px;">[DEFENSE] [ENERGY] [POWER/INFRA]</span>
+                </div>
+                <div style="color:#94a3b8; font-size:10px;">
+                    <span>ALLOCATION GUIDE: <strong style="color:#fbbf24;">TIER 1 (60~70% CORE)</strong> | <strong style="color:#34d399;">TIER 2 (20%)</strong> | <strong style="color:#f87171;">TIER 3 (10%)</strong></span>
+                </div>
+            </div>
+            
+            <div style="display:grid; grid-template-columns: 1.15fr 0.85fr 1.15fr; gap:12px; margin-top:10px;">
                 
-                <!-- Bull 2 -->
-                <div class="rec-card-group" style="border-left: 3px solid var(--accent-green);">
-                    <div class="group-header" style="color:var(--accent-green);">
-                        <span>Primary Accumulation (1차 매수 적합)</span>
-                        <span style="font-size:10px; background:rgba(16,185,129,0.15); padding:1px 5px; border-radius:2px;">Target +15% / Stop -3%</span>
+                <!-- [LEFT] Tier 2: Structural 26D Pullback (기준선 눌림목 1차 분할 매수) -->
+                <div style="background:#0f172a; border:1px solid #1e293b; border-top:3px solid var(--accent-green); border-radius:4px; padding:12px; display:flex; flex-direction:column;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #1e293b;">
+                        <div>
+                            <span style="font-size:12px; font-weight:800; color:#34d399; letter-spacing:0.04em; text-transform:uppercase; font-family:'JetBrains Mono'; display:block;">
+                                [TIER 2] STRUCTURAL 26D PULLBACK
+                            </span>
+                            <span style="font-size:10px; color:#94a3b8; font-family:'JetBrains Mono';">26D KIJUN SUPPORT (-0.8% ~ +3.5%)</span>
+                        </div>
+                        <span style="font-size:10px; color:#34d399; background:#064e3b; padding:2px 6px; border-radius:2px; font-family:'JetBrains Mono'; font-weight:700;">TIER 2 BASE</span>
                     </div>
-                    <div id="todayBullCards">
-                        <div class="rec-item active" onclick="selectStock('AMZN', 261.31)">
-                            <div>
-                                <span class="rec-item-title" style="color:var(--accent-green);">AMZN <span class="rec-item-sub">아마존 (방송 27회)</span></span>
-                                <div class="rec-item-sub">구름대 위 + 기준선 지지 (+1.8%)</div>
-                            </div>
-                            <div class="rec-item-price">$261.31</div>
-                        </div>
-                        <div class="rec-item" onclick="selectStock('NVDA', 225.01)">
-                            <div>
-                                <span class="rec-item-title" style="color:var(--accent-green);">NVDA <span class="rec-item-sub">엔비디아 (방송 30회)</span></span>
-                                <div class="rec-item-sub">구름대 위 + 거래량 마름 (+7.7%)</div>
-                            </div>
-                            <div class="rec-item-price">$225.01</div>
-                        </div>
+                    <div id="strat1ExclusiveCards" style="display:flex; flex-direction:column; gap:8px; flex:1;">
+                        <!-- Populated dynamically via JavaScript -->
                     </div>
                 </div>
 
-                <!-- Neutral 2 -->
-                <div class="rec-card-group" style="border-left: 3px solid var(--accent-yellow);">
-                    <div class="group-header" style="color:var(--accent-yellow);">
-                        <span>Consolidation (중립 관망)</span>
-                        <span style="font-size:10px; background:rgba(245,158,11,0.15); padding:1px 5px; border-radius:2px;">Hold / Observe</span>
+                <!-- [CENTER] Tier 1: Macro Leader & Smart Money Accumulation (최상위 주도주) -->
+                <div style="background:#17170c; border:1px solid #78350f; border-top:3px solid #f59e0b; border-radius:4px; padding:12px; display:flex; flex-direction:column; box-shadow:0 0 15px rgba(245,158,11,0.08);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #78350f;">
+                        <div>
+                            <span style="font-size:12px; font-weight:800; color:#fbbf24; letter-spacing:0.04em; text-transform:uppercase; font-family:'JetBrains Mono'; display:block;">
+                                [TIER 1] MACRO & SMART MONEY
+                            </span>
+                            <span style="font-size:10px; color:#fde68a; font-family:'JetBrains Mono';">MACRO TAILWIND + STEALTH OBV ACCUM</span>
+                        </div>
+                        <span style="font-size:10px; color:#0f172a; background:#fbbf24; padding:2px 6px; border-radius:2px; font-family:'JetBrains Mono'; font-weight:800;">TOP CONVICTION</span>
                     </div>
-                    <div id="todayNeutralCards">
-                        <div class="rec-item" onclick="selectStock('AMD', 506.00)">
-                            <div>
-                                <span class="rec-item-title" style="color:var(--accent-yellow);">AMD <span class="rec-item-sub">에이엠디 (방송 9회)</span></span>
-                                <div class="rec-item-sub">구름대 내부 횡보 (+1.4%)</div>
-                            </div>
-                            <div class="rec-item-price">$506.00</div>
-                        </div>
-                        <div class="rec-item" onclick="selectStock('GOOGL', 344.00)">
-                            <div>
-                                <span class="rec-item-title" style="color:var(--accent-yellow);">GOOGL <span class="rec-item-sub">알파벳 (방송 21회)</span></span>
-                                <div class="rec-item-sub">기준선 수렴 (-1.6%)</div>
-                            </div>
-                            <div class="rec-item-price">$344.00</div>
-                        </div>
+                    <div id="dualConsensusCards" style="display:flex; flex-direction:column; gap:8px; flex:1;">
+                        <!-- Populated dynamically via JavaScript -->
                     </div>
                 </div>
 
-                <!-- Bear 2 -->
-                <div class="rec-card-group" style="border-left: 3px solid var(--accent-red);">
-                    <div class="group-header" style="color:var(--accent-red);">
-                        <span>Risk Alert / Short (생명선 붕괴)</span>
-                        <span style="font-size:10px; background:rgba(239,68,68,0.15); padding:1px 5px; border-radius:2px;">Avoid Entry / Hedge</span>
+                <!-- [RIGHT] Tier 3: Cloud Bounce Sniper Radar (구름대 반등 2단계 스나이퍼) -->
+                <div style="background:#0f172a; border:1px solid #1e293b; border-top:3px solid #f87171; border-radius:4px; padding:12px; display:flex; flex-direction:column;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #1e293b;">
+                        <div>
+                            <span style="font-size:12px; font-weight:800; color:#f87171; letter-spacing:0.04em; text-transform:uppercase; font-family:'JetBrains Mono'; display:block;">
+                                [TIER 3] CLOUD BOUNCE SNIPER
+                            </span>
+                            <span style="font-size:10px; color:#fca5a5; font-family:'JetBrains Mono';">STAGE 2 MOMENTUM LAUNCH</span>
+                        </div>
+                        <span style="font-size:10px; color:#f87171; background:#450a0a; padding:2px 6px; border-radius:2px; font-family:'JetBrains Mono'; font-weight:700;">TIER 3 SNIPER</span>
                     </div>
-                    <div id="todayBearCards">
-                        <div class="rec-item" onclick="selectStock('META', 568.97)">
-                            <div>
-                                <span class="rec-item-title" style="color:var(--accent-red);">META <span class="rec-item-sub">메타 (방송 12회)</span></span>
-                                <div class="rec-item-sub">26일 생명선 붕괴 (-6.0%)</div>
-                            </div>
-                            <div class="rec-item-price">$568.97</div>
-                        </div>
-                        <div class="rec-item" onclick="selectStock('TSLA', 339.30)">
-                            <div>
-                                <span class="rec-item-title" style="color:var(--accent-red);">TSLA <span class="rec-item-sub">테슬라 (방송 3회)</span></span>
-                                <div class="rec-item-sub">26일 기준선 하향 이탈 (-3.6%)</div>
-                            </div>
-                            <div class="rec-item-price">$339.30</div>
-                        </div>
+                    <div id="strat2ExclusiveCards" style="display:flex; flex-direction:column; gap:8px; flex:1;">
+                        <!-- Populated dynamically via JavaScript -->
                     </div>
                 </div>
 
@@ -553,18 +595,25 @@
             
             <!-- Quick Entry Panel -->
             <div class="quick-buy-box" id="quickBuyBox">
-                <div>
+                <div style="flex:1;">
                     <div style="display:flex; align-items:center; gap:8px;">
-                        <span style="font-size:14px; font-weight:800; font-family:'JetBrains Mono';" id="qbTicker">NVDA</span>
+                        <span style="font-size:15px; font-weight:800; font-family:'JetBrains Mono'; color:#f8fafc;" id="qbTicker">NVDA</span>
+                        <span style="font-size:12px; color:#94a3b8;">현재가:</span>
                         <span style="font-size:14px; font-weight:700; color:#38bdf8; font-family:'JetBrains Mono';" id="qbPrice">$225.16</span>
                     </div>
-                    <div style="font-size:11px; color:#9ca3af; margin-top:2px;" id="qbTargetStop">
-                        Target: <span style="color:#10b981;">$258.93 (+15.0%)</span> | Stop: <span style="color:#ef4444;">$218.41 (-3.0%)</span>
+                    <div style="font-size:11px; color:#9ca3af; margin-top:3px;" id="qbTargetStop">
+                        Target(+15%): <span style="color:#10b981; font-weight:700;" id="qbTargetVal">$258.93</span> | Stop(-3%): <span style="color:#ef4444; font-weight:700;" id="qbStopVal">$218.41</span>
                     </div>
                 </div>
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <span style="font-size:11px; color:#9ca3af;">Shares:</span>
-                    <input type="number" id="qbQty" class="quick-buy-input" value="5" min="1" />
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <div style="display:flex; align-items:center; gap:4px;">
+                        <span style="font-size:11px; color:#94a3af; font-weight:600;">매수가($):</span>
+                        <input type="number" id="qbBuyPrice" class="quick-buy-input" style="width:90px;" step="any" min="0.01" value="225.16" oninput="updateTargetStopLive()" placeholder="매수가" />
+                    </div>
+                    <div style="display:flex; align-items:center; gap:4px;">
+                        <span style="font-size:11px; color:#94a3af; font-weight:600;">수량(주):</span>
+                        <input type="number" id="qbQty" class="quick-buy-input" style="width:75px;" step="any" min="0.0001" value="5" placeholder="수량" />
+                    </div>
                     <button class="btn-buy-action" onclick="submitQuickBuy()">Enter Portfolio</button>
                 </div>
             </div>
@@ -594,38 +643,25 @@
                 </div>
             </div>
 
-            <!-- 2. Historical 2+2+2 Matrix -->
-            <div class="panel">
+            <!-- 2. Daily Quant Recommendations History (일자별 추천 종목 이력) -->
+            <div class="panel" style="margin-top:12px;">
                 <div class="panel-header">
-                    <span>Historical Quantitative 2+2+2 Matrix</span>
-                    <span style="font-size:10px; color:#9ca3af;">Click ticker to inspect</span>
+                    <span>DAILY RECOMMENDATIONS HISTORY (일자별 추천 종목 이력)</span>
+                    <span style="font-size:10px; color:#94a3af; font-family:'JetBrains Mono';">HISTORICAL LOG</span>
                 </div>
-                <div style="overflow-x: auto; max-height: 340px;">
+                <div style="overflow-x: auto; max-height: 240px;">
                     <table>
                         <thead>
                             <tr>
-                                <th>Date</th>
-                                <th style="color:var(--accent-green);">Accumulation (2)</th>
-                                <th style="color:var(--accent-yellow);">Consolidation (2)</th>
-                                <th style="color:var(--accent-red);">Risk / Short (2)</th>
+                                <th>DATE</th>
+                                <th>[TIER 1] MACRO & SMART MONEY</th>
+                                <th>[TIER 2] 26D PULLBACK</th>
+                                <th>[TIER 3] CLOUD SNIPER</th>
+                                <th>MACRO STANCE</th>
                             </tr>
                         </thead>
-                        <tbody id="matrixTableBody">
-                            <tr>
-                                <td style="font-family:'JetBrains Mono'; font-weight:700;">2026-08-18</td>
-                                <td>
-                                    <span class="ticker-pill bull" onclick="selectStock('LLY', 1183.16)">LLY ($1,183.16)</span>
-                                    <span class="ticker-pill bull" onclick="selectStock('AMZN', 261.31)" style="margin-left:4px;">AMZN ($261.31)</span>
-                                </td>
-                                <td>
-                                    <span class="ticker-pill neutral" onclick="selectStock('COST', 953.50)">COST ($953.50)</span>
-                                    <span class="ticker-pill neutral" onclick="selectStock('AVGO', 392.43)" style="margin-left:4px;">AVGO ($392.43)</span>
-                                </td>
-                                <td>
-                                    <span class="ticker-pill bear" onclick="selectStock('VST', 146.11)">VST ($146.11)</span>
-                                    <span class="ticker-pill bear" onclick="selectStock('META', 568.97)" style="margin-left:4px;">META ($568.97)</span>
-                                </td>
-                            </tr>
+                        <tbody id="dailyRecHistoryBody">
+                            <!-- Populated dynamically via JavaScript -->
                         </tbody>
                     </table>
                 </div>
@@ -640,14 +676,19 @@
                     <div style="display:flex; align-items:center; gap:8px;">
                         <span class="ticker-title" id="curTicker">NVDA</span>
                         <span class="ticker-price" id="curPrice" style="color:var(--accent-green);">$225.16</span>
-                        <span style="background:#1e293b; color:#38bdf8; font-size:11px; padding:2px 8px; border-radius:2px; font-weight:700; font-family:'JetBrains Mono'; border:1px solid #334155;">1D 일봉 (Daily)</span>
-                        <span style="background:#1e293b; color:#94a3b8; font-size:11px; padding:2px 8px; border-radius:2px; font-weight:700; font-family:'JetBrains Mono'; border:1px solid #334155;">최근 2개년 (500 거래일)</span>
+                        <span id="curTfBadge" style="background:#1e293b; color:#38bdf8; font-size:11px; padding:2px 8px; border-radius:2px; font-weight:700; font-family:'JetBrains Mono'; border:1px solid #334155;">1D 일봉 (Daily)</span>
+                        <span id="curPeriodBadge" style="background:#1e293b; color:#94a3b8; font-size:11px; padding:2px 8px; border-radius:2px; font-weight:700; font-family:'JetBrains Mono'; border:1px solid #334155;">최근 2개년 (500 거래일)</span>
                     </div>
-                    <div style="font-size:11px; color:#94a3af; margin-top:3px;">
+                    <div style="font-size:11px; color:#94a3af; margin-top:3px;" id="chartIndicatorLegend">
                         지표 구성: 9일 전환선(하늘) | 26일 기준선(노랑, 생명선) | 선행스팬 구름대(초록/빨강) | 20·60 SMA | 거래량
                     </div>
                 </div>
                 <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                    <!-- Timeframe Switcher (Daily vs Weekly) -->
+                    <div style="display:flex; align-items:center; background:#0f172a; border:1px solid #334155; border-radius:3px; padding:2px; margin-right:4px;">
+                        <button class="tf-btn active" id="btnTfDaily" onclick="switchTimeframe('daily')">1D 일봉</button>
+                        <button class="tf-btn" id="btnTfWeekly" onclick="switchTimeframe('weekly')">1W 주봉</button>
+                    </div>
                     <button class="toggle-btn active" id="btnKijun">26D Kijun</button>
                     <button class="toggle-btn active" id="btnTenkan">9D Tenkan</button>
                     <button class="toggle-btn active" id="btnSpan">Ichimoku Cloud</button>
@@ -672,7 +713,7 @@
                     <!-- 1. 26D Kijun-sen -->
                     <div class="indicator-item">
                         <div class="indicator-head">
-                            <span class="indicator-name">1. 26-Day Kijun-sen (Life Line)</span>
+                            <span class="indicator-name" id="sigKijunTitle">1. 26-Day Kijun-sen (Life Line)</span>
                             <span class="status-badge status-good" id="sigKijunBadge">SUPPORT INTACT</span>
                         </div>
                         <div class="indicator-val" id="sigKijunVal">$1,172.94 (+0.9% Above Support)</div>
@@ -682,7 +723,7 @@
                     <!-- 2. 9D Tenkan-sen -->
                     <div class="indicator-item">
                         <div class="indicator-head">
-                            <span class="indicator-name">2. 9-Day Tenkan-sen (Momentum)</span>
+                            <span class="indicator-name" id="sigTenkanTitle">2. 9-Day Tenkan-sen (Momentum)</span>
                             <span class="status-badge status-good" id="sigTenkanBadge">BULLISH CROSS</span>
                         </div>
                         <div class="indicator-val" id="sigTenkanVal">$1,185.20 (Tenkan > Kijun)</div>
@@ -692,7 +733,7 @@
                     <!-- 3. Current Ichimoku Cloud -->
                     <div class="indicator-item">
                         <div class="indicator-head">
-                            <span class="indicator-name">3. 현재 구름대 위치 (Current Cloud)</span>
+                            <span class="indicator-name" id="sigCloudTitle">3. 현재 구름대 위치 (Current Cloud)</span>
                             <span class="status-badge status-good" id="sigCloudBadge">ABOVE CLOUD</span>
                         </div>
                         <div class="indicator-val" id="sigCloudVal">구름대 상단 안착 (지지선 유효)</div>
@@ -702,7 +743,7 @@
                     <!-- 4. 26-Day Future Forward Cloud (향후 26일 미래 구름대) -->
                     <div class="indicator-item">
                         <div class="indicator-head">
-                            <span class="indicator-name">4. 향후 26일 미래 구름대 (Forward Horizon)</span>
+                            <span class="indicator-name" id="sigFutureCloudTitle">4. 향후 26일 미래 구름대 (Forward Horizon)</span>
                             <span class="status-badge status-good" id="sigFutureCloudBadge">BULL CLOUD (양운)</span>
                         </div>
                         <div class="indicator-val" id="sigFutureCloudVal">+26일 선행스팬1 $213.51 > 선행스팬2 $210.90</div>
@@ -712,7 +753,7 @@
                     <!-- 5. Volume Dry-Up -->
                     <div class="indicator-item">
                         <div class="indicator-head">
-                            <span class="indicator-name">5. 20일 거래량 마름 (Volume Dry-Up)</span>
+                            <span class="indicator-name" id="sigVolTitle">5. 20일 거래량 마름 (Volume Dry-Up)</span>
                             <span class="status-badge status-good" id="sigVolBadge">OPTIMAL DRY-UP</span>
                         </div>
                         <div class="indicator-val" id="sigVolVal">20일 평균 대비 63% (수급 마름)</div>
@@ -799,8 +840,16 @@
         };
 
         function initCharts() {
+            if (typeof LightweightCharts === "undefined") {
+                console.warn("[Chart] LightweightCharts library not ready, retrying in 300ms...");
+                setTimeout(initCharts, 300);
+                return;
+            }
+            if (mainChart) return;
+            
             const chartDiv = document.getElementById("chartContainer");
             const volDiv = document.getElementById("volumeContainer");
+            if (!chartDiv || !volDiv) return;
             
             mainChart = LightweightCharts.createChart(chartDiv, {
                 layout: { background: { color: '#0f172a' }, textColor: '#94a3b8' },
@@ -868,19 +917,45 @@
             });
         }
 
+        function updateTargetStopLive() {
+            const bp = parseFloat(document.getElementById("qbBuyPrice").value) || currentSelectedPrice;
+            const tgtP = (bp * 1.15).toFixed(2);
+            const stopP = (bp * 0.97).toFixed(2);
+            const tgtEl = document.getElementById("qbTargetVal");
+            const stopEl = document.getElementById("qbStopVal");
+            if (tgtEl) tgtEl.textContent = `$${tgtP}`;
+            if (stopEl) stopEl.textContent = `$${stopP}`;
+        }
+
         function selectStock(ticker, price) {
             currentSelectedTicker = ticker;
-            currentSelectedPrice = price || 100.0;
-
             document.getElementById("curTicker").textContent = ticker;
-            document.getElementById("curPrice").textContent = `$${currentSelectedPrice.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-
             document.getElementById("qbTicker").textContent = ticker;
-            document.getElementById("qbPrice").textContent = `$${currentSelectedPrice.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-            
-            const tgtP = (currentSelectedPrice * 1.15).toFixed(2);
-            const stopP = (currentSelectedPrice * 0.97).toFixed(2);
-            document.getElementById("qbTargetStop").innerHTML = `Target: <span style="color:#10b981;">$${tgtP} (+15.0%)</span> | Stop: <span style="color:#ef4444;">$${stopP} (-3.0%)</span>`;
+
+            // Dynamically update active selection highlight on all cards
+            document.querySelectorAll(".rec-item").forEach(card => {
+                const cardTicker = card.getAttribute("data-ticker");
+                if (cardTicker === ticker) {
+                    card.classList.add("active");
+                } else {
+                    card.classList.remove("active");
+                }
+            });
+
+            if (price !== null && price !== undefined && Number(price) > 0) {
+                currentSelectedPrice = Number(price);
+                const formattedPrice = `$${currentSelectedPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                document.getElementById("curPrice").textContent = formattedPrice;
+                document.getElementById("qbPrice").textContent = formattedPrice;
+                const buyInput = document.getElementById("qbBuyPrice");
+                if (buyInput) {
+                    buyInput.value = currentSelectedPrice.toFixed(2);
+                }
+                updateTargetStopLive();
+            } else {
+                document.getElementById("curPrice").textContent = "Loading...";
+                document.getElementById("qbPrice").textContent = "Loading...";
+            }
 
             // Update Decoder Cards
             updateDecoderUI(ticker);
@@ -889,80 +964,335 @@
             loadChartData(ticker);
         }
 
-        function updateDecoderUI(ticker) {
-            const info = STOCK_INTELLIGENCE[ticker] || {
-                verdict: "Tactical Evaluation", score: "Rating Available", type: "NEUTRAL",
-                kijun: { val: "기준선 분석 중", status: "status-neutral", badge: "EVALUATING", desc: "26일 기준선 데이터를 산출 중입니다." },
-                tenkan: { val: "전환선 분석 중", status: "status-neutral", badge: "EVALUATING", desc: "9일 전환선 모멘텀을 분석 중입니다." },
-                cloud: { val: "구름대 분석 중", status: "status-neutral", badge: "EVALUATING", desc: "일목 구름대 위치를 계산 중입니다." },
-                vol: { val: "거래량 비율 산출 중", status: "status-neutral", badge: "EVALUATING", desc: "20일 평균 거래량 비율을 산출 중입니다." },
-                action: "기준선 및 손절선 원칙에 따라 분할 대응하십시오."
-            };
-
+        function updateDecoderUI(ticker, liveChartData) {
             const banner = document.getElementById("verdictBanner");
             const score = document.getElementById("verdictScore");
             const title = document.getElementById("verdictTitle");
 
-            title.textContent = `Quant Rating: [${info.verdict}]`;
-            score.textContent = info.score;
-
-            if (info.type === 'BULL') {
-                banner.style.borderLeftColor = "var(--accent-green)";
-                score.style.color = "var(--accent-green)";
-            } else if (info.type === 'BEAR') {
-                banner.style.borderLeftColor = "var(--accent-red)";
-                score.style.color = "var(--accent-red)";
+            let info = null;
+            if (liveChartData && liveChartData.intelligence) {
+                info = liveChartData.intelligence;
+            } else if (window.__DASHBOARD_CACHE__ && window.__DASHBOARD_CACHE__.charts && window.__DASHBOARD_CACHE__.charts[ticker] && window.__DASHBOARD_CACHE__.charts[ticker].intelligence) {
+                info = window.__DASHBOARD_CACHE__.charts[ticker].intelligence;
+            } else if (STOCK_INTELLIGENCE[ticker]) {
+                info = STOCK_INTELLIGENCE[ticker];
             } else {
-                banner.style.borderLeftColor = "var(--accent-yellow)";
-                score.style.color = "var(--accent-yellow)";
+                info = {
+                    verdict: "Quant Analyzing...", score: "Computing / 100 pt", type: "HOLD",
+                    kijun: { val: "계산 중...", status: "status-neutral", badge: "CALCULATING", desc: "26일 기준선(생명선) 지지 상태를 실시간 분석 중입니다." },
+                    tenkan: { val: "계산 중...", status: "status-neutral", badge: "CALCULATING", desc: "9일 전환선 정배열 상태를 분석 중입니다." },
+                    cloud: { val: "계산 중...", status: "status-neutral", badge: "CALCULATING", desc: "일목 선행스팬 구름대 상단 안착 여부를 계산 중입니다." },
+                    vol: { val: "계산 중...", status: "status-neutral", badge: "CALCULATING", desc: "20일 평균 거래량 대비 매도세 마름 비율을 계산 중입니다." },
+                    action: "거래소 시세 데이터 및 17년 퀀트 지표를 실시간 다운로드/연산 중입니다."
+                };
             }
 
-            document.getElementById("sigKijunBadge").className = `status-badge ${info.kijun.status}`;
-            document.getElementById("sigKijunBadge").textContent = info.kijun.badge;
-            document.getElementById("sigKijunVal").textContent = info.kijun.val;
-            document.getElementById("sigKijunDesc").textContent = info.kijun.desc;
+            // Differentiate Quant Rating criteria based on Tier 1 vs Tier 2 vs Tier 3
+            let tierType = 'TIER_2';
+            if (window.latestDashboardData) {
+                const isT1 = (window.latestDashboardData.dual_consensus || []).some(x => x.ticker === ticker);
+                const isT3 = (window.latestDashboardData.strat2_exclusive || []).some(x => x.ticker === ticker);
+                if (isT1) tierType = 'TIER_1';
+                else if (isT3) tierType = 'TIER_3';
+                else tierType = 'TIER_2';
+            } else {
+                if (info.is_sniper && info.bull_score >= 90) tierType = 'TIER_1';
+                else if (info.is_sniper) tierType = 'TIER_3';
+                else tierType = 'TIER_2';
+            }
 
-            document.getElementById("sigTenkanBadge").className = `status-badge ${info.tenkan.status}`;
-            document.getElementById("sigTenkanBadge").textContent = info.tenkan.badge;
-            document.getElementById("sigTenkanVal").textContent = info.tenkan.val;
-            document.getElementById("sigTenkanDesc").textContent = info.tenkan.desc;
+            const elKijunTitle = document.getElementById("sigKijunTitle");
+            const elTenkanTitle = document.getElementById("sigTenkanTitle");
+            const elCloudTitle = document.getElementById("sigCloudTitle");
+            const elFutureCloudTitle = document.getElementById("sigFutureCloudTitle");
+            const elVolTitle = document.getElementById("sigVolTitle");
 
-            document.getElementById("sigCloudBadge").className = `status-badge ${info.cloud.status}`;
-            document.getElementById("sigCloudBadge").textContent = info.cloud.badge;
-            document.getElementById("sigCloudVal").textContent = info.cloud.val;
-            document.getElementById("sigCloudDesc").textContent = info.cloud.desc;
+            const safeKijun = info.kijun || { status: "status-good", badge: "SUPPORT", val: "-", desc: "-" };
+            const safeTenkan = info.tenkan || { status: "status-good", badge: "BULLISH", val: "-", desc: "-" };
+            const safeCloud = info.cloud || { status: "status-good", badge: "ABOVE CLOUD", val: "-", desc: "-" };
+            const safeVol = info.vol || { status: "status-good", badge: "OPTIMAL", val: "-", desc: "-" };
 
-            document.getElementById("sigVolBadge").className = `status-badge ${info.vol.status}`;
-            document.getElementById("sigVolBadge").textContent = info.vol.badge;
-            document.getElementById("sigVolVal").textContent = info.vol.val;
-            document.getElementById("sigVolDesc").textContent = info.vol.desc;
+            if (tierType === 'TIER_1') {
+                if (title) title.textContent = `Quant Rating: [Tier 1: 거시 순풍 + 기관 잠행 매집 (최우선 주도주)]`;
+                if (score) {
+                    score.textContent = info.score || "100 / 100 pt (TIER_1_LEADER)";
+                    score.style.color = "#fbbf24";
+                }
+                if (banner) banner.style.borderLeftColor = "#fbbf24";
+                
+                if (elKijunTitle) elKijunTitle.textContent = "1. 26일 기준선 안전 지지 (-0.8% ~ +3.5%)";
+                if (elTenkanTitle) elTenkanTitle.textContent = "2. 거시 순풍 섹터 (Macro Tailwind)";
+                if (elCloudTitle) elCloudTitle.textContent = "3. 기관 잠행 매집 (OBV Stealth Accum)";
+                if (elFutureCloudTitle) elFutureCloudTitle.textContent = "4. 14일 양봉 수급비 우세 (Flow Ratio)";
+                if (elVolTitle) elVolTitle.textContent = "5. 20일 거래량 마름 (매도세 소진 완료)";
+                
+                const bKijun = document.getElementById("sigKijunBadge");
+                if (bKijun) { bKijun.className = `status-badge ${safeKijun.status}`; bKijun.textContent = safeKijun.badge; }
+                const vKijun = document.getElementById("sigKijunVal");
+                if (vKijun) vKijun.textContent = safeKijun.val;
+                const dKijun = document.getElementById("sigKijunDesc");
+                if (dKijun) dKijun.textContent = safeKijun.desc;
 
-            document.getElementById("actionDirectiveText").textContent = info.action;
+                if (info.sector) {
+                    const vTenkan = document.getElementById("sigTenkanVal");
+                    if (vTenkan) vTenkan.textContent = `섹터: [${info.sector}]`;
+                    const dTenkan = document.getElementById("sigTenkanDesc");
+                    if (dTenkan) dTenkan.textContent = `현재 거시 기후 순풍 및 기관 바스켓 자금 유입 수혜 섹터에 해당합니다.`;
+                    const bTenkan = document.getElementById("sigTenkanBadge");
+                    if (bTenkan) { bTenkan.className = "status-badge status-good"; bTenkan.textContent = "TAILWIND"; }
+                }
+                if (info.obv_status) {
+                    const vCloud = document.getElementById("sigCloudVal");
+                    if (vCloud) vCloud.textContent = `OBV: ${info.obv_label || '[STEALTH ACCUM]'}`;
+                    const dCloud = document.getElementById("sigCloudDesc");
+                    if (dCloud) dCloud.textContent = `주가 횡보/눌림목 구간 스마트 머니의 지속적인 바닥 물량 매집이 확인됩니다.`;
+                    const bCloud = document.getElementById("sigCloudBadge");
+                    if (bCloud) { bCloud.className = "status-badge status-good"; bCloud.textContent = info.obv_status; }
+                }
+                if (info.flow_label) {
+                    const vFc = document.getElementById("sigFutureCloudVal");
+                    if (vFc) vFc.textContent = `양봉 수급비: ${info.flow_label}`;
+                    const dFc = document.getElementById("sigFutureCloudDesc");
+                    if (dFc) dFc.textContent = `최근 14거래일간 상승일 거래량이 하락일 거래량을 압도하고 있습니다.`;
+                    const bFc = document.getElementById("sigFutureCloudBadge");
+                    if (bFc) { bFc.className = "status-badge status-good"; bFc.textContent = "INFLOW"; }
+                }
+                const bVol = document.getElementById("sigVolBadge");
+                if (bVol) { bVol.className = `status-badge ${safeVol.status}`; bVol.textContent = safeVol.badge; }
+                const vVol = document.getElementById("sigVolVal");
+                if (vVol) vVol.textContent = safeVol.val;
+                const dVol = document.getElementById("sigVolDesc");
+                if (dVol) dVol.textContent = safeVol.desc;
+            } else if (tierType === 'TIER_3') {
+                if (title) title.textContent = `Quant Rating: [Tier 3: 구름대 반등 스나이퍼 (2단계 발사대)]`;
+                if (score) {
+                    score.textContent = info.score || "95 / 100 pt (TIER_3_SNIPER)";
+                    score.style.color = "#f87171";
+                }
+                if (banner) banner.style.borderLeftColor = "#f87171";
+                
+                if (elKijunTitle) elKijunTitle.textContent = "1. [2단계] 기준선 돌파 상방 가속 (Stage 2 Launch)";
+                if (elTenkanTitle) elTenkanTitle.textContent = "2. 9일 전환선 상향 모멘텀 (Tenkan Momentum)";
+                if (elCloudTitle) elCloudTitle.textContent = "3. [1단계] 구름대 트램펄린 지지 도약 (Trampoline)";
+                if (elFutureCloudTitle) elFutureCloudTitle.textContent = "4. +26일 미래 구름대 발사대 지지";
+                if (elVolTitle) elVolTitle.textContent = "5. 칼손절 기준선 엄수 (-4% 컷 / +15% 목표)";
+
+                const bKijun = document.getElementById("sigKijunBadge");
+                if (bKijun) { bKijun.className = `status-badge ${safeKijun.status}`; bKijun.textContent = safeKijun.badge; }
+                const vKijun = document.getElementById("sigKijunVal");
+                if (vKijun) vKijun.textContent = safeKijun.val;
+                const dKijun = document.getElementById("sigKijunDesc");
+                if (dKijun) dKijun.textContent = safeKijun.desc;
+
+                const bTenkan = document.getElementById("sigTenkanBadge");
+                if (bTenkan) { bTenkan.className = `status-badge ${safeTenkan.status}`; bTenkan.textContent = safeTenkan.badge; }
+                const vTenkan = document.getElementById("sigTenkanVal");
+                if (vTenkan) vTenkan.textContent = safeTenkan.val;
+                const dTenkan = document.getElementById("sigTenkanDesc");
+                if (dTenkan) dTenkan.textContent = safeTenkan.desc;
+
+                const bCloud = document.getElementById("sigCloudBadge");
+                if (bCloud) { bCloud.className = `status-badge ${safeCloud.status}`; bCloud.textContent = safeCloud.badge; }
+                const vCloud = document.getElementById("sigCloudVal");
+                if (vCloud) vCloud.textContent = safeCloud.val;
+                const dCloud = document.getElementById("sigCloudDesc");
+                if (dCloud) dCloud.textContent = safeCloud.desc;
+
+                const bVol = document.getElementById("sigVolBadge");
+                if (bVol) { bVol.className = `status-badge ${safeVol.status}`; bVol.textContent = safeVol.badge; }
+                const vVol = document.getElementById("sigVolVal");
+                if (vVol) vVol.textContent = safeVol.val;
+                const dVol = document.getElementById("sigVolDesc");
+                if (dVol) dVol.textContent = safeVol.desc;
+            } else {
+                if (title) title.textContent = `Quant Rating: [Tier 2: 정석 기준선 눌림목 (안정 분할 매수)]`;
+                if (score) {
+                    score.textContent = info.score || "85 / 100 pt (TIER_2_PULLBACK)";
+                    score.style.color = "var(--accent-green)";
+                }
+                if (banner) banner.style.borderLeftColor = "var(--accent-green)";
+                
+                if (elKijunTitle) elKijunTitle.textContent = "1. 26-Day Kijun-sen (생명선 지지 안착)";
+                if (elTenkanTitle) elTenkanTitle.textContent = "2. 9-Day Tenkan-sen (모멘텀 정배열)";
+                if (elCloudTitle) elCloudTitle.textContent = "3. 일목 구름대 상단 안착 (방어벽 유효)";
+                if (elFutureCloudTitle) elFutureCloudTitle.textContent = "4. 향후 26일 미래 구름대 (양운 지지)";
+                if (elVolTitle) elVolTitle.textContent = "5. 20일 거래량 마름 (Volume Dry-Up 50% 이하)";
+
+                const bKijun = document.getElementById("sigKijunBadge");
+                if (bKijun) { bKijun.className = `status-badge ${safeKijun.status}`; bKijun.textContent = safeKijun.badge; }
+                const vKijun = document.getElementById("sigKijunVal");
+                if (vKijun) vKijun.textContent = safeKijun.val;
+                const dKijun = document.getElementById("sigKijunDesc");
+                if (dKijun) dKijun.textContent = safeKijun.desc;
+
+                const bTenkan = document.getElementById("sigTenkanBadge");
+                if (bTenkan) { bTenkan.className = `status-badge ${safeTenkan.status}`; bTenkan.textContent = safeTenkan.badge; }
+                const vTenkan = document.getElementById("sigTenkanVal");
+                if (vTenkan) vTenkan.textContent = safeTenkan.val;
+                const dTenkan = document.getElementById("sigTenkanDesc");
+                if (dTenkan) dTenkan.textContent = safeTenkan.desc;
+
+                const bCloud = document.getElementById("sigCloudBadge");
+                if (bCloud) { bCloud.className = `status-badge ${safeCloud.status}`; bCloud.textContent = safeCloud.badge; }
+                const vCloud = document.getElementById("sigCloudVal");
+                if (vCloud) vCloud.textContent = safeCloud.val;
+                const dCloud = document.getElementById("sigCloudDesc");
+                if (dCloud) dCloud.textContent = safeCloud.desc;
+
+                const bVol = document.getElementById("sigVolBadge");
+                if (bVol) { bVol.className = `status-badge ${safeVol.status}`; bVol.textContent = safeVol.badge; }
+                const vVol = document.getElementById("sigVolVal");
+                if (vVol) vVol.textContent = safeVol.val;
+                const dVol = document.getElementById("sigVolDesc");
+                if (dVol) dVol.textContent = safeVol.desc;
+            }
+
+            const adText = document.getElementById("actionDirectiveText");
+            if (adText) adText.textContent = info.action || "1차 분할 매수 적합 타점입니다.";
+        }
+
+        let currentChartAbortController = null;
+        let currentChartRequestId = 0;
+        let currentTimeframe = 'daily';
+        let currentLoadedChartObj = null;
+
+        function switchTimeframe(tf) {
+            currentTimeframe = tf;
+            
+            const btnDaily = document.getElementById("btnTfDaily");
+            const btnWeekly = document.getElementById("btnTfWeekly");
+            const curTfBadge = document.getElementById("curTfBadge");
+            const curPeriodBadge = document.getElementById("curPeriodBadge");
+            const legend = document.getElementById("chartIndicatorLegend");
+
+            if (tf === 'weekly') {
+                if (btnDaily) btnDaily.classList.remove('active');
+                if (btnWeekly) btnWeekly.classList.add('active');
+                if (curTfBadge) {
+                    curTfBadge.textContent = "1W 주봉 (Weekly)";
+                    curTfBadge.style.color = "#c084fc";
+                }
+                if (curPeriodBadge) curPeriodBadge.textContent = "최근 3개년 (150 주봉)";
+                if (legend) legend.textContent = "지표 구성: 9주 전환선(하늘) | 26주 기준선(노랑, 생명선) | 주봉 일목 구름대 | 20·60주 SMA | 주봉 거래량";
+            } else {
+                if (btnDaily) btnDaily.classList.add('active');
+                if (btnWeekly) btnWeekly.classList.remove('active');
+                if (curTfBadge) {
+                    curTfBadge.textContent = "1D 일봉 (Daily)";
+                    curTfBadge.style.color = "#38bdf8";
+                }
+                if (curPeriodBadge) curPeriodBadge.textContent = "최근 2개년 (500 거래일)";
+                if (legend) legend.textContent = "지표 구성: 9일 전환선(하늘) | 26일 기준선(노랑, 생명선) | 선행스팬 구름대(초록/빨강) | 20·60 SMA | 거래량";
+            }
+
+            if (currentLoadedChartObj) {
+                renderChartSeriesForTimeframe(currentLoadedChartObj, tf);
+            }
+        }
+
+        function renderChartSeriesForTimeframe(chartObj, tf) {
+            if (!chartObj) return;
+            let tfData = null;
+            if (chartObj.timeframes && chartObj.timeframes[tf] && chartObj.timeframes[tf].candles && chartObj.timeframes[tf].candles.length > 0) {
+                tfData = chartObj.timeframes[tf];
+            } else {
+                tfData = chartObj;
+            }
+
+            const candles = tfData.candles || [];
+            candleSeries.setData(candles);
+            kijunSeries.setData(tfData.kijun_line || []);
+            tenkanSeries.setData(tfData.tenkan_line || []);
+            spanASeries.setData(tfData.span_a_line || []);
+            spanBSeries.setData(tfData.span_b_line || []);
+            sma20Series.setData(tfData.sma20 || []);
+            sma60Series.setData(tfData.sma60 || []);
+            volumeSeries.setData(tfData.volume || []);
+
+            // Perfectly reset scroll position and frame latest candles + future cloud projection
+            requestAnimationFrame(() => {
+                try {
+                    const totalCandles = candles.length;
+                    mainChart.timeScale().resetTimeScale();
+                    volumeChart.timeScale().resetTimeScale();
+                    
+                    if (totalCandles > 0) {
+                        const barsToShow = tf === 'weekly' ? Math.min(80, totalCandles) : Math.min(130, totalCandles);
+                        const targetRange = {
+                            from: totalCandles - barsToShow,
+                            to: totalCandles + 28
+                        };
+                        mainChart.timeScale().setVisibleLogicalRange(targetRange);
+                        volumeChart.timeScale().setVisibleLogicalRange(targetRange);
+                    } else {
+                        mainChart.timeScale().fitContent();
+                        volumeChart.timeScale().fitContent();
+                    }
+                } catch (e) {
+                    mainChart.timeScale().fitContent();
+                    volumeChart.timeScale().fitContent();
+                }
+            });
         }
 
         async function loadChartData(ticker) {
+            const requestId = ++currentChartRequestId;
+            
+            // Cancel previous in-flight chart fetch if active
+            if (currentChartAbortController) {
+                currentChartAbortController.abort();
+            }
+            currentChartAbortController = new AbortController();
+            const signal = currentChartAbortController.signal;
+
             try {
                 let chartObj = null;
-                if (isBackendOnline) {
-                    const res = await fetch(`/api/chart/${ticker}`);
+                try {
+                    const res = await fetch(`/api/chart/${ticker}`, { signal });
                     if (res.ok) {
                         chartObj = await res.json();
+                        isBackendOnline = true;
+                        const sText = document.getElementById("serverStatusText");
+                        const sDot = document.getElementById("serverDot");
+                        if (sDot) sDot.style.background = "#10b981";
+                        if (sText && (sText.textContent === "CONNECTING..." || sText.textContent === "LOCAL CACHE")) {
+                            sText.textContent = "API ACTIVE";
+                        }
+                    }
+                } catch (err) {
+                    if (err.name === 'AbortError') {
+                        return; // Gracefully discard aborted request
                     }
                 }
                 
-                if (!chartObj && window.__DASHBOARD_CACHE__ && window.__DASHBOARD_CACHE__.charts) {
+                // If a newer request was dispatched while waiting, discard stale response
+                if (requestId !== currentChartRequestId) {
+                    return;
+                }
+                
+                if (!chartObj && window.__DASHBOARD_CACHE__ && window.__DASHBOARD_CACHE__.charts && window.__DASHBOARD_CACHE__.charts[ticker]) {
                     chartObj = window.__DASHBOARD_CACHE__.charts[ticker];
                 }
 
-                if (chartObj && chartObj.candles && chartObj.candles.length > 0) {
-                    candleSeries.setData(chartObj.candles);
-                    kijunSeries.setData(chartObj.kijun_line || []);
-                    tenkanSeries.setData(chartObj.tenkan_line || []);
-                    spanASeries.setData(chartObj.span_a_line || chartObj.span_a || []);
-                    spanBSeries.setData(chartObj.span_b_line || chartObj.span_b || []);
-                    sma20Series.setData(chartObj.sma20 || []);
-                    sma60Series.setData(chartObj.sma60 || []);
-                    volumeSeries.setData(chartObj.volume || []);
+                currentLoadedChartObj = chartObj;
+
+                if (chartObj && (chartObj.candles || (chartObj.timeframes && chartObj.timeframes.daily))) {
+                    updateDecoderUI(ticker, chartObj);
+
+                    // Dynamically update real-time stock price and quick buy inputs
+                    if (chartObj.latest_close !== undefined) {
+                        currentSelectedPrice = Number(chartObj.latest_close);
+                        const formattedPrice = `$${currentSelectedPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                        document.getElementById("curPrice").textContent = formattedPrice;
+                        document.getElementById("qbPrice").textContent = formattedPrice;
+                        const buyInput = document.getElementById("qbBuyPrice");
+                        if (buyInput) {
+                            buyInput.value = currentSelectedPrice.toFixed(2);
+                        }
+                        updateTargetStopLive();
+                    }
+
+                    renderChartSeriesForTimeframe(chartObj, currentTimeframe);
 
                     // Update 26-Day Future Forward Cloud Decoder
                     if (chartObj.future_cloud_type) {
@@ -1026,70 +1356,97 @@
                         to: totalBars + 26
                     });
                 } else {
-                    renderSyntheticChart(ticker, currentSelectedPrice);
+                    // Ticker Not Found / API Failure Error State
+                    renderNotFoundState(ticker);
                 }
             } catch (e) {
-                renderSyntheticChart(ticker, currentSelectedPrice);
+                renderNotFoundState(ticker);
             }
         }
 
-        function renderSyntheticChart(ticker, basePrice) {
-            const candles = [];
-            const vol = [];
-            const kijun = [];
-            const tenkan = [];
-            const spanA = [];
-            const spanB = [];
-            const sma20 = [];
-            const sma60 = [];
+        function renderNotFoundState(ticker) {
+            // Clear series to prevent showing wrong ticker chart
+            candleSeries.setData([]);
+            kijunSeries.setData([]);
+            tenkanSeries.setData([]);
+            spanASeries.setData([]);
+            spanBSeries.setData([]);
+            sma20Series.setData([]);
+            sma60Series.setData([]);
+            volumeSeries.setData([]);
 
-            let price = basePrice * 0.92;
-            const now = new Date();
+            document.getElementById("curPrice").textContent = "N/A (조회 불가)";
+            document.getElementById("qbPrice").textContent = "N/A";
+            const buyInput = document.getElementById("qbBuyPrice");
+            if (buyInput) buyInput.value = "";
+            const tgtEl = document.getElementById("qbTargetVal");
+            const stopEl = document.getElementById("qbStopVal");
+            if (tgtEl) tgtEl.textContent = "-";
+            if (stopEl) stopEl.textContent = "-";
 
-            for (let i = 60; i >= 0; i--) {
-                const d = new Date(now);
-                d.setDate(d.getDate() - i);
-                const timeStr = d.toISOString().split('T')[0];
+            const banner = document.getElementById("verdictBanner");
+            const score = document.getElementById("verdictScore");
+            const title = document.getElementById("verdictTitle");
 
-                const delta = (Math.random() - 0.48) * (basePrice * 0.02);
-                const open = price;
-                const close = open + delta;
-                const high = Math.max(open, close) + Math.random() * (basePrice * 0.01);
-                const low = Math.min(open, close) - Math.random() * (basePrice * 0.01);
-                price = close;
+            title.textContent = `Quant Rating: [종목 조회 실패]`;
+            score.textContent = "0 / 100 pt (NOT FOUND)";
+            banner.style.borderLeftColor = "var(--accent-red)";
+            score.style.color = "var(--accent-red)";
 
-                candles.push({ time: timeStr, open, high, low, close });
-                kijun.push({ time: timeStr, value: close * 0.985 });
-                tenkan.push({ time: timeStr, value: close * 0.995 });
-                spanA.push({ time: timeStr, value: close * 0.97 });
-                spanB.push({ time: timeStr, value: close * 0.95 });
-                sma20.push({ time: timeStr, value: close * 0.98 });
-                sma60.push({ time: timeStr, value: close * 0.96 });
-                vol.push({ time: timeStr, value: Math.floor(Math.random() * 5000000) + 1000000, color: close >= open ? '#10b981' : '#ef4444' });
+            document.getElementById("sigKijunBadge").className = "status-badge status-bad";
+            document.getElementById("sigKijunBadge").textContent = "NOT FOUND";
+            document.getElementById("sigKijunVal").textContent = "시세 없음";
+            document.getElementById("sigKijunDesc").textContent = `'${ticker}' 종목의 시세 데이터를 거래소에서 불러올 수 없습니다.`;
+
+            document.getElementById("sigTenkanBadge").className = "status-badge status-neutral";
+            document.getElementById("sigTenkanBadge").textContent = "N/A";
+            document.getElementById("sigTenkanVal").textContent = "N/A";
+            document.getElementById("sigTenkanDesc").textContent = "티커 심볼 또는 한글 종목명을 다시 확인해 주세요.";
+
+            document.getElementById("sigCloudBadge").className = "status-badge status-neutral";
+            document.getElementById("sigCloudBadge").textContent = "N/A";
+            document.getElementById("sigCloudVal").textContent = "N/A";
+            document.getElementById("sigCloudDesc").textContent = "한국 주식은 한글명(예: 삼전, 하이닉스) 또는 6자리 코드(005930)를 입력하세요.";
+
+            document.getElementById("sigVolBadge").className = "status-badge status-neutral";
+            document.getElementById("sigVolBadge").textContent = "N/A";
+            document.getElementById("sigVolVal").textContent = "N/A";
+            document.getElementById("sigVolDesc").textContent = "미국 주식은 영문 티커(예: AAPL, TSM, PLTR)를 입력하세요.";
+
+            const fcBadge = document.getElementById("sigFutureCloudBadge");
+            if (fcBadge) {
+                fcBadge.textContent = "N/A";
+                fcBadge.className = "status-badge status-neutral";
             }
+            const fcVal = document.getElementById("sigFutureCloudVal");
+            if (fcVal) fcVal.textContent = "미래 구름대 산출 불가";
+            const fcDesc = document.getElementById("sigFutureCloudDesc");
+            if (fcDesc) fcDesc.textContent = "데이터가 부족하거나 상장 폐지된 종목입니다.";
 
-            candleSeries.setData(candles);
-            kijunSeries.setData(kijun);
-            tenkanSeries.setData(tenkan);
-            spanASeries.setData(spanA);
-            spanBSeries.setData(spanB);
-            sma20Series.setData(sma20);
-            sma60Series.setData(sma60);
-            volumeSeries.setData(vol);
-            mainChart.timeScale().fitContent();
-            volumeChart.timeScale().fitContent();
+            document.getElementById("actionDirectiveText").textContent = `[ERROR] '${ticker}' 종목을 찾을 수 없습니다. 올바른 티커 심볼이나 영문/한글 종목명으로 다시 검색해 주십시오.`;
         }
+
+        let isInitialChartLoaded = false;
 
         async function loadDashboard() {
             try {
                 const res = await fetch('/api/dashboard');
                 if (res.ok) {
                     const data = await res.json();
+                    if (data.chart_intelligence && !data.charts) {
+                        data.charts = data.chart_intelligence;
+                    }
                     window.__DASHBOARD_CACHE__ = data;
                     isBackendOnline = true;
-                    document.getElementById("serverStatusText").textContent = "API ACTIVE";
-                    document.getElementById("serverDot").style.background = "#10b981";
+                    const sText = document.getElementById("serverStatusText");
+                    const sDot = document.getElementById("serverDot");
+                    if (sText) sText.textContent = "API ACTIVE";
+                    if (sDot) sDot.style.background = "#10b981";
                     renderDashboardData(data);
+                    if (!isInitialChartLoaded) {
+                        isInitialChartLoaded = true;
+                        loadChartData(currentSelectedTicker);
+                    }
                     return;
                 }
             } catch (e) {
@@ -1098,8 +1455,10 @@
 
             // Fallback
             isBackendOnline = false;
-            document.getElementById("serverStatusText").textContent = "LOCAL CACHE";
-            document.getElementById("serverDot").style.background = "#3b82f6";
+            const sText = document.getElementById("serverStatusText");
+            const sDot = document.getElementById("serverDot");
+            if (sText) sText.textContent = "LOCAL CACHE";
+            if (sDot) sDot.style.background = "#3b82f6";
             
             try {
                 const resLocal = await fetch('dashboard_data.json');
@@ -1107,12 +1466,19 @@
                     const localData = await resLocal.json();
                     window.__DASHBOARD_CACHE__ = localData;
                     renderDashboardData(localData);
+                    if (!isInitialChartLoaded) {
+                        isInitialChartLoaded = true;
+                        loadChartData(currentSelectedTicker);
+                    }
                 }
             } catch (e) {}
         }
 
         function renderDashboardData(data) {
-            document.getElementById("lastUpdated").textContent = `Updated: ${data.kpis?.last_updated || new Date().toLocaleString()}`;
+            if (!data) return;
+            const updatedTime = data.last_updated || data.kpis?.last_updated || new Date().toLocaleString();
+            const lastUpEl = document.getElementById("lastUpdated");
+            if (lastUpEl) lastUpEl.textContent = `Updated: ${updatedTime}`;
 
             // Dynamic Macro Gauges & Gate-0 Climate Strip
             if (data.macro) {
@@ -1122,142 +1488,234 @@
                     if (mc.macro_action_directive) document.getElementById("macroDirectiveText").textContent = mc.macro_action_directive;
                     if (mc.macro_stance) {
                         const badge = document.getElementById("macroStanceBadge");
-                        badge.textContent = mc.macro_stance.replace('_', ' ');
-                        badge.style.color = mc.macro_stance === 'DEFENSE_HOLD' ? '#fbbf24' : '#34d399';
+                        if (badge) {
+                            badge.textContent = mc.macro_stance.replace('_', ' ');
+                            badge.style.color = mc.macro_stance === 'DEFENSE_HOLD' ? '#fbbf24' : '#34d399';
+                        }
                     }
                     if (mc.msi_score !== undefined) {
-                        document.getElementById("msiScoreBadge").textContent = `${mc.msi_score.toFixed(1)} / 100`;
+                        const scoreBadge = document.getElementById("msiScoreBadge");
+                        if (scoreBadge) scoreBadge.textContent = `${mc.msi_score.toFixed(1)} / 100`;
                         const needle = document.getElementById("msiNeedle");
                         if (needle) needle.style.left = `${Math.min(100, Math.max(0, mc.msi_score))}%`;
                     }
                     if (mc.msi_breakdown) {
                         const mb = mc.msi_breakdown;
-                        document.getElementById("msiHardVal").textContent = `${mb.m_hard.toFixed(1)} / ${mb.m_hard_max || 60}.0 pt`;
-                        document.getElementById("msiHardSub").textContent = `10Y:${mb.us10y_pts !== undefined ? mb.us10y_pts : 0} | DXY:${mb.dxy_pts !== undefined ? mb.dxy_pts : 0} | VIX:${mb.vix_pts !== undefined ? mb.vix_pts : 0} | 유가:${mb.wti_pts !== undefined ? mb.wti_pts : 0}`;
-                        document.getElementById("msiNlpVal").textContent = `${mb.m_nlp.toFixed(1)} / ${mb.m_nlp_max || 25}.0 pt`;
-                        document.getElementById("msiNlpSub").textContent = `방어 ${mb.def_count !== undefined ? mb.def_count : 0}회 vs 매수 ${mb.buy_count !== undefined ? mb.buy_count : 0}회`;
-                        document.getElementById("msiShockVal").textContent = `${mb.m_shock.toFixed(1)} / ${mb.m_shock_max || 15}.0 pt`;
+                        const hardVal = document.getElementById("msiHardVal");
+                        if (hardVal) hardVal.textContent = `${mb.m_hard.toFixed(1)} / ${mb.m_hard_max || 60}.0 pt`;
+                        const hardSub = document.getElementById("msiHardSub");
+                        if (hardSub) hardSub.textContent = `10Y:${mb.us10y_pts !== undefined ? mb.us10y_pts : 0} | DXY:${mb.dxy_pts !== undefined ? mb.dxy_pts : 0} | VIX:${mb.vix_pts !== undefined ? mb.vix_pts : 0} | 유가:${mb.wti_pts !== undefined ? mb.wti_pts : 0}`;
+                        const nlpVal = document.getElementById("msiNlpVal");
+                        if (nlpVal) nlpVal.textContent = `${mb.m_nlp.toFixed(1)} / ${mb.m_nlp_max || 25}.0 pt`;
+                        const nlpSub = document.getElementById("msiNlpSub");
+                        if (nlpSub) nlpSub.textContent = `방어 ${mb.def_count !== undefined ? mb.def_count : 0}회 vs 매수 ${mb.buy_count !== undefined ? mb.buy_count : 0}회`;
+                        const shockVal = document.getElementById("msiShockVal");
+                        if (shockVal) shockVal.textContent = `${mb.m_shock.toFixed(1)} / ${mb.m_shock_max || 15}.0 pt`;
                     }
                 }
                 if (data.macro.macro_gauges) {
                     const mg = data.macro.macro_gauges;
                     if (mg.us10y) {
-                        document.getElementById("gaugeUs10yVal").textContent = Number(mg.us10y.val).toFixed(3) + '%';
-                        document.getElementById("gaugeUs10yBadge").textContent = mg.us10y.status || 'BURDEN';
-                        document.getElementById("gaugeUs10yBadge").style.color = (mg.us10y.val >= 4.5) ? '#f87171' : ((mg.us10y.val >= 4.3) ? '#fbbf24' : '#34d399');
+                        const elVal = document.getElementById("gaugeUs10yVal");
+                        const elBadge = document.getElementById("gaugeUs10yBadge");
+                        if (elVal) elVal.textContent = Number(mg.us10y.val).toFixed(3) + '%';
+                        if (elBadge) {
+                            elBadge.textContent = mg.us10y.status || 'BURDEN';
+                            elBadge.style.color = (mg.us10y.val >= 4.5) ? '#f87171' : ((mg.us10y.val >= 4.3) ? '#fbbf24' : '#34d399');
+                        }
                     }
                     if (mg.dxy) {
-                        document.getElementById("gaugeDxyVal").textContent = Number(mg.dxy.val).toFixed(2);
-                        document.getElementById("gaugeDxyBadge").textContent = mg.dxy.status || 'NEUTRAL';
-                        document.getElementById("gaugeDxyBadge").style.color = (mg.dxy.val >= 103.0) ? '#f87171' : '#34d399';
+                        const elVal = document.getElementById("gaugeDxyVal");
+                        const elBadge = document.getElementById("gaugeDxyBadge");
+                        if (elVal) elVal.textContent = Number(mg.dxy.val).toFixed(2);
+                        if (elBadge) {
+                            elBadge.textContent = mg.dxy.status || 'NEUTRAL';
+                            elBadge.style.color = (mg.dxy.val >= 103.0) ? '#f87171' : '#34d399';
+                        }
                     }
                     if (mg.vix) {
-                        document.getElementById("gaugeVixVal").textContent = Number(mg.vix.val).toFixed(2);
-                        document.getElementById("gaugeVixBadge").textContent = mg.vix.status || 'NORMAL';
-                        document.getElementById("gaugeVixBadge").style.color = (mg.vix.val >= 20.0) ? '#f87171' : '#34d399';
+                        const elVal = document.getElementById("gaugeVixVal");
+                        const elBadge = document.getElementById("gaugeVixBadge");
+                        if (elVal) elVal.textContent = Number(mg.vix.val).toFixed(2);
+                        if (elBadge) {
+                            elBadge.textContent = mg.vix.status || 'NORMAL';
+                            elBadge.style.color = (mg.vix.val >= 20.0) ? '#f87171' : '#34d399';
+                        }
                     }
                     if (mg.wti) {
-                        document.getElementById("gaugeWtiVal").textContent = '$' + Number(mg.wti.val).toFixed(2);
-                        document.getElementById("gaugeWtiBadge").textContent = mg.wti.status || 'STABLE';
-                        document.getElementById("gaugeWtiBadge").style.color = (mg.wti.val >= 82.0) ? '#f87171' : '#34d399';
+                        const elVal = document.getElementById("gaugeWtiVal");
+                        const elBadge = document.getElementById("gaugeWtiBadge");
+                        if (elVal) elVal.textContent = '$' + Number(mg.wti.val).toFixed(2);
+                        if (elBadge) {
+                            elBadge.textContent = mg.wti.status || 'STABLE';
+                            elBadge.style.color = (mg.wti.val >= 82.0) ? '#f87171' : '#34d399';
+                        }
                     }
                     if (mg.gold) {
-                        document.getElementById("gaugeGoldVal").textContent = '$' + Number(mg.gold.val).toFixed(0);
-                        document.getElementById("gaugeGoldBadge").textContent = mg.gold.status || 'STABLE';
+                        const elVal = document.getElementById("gaugeGoldVal");
+                        const elBadge = document.getElementById("gaugeGoldBadge");
+                        if (elVal) elVal.textContent = '$' + Number(mg.gold.val).toFixed(0);
+                        if (elBadge) elBadge.textContent = mg.gold.status || 'STABLE';
                     }
                 }
-                if (data.macro.macro_narrative) document.getElementById("macroNarrative").textContent = "| " + data.macro.macro_narrative;
+                if (data.macro.macro_narrative) {
+                    const elNarrative = document.getElementById("macroNarrative");
+                    if (elNarrative) elNarrative.textContent = "| " + data.macro.macro_narrative;
+                }
                 if (data.macro.title) {
                     const sLink = document.getElementById("streamLink");
-                    sLink.textContent = data.macro.title;
-                    if (data.macro.url) sLink.href = data.macro.url;
+                    if (sLink) {
+                        sLink.textContent = data.macro.title;
+                        if (data.macro.url) sLink.href = data.macro.url;
+                    }
                 }
             }
 
-            // Render Today's 2+2+2 Recommendations and Historical Matrix
-            if (data.matrix && data.matrix.length > 0) {
-                const latest = data.matrix[0]; // Today's recommendation
+            // Update Macro Rotation Status Bar
+            const tailwindEl = document.getElementById("macroTailwindSectors");
+            if (tailwindEl && data.macro && data.macro.tailwind_sectors) {
+                const sectors = data.macro.tailwind_sectors;
+                tailwindEl.innerHTML = sectors.map(s => `[${s}]`).join(' ');
+            }
+
+            // Render 3-Tier Tactical Quant Matrix (Left = Tier 2, Center = Tier 1, Right = Tier 3)
+            const strat1Cards = document.getElementById("strat1ExclusiveCards");
+            const dualCards = document.getElementById("dualConsensusCards");
+            const strat2Cards = document.getElementById("strat2ExclusiveCards");
+
+            // Helper to render uniform card items
+            const renderItemCard = (item, colorTheme) => {
+                const originClass = (item.origin === 'VIKINGS_LIVE') ? 'origin-vikings' : 'origin-quant';
+                const originText = (item.origin === 'VIKINGS_LIVE') ? '[VIKINGS LIVE]' : '[UNIVERSE SCAN]';
+                const isActive = (currentSelectedTicker === item.ticker) ? 'active' : '';
+                const targetPrice = item.target_price ? Number(item.target_price).toFixed(2) : (Number(item.price) * 1.15).toFixed(2);
+                const stopPrice = item.stop_price ? Number(item.stop_price).toFixed(2) : (Number(item.price) * 0.96).toFixed(2);
                 
-                // Top 2+2+2 Cards
-                const bullCards = document.getElementById("todayBullCards");
-                const neutralCards = document.getElementById("todayNeutralCards");
-                const bearCards = document.getElementById("todayBearCards");
-                
-                if (bullCards && latest.bull_1 && latest.bull_2) {
-                    bullCards.innerHTML = `
-                        <div class="rec-item ${currentSelectedTicker === latest.bull_1 ? 'active' : ''}" onclick="selectStock('${latest.bull_1}', ${latest.bull_1_price})">
-                            <div>
-                                <span class="rec-item-title" style="color:var(--accent-green);">${latest.bull_1}</span>
-                                <div class="rec-item-sub">1차 매수 적합 (구름대 상단 안착)</div>
-                            </div>
-                            <div class="rec-item-price">$${Number(latest.bull_1_price).toFixed(2)}</div>
-                        </div>
-                        <div class="rec-item ${currentSelectedTicker === latest.bull_2 ? 'active' : ''}" onclick="selectStock('${latest.bull_2}', ${latest.bull_2_price})">
-                            <div>
-                                <span class="rec-item-title" style="color:var(--accent-green);">${latest.bull_2}</span>
-                                <div class="rec-item-sub">1차 매수 적합 (26일 기준선 지지)</div>
-                            </div>
-                            <div class="rec-item-price">$${Number(latest.bull_2_price).toFixed(2)}</div>
-                        </div>
-                    `;
+                // IN WALLET Badge & Highlight
+                let walletBadge = '';
+                let walletCardStyle = '';
+                if (item.in_wallet) {
+                    const pnlSign = (item.holding_pnl >= 0) ? '+' : '';
+                    walletBadge = `<span style="font-size:9px; font-weight:800; font-family:'JetBrains Mono'; color:#38bdf8; background:rgba(56,189,248,0.15); border:1px solid #0284c7; padding:1px 5px; border-radius:3px; letter-spacing:0.5px;">[IN WALLET: ${pnlSign}${Number(item.holding_pnl).toFixed(1)}%]</span>`;
+                    walletCardStyle = 'border-left:3px solid #38bdf8; background:rgba(15,23,42,0.95);';
                 }
                 
-                if (neutralCards && latest.neutral_1 && latest.neutral_2) {
-                    neutralCards.innerHTML = `
-                        <div class="rec-item ${currentSelectedTicker === latest.neutral_1 ? 'active' : ''}" onclick="selectStock('${latest.neutral_1}', ${latest.neutral_1_price})">
-                            <div>
-                                <span class="rec-item-title" style="color:var(--accent-yellow);">${latest.neutral_1}</span>
-                                <div class="rec-item-sub">중립 관망 (박스권 수렴)</div>
-                            </div>
-                            <div class="rec-item-price">$${Number(latest.neutral_1_price).toFixed(2)}</div>
-                        </div>
-                        <div class="rec-item ${currentSelectedTicker === latest.neutral_2 ? 'active' : ''}" onclick="selectStock('${latest.neutral_2}', ${latest.neutral_2_price})">
-                            <div>
-                                <span class="rec-item-title" style="color:var(--accent-yellow);">${latest.neutral_2}</span>
-                                <div class="rec-item-sub">중립 관망 (방향성 탐색)</div>
-                            </div>
-                            <div class="rec-item-price">$${Number(latest.neutral_2_price).toFixed(2)}</div>
-                        </div>
-                    `;
+                // STREAK Badge
+                let streakBadge = '';
+                if (item.streak_days && item.streak_days >= 2) {
+                    streakBadge = `<span style="font-size:9px; font-weight:800; font-family:'JetBrains Mono'; color:#fbbf24; background:rgba(251,191,36,0.15); border:1px solid #d97706; padding:1px 5px; border-radius:3px; letter-spacing:0.5px;">[${item.streak_days}D STREAK]</span>`;
                 }
-                
-                if (bearCards && latest.bear_1 && latest.bear_2) {
-                    bearCards.innerHTML = `
-                        <div class="rec-item ${currentSelectedTicker === latest.bear_1 ? 'active' : ''}" onclick="selectStock('${latest.bear_1}', ${latest.bear_1_price})">
-                            <div>
-                                <span class="rec-item-title" style="color:var(--accent-red);">${latest.bear_1}</span>
-                                <div class="rec-item-sub">생명선 붕괴 (매수 금지)</div>
-                            </div>
-                            <div class="rec-item-price">$${Number(latest.bear_1_price).toFixed(2)}</div>
-                        </div>
-                        <div class="rec-item ${currentSelectedTicker === latest.bear_2 ? 'active' : ''}" onclick="selectStock('${latest.bear_2}', ${latest.bear_2_price})">
-                            <div>
-                                <span class="rec-item-title" style="color:var(--accent-red);">${latest.bear_2}</span>
-                                <div class="rec-item-sub">구름대 하향 이탈 (숏 우위)</div>
-                            </div>
-                            <div class="rec-item-price">$${Number(latest.bear_2_price).toFixed(2)}</div>
-                        </div>
-                    `;
+
+                // Sector Badge
+                const sectorTag = item.sector ? `<span style="font-size:9px; font-weight:700; font-family:'JetBrains Mono'; color:#94a3b8; background:#1e293b; border:1px solid #334155; padding:1px 4px; border-radius:2px;">[${item.sector}]</span>` : '';
+
+                // OBV Status Badge
+                let obvBadge = '';
+                if (item.obv_status === 'STEALTH_ACCUM') {
+                    obvBadge = `<span style="color:#34d399; font-weight:700;">OBV: STEALTH ACCUM</span>`;
+                } else if (item.obv_status === 'BULL_FLOW') {
+                    obvBadge = `<span style="color:#38bdf8; font-weight:700;">OBV: INFLOW</span>`;
+                } else {
+                    obvBadge = `<span style="color:#64748b;">OBV: NEUTRAL</span>`;
                 }
-                
-                // Historical Matrix Table (All days: 2026-08-20, 2026-08-19, 2026-08-18...)
-                const mBody = document.getElementById("matrixTableBody");
-                if (mBody) {
-                    mBody.innerHTML = data.matrix.map(m => {
+
+                const flowRatioText = item.flow_ratio ? ` | FLOW: <strong style="color:${item.flow_ratio >= 1.4 ? '#34d399' : '#94a3b8'};">${Number(item.flow_ratio).toFixed(1)}x</strong>` : '';
+
+                return `
+                    <div class="rec-item ${isActive}" data-ticker="${item.ticker}" style="${walletCardStyle}" onclick="selectStock('${item.ticker}', ${item.price})">
+                        <div style="flex:1;">
+                            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:2px;">
+                                <div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap;">
+                                    <span class="rec-item-title" style="color:${colorTheme};">${item.ticker}</span>
+                                    <span class="rec-item-sub" style="font-size:11px; font-weight:600;">${item.name}</span>
+                                    ${sectorTag}
+                                    <span class="origin-badge ${originClass}" style="font-size:9px; padding:1px 5px;">${originText}</span>
+                                    ${streakBadge}
+                                    ${walletBadge}
+                                </div>
+                                <div class="rec-item-price" style="color:${colorTheme};">$${Number(item.price).toFixed(2)}</div>
+                            </div>
+                            <div class="rec-item-sub" style="font-size:10px; display:flex; justify-content:space-between; align-items:center; margin-top:2px; font-family:'JetBrains Mono';">
+                                <span>SCORE: <strong style="color:#f8fafc;">${item.score}pt</strong> | 26D: <strong style="color:#38bdf8;">${item.kijun_gap >= 0 ? '+' : ''}${Number(item.kijun_gap).toFixed(1)}%</strong> | VOL: <strong>${item.vol_ratio}%</strong></span>
+                                <span>${obvBadge}${flowRatioText}</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; font-size:10px; font-family:'JetBrains Mono'; margin-top:4px; padding-top:4px; border-top:1px dashed #1e293b;">
+                                <span style="color:#94a3b8;">TP(+15%): <strong style="color:#34d399;">$${targetPrice}</strong></span>
+                                <span style="color:#94a3b8;">SL(-4%): <strong style="color:#f87171;">$${stopPrice}</strong></span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            };
+
+            // 1. [LEFT] Tier 2: Structural 26D Pullback
+            if (strat1Cards) {
+                const list1 = data.strat1_exclusive || (data.primary_accumulation || []).filter(p => !p.is_sniper);
+                if (list1.length > 0) {
+                    strat1Cards.innerHTML = list1.map(p => renderItemCard(p, "var(--accent-green)")).join('');
+                } else {
+                    strat1Cards.innerHTML = `<div style="background:#0f172a; border:1px dashed #334155; border-radius:4px; padding:12px; text-align:center; color:#64748b; font-size:11px; font-family:'JetBrains Mono';">기준선 눌림목 형성 대기 중</div>`;
+                }
+            }
+
+            // 2. [CENTER] Tier 1: Macro & Smart Money Accumulation
+            if (dualCards) {
+                const dualList = data.dual_consensus || [];
+                if (dualList.length > 0) {
+                    dualCards.innerHTML = dualList.map(d => renderItemCard(d, "#fbbf24")).join('');
+                } else {
+                    dualCards.innerHTML = `<div style="background:#17170c; border:1px dashed #78350f; border-radius:4px; padding:12px; text-align:center; color:#fbbf24; font-size:11px; font-family:'JetBrains Mono';">매크로 주도 기관 잠행 매집 종목 스캔 중</div>`;
+                }
+            }
+
+            // 3. [RIGHT] Tier 3: Cloud Bounce Sniper Radar
+            if (strat2Cards) {
+                const list2 = data.strat2_exclusive || (data.sniper_radar || []).filter(s => !s.is_strat1);
+                if (list2.length > 0) {
+                    strat2Cards.innerHTML = list2.map(s => renderItemCard(s, "#f87171")).join('');
+                } else {
+                    strat2Cards.innerHTML = `<div style="background:#0f172a; border:1px dashed #334155; border-radius:4px; padding:12px; text-align:center; color:#64748b; font-size:11px; font-family:'JetBrains Mono';">구름대 2단계 도약 종목 스캔 중</div>`;
+                }
+            }
+
+            // 3. Render Portfolio
+            const pBody = document.getElementById("portfolioTableBody");
+            const holdings = (data.portfolio && data.portfolio.holdings) || [];
+            
+            const kpiCountEl = document.getElementById("kpiCount");
+            if (kpiCountEl) kpiCountEl.textContent = `${holdings.length}`;
+            if (data.portfolio) {
+                const kpiInv = document.getElementById("kpiInvested");
+                const kpiEval = document.getElementById("kpiEval");
+                if (kpiInv) kpiInv.textContent = `$${(data.portfolio.total_invested || 0).toLocaleString('en-US', {minimumFractionDigits:2})}`;
+                if (kpiEval) kpiEval.textContent = `$${(data.portfolio.total_eval || 0).toLocaleString('en-US', {minimumFractionDigits:2})}`;
+                const pnlPct = data.portfolio.total_pnl_pct || 0;
+                const pnlAmt = data.portfolio.total_pnl_amount || 0;
+                const pnlEl = document.getElementById("kpiPnl");
+                if (pnlEl) {
+                    pnlEl.textContent = `${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}% ($${pnlAmt.toLocaleString('en-US', {minimumFractionDigits:2})})`;
+                    pnlEl.style.color = pnlPct >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+                }
+            }
+
+            if (pBody) {
+                if (holdings.length === 0) {
+                    pBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-secondary); padding:20px;">No open positions in active portfolio. Select a ticker above to enter a position.</td></tr>`;
+                } else {
+                    pBody.innerHTML = holdings.map(h => {
+                        const pnlColor = h.pnl_pct >= 0 ? '#10b981' : '#ef4444';
                         return `
                             <tr>
-                                <td style="font-family:'JetBrains Mono'; font-weight:700; color:#cbd5e1;">${m.date}</td>
+                                <td><strong style="font-family:'JetBrains Mono'; color:#f8fafc;">${h.ticker}</strong></td>
+                                <td style="font-family:'JetBrains Mono';">$${Number(h.buy_price).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                                <td style="font-family:'JetBrains Mono'; font-weight:600; color:#38bdf8;">${Number(h.quantity).toLocaleString('en-US', {maximumFractionDigits:4})}</td>
+                                <td style="font-family:'JetBrains Mono';">$${Number(h.current_price).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                                <td style="color:${pnlColor}; font-weight:700; font-family:'JetBrains Mono';">${h.pnl_pct >= 0 ? '+' : ''}${h.pnl_pct.toFixed(2)}%</td>
                                 <td>
-                                    <span class="ticker-pill bull" onclick="selectStock('${m.bull_1}', ${m.bull_1_price})">${m.bull_1} ($${Number(m.bull_1_price).toFixed(2)})</span>
-                                    <span class="ticker-pill bull" onclick="selectStock('${m.bull_2}', ${m.bull_2_price})" style="margin-left:4px;">${m.bull_2} ($${Number(m.bull_2_price).toFixed(2)})</span>
-                                </td>
-                                <td>
-                                    <span class="ticker-pill neutral" onclick="selectStock('${m.neutral_1}', ${m.neutral_1_price})">${m.neutral_1} ($${Number(m.neutral_1_price).toFixed(2)})</span>
-                                    <span class="ticker-pill neutral" onclick="selectStock('${m.neutral_2}', ${m.neutral_2_price})" style="margin-left:4px;">${m.neutral_2} ($${Number(m.neutral_2_price).toFixed(2)})</span>
-                                </td>
-                                <td>
-                                    <span class="ticker-pill bear" onclick="selectStock('${m.bear_1}', ${m.bear_1_price})">${m.bear_1} ($${Number(m.bear_1_price).toFixed(2)})</span>
-                                    <span class="ticker-pill bear" onclick="selectStock('${m.bear_2}', ${m.bear_2_price})" style="margin-left:4px;">${m.bear_2} ($${Number(m.bear_2_price).toFixed(2)})</span>
+                                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                                        <span style="font-size:11px; color:#9ca3af;">${h.exit_advice || 'Holding'}</span>
+                                        <button onclick="sellHolding(${h.id}, ${h.current_price})" style="background:#dc2626; color:#fff; border:none; padding:2px 8px; border-radius:2px; font-size:10px; cursor:pointer;">Exit</button>
+                                    </div>
                                 </td>
                             </tr>
                         `;
@@ -1265,53 +1723,66 @@
                 }
             }
 
-            // Render Portfolio
-            const pBody = document.getElementById("portfolioTableBody");
-            const holdings = (data.portfolio && data.portfolio.holdings) || [];
-            
-            document.getElementById("kpiCount").textContent = `${holdings.length}`;
-            if (data.portfolio) {
-                document.getElementById("kpiInvested").textContent = `$${(data.portfolio.total_invested || 0).toLocaleString('en-US', {minimumFractionDigits:2})}`;
-                document.getElementById("kpiEval").textContent = `$${(data.portfolio.total_eval || 0).toLocaleString('en-US', {minimumFractionDigits:2})}`;
-                const pnlPct = data.portfolio.total_pnl_pct || 0;
-                const pnlAmt = data.portfolio.total_pnl_amount || 0;
-                const pnlEl = document.getElementById("kpiPnl");
-                pnlEl.textContent = `${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}% ($${pnlAmt.toLocaleString('en-US', {minimumFractionDigits:2})})`;
-                pnlEl.style.color = pnlPct >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
-            }
-
-            if (holdings.length === 0) {
-                pBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-secondary); padding:20px;">No open positions in active portfolio. Select a ticker above to enter a position.</td></tr>`;
-            } else {
-                pBody.innerHTML = holdings.map(h => {
-                    const pnlColor = h.pnl_pct >= 0 ? '#10b981' : '#ef4444';
-                    return `
+            // 5. Render Daily Quant Recommendations History Table (3-Tier Structure)
+            const dailyRecBody = document.getElementById("dailyRecHistoryBody");
+            if (dailyRecBody) {
+                const histList = (data.daily_history && data.daily_history.length > 0) ? data.daily_history : [];
+                if (histList.length > 0) {
+                    dailyRecBody.innerHTML = histList.map(h => {
+                        const t1 = (h.tier1 || []).map(x => `<span class="ticker-pill" style="background:rgba(251,191,36,0.15); color:#fbbf24; border:1px solid #d97706; font-family:'JetBrains Mono'; font-weight:700; padding:2px 6px; border-radius:3px; cursor:pointer;" onclick="selectStock('${x.ticker}', ${x.price || 0})">${x.ticker}</span>`).join(' ');
+                        const t2 = (h.tier2 || []).map(x => `<span class="ticker-pill" style="background:rgba(52,211,153,0.15); color:#34d399; border:1px solid #059669; font-family:'JetBrains Mono'; font-weight:700; padding:2px 6px; border-radius:3px; cursor:pointer;" onclick="selectStock('${x.ticker}', ${x.price || 0})">${x.ticker}</span>`).join(' ');
+                        const t3 = (h.tier3 || []).map(x => `<span class="ticker-pill" style="background:rgba(248,113,113,0.15); color:#f87171; border:1px solid #dc2626; font-family:'JetBrains Mono'; font-weight:700; padding:2px 6px; border-radius:3px; cursor:pointer;" onclick="selectStock('${x.ticker}', ${x.price || 0})">${x.ticker}</span>`).join(' ');
+                        const macroStance = h.macro_stance || 'DEFENSE_HOLD';
+                        
+                        return `
+                            <tr>
+                                <td style="font-family:'JetBrains Mono'; font-weight:700; color:#cbd5e1;">${h.date}</td>
+                                <td><div style="display:flex; gap:6px; flex-wrap:wrap;">${t1 || '<span style="color:#64748b; font-size:11px;">-</span>'}</div></td>
+                                <td><div style="display:flex; gap:6px; flex-wrap:wrap;">${t2 || '<span style="color:#64748b; font-size:11px;">-</span>'}</div></td>
+                                <td><div style="display:flex; gap:6px; flex-wrap:wrap;">${t3 || '<span style="color:#64748b; font-size:11px;">-</span>'}</div></td>
+                                <td><span style="font-family:'JetBrains Mono'; font-size:11px; color:#fbbf24; font-weight:600;">${macroStance}</span></td>
+                            </tr>
+                        `;
+                    }).join('');
+                } else {
+                    const todayStr = (data.last_updated || new Date().toISOString()).slice(0, 10);
+                    const topT1 = (data.dual_consensus || []).map(p => `<span class="ticker-pill" style="background:rgba(251,191,36,0.15); color:#fbbf24; border:1px solid #d97706; font-family:'JetBrains Mono'; font-weight:700; padding:2px 6px; border-radius:3px; cursor:pointer;" onclick="selectStock('${p.ticker}', ${p.price})">${p.ticker}</span>`).join(' ');
+                    const topT2 = (data.strat1_exclusive || []).map(p => `<span class="ticker-pill" style="background:rgba(52,211,153,0.15); color:#34d399; border:1px solid #059669; font-family:'JetBrains Mono'; font-weight:700; padding:2px 6px; border-radius:3px; cursor:pointer;" onclick="selectStock('${p.ticker}', ${p.price})">${p.ticker}</span>`).join(' ');
+                    const topT3 = (data.strat2_exclusive || []).map(s => `<span class="ticker-pill" style="background:rgba(248,113,113,0.15); color:#f87171; border:1px solid #dc2626; font-family:'JetBrains Mono'; font-weight:700; padding:2px 6px; border-radius:3px; cursor:pointer;" onclick="selectStock('${s.ticker}', ${s.price})">${s.ticker}</span>`).join(' ');
+                    const msiScore = (data.macro && data.macro.macro_climate) ? `${data.macro.macro_climate.macro_stance || 'DEFENSE_HOLD'} (${data.macro.macro_climate.msi_score.toFixed(1)}pt)` : 'DEFENSE_HOLD';
+                    dailyRecBody.innerHTML = `
                         <tr>
-                            <td><strong style="font-family:'JetBrains Mono';">${h.ticker}</strong></td>
-                            <td>$${h.buy_price.toLocaleString('en-US', {minimumFractionDigits:2})}</td>
-                            <td>${h.quantity}</td>
-                            <td>$${h.current_price.toLocaleString('en-US', {minimumFractionDigits:2})}</td>
-                            <td style="color:${pnlColor}; font-weight:700; font-family:'JetBrains Mono';">${h.pnl_pct >= 0 ? '+' : ''}${h.pnl_pct.toFixed(2)}%</td>
-                            <td>
-                                <div style="display:flex; justify-content:space-between; align-items:center;">
-                                    <span style="font-size:11px; color:#9ca3af;">${h.exit_advice || 'Holding'}</span>
-                                    <button onclick="sellHolding(${h.id}, ${h.current_price})" style="background:#dc2626; color:#fff; border:none; padding:2px 8px; border-radius:2px; font-size:10px; cursor:pointer;">Exit</button>
-                                </div>
-                            </td>
+                            <td style="font-family:'JetBrains Mono'; font-weight:700; color:#cbd5e1;">${todayStr}</td>
+                            <td><div style="display:flex; gap:6px; flex-wrap:wrap;">${topT1 || '-'}</div></td>
+                            <td><div style="display:flex; gap:6px; flex-wrap:wrap;">${topT2 || '-'}</div></td>
+                            <td><div style="display:flex; gap:6px; flex-wrap:wrap;">${topT3 || '<span style="color:#64748b; font-size:11px;">-</span>'}</div></td>
+                            <td><span style="font-family:'JetBrains Mono'; font-size:11px; color:#fbbf24; font-weight:600;">${msiScore}</span></td>
                         </tr>
                     `;
-                }).join('');
+                }
             }
         }
 
         async function submitQuickBuy() {
-            const qty = parseFloat(document.getElementById("qbQty").value) || 1;
+            const buyInput = document.getElementById("qbBuyPrice");
+            const buyPrice = (buyInput && parseFloat(buyInput.value) > 0) ? parseFloat(buyInput.value) : currentSelectedPrice;
+            const qty = parseFloat(document.getElementById("qbQty").value) || 1.0;
+            
+            if (qty <= 0) {
+                alert("수량은 0보다 커야 합니다.");
+                return;
+            }
+            if (buyPrice <= 0) {
+                alert("매수가격은 0보다 커야 합니다.");
+                return;
+            }
+
             if (isBackendOnline) {
                 try {
                     const res = await fetch('/api/portfolio/buy', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ ticker: currentSelectedTicker, buy_price: currentSelectedPrice, quantity: qty })
+                        body: JSON.stringify({ ticker: currentSelectedTicker, buy_price: buyPrice, quantity: qty })
                     });
                     if (res.ok) {
                         loadDashboard();
@@ -1319,7 +1790,7 @@
                     }
                 } catch (e) {}
             }
-            alert(`[Local Simulated Entry] Added ${qty} shares of ${currentSelectedTicker} at $${currentSelectedPrice}.`);
+            alert(`[Local Simulated Entry] Added ${qty} shares of ${currentSelectedTicker} at $${buyPrice}.`);
         }
 
         async function sellHolding(id, currentPrice) {
@@ -1365,11 +1836,285 @@
             btn.disabled = false;
         }
 
+        let liveSocket = null;
+        let wsReconnectTimer = null;
+
+        function connectWebSocket() {
+            if (liveSocket && (liveSocket.readyState === WebSocket.OPEN || liveSocket.readyState === WebSocket.CONNECTING)) {
+                return;
+            }
+            
+            // If opened via local file protocol, inform user and use local cache
+            if (window.location.protocol === "file:") {
+                const statusText = document.getElementById("serverStatusText");
+                const statusDot = document.getElementById("serverDot");
+                if (statusText) statusText.textContent = "LOCAL FILE (CACHE)";
+                if (statusDot) statusDot.style.background = "#3b82f6";
+                return;
+            }
+
+            const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+            const host = window.location.host || "localhost:8000";
+            const wsUrl = `${protocol}//${host}/ws/live_feed`;
+
+            try {
+                liveSocket = new WebSocket(wsUrl);
+
+                liveSocket.onopen = function () {
+                    console.log("[WebSocket] Connected to real-time feed:", wsUrl);
+                    isBackendOnline = true;
+                    const statusText = document.getElementById("serverStatusText");
+                    const statusDot = document.getElementById("serverDot");
+                    if (statusText) statusText.textContent = "LIVE WS CONNECTED";
+                    if (statusDot) {
+                        statusDot.style.background = "#10b981";
+                        statusDot.style.boxShadow = "0 0 8px #10b981";
+                    }
+                    if (wsReconnectTimer) {
+                        clearInterval(wsReconnectTimer);
+                        wsReconnectTimer = null;
+                    }
+                };
+
+                liveSocket.onmessage = function (event) {
+                    try {
+                        const payload = JSON.parse(event.data);
+                        console.log("[WebSocket Event]", payload.event, payload.data);
+                        
+                        if (payload.event === "portfolio_update" && payload.data) {
+                            if (window.__DASHBOARD_CACHE__) {
+                                window.__DASHBOARD_CACHE__.portfolio = payload.data;
+                            }
+                            renderPortfolioOnly(payload.data);
+                        } else if (payload.event === "live_feed_update" && payload.data) {
+                            window.__DASHBOARD_CACHE__ = payload.data;
+                            renderDashboardData(payload.data);
+                            if (payload.data.charts && payload.data.charts[currentSelectedTicker]) {
+                                loadChartData(currentSelectedTicker);
+                            }
+                        } else if (payload.event === "connected" && payload.data && payload.data.portfolio) {
+                            renderPortfolioOnly(payload.data.portfolio);
+                        }
+                    } catch (err) {
+                        console.error("[WebSocket message error]", err);
+                    }
+                };
+
+                liveSocket.onclose = function () {
+                    scheduleWsReconnect();
+                };
+
+                liveSocket.onerror = function () {
+                    if (liveSocket) liveSocket.close();
+                };
+            } catch (err) {
+                scheduleWsReconnect();
+            }
+        }
+
+        function scheduleWsReconnect() {
+            const statusText = document.getElementById("serverStatusText");
+            const statusDot = document.getElementById("serverDot");
+            if (statusText) {
+                statusText.textContent = isBackendOnline ? "API ACTIVE (HTTP)" : "LOCAL CACHE";
+            }
+            if (statusDot) {
+                statusDot.style.background = isBackendOnline ? "#10b981" : "#3b82f6";
+                statusDot.style.boxShadow = "none";
+            }
+            if (!wsReconnectTimer && window.location.protocol !== "file:") {
+                wsReconnectTimer = setInterval(connectWebSocket, 5000);
+            }
+        }
+
+        function renderPortfolioOnly(portfolio) {
+            const pBody = document.getElementById("portfolioTableBody");
+            const holdings = (portfolio && portfolio.holdings) || [];
+            
+            document.getElementById("kpiCount").textContent = `${holdings.length}`;
+            if (portfolio) {
+                document.getElementById("kpiInvested").textContent = `$${(portfolio.total_invested || 0).toLocaleString('en-US', {minimumFractionDigits:2})}`;
+                document.getElementById("kpiEval").textContent = `$${(portfolio.total_eval || 0).toLocaleString('en-US', {minimumFractionDigits:2})}`;
+                const pnlPct = portfolio.overall_pnl_pct !== undefined ? portfolio.overall_pnl_pct : (portfolio.total_pnl_pct || 0);
+                const pnlAmt = portfolio.overall_pnl_amount !== undefined ? portfolio.overall_pnl_amount : (portfolio.total_pnl_amount || 0);
+                const pnlEl = document.getElementById("kpiPnl");
+                pnlEl.textContent = `${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}% ($${pnlAmt.toLocaleString('en-US', {minimumFractionDigits:2})})`;
+                pnlEl.style.color = pnlPct >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+            }
+
+            if (holdings.length === 0) {
+                pBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-secondary); padding:20px;">No open positions in active portfolio. Select a ticker above to enter a position.</td></tr>`;
+            } else {
+                pBody.innerHTML = holdings.map(h => {
+                    const pnlColor = h.pnl_pct >= 0 ? '#10b981' : '#ef4444';
+                    return `
+                        <tr>
+                            <td><strong style="font-family:'JetBrains Mono'; color:#f8fafc;">${h.ticker}</strong></td>
+                            <td style="font-family:'JetBrains Mono';">$${Number(h.buy_price).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                            <td style="font-family:'JetBrains Mono'; font-weight:600; color:#38bdf8;">${Number(h.quantity).toLocaleString('en-US', {maximumFractionDigits:4})}</td>
+                            <td style="font-family:'JetBrains Mono';">$${Number(h.current_price).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                            <td style="color:${pnlColor}; font-weight:700; font-family:'JetBrains Mono';">${h.pnl_pct >= 0 ? '+' : ''}${h.pnl_pct.toFixed(2)}%</td>
+                            <td>
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <span style="font-size:11px; color:#9ca3af;">${h.exit_advice || 'Holding'}</span>
+                                    <button onclick="sellHolding(${h.id}, ${h.current_price})" style="background:#dc2626; color:#fff; border:none; padding:2px 8px; border-radius:2px; font-size:10px; cursor:pointer;">Exit</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        }
+
+        // ----------------------------------------------------
+        // Universal Stock Search & Autocomplete Engine
+        // ----------------------------------------------------
+        const searchInput = document.getElementById("stockSearchInput");
+        const searchDropdown = document.getElementById("searchDropdown");
+        const searchSpinner = document.getElementById("searchSpinner");
+        let searchDebounceTimer = null;
+        let currentSearchFocusIdx = -1;
+
+        // Global Shortcut: Press '/' to immediately focus search
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "/" && document.activeElement !== searchInput && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+                e.preventDefault();
+                if (searchInput) {
+                    searchInput.focus();
+                    searchInput.select();
+                }
+            }
+        });
+
+        if (searchInput) {
+            searchInput.addEventListener("focus", () => {
+                searchInput.style.borderColor = "var(--accent-blue)";
+                fetchSearchSuggestions(searchInput.value.trim());
+            });
+
+            searchInput.addEventListener("blur", () => {
+                searchInput.style.borderColor = "#334155";
+                setTimeout(() => {
+                    if (searchDropdown) searchDropdown.style.display = "none";
+                }, 250);
+            });
+
+            searchInput.addEventListener("input", () => {
+                clearTimeout(searchDebounceTimer);
+                searchDebounceTimer = setTimeout(() => {
+                    fetchSearchSuggestions(searchInput.value.trim());
+                }, 120);
+            });
+
+            searchInput.addEventListener("keydown", (e) => {
+                const items = searchDropdown.querySelectorAll(".search-suggestion-item");
+                if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    if (items.length > 0) {
+                        currentSearchFocusIdx = (currentSearchFocusIdx + 1) % items.length;
+                        highlightSearchItem(items);
+                    }
+                } else if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    if (items.length > 0) {
+                        currentSearchFocusIdx = (currentSearchFocusIdx - 1 + items.length) % items.length;
+                        highlightSearchItem(items);
+                    }
+                } else if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (currentSearchFocusIdx >= 0 && items[currentSearchFocusIdx]) {
+                        items[currentSearchFocusIdx].click();
+                    } else if (searchInput.value.trim()) {
+                        executeDirectSearch(searchInput.value.trim());
+                    }
+                } else if (e.key === "Escape") {
+                    searchDropdown.style.display = "none";
+                    searchInput.blur();
+                }
+            });
+        }
+
+        function highlightSearchItem(items) {
+            items.forEach((it, idx) => {
+                if (idx === currentSearchFocusIdx) {
+                    it.style.background = "#1e293b";
+                    it.scrollIntoView({ block: "nearest" });
+                } else {
+                    it.style.background = "transparent";
+                }
+            });
+        }
+
+        async function fetchSearchSuggestions(query) {
+            if (!searchDropdown) return;
+            try {
+                const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    renderSearchSuggestions(data.suggestions || [], query);
+                }
+            } catch (e) {
+                searchDropdown.style.display = "none";
+            }
+        }
+
+        function renderSearchSuggestions(suggestions, query) {
+            if (!searchDropdown) return;
+            if (!suggestions || suggestions.length === 0) {
+                searchDropdown.innerHTML = `<div style="padding:10px 14px; font-size:11px; color:#64748b;">일치하는 종목이 없습니다. 엔터를 눌러 직접 검색하세요.</div>`;
+                searchDropdown.style.display = "block";
+                return;
+            }
+
+            currentSearchFocusIdx = -1;
+            let html = "";
+            suggestions.forEach((item) => {
+                html += `
+                    <div class="search-suggestion-item" 
+                         onclick="selectSearchedStock('${item.ticker}')"
+                         style="padding:8px 12px; border-bottom:1px solid #1e293b; display:flex; justify-content:space-between; align-items:center; cursor:pointer; transition:background 0.15s;">
+                        <div>
+                            <span style="font-family:'JetBrains Mono'; font-weight:700; color:#38bdf8; font-size:12px;">${item.ticker}</span>
+                            <span style="font-size:12px; color:#f8fafc; margin-left:8px;">${item.name_kr || item.name_en}</span>
+                        </div>
+                        <div style="font-size:10px; color:#94a3b8; background:#1e293b; padding:2px 6px; border-radius:2px; font-family:'JetBrains Mono';">
+                            ${item.market || 'STOCK'}
+                        </div>
+                    </div>
+                `;
+            });
+            searchDropdown.innerHTML = html;
+            searchDropdown.style.display = "block";
+        }
+
+        function selectSearchedStock(ticker) {
+            if (searchDropdown) searchDropdown.style.display = "none";
+            if (searchInput) {
+                searchInput.value = ticker;
+                searchInput.blur();
+            }
+            if (searchSpinner) searchSpinner.style.display = "block";
+            selectStock(ticker, null);
+            setTimeout(() => {
+                if (searchSpinner) searchSpinner.style.display = "none";
+            }, 1000);
+        }
+
+        function executeDirectSearch(rawQuery) {
+            if (searchDropdown) searchDropdown.style.display = "none";
+            if (searchSpinner) searchSpinner.style.display = "block";
+            selectStock(rawQuery.trim().toUpperCase(), null);
+            setTimeout(() => {
+                if (searchSpinner) searchSpinner.style.display = "none";
+            }, 1500);
+        }
+
         window.addEventListener("DOMContentLoaded", () => {
             initCharts();
             selectStock("NVDA", 225.16);
             loadDashboard();
-            setInterval(loadDashboard, 30000); // 30s live refresh
+            connectWebSocket();
+            setInterval(loadDashboard, 30000); // 30s fallback poll
         });
 
         window.addEventListener("resize", () => {
