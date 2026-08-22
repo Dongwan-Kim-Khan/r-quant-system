@@ -132,3 +132,73 @@ def evaluate_quant_score(close: float, kijun: float, tenkan: float, span_a: floa
             "action": action_directive
         }
     }
+
+def compute_institutional_flow_indicators(df: pd.DataFrame) -> dict:
+    """
+    Computes institutional flow signatures:
+    1. On-Balance Volume (OBV) and Stealth Accumulation Divergence
+    2. 14-day Up/Down Volume Flow Ratio (flow_ratio)
+    3. Institutional Flow Score (0-100pt)
+    """
+    if df is None or len(df) < 15:
+        return {
+            "obv_status": "NEUTRAL",
+            "obv_label": "[NEUTRAL]",
+            "flow_ratio": 1.0,
+            "flow_label": "1.0x",
+            "flow_score": 50,
+            "is_stealth_accum": False
+        }
+        
+    df = df.copy()
+    close_diff = df['Close'].diff()
+    direction = np.where(close_diff > 0, 1, np.where(close_diff < 0, -1, 0))
+    df['OBV'] = (direction * df['Volume']).fillna(0).cumsum()
+    
+    # 14-day window metrics
+    w_df = df.iloc[-14:]
+    up_vol = w_df[w_df['Close'] >= w_df['Open']]['Volume'].sum()
+    down_vol = w_df[w_df['Close'] < w_df['Open']]['Volume'].sum()
+    
+    if down_vol > 0:
+        flow_ratio = round(float(up_vol / down_vol), 2)
+    else:
+        flow_ratio = 2.5
+        
+    price_change_14d = float((df['Close'].iloc[-1] - df['Close'].iloc[-14]) / df['Close'].iloc[-14] * 100)
+    obv_change_14d = float(df['OBV'].iloc[-1] - df['OBV'].iloc[-14])
+    
+    # Check for Stealth Accumulation Divergence: Price consolidating (-3.0% ~ +2.0%) while OBV rising
+    is_stealth_accum = bool(price_change_14d <= 2.5 and obv_change_14d > 0 and flow_ratio >= 1.2)
+    
+    if is_stealth_accum:
+        obv_status = "STEALTH_ACCUM"
+        obv_label = "[STEALTH ACCUM]"
+    elif obv_change_14d > 0:
+        obv_status = "BULL_FLOW"
+        obv_label = "[BULL FLOW]"
+    else:
+        obv_status = "NEUTRAL"
+        obv_label = "[NEUTRAL]"
+        
+    flow_score = 0
+    if is_stealth_accum:
+        flow_score += 50
+    elif obv_status == "BULL_FLOW":
+        flow_score += 30
+        
+    if flow_ratio >= 1.8:
+        flow_score += 50
+    elif flow_ratio >= 1.3:
+        flow_score += 35
+    elif flow_ratio >= 1.0:
+        flow_score += 20
+        
+    return {
+        "obv_status": obv_status,
+        "obv_label": obv_label,
+        "flow_ratio": float(flow_ratio),
+        "flow_label": f"{flow_ratio:.1f}x",
+        "flow_score": int(min(100, flow_score)),
+        "is_stealth_accum": bool(is_stealth_accum)
+    }

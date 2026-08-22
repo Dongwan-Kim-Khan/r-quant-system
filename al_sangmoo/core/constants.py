@@ -125,3 +125,55 @@ EXTERNAL_SHOCK_KEYWORDS = {
     "금리 경로 및 통화정책 영향권": ["금리", "국채", "10년물", "연준", "FOMC", "파월", "매파", "긴축", "인하 지연", "빅스텝", "베이비스텝"],
     "무역 분쟁 및 관세 불확실성": ["관세", "보복", "수출 규제", "통상", "트럼프", "무역", "환율", "달러 강세"]
 }
+
+TICKER_SECTORS = {
+    # Mega Tech & AI Platforms
+    "NVDA": "AI/TECH", "MSFT": "AI/TECH", "AMZN": "AI/TECH", "AAPL": "AI/TECH",
+    "GOOGL": "AI/TECH", "META": "AI/TECH", "TSLA": "AI/TECH", "PLTR": "AI/TECH",
+    "ORCL": "AI/TECH", "CRM": "AI/TECH",
+    # Semiconductors
+    "TSM": "SEMIS", "AVGO": "SEMIS", "AMD": "SEMIS", "QCOM": "SEMIS",
+    "ARM": "SEMIS", "MU": "SEMIS", "INTC": "SEMIS", "TXN": "SEMIS",
+    "005930.KS": "SEMIS", "000660.KS": "SEMIS", "ASML": "SEMIS",
+    "AMAT": "SEMIS", "LRCX": "SEMIS", "KLAC": "SEMIS", "SMCI": "SEMIS", "MRVL": "SEMIS",
+    # Power, Energy & Nuclear
+    "VST": "POWER/INFRA", "CEG": "POWER/INFRA", "GEV": "POWER/INFRA", "ETN": "POWER/INFRA",
+    "CCJ": "POWER/INFRA", "OKLO": "POWER/INFRA", "XOM": "ENERGY", "CVX": "ENERGY",
+    # Cybersecurity, SaaS & Space
+    "CRWD": "CYBER/SAAS", "PANW": "CYBER/SAAS", "NOW": "CYBER/SAAS", "RKLB": "SPACE/TECH",
+    "IONQ": "QUANTUM", "SNOW": "CYBER/SAAS", "NET": "CYBER/SAAS", "APP": "AI/TECH",
+    # Financials & Crypto
+    "JPM": "FINANCE", "V": "FINANCE", "MA": "FINANCE", "COIN": "CRYPTO/FIN",
+    "HOOD": "CRYPTO/FIN", "MSTR": "CRYPTO/FIN",
+    # Defense & Aerospace
+    "LMT": "DEFENSE", "RTX": "DEFENSE", "NOC": "DEFENSE", "GE": "DEFENSE",
+    # Healthcare & Consumers
+    "LLY": "HEALTHCARE", "UNH": "HEALTHCARE", "JNJ": "HEALTHCARE", "ISRG": "HEALTHCARE",
+    "COST": "CONSUMER", "WMT": "CONSUMER", "NFLX": "CONSUMER", "DIS": "CONSUMER"
+}
+
+def get_macro_tailwind_sectors(msi_score: float = 65.0, us10y: float = 4.4, wti: float = 78.0, vix: float = 16.0) -> list:
+    """
+    Returns active institutional macro tailwind sectors based on Gate-0 climate.
+    """
+    tailwind = []
+    
+    # High oil / geopolitical / inflation pressure
+    if wti >= 78.0 or msi_score >= 60.0:
+        tailwind.extend(["DEFENSE", "ENERGY", "POWER/INFRA"])
+        
+    # High interest rates / value regime
+    if us10y >= 4.35 or msi_score >= 50.0:
+        tailwind.extend(["FINANCE", "HEALTHCARE", "CONSUMER"])
+    else:
+        # Soft landing / lower rates / risk-on regime
+        tailwind.extend(["AI/TECH", "SEMIS", "CYBER/SAAS"])
+        
+    # Remove duplicates while preserving order
+    seen = set()
+    result = []
+    for s in tailwind:
+        if s not in seen:
+            seen.add(s)
+            result.append(s)
+    return result if result else ["AI/TECH", "POWER/INFRA", "DEFENSE"]

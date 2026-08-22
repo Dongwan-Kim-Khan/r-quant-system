@@ -577,25 +577,41 @@ def generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_e
 
             <!-- 3. Tactical 3-Column Quant Portfolio -->
             <div class="section">
-                <div class="section-title">3. Tactical 3-Column Quant Recommendations (오늘의 핵심 퀀트 추천주)</div>
+                <div class="section-title">3. Tactical 3-Tier Institutional Quant Signals (거시 로테이션 & 기관 수급 잠행 매집 추천주)</div>
+                <div style="font-size:11px; color:#475569; margin:-6px 0 12px 0; font-family:monospace; background:#f1f5f9; padding:6px 10px; border-radius:4px; border:1px solid #cbd5e1;">
+                    • <strong>자산 배분 나침반:</strong> <span style="color:#b45309; font-weight:700;">[Tier 1 집중형 60~70% CORE]</span> | <span style="color:#059669; font-weight:700;">[Tier 2 안정형 20% BASE]</span> | <span style="color:#dc2626; font-weight:700;">[Tier 3 스나이퍼 10% TACTICAL]</span>
+                </div>
     """
     
     # Helper for item badges
     def format_item_badges(item):
         badges_str = ""
+        # Sector badge
+        if item.get("sector"):
+            badges_str += f""" &nbsp;<span style="background:#f1f5f9; color:#475569; border:1px solid #94a3b8; padding:1px 5px; font-size:10px; font-weight:700; font-family:monospace; border-radius:3px;">[{item['sector']}]</span>"""
+        # OBV Status
+        if item.get("obv_status") == "STEALTH_ACCUM":
+            badges_str += f""" &nbsp;<span style="background:#dcfce7; color:#15803d; border:1px solid #16a34a; padding:1px 5px; font-size:10px; font-weight:700; font-family:monospace; border-radius:3px;">[OBV: STEALTH ACCUM]</span>"""
+        elif item.get("obv_status") == "BULL_FLOW":
+            badges_str += f""" &nbsp;<span style="background:#e0f2fe; color:#0369a1; border:1px solid #0284c7; padding:1px 5px; font-size:10px; font-weight:700; font-family:monospace; border-radius:3px;">[OBV: INFLOW]</span>"""
+        # Flow Ratio
+        if item.get("flow_ratio") and float(item.get("flow_ratio", 1.0)) >= 1.3:
+            badges_str += f""" &nbsp;<span style="background:#fef3c7; color:#92400e; border:1px solid #d97706; padding:1px 5px; font-size:10px; font-weight:700; font-family:monospace; border-radius:3px;">[FLOW: {item['flow_ratio']:.1f}x]</span>"""
+        # Streak badge
         if item.get("streak_days", 1) >= 2:
             badges_str += f""" &nbsp;<span style="background:#fef3c7; color:#92400e; border:1px solid #d97706; padding:1px 5px; font-size:10px; font-weight:700; font-family:monospace; border-radius:3px;">[{item['streak_days']}D STREAK]</span>"""
+        # In Wallet badge
         if item.get("in_wallet"):
             pnl = item.get("holding_pnl", 0.0)
             pnl_sign = "+" if pnl >= 0 else ""
             badges_str += f""" &nbsp;<span style="background:#e0f2fe; color:#0369a1; border:1px solid #0284c7; padding:1px 5px; font-size:10px; font-weight:700; font-family:monospace; border-radius:3px;">[IN WALLET: {pnl_sign}{pnl:.1f}%]</span>"""
         return badges_str
 
-    # 3.1. Dual Consensus (5-Star Alpha ∩)
+    # 3.1. Tier 1: Macro Leader & Smart Money Accumulation
     if dual_consensus:
         html += """
                 <div style="font-size:13px; font-weight:800; color:#b45309; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
-                    <span>[최상위 5-Star ∩] DUAL CONSENSUS ALPHA (양대 전략 동시 충족 100점 만점 주도주)</span>
+                    <span>[TIER 1 최우선 주도주] MACRO & SMART MONEY ACCUMULATION (거시 순풍 + 기관 잠행 매집 4선)</span>
                 </div>
         """
         for d in dual_consensus:
@@ -604,22 +620,22 @@ def generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_e
             html += f"""
                 <div class="stock-card stock-card-dual" style="{wallet_style}">
                     <div class="stock-head">
-                        <span><strong>{d['ticker']}</strong> &nbsp;<span style="font-size:12px; color:#64748b;">{d.get('name','')}</span> &nbsp;<span class="badge badge-dual">5-STAR ALPHA 100점</span>{ext_badges}</span>
+                        <span><strong>{d['ticker']}</strong> &nbsp;<span style="font-size:12px; color:#64748b;">{d.get('name','')}</span> &nbsp;<span class="badge badge-dual">TIER 1 주도주 {d['score']}점</span>{ext_badges}</span>
                         <span style="font-family:monospace; font-weight:800;">${d['price']:,.2f}</span>
                     </div>
                     <div class="stock-meta">
                         • <strong>26일 기준선 이격:</strong> {d['kijun_gap']:+.2f}% | <strong>20일 거래량 비율:</strong> {d['vol_ratio']}% (수급 마름 확인)<br>
                         • <strong>1차 목표가(+15%):</strong> <span style="color:#059669; font-weight:700;">${d['target_price']:,.2f}</span> | <strong>칼손절 기준선(-4%):</strong> <span style="color:#dc2626; font-weight:700;">${d['stop_price']:,.2f}</span><br>
-                        • <strong>기관 퀀트 분석:</strong> 정석 기준선 지지 눌림목과 14일 구름대 반등(트램펄린) 2단계 시세 분출 조건을 동시에 완벽 충족한 최우선 매수 후보.
+                        • <strong>기관 퀀트 분석:</strong> 거시 순풍 섹터 부합 및 26일 기준선 안전 지지 구역 내 기관 잠행 매집(OBV/양봉수급) 확인 완료. 최우선 집중 공략 대상.
                     </div>
                 </div>
             """
 
-    # 3.2. Strategy I (Primary Accumulation)
+    # 3.2. Tier 2: Structural 26D Pullback
     if strat1_exclusive:
         html += """
                 <div style="font-size:13px; font-weight:800; color:#059669; margin:16px 0 8px 0;">
-                    [전략 I] PRIMARY ACCUMULATION (26일 기준선 눌림목 1차 분할 매수 적합주)
+                    [TIER 2 정석 안정주] STRUCTURAL 26D PULLBACK (26일 기준선 지지 1차 분할 매수 적합주)
                 </div>
         """
         for p in strat1_exclusive:
@@ -628,7 +644,7 @@ def generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_e
             html += f"""
                 <div class="stock-card stock-card-strat1" style="{wallet_style}">
                     <div class="stock-head">
-                        <span><strong>{p['ticker']}</strong> &nbsp;<span style="font-size:12px; color:#64748b;">{p.get('name','')}</span> &nbsp;<span class="badge badge-strat1">적합도 {p['score']}점</span>{ext_badges}</span>
+                        <span><strong>{p['ticker']}</strong> &nbsp;<span style="font-size:12px; color:#64748b;">{p.get('name','')}</span> &nbsp;<span class="badge badge-strat1">TIER 2 적합도 {p['score']}점</span>{ext_badges}</span>
                         <span style="font-family:monospace; font-weight:800;">${p['price']:,.2f}</span>
                     </div>
                     <div class="stock-meta">
@@ -639,11 +655,11 @@ def generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_e
                 </div>
             """
 
-    # 3.3. Strategy II (Cloud Bounce Sniper Radar)
+    # 3.3. Tier 3: Cloud Bounce Sniper Radar
     if strat2_exclusive:
         html += """
                 <div style="font-size:13px; font-weight:800; color:#dc2626; margin:16px 0 8px 0;">
-                    [전략 II] CLOUD BOUNCE SNIPER RADAR (일목 구름대 지지 도약 2단계 발사대 모멘텀주)
+                    [TIER 3 스나이퍼] CLOUD BOUNCE SNIPER RADAR (일목 구름대 지지 도약 2단계 발사대 모멘텀주)
                 </div>
         """
         for s in strat2_exclusive:
@@ -652,13 +668,13 @@ def generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_e
             html += f"""
                 <div class="stock-card stock-card-strat2" style="{wallet_style}">
                     <div class="stock-head">
-                        <span><strong>{s['ticker']}</strong> &nbsp;<span style="font-size:12px; color:#64748b;">{s.get('name','')}</span> &nbsp;<span class="badge badge-strat2">스나이퍼 {s['score']}점</span>{ext_badges}</span>
+                        <span><strong>{s['ticker']}</strong> &nbsp;<span style="font-size:12px; color:#64748b;">{s.get('name','')}</span> &nbsp;<span class="badge badge-strat2">TIER 3 스나이퍼 {s['score']}점</span>{ext_badges}</span>
                         <span style="font-family:monospace; font-weight:800;">${s['price']:,.2f}</span>
                     </div>
                     <div class="stock-meta">
                         • <strong>26일 기준선 이격:</strong> {s['kijun_gap']:+.2f}% | <strong>20일 거래량 비율:</strong> {s['vol_ratio']}%<br>
                         • <strong>1차 목표가(+15%):</strong> <span style="color:#059669; font-weight:700;">${s['target_price']:,.2f}</span> | <strong>손절 기준선(-4%):</strong> <span style="color:#dc2626; font-weight:700;">${s['stop_price']:,.2f}</span><br>
-                        • <strong>기관 퀀트 분석:</strong> 최근 14거래일 내 일목 구름대 트램펄린 반등 후 2단계 기준선 상방 가속 발사대 진입 완료.
+                        • <strong>기관 퀀트 분석:</strong> 일목 구름대 하단 트램펄린 반등 완료 후 상방 탄력 가속 구간. 단기 스윙 공략 대상.
                     </div>
                 </div>
             """

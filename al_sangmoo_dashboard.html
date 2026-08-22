@@ -513,58 +513,70 @@
     </div>
 
     <!-- Tactical Dual-Strategy Alpha Grid (Bloomberg Terminal Style) -->
-    <!-- Tactical Quant Signals (3-Column Architecture: Left = Strat 1, Center = Dual Consensus, Right = Strat 2) -->
+    <!-- Tactical 3-Tier Institutional Quant Signals (Bloomberg Terminal Style) -->
     <div class="today-section">
         <div class="today-banner">
             <div class="today-title">
                 <span>TACTICAL QUANT SIGNALS (60-ASSET GLOBAL UNIVERSE)</span>
-                <span style="font-size:11px; color:#94a3af; font-family:'JetBrains Mono';">3-COLUMN QUANT MATRIX | DUAL-STRATEGY & GOLDEN INTERSECTION</span>
+                <span style="font-size:11px; color:#94a3af; font-family:'JetBrains Mono';">3-TIER INSTITUTIONAL QUANT MATRIX | MACRO ROTATION & SMART MONEY ACCUMULATION</span>
             </div>
             
-            <div style="display:grid; grid-template-columns: 1.15fr 0.85fr 1.15fr; gap:12px; margin-top:6px;">
+            <!-- Slim Macro Rotation Flow Bar -->
+            <div id="macroRotationBar" style="display:flex; justify-content:space-between; align-items:center; background:#0b132b; border:1px solid #1e293b; border-left:3px solid #38bdf8; border-radius:4px; padding:6px 12px; margin-top:8px; font-family:'JetBrains Mono'; font-size:11px;">
+                <div>
+                    <span style="color:#64748b; font-weight:700;">[MACRO ROTATION]</span>
+                    <span style="color:#94a3b8; margin-left:6px;">ACTIVE TAILWIND SECTORS:</span>
+                    <span id="macroTailwindSectors" style="color:#38bdf8; font-weight:800; margin-left:4px;">[DEFENSE] [ENERGY] [POWER/INFRA]</span>
+                </div>
+                <div style="color:#94a3b8; font-size:10px;">
+                    <span>ALLOCATION GUIDE: <strong style="color:#fbbf24;">TIER 1 (60~70% CORE)</strong> | <strong style="color:#34d399;">TIER 2 (20%)</strong> | <strong style="color:#f87171;">TIER 3 (10%)</strong></span>
+                </div>
+            </div>
+            
+            <div style="display:grid; grid-template-columns: 1.15fr 0.85fr 1.15fr; gap:12px; margin-top:10px;">
                 
-                <!-- [LEFT] Strategy I: Primary Accumulation (기준선 눌림목 1차 분할 매수) -->
+                <!-- [LEFT] Tier 2: Structural 26D Pullback (기준선 눌림목 1차 분할 매수) -->
                 <div style="background:#0f172a; border:1px solid #1e293b; border-top:3px solid var(--accent-green); border-radius:4px; padding:12px; display:flex; flex-direction:column;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #1e293b;">
                         <div>
                             <span style="font-size:12px; font-weight:800; color:#34d399; letter-spacing:0.04em; text-transform:uppercase; font-family:'JetBrains Mono'; display:block;">
-                                STRATEGY I: PRIMARY ACCUMULATION
+                                [TIER 2] STRUCTURAL 26D PULLBACK
                             </span>
-                            <span style="font-size:10px; color:#94a3b8; font-family:'JetBrains Mono';">26D KIJUN PULLBACK (-0.8% ~ +4.0%)</span>
+                            <span style="font-size:10px; color:#94a3b8; font-family:'JetBrains Mono';">26D KIJUN SUPPORT (-0.8% ~ +3.5%)</span>
                         </div>
-                        <span style="font-size:10px; color:#34d399; background:#064e3b; padding:2px 6px; border-radius:2px; font-family:'JetBrains Mono'; font-weight:700;">STRAT I ONLY</span>
+                        <span style="font-size:10px; color:#34d399; background:#064e3b; padding:2px 6px; border-radius:2px; font-family:'JetBrains Mono'; font-weight:700;">TIER 2 BASE</span>
                     </div>
                     <div id="strat1ExclusiveCards" style="display:flex; flex-direction:column; gap:8px; flex:1;">
                         <!-- Populated dynamically via JavaScript -->
                     </div>
                 </div>
 
-                <!-- [CENTER] Dual Consensus: Strategy I ∩ Strategy II (황금 교집합) -->
+                <!-- [CENTER] Tier 1: Macro Leader & Smart Money Accumulation (최상위 주도주) -->
                 <div style="background:#17170c; border:1px solid #78350f; border-top:3px solid #f59e0b; border-radius:4px; padding:12px; display:flex; flex-direction:column; box-shadow:0 0 15px rgba(245,158,11,0.08);">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #78350f;">
                         <div>
                             <span style="font-size:12px; font-weight:800; color:#fbbf24; letter-spacing:0.04em; text-transform:uppercase; font-family:'JetBrains Mono'; display:block;">
-                                DUAL CONSENSUS ALPHA (STRAT I ∩ II)
+                                [TIER 1] MACRO & SMART MONEY
                             </span>
-                            <span style="font-size:10px; color:#fde68a; font-family:'JetBrains Mono';">TRAMPOLINE BOUNCE + KIJUN SUPPORT</span>
+                            <span style="font-size:10px; color:#fde68a; font-family:'JetBrains Mono';">MACRO TAILWIND + STEALTH OBV ACCUM</span>
                         </div>
-                        <span style="font-size:10px; color:#0f172a; background:#fbbf24; padding:2px 6px; border-radius:2px; font-family:'JetBrains Mono'; font-weight:800;">5-STAR ALPHA ∩</span>
+                        <span style="font-size:10px; color:#0f172a; background:#fbbf24; padding:2px 6px; border-radius:2px; font-family:'JetBrains Mono'; font-weight:800;">TOP CONVICTION</span>
                     </div>
                     <div id="dualConsensusCards" style="display:flex; flex-direction:column; gap:8px; flex:1;">
                         <!-- Populated dynamically via JavaScript -->
                     </div>
                 </div>
 
-                <!-- [RIGHT] Strategy II: Cloud Bounce Sniper Radar (구름대 반등 2단계 스나이퍼) -->
+                <!-- [RIGHT] Tier 3: Cloud Bounce Sniper Radar (구름대 반등 2단계 스나이퍼) -->
                 <div style="background:#0f172a; border:1px solid #1e293b; border-top:3px solid #f87171; border-radius:4px; padding:12px; display:flex; flex-direction:column;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #1e293b;">
                         <div>
                             <span style="font-size:12px; font-weight:800; color:#f87171; letter-spacing:0.04em; text-transform:uppercase; font-family:'JetBrains Mono'; display:block;">
-                                STRATEGY II: CLOUD BOUNCE SNIPER
+                                [TIER 3] CLOUD BOUNCE SNIPER
                             </span>
                             <span style="font-size:10px; color:#fca5a5; font-family:'JetBrains Mono';">STAGE 2 MOMENTUM LAUNCH</span>
                         </div>
-                        <span style="font-size:10px; color:#f87171; background:#450a0a; padding:2px 6px; border-radius:2px; font-family:'JetBrains Mono'; font-weight:700;">STRAT II ONLY</span>
+                        <span style="font-size:10px; color:#f87171; background:#450a0a; padding:2px 6px; border-radius:2px; font-family:'JetBrains Mono'; font-weight:700;">TIER 3 SNIPER</span>
                     </div>
                     <div id="strat2ExclusiveCards" style="display:flex; flex-direction:column; gap:8px; flex:1;">
                         <!-- Populated dynamically via JavaScript -->
@@ -1461,7 +1473,14 @@
                 }
             }
 
-            // Render 3-Column Tactical Quant Matrix (Left = Strat 1, Center = Dual Consensus, Right = Strat 2)
+            // Update Macro Rotation Status Bar
+            const tailwindEl = document.getElementById("macroTailwindSectors");
+            if (tailwindEl && data.macro && data.macro.tailwind_sectors) {
+                const sectors = data.macro.tailwind_sectors;
+                tailwindEl.innerHTML = sectors.map(s => `[${s}]`).join(' ');
+            }
+
+            // Render 3-Tier Tactical Quant Matrix (Left = Tier 2, Center = Tier 1, Right = Tier 3)
             const strat1Cards = document.getElementById("strat1ExclusiveCards");
             const dualCards = document.getElementById("dualConsensusCards");
             const strat2Cards = document.getElementById("strat2ExclusiveCards");
@@ -1489,6 +1508,21 @@
                     streakBadge = `<span style="font-size:9px; font-weight:800; font-family:'JetBrains Mono'; color:#fbbf24; background:rgba(251,191,36,0.15); border:1px solid #d97706; padding:1px 5px; border-radius:3px; letter-spacing:0.5px;">[${item.streak_days}D STREAK]</span>`;
                 }
 
+                // Sector Badge
+                const sectorTag = item.sector ? `<span style="font-size:9px; font-weight:700; font-family:'JetBrains Mono'; color:#94a3b8; background:#1e293b; border:1px solid #334155; padding:1px 4px; border-radius:2px;">[${item.sector}]</span>` : '';
+
+                // OBV Status Badge
+                let obvBadge = '';
+                if (item.obv_status === 'STEALTH_ACCUM') {
+                    obvBadge = `<span style="color:#34d399; font-weight:700;">OBV: STEALTH ACCUM</span>`;
+                } else if (item.obv_status === 'BULL_FLOW') {
+                    obvBadge = `<span style="color:#38bdf8; font-weight:700;">OBV: INFLOW</span>`;
+                } else {
+                    obvBadge = `<span style="color:#64748b;">OBV: NEUTRAL</span>`;
+                }
+
+                const flowRatioText = item.flow_ratio ? ` | FLOW: <strong style="color:${item.flow_ratio >= 1.4 ? '#34d399' : '#94a3b8'};">${Number(item.flow_ratio).toFixed(1)}x</strong>` : '';
+
                 return `
                     <div class="rec-item ${isActive}" data-ticker="${item.ticker}" style="${walletCardStyle}" onclick="selectStock('${item.ticker}', ${item.price})">
                         <div style="flex:1;">
@@ -1496,14 +1530,16 @@
                                 <div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap;">
                                     <span class="rec-item-title" style="color:${colorTheme};">${item.ticker}</span>
                                     <span class="rec-item-sub" style="font-size:11px; font-weight:600;">${item.name}</span>
+                                    ${sectorTag}
                                     <span class="origin-badge ${originClass}" style="font-size:9px; padding:1px 5px;">${originText}</span>
                                     ${streakBadge}
                                     ${walletBadge}
                                 </div>
                                 <div class="rec-item-price" style="color:${colorTheme};">$${Number(item.price).toFixed(2)}</div>
                             </div>
-                            <div class="rec-item-sub" style="font-size:11px; display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
+                            <div class="rec-item-sub" style="font-size:10px; display:flex; justify-content:space-between; align-items:center; margin-top:2px; font-family:'JetBrains Mono';">
                                 <span>SCORE: <strong style="color:#f8fafc;">${item.score}pt</strong> | 26D: <strong style="color:#38bdf8;">${item.kijun_gap >= 0 ? '+' : ''}${Number(item.kijun_gap).toFixed(1)}%</strong> | VOL: <strong>${item.vol_ratio}%</strong></span>
+                                <span>${obvBadge}${flowRatioText}</span>
                             </div>
                             <div style="display:flex; justify-content:space-between; align-items:center; font-size:10px; font-family:'JetBrains Mono'; margin-top:4px; padding-top:4px; border-top:1px dashed #1e293b;">
                                 <span style="color:#94a3b8;">TP(+15%): <strong style="color:#34d399;">$${targetPrice}</strong></span>
@@ -1514,7 +1550,7 @@
                 `;
             };
 
-            // 1. [LEFT] Strategy I: Primary Accumulation
+            // 1. [LEFT] Tier 2: Structural 26D Pullback
             if (strat1Cards) {
                 const list1 = data.strat1_exclusive || (data.primary_accumulation || []).filter(p => !p.is_sniper);
                 if (list1.length > 0) {
@@ -1524,17 +1560,17 @@
                 }
             }
 
-            // 2. [CENTER] Dual Consensus: Strategy I ∩ Strategy II (황금 교집합)
+            // 2. [CENTER] Tier 1: Macro & Smart Money Accumulation
             if (dualCards) {
                 const dualList = data.dual_consensus || [];
                 if (dualList.length > 0) {
                     dualCards.innerHTML = dualList.map(d => renderItemCard(d, "#fbbf24")).join('');
                 } else {
-                    dualCards.innerHTML = `<div style="background:#17170c; border:1px dashed #78350f; border-radius:4px; padding:12px; text-align:center; color:#fbbf24; font-size:11px; font-family:'JetBrains Mono';">양대 전략 동시 충족 5-Star 종목 스캔 중</div>`;
+                    dualCards.innerHTML = `<div style="background:#17170c; border:1px dashed #78350f; border-radius:4px; padding:12px; text-align:center; color:#fbbf24; font-size:11px; font-family:'JetBrains Mono';">매크로 주도 기관 잠행 매집 종목 스캔 중</div>`;
                 }
             }
 
-            // 3. [RIGHT] Strategy II: Cloud Bounce Sniper Radar
+            // 3. [RIGHT] Tier 3: Cloud Bounce Sniper Radar
             if (strat2Cards) {
                 const list2 = data.strat2_exclusive || (data.sniper_radar || []).filter(s => !s.is_strat1);
                 if (list2.length > 0) {

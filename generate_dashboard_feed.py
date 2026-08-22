@@ -8,13 +8,20 @@ import yfinance as yf
 from datetime import datetime
 import db_manager
 
+def safe_json_default(o):
+    if hasattr(o, 'item'):
+        return o.item()
+    if isinstance(o, (pd.Timestamp, datetime)):
+        return o.strftime("%Y-%m-%d")
+    return str(o)
+
 def atomic_save_json(file_path, data, indent=2, max_retries=10):
     dir_name = os.path.dirname(os.path.abspath(file_path))
     os.makedirs(dir_name, exist_ok=True)
     temp_name = None
     with tempfile.NamedTemporaryFile("w", dir=dir_name, delete=False, encoding="utf-8") as tf:
         temp_name = tf.name
-        json.dump(data, tf, ensure_ascii=False, indent=indent)
+        json.dump(data, tf, ensure_ascii=False, indent=indent, default=safe_json_default)
         tf.flush()
         os.fsync(tf.fileno())
         
@@ -26,7 +33,7 @@ def atomic_save_json(file_path, data, indent=2, max_retries=10):
             if attempt == max_retries - 1:
                 try:
                     with open(file_path, "w", encoding="utf-8") as f:
-                        json.dump(data, f, ensure_ascii=False, indent=indent)
+                        json.dump(data, f, ensure_ascii=False, indent=indent, default=safe_json_default)
                     if temp_name and os.path.exists(temp_name):
                         os.remove(temp_name)
                     return
@@ -68,7 +75,8 @@ STREAM_CACHE = os.path.join(BASE_DIR, "wepoll_latest_stream.json")
 CHARTS_DIR = os.path.join(BASE_DIR, "data", "charts")
 
 from concurrent.futures import ThreadPoolExecutor
-from al_sangmoo.core.constants import WATCHLIST, STOCK_DICT
+from al_sangmoo.core.constants import WATCHLIST, STOCK_DICT, TICKER_SECTORS, get_macro_tailwind_sectors
+from al_sangmoo.domain.quant.ichimoku import compute_institutional_flow_indicators
 
 def build_ichimoku_series(df_in, max_bars=500, is_weekly=False):
     df_clean = df_in.dropna(subset=['Close', 'High', 'Low', 'Kijun', 'Tenkan']).tail(max_bars)
@@ -346,6 +354,10 @@ def compute_all_indicators(ticker):
         vol_badge = "VOLUME DRY" if vol_ratio <= 0.75 else ("NORMAL VOL" if vol_ratio <= 1.2 else "HIGH VOL")
         vol_desc = f"20일 평균 거래량 대비 {round(vol_ratio*100)}% ({'매도세 고갈 완벽' if vol_ratio <= 0.75 else '통상 거래량'})"
         
+        # Institutional Flow Signature & Sector Mapping
+        sector = TICKER_SECTORS.get(ticker, "GENERAL")
+        flow_data = compute_institutional_flow_indicators(df_clean)
+        
         intelligence = {
             "verdict": quant_verdict,
             "score": quant_score_text,
@@ -356,6 +368,13 @@ def compute_all_indicators(ticker):
             "is_sniper": is_sniper_active,
             "is_weekly_bull": is_weekly_bull,
             "trampoline_detected": trampoline_detected,
+            "sector": sector,
+            "obv_status": flow_data["obv_status"],
+            "obv_label": flow_data["obv_label"],
+            "flow_ratio": flow_data["flow_ratio"],
+            "flow_label": flow_data["flow_label"],
+            "flow_score": flow_data["flow_score"],
+            "is_stealth_accum": flow_data["is_stealth_accum"],
             "kijun": {"val": f"${kijun:,.2f} ({kijun_gap:+.1f}%)", "status": kijun_status, "badge": kijun_badge, "desc": kijun_desc},
             "tenkan": {"val": f"${tenkan:,.2f}", "status": tenkan_status, "badge": tenkan_badge, "desc": tenkan_desc},
             "cloud": {"val": f"${cloud_top:,.2f}", "status": cloud_status, "badge": cloud_badge, "desc": cloud_desc},
@@ -365,6 +384,13 @@ def compute_all_indicators(ticker):
             
         return {
             "ticker": ticker,
+            "sector": sector,
+            "obv_status": flow_data["obv_status"],
+            "obv_label": flow_data["obv_label"],
+            "flow_ratio": flow_data["flow_ratio"],
+            "flow_label": flow_data["flow_label"],
+            "flow_score": flow_data["flow_score"],
+            "is_stealth_accum": flow_data["is_stealth_accum"],
             "latest_close": round(close, 2),
             "kijun": round(kijun, 2),
             "tenkan": round(tenkan, 2),
@@ -449,10 +475,20 @@ def build_dashboard_data():
         "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
     
-    # Rank and Categorize Strategy 1, Dual Consensus (Intersection), and Strategy 2
-    strat1_exclusive = []
-    strat2_exclusive = []
-    dual_consensus_picks = []
+    # Calculate Macro Tailwind Sectors from Gate-0 Climate
+    macro_climate = macro_info.get("macro_climate", {}) if isinstance(macro_info, dict) else {}
+    macro_gauges = macro_info.get("macro_gauges", {}) if isinstance(macro_info, dict) else {}
+    msi_score = float(macro_climate.get("msi_score", 65.0))
+    us10y_val = float(macro_gauges.get("us10y", {}).get("val", 4.4)) if isinstance(macro_gauges.get("us10y"), dict) else 4.4
+    wti_val = float(macro_gauges.get("wti", {}).get("val", 78.0)) if isinstance(macro_gauges.get("wti"), dict) else 78.0
+    vix_val = float(macro_gauges.get("vix", {}).get("val", 16.0)) if isinstance(macro_gauges.get("vix"), dict) else 16.0
+    tailwind_sectors = get_macro_tailwind_sectors(msi_score, us10y_val, wti_val, vix_val)
+    macro_info["tailwind_sectors"] = tailwind_sectors
+    
+    # 3-Tier Categorization Pools
+    tier1_candidates = []
+    tier2_candidates = []
+    tier3_candidates = []
     
     for t, c in chart_data.items():
         is_stream = t in stream_mentioned_tickers
@@ -465,18 +501,42 @@ def build_dashboard_data():
         is_sn = c["is_sniper"]
         s_score = c.get("sniper_score", 95 if is_sn else 0)
         
-        # Strategy 1 (Classic Pullback Accumulation): Weekly Bull, Bull Score >= 80, Kijun gap -0.8% ~ +4.8%
-        is_strat1 = c.get("is_weekly_bull", False) and (b_score >= 80) and (-0.8 <= kgap <= 4.8)
-        # Strategy 2 (Cloud Bounce Sniper): Weekly Bull, Cloud trampoline launch detected, Sniper Score >= 80
-        is_strat2 = c.get("is_weekly_bull", False) and bool(is_sn) and (s_score >= 80)
+        # Sector & Institutional Flow Signature
+        sector = c.get("sector", TICKER_SECTORS.get(t, "GENERAL"))
+        is_macro_tailwind = (sector in tailwind_sectors)
+        obv_status = c.get("obv_status", "NEUTRAL")
+        obv_label = c.get("obv_label", "[NEUTRAL]")
+        flow_ratio = c.get("flow_ratio", 1.0)
+        flow_label = c.get("flow_label", "1.0x")
+        flow_score = c.get("flow_score", 50)
+        is_stealth_accum = c.get("is_stealth_accum", False)
+        
+        # Safety Gate: Must be in valid Kijun support zone (-0.8% ~ +3.5%)
+        is_safe_entry = (-0.8 <= kgap <= 3.5)
+        is_weekly_bull = c.get("is_weekly_bull", False)
+        
+        # Strategy 1 (Classic Pullback): Weekly Bull, Score >= 80, Kijun gap in range
+        is_strat1 = is_weekly_bull and (b_score >= 80) and (-0.8 <= kgap <= 4.8)
+        # Strategy 2 (Cloud Bounce Sniper): Weekly Bull, Trampoline bounce, Score >= 80
+        is_strat2 = is_weekly_bull and bool(is_sn) and (s_score >= 80)
         
         item_score = 100 if (is_strat1 and is_strat2) else (b_score if is_strat1 else s_score)
+        composite_score = round(item_score * 0.45 + flow_score * 0.35 + max(0, 100 - abs(kgap) * 15) * 0.20, 1)
         
         item = {
             "ticker": t,
             "name": STOCK_DICT.get(t, [t])[0],
             "price": c["latest_close"],
             "score": item_score,
+            "composite_score": composite_score,
+            "sector": sector,
+            "is_macro_tailwind": is_macro_tailwind,
+            "obv_status": obv_status,
+            "obv_label": obv_label,
+            "flow_ratio": flow_ratio,
+            "flow_label": flow_label,
+            "flow_score": flow_score,
+            "is_stealth_accum": is_stealth_accum,
             "kijun_gap": kgap,
             "vol_ratio": round(v_ratio * 100),
             "origin": origin_tag,
@@ -488,22 +548,28 @@ def build_dashboard_data():
             "stop_price": round(c["latest_close"] * 0.96, 2)
         }
         
-        if is_strat1 and is_strat2:
-            dual_consensus_picks.append(item)
-        elif is_strat1:
-            strat1_exclusive.append(item)
-        elif is_strat2:
-            strat2_exclusive.append(item)
+        # Tier 1 Qualification: Weekly Bull + (Strat 1 or Strat 2) + Safe Entry + (Macro Tailwind or Stealth Accum or High Flow or 100pt)
+        if is_weekly_bull and (is_strat1 or is_strat2) and is_safe_entry and (is_macro_tailwind or is_stealth_accum or flow_ratio >= 1.3 or item_score == 100):
+            tier1_candidates.append(item)
+        elif is_weekly_bull and is_strat1 and is_safe_entry:
+            tier2_candidates.append(item)
+        elif is_weekly_bull and is_strat2:
+            tier3_candidates.append(item)
             
-    # Sort each category by highest conviction (Score -> Nearest Kijun Gap -> Lowest Volume Ratio)
-    dual_consensus_picks.sort(key=lambda x: (-x["score"], abs(x["kijun_gap"]), x["vol_ratio"]))
-    strat1_exclusive.sort(key=lambda x: (-x["score"], abs(x["kijun_gap"]), x["vol_ratio"]))
-    strat2_exclusive.sort(key=lambda x: (-x["score"], abs(x["kijun_gap"]), x["vol_ratio"]))
+    # Sort each tier by highest institutional conviction
+    tier1_candidates.sort(key=lambda x: (-x["flow_score"], -x["score"], abs(x["kijun_gap"]), x["vol_ratio"]))
+    tier2_candidates.sort(key=lambda x: (-x["score"], abs(x["kijun_gap"]), x["vol_ratio"]))
+    tier3_candidates.sort(key=lambda x: (-x["score"], -x["flow_score"], abs(x["kijun_gap"])))
+    
+    # Exclude Tier 1 picks from Tier 2 and Tier 3 to maintain distinct portfolios
+    tier1_tickers = set(x["ticker"] for x in tier1_candidates[:4])
+    tier2_filtered = [x for x in tier2_candidates if x["ticker"] not in tier1_tickers]
+    tier3_filtered = [x for x in tier3_candidates if x["ticker"] not in tier1_tickers]
 
-    # Concentrate to Top Elite Recommendations (Top 4 Dual, Top 4 Strat 1, Top 4 Strat 2)
-    dual_consensus_picks = dual_consensus_picks[:4]
-    strat1_exclusive = strat1_exclusive[:4]
-    strat2_exclusive = strat2_exclusive[:4]
+    # Concentrate to Top Elite Recommendations
+    dual_consensus_picks = tier1_candidates[:4]
+    strat1_exclusive = tier2_filtered[:4]
+    strat2_exclusive = tier3_filtered[:4]
 
     # Load current portfolio & recommendation streaks
     portfolio = db_manager.get_live_portfolio()
@@ -533,24 +599,27 @@ def build_dashboard_data():
     all_strat1 = dual_consensus_picks + strat1_exclusive
     all_strat2 = dual_consensus_picks + strat2_exclusive
 
-    # Build Unified Signal Tracker (Dual Consensus -> Strategy 2 -> Strategy 1)
+    # Build Unified Signal Tracker (Tier 1 -> Tier 3 -> Tier 2)
     today_str = datetime.now().strftime("%Y-%m-%d")
     signal_tracker = []
     
-    # 1. Dual Consensus signals first (Top 5-Star conviction)
+    # 1. Tier 1 Macro Leaders
     for d in dual_consensus_picks:
         signal_tracker.append({
             "date": today_str,
             "ticker": d["ticker"],
             "name": d["name"],
+            "sector": d.get("sector", "GENERAL"),
             "origin": d["origin"],
             "origin_label": d["origin_label"],
-            "strategy": "양대 전략 공통 (황금 교집합)",
-            "strategy_code": "STRATEGY_DUAL_CONSENSUS",
+            "strategy": "Tier 1 (매크로 순풍+잠행매집)",
+            "strategy_code": "TIER_1_LEADER",
             "entry_price": d["price"],
             "target_price": d["target_price"],
             "stop_price": d["stop_price"],
-            "score": 100,
+            "score": d["score"],
+            "flow_ratio": d.get("flow_ratio", 1.0),
+            "obv_status": d.get("obv_status", "NEUTRAL"),
             "in_wallet": d.get("in_wallet", False),
             "streak_days": d.get("streak_days", 1),
             "streak_label": d.get("streak_label", ""),
@@ -558,20 +627,23 @@ def build_dashboard_data():
             "status_label": "DUAL_5_STAR"
         })
         
-    # 2. Strategy 2 Sniper Radar signals
+    # 2. Tier 3 Sniper Radar
     for s in strat2_exclusive:
         signal_tracker.append({
             "date": today_str,
             "ticker": s["ticker"],
             "name": s["name"],
+            "sector": s.get("sector", "GENERAL"),
             "origin": s["origin"],
             "origin_label": s["origin_label"],
-            "strategy": "전략 2 (스나이퍼)",
-            "strategy_code": "STRATEGY_2_SNIPER",
+            "strategy": "Tier 3 (구름대 스나이퍼)",
+            "strategy_code": "TIER_3_SNIPER",
             "entry_price": s["price"],
             "target_price": s["target_price"],
             "stop_price": s["stop_price"],
-            "score": 95,
+            "score": s["score"],
+            "flow_ratio": s.get("flow_ratio", 1.0),
+            "obv_status": s.get("obv_status", "NEUTRAL"),
             "in_wallet": s.get("in_wallet", False),
             "streak_days": s.get("streak_days", 1),
             "streak_label": s.get("streak_label", ""),
@@ -579,20 +651,23 @@ def build_dashboard_data():
             "status_label": "ACTIVE_SNIPER"
         })
         
-    # 3. Strategy 1 Primary Accumulation signals
+    # 3. Tier 2 Structural Pullbacks
     for p in strat1_exclusive:
         signal_tracker.append({
             "date": today_str,
             "ticker": p["ticker"],
             "name": p["name"],
+            "sector": p.get("sector", "GENERAL"),
             "origin": p["origin"],
             "origin_label": p["origin_label"],
-            "strategy": "전략 1 (정석 눌림목)",
-            "strategy_code": "STRATEGY_1_PULLBACK",
+            "strategy": "Tier 2 (정석 기준선 눌림목)",
+            "strategy_code": "TIER_2_PULLBACK",
             "entry_price": p["price"],
             "target_price": p["target_price"],
             "stop_price": p["stop_price"],
             "score": p["score"],
+            "flow_ratio": p.get("flow_ratio", 1.0),
+            "obv_status": p.get("obv_status", "NEUTRAL"),
             "in_wallet": p.get("in_wallet", False),
             "streak_days": p.get("streak_days", 1),
             "streak_label": p.get("streak_label", ""),
