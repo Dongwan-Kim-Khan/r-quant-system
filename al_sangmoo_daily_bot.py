@@ -79,39 +79,40 @@ UNIVERSE = [
     "005930.KS", "000660.KS", "012450.KS"
 ]
 
-def calculate_indicators(df):
-    df = df.dropna(subset=['Close', 'High', 'Low', 'Volume']).copy()
-    high_9 = df['High'].rolling(window=9).max()
-    low_9 = df['Low'].rolling(window=9).min()
-    df['Tenkan'] = (high_9 + low_9) / 2
-
-    high_26 = df['High'].rolling(window=26).max()
-    low_26 = df['Low'].rolling(window=26).min()
-    df['Kijun'] = (high_26 + low_26) / 2
-
-    df['SpanA'] = ((df['Tenkan'] + df['Kijun']) / 2).shift(26)
-    high_52 = df['High'].rolling(window=52).max()
-    low_52 = df['Low'].rolling(window=52).min()
-    df['SpanB'] = ((high_52 + low_52) / 2).shift(26)
-
-    df['SMA20'] = df['Close'].rolling(window=20).mean()
-    df['SMA60'] = df['Close'].rolling(window=60).mean()
-    df['Vol_SMA20'] = df['Volume'].rolling(window=20).mean()
-    df['Vol_Ratio'] = df['Volume'] / df['Vol_SMA20']
-    return df
+from al_sangmoo.core.constants import WATCHLIST, STOCK_DICT, TICKER_SECTORS, get_macro_tailwind_sectors
+from al_sangmoo.domain.quant.ichimoku import (
+    calculate_ichimoku_indicators,
+    detect_cloud_trampoline_bounce,
+    compute_institutional_flow_indicators
+)
+from al_sangmoo.domain.quant.scoring import (
+    QuantIndicators,
+    WeeklyTrendContext,
+    InstitutionalFlowContext,
+    TrampolineBounceContext,
+    calculate_canonical_bull_score,
+    calculate_canonical_sniper_score,
+    calculate_canonical_bear_score,
+    evaluate_quant_score,
+    classify_quant_tier,
+    classify_3tier_candidates
+)
+from al_sangmoo.domain.quant.macro import (
+    evaluate_macro_stance,
+    calculate_msi_regime
+)
 
 def scan_and_select_2x2x2(stream_sentiment_list=None):
     """
-    3-Gate Filter:
-    Gate 0: Macro Climate Filter
-    Gate 1: Host NLP Recommendation Intent (순환매 수혜, 추천, 좋게 보고 있다)
-    Gate 2: 17-Year Quant Formula (일목 구름대 안착, 26일 기준선 지지, 거래량 마름)
+    3-Gate Quantitative Filtering & 3-Tier Recommendation Engine.
+    SSOT Integration: Delegates indicator math to al_sangmoo.domain.quant.ichimoku
+    and scoring to al_sangmoo.domain.quant.scoring.
     """
     if stream_sentiment_list is None:
         stream_sentiment_list = []
         
-    sentiment_map = {item["ticker"]: item for item in stream_sentiment_list}
-    priority_tickers = [item["ticker"] for item in stream_sentiment_list]
+    stream_tickers = {item["ticker"] for item in stream_sentiment_list if isinstance(item, dict) and "ticker" in item}
+    priority_tickers = [item["ticker"] for item in stream_sentiment_list if isinstance(item, dict) and "ticker" in item]
     
     scan_list = []
     for t in priority_tickers:
@@ -121,123 +122,111 @@ def scan_and_select_2x2x2(stream_sentiment_list=None):
         if t not in scan_list:
             scan_list.append(t)
             
-    candidates = []
+    # 1. Macro Climate & Sector Tailwind Gate
+    try:
+        stream_info = youtube_stream_scanner.fetch_latest_wepoll_stream()
+        macro_climate = stream_info.get("macro_climate", {})
+    except Exception:
+        macro_climate = evaluate_macro_stance()
+        
+    macro_stance = macro_climate.get("macro_stance", "DEFENSE_HOLD")
+    tailwind_sectors = get_macro_tailwind_sectors(macro_stance)
     
+    chart_data = {}
     for ticker in scan_list:
         try:
             df = yf.download(ticker, period="6mo", interval="1d", progress=False)
-            if df.empty:
+            if df.empty or len(df) < 55:
                 continue
             if isinstance(df.columns, pd.MultiIndex):
                 df.columns = df.columns.get_level_values(0)
                 
-            df = df.dropna(subset=['Close', 'High', 'Low', 'Volume']).copy()
-            if len(df) < 55:
+            df = calculate_ichimoku_indicators(df)
+            df_clean = df.dropna(subset=['Close', 'Kijun', 'Tenkan', 'SMA20', 'Vol_Ratio'])
+            if df_clean.empty:
                 continue
                 
-            df = calculate_indicators(df)
-            df = df.dropna(subset=['Close', 'Kijun', 'Tenkan', 'SMA20', 'Vol_Ratio'])
-            if df.empty:
-                continue
-                
-            last = df.iloc[-1]
-            
+            last = df_clean.iloc[-1]
             close = float(last['Close'])
             kijun = float(last['Kijun'])
             tenkan = float(last['Tenkan'])
             vol_ratio = float(last['Vol_Ratio'])
+            span_a = float(last['SpanA']) if not pd.isna(last['SpanA']) else close
+            span_b = float(last['SpanB']) if not pd.isna(last['SpanB']) else close
             
-            span_a = float(last['SpanA']) if not pd.isna(last['SpanA']) else float(last['SMA20'])
-            span_b = float(last['SpanB']) if not pd.isna(last['SpanB']) else float(last['SMA20'])
-            cloud_top = max(span_a, span_b)
-            cloud_bottom = min(span_a, span_b)
+            # Resample weekly for weekly trend alignment
+            df_w = df[['Open', 'High', 'Low', 'Close', 'Volume']].resample('W-FRI').agg({
+                'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last', 'Volume': 'sum'
+            }).dropna()
+            if len(df_w) >= 26:
+                df_w = calculate_ichimoku_indicators(df_w)
+                w_clean = df_w.dropna(subset=['Close', 'Kijun', 'Tenkan'])
+                if not w_clean.empty:
+                    w_last = w_clean.iloc[-1]
+                    w_close = float(w_last['Close'])
+                    w_sp_a = float(w_last['SpanA']) if not pd.isna(w_last['SpanA']) else w_close
+                    w_sp_b = float(w_last['SpanB']) if not pd.isna(w_last['SpanB']) else w_close
+                    is_weekly_bull = (w_close >= max(w_sp_a, w_sp_b) * 0.98)
+                else:
+                    is_weekly_bull = True
+            else:
+                is_weekly_bull = (close >= max(span_a, span_b) * 0.97)
+                
+            tramp_detected, tramp_days, touch_gap, close_gap = detect_cloud_trampoline_bounce(df_clean)
+            flow_data = compute_institutional_flow_indicators(df)
             
-            kijun_gap = ((close - kijun) / kijun) * 100
+            q_eval = evaluate_quant_score(
+                close=close,
+                kijun=kijun,
+                tenkan=tenkan,
+                span_a=span_a,
+                span_b=span_b,
+                vol_ratio=vol_ratio,
+                trampoline_detected=tramp_detected,
+                is_weekly_bull=is_weekly_bull,
+                days_ago=tramp_days
+            )
             
-            bull_score = 0
-            if close >= cloud_top: bull_score += 35
-            if -0.5 <= kijun_gap <= 4.0: bull_score += 35
-            if vol_ratio <= 0.75: bull_score += 20
-            if tenkan >= kijun: bull_score += 10
-            
-            bear_score = 0
-            if close < kijun: bear_score += 40
-            if close < cloud_bottom: bear_score += 35
-            if kijun_gap < -2.0: bear_score += 15
-            
-            neutral_score = 100 - max(bull_score, bear_score)
-            cloud_status = "구름대 상단 안착" if close >= cloud_top else ("구름대 하단 붕괴" if close < cloud_bottom else "구름대 내부 횡보")
-            
-            s_data = sentiment_map.get(ticker, {
-                "mentions": 0, "pos_score": 0, "neg_score": 0, "net_sentiment": 0,
-                "host_intent": "GENERAL_UNIVERSE", "intent_desc": "일반 유니버스 종목",
-                "positive_reasons": [], "caution_reasons": []
-            })
-            
-            candidates.append({
+            chart_data[ticker] = {
                 "ticker": ticker,
+                "price": close,
                 "close": close,
+                "latest_close": close,
                 "kijun": kijun,
+                "latest_kijun": kijun,
                 "tenkan": tenkan,
-                "kijun_gap": kijun_gap,
+                "latest_tenkan": tenkan,
+                "span_a": span_a,
+                "span_b": span_b,
                 "vol_ratio": vol_ratio,
-                "cloud_status": cloud_status,
-                "bull_score": bull_score,
-                "bear_score": bear_score,
-                "neutral_score": neutral_score,
-                "mentions": s_data.get("mentions", 0),
-                "pos_score": s_data.get("pos_score", 0),
-                "neg_score": s_data.get("neg_score", 0),
-                "net_sentiment": s_data.get("net_sentiment", 0),
-                "host_intent": s_data.get("host_intent", "GENERAL_UNIVERSE"),
-                "intent_desc": s_data.get("intent_desc", "일반 유니버스"),
-                "positive_reasons": s_data.get("positive_reasons", []),
-                "caution_reasons": s_data.get("caution_reasons", [])
-            })
+                "latest_vol_ratio": vol_ratio,
+                "is_weekly_bull": is_weekly_bull,
+                "trampoline_detected": tramp_detected,
+                "trampoline_days_ago": tramp_days,
+                "touch_gap_pct": touch_gap,
+                "close_gap_pct": close_gap,
+                "obv_status": flow_data["obv_status"],
+                "obv_label": flow_data["obv_label"],
+                "flow_ratio": flow_data["flow_ratio"],
+                "flow_label": flow_data["flow_label"],
+                "flow_score": flow_data["flow_score"],
+                "is_stealth_accum": flow_data["is_stealth_accum"],
+                "action": q_eval["action_directive"]
+            }
         except Exception:
             continue
             
-    # 1. Bull Picks: 100% Pure 17-Year Quant Evaluation (구름대 상단 안착, 기준선 지지, 거래량 마름)
-    # Broadcast mentions serve only as the discovery intake trigger; rankings are STRICTLY determined by pure quant score!
-    bull_pool = [c for c in candidates if c['bull_score'] >= 65]
-    bull_pool = sorted(
-        bull_pool,
-        key=lambda x: (
-            x['bull_score'],
-            -abs(x['kijun_gap'] - 1.0), # Closer to +1.0% sweet spot above Kijun
-            -x['vol_ratio'] # Drier volume is better (e.g. 0.5 < 0.7)
-        ),
-        reverse=True
+    tier1_picks, tier2_picks, tier3_picks = classify_3tier_candidates(
+        chart_data=chart_data,
+        tailwind_sectors=tailwind_sectors,
+        stream_mentioned_tickers=stream_tickers
     )
-    bull_picks = bull_pool[:2]
-    if len(bull_picks) < 2:
-        for c in sorted(candidates, key=lambda x: (x['bull_score'], -abs(x['kijun_gap'])), reverse=True):
-            if len(bull_picks) < 2 and c['ticker'] not in [b['ticker'] for b in bull_picks]:
-                bull_picks.append(c)
-                
-    # 2. Bear Picks: 100% Pure Quant Breakdown (26-day Kijun-sen breakdown, cloud collapse)
-    used_bull_tickers = {b['ticker'] for b in bull_picks}
-    bear_pool = [c for c in candidates if c['ticker'] not in used_bull_tickers and c['bear_score'] >= 50]
-    bear_pool = sorted(
-        bear_pool,
-        key=lambda x: (
-            x['bear_score'],
-            -x['kijun_gap'] # Deeper breakdown below Kijun
-        ),
-        reverse=True
-    )
-    bear_picks = bear_pool[:2]
-    if len(bear_picks) < 2:
-        for c in sorted(candidates, key=lambda x: x['bear_score'], reverse=True):
-            if len(bear_picks) < 2 and c['ticker'] not in used_bull_tickers and c['ticker'] not in [b['ticker'] for b in bear_picks]:
-                bear_picks.append(c)
     
-    # 3. Neutral Picks: Consolidation / Wait (Closest to Kijun-sen, in-cloud or mild range)
-    used_tickers = {c['ticker'] for c in bull_picks + bear_picks}
-    neutral_pool = [c for c in candidates if c['ticker'] not in used_tickers]
-    neutral_picks = sorted(neutral_pool, key=lambda x: abs(x['kijun_gap']))[:2]
+    bull_picks = (tier1_picks + tier2_picks)[:2]
+    neutral_picks = (tier2_picks + tier1_picks)[2:4]
+    bear_picks = tier3_picks[:2]
     
-    return bull_picks, neutral_picks, bear_picks, candidates
+    return bull_picks, neutral_picks, bear_picks, macro_climate
 
 def evaluate_user_portfolio_positions():
     portfolio_data = db_manager.get_live_portfolio()
@@ -309,7 +298,7 @@ def evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, 
             if not df.empty:
                 if isinstance(df.columns, pd.MultiIndex):
                     df.columns = df.columns.get_level_values(0)
-                df = calculate_indicators(df)
+                df = calculate_ichimoku_indicators(df)
                 last = df.iloc[-1]
                 cur_price = float(last['Close'])
                 kijun = float(last['Kijun'])
@@ -811,11 +800,12 @@ def main():
     bear_picks = strat2_exclusive[:2]
     history_df, health_status = evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, today_str)
     
-    # 5. Save Macro Snapshot and Recommendation Matrix into SQLite
+    # 5. Save Macro Snapshot, Recommendation Matrix, and Archive Daily Recommendations into SQLite
     try:
         db_manager.save_macro_history_record(today_str, macro_climate, macro_gauges)
         db_manager.save_recommendation_matrix_record(today_str, bull_picks, neutral_picks, bear_picks)
-        print("[SQLite DB] Saved macro history and recommendation matrix records.")
+        db_manager.archive_daily_recommendations(today_str, dual_consensus, strat1_exclusive, strat2_exclusive)
+        print("[SQLite DB] Saved macro history, recommendation matrix, and daily recommendation archive.")
     except Exception as e:
         print(f"[SQLite DB Warning] {e}")
         

@@ -8,6 +8,7 @@ import re
 from datetime import datetime
 import yfinance as yf
 import pandas as pd
+from al_sangmoo.domain.quant.macro import evaluate_macro_stance
 
 def atomic_save_json(file_path, data, indent=2, max_retries=10):
     dir_name = os.path.dirname(os.path.abspath(file_path))
@@ -260,130 +261,13 @@ def extract_transcript_from_vtt(vtt_file):
 def analyze_macro_regime_and_climate(title, full_transcript, gauges):
     """
     Evaluates Gate-0 Macro Climate & Computes Macro Stance Index 2.0 (MSI: 0~100점).
-    MSI 2.0 Formula:
-      MSI = M_hard (60) + M_nlp (25) + M_shock (15)
+    Delegates exclusively to SSOT domain module al_sangmoo.domain.quant.macro.evaluate_macro_stance.
     """
-    combined_text = (title + " " + full_transcript).upper()
-    
-    # 1. Financial Macro Hard Gauges (M_hard: max 60 pts)
-    us10y_val = gauges.get("us10y", {}).get("val", 4.4)
-    vix_val = gauges.get("vix", {}).get("val", 16.0)
-    wti_val = gauges.get("wti", {}).get("val", 80.0)
-    dxy_val = gauges.get("dxy", {}).get("val", 100.0)
-    
-    # US 10Y Yield (Max 25 pts) - Crucial equity valuation anchor
-    if us10y_val >= 4.50: us10y_pts = 25.0
-    elif us10y_val >= 4.30: us10y_pts = 18.0
-    elif us10y_val >= 4.10: us10y_pts = 10.0
-    elif us10y_val >= 3.90: us10y_pts = 4.0
-    else: us10y_pts = 0.0
-    
-    # VIX (Max 15 pts) - Hedging and panic index
-    if vix_val >= 25.0: vix_pts = 15.0
-    elif vix_val >= 20.0: vix_pts = 10.0
-    elif vix_val >= 16.0: vix_pts = 5.0
-    else: vix_pts = 0.0
-    
-    # WTI Oil (Max 10 pts) - Inflation pressure
-    if wti_val >= 85.0: wti_pts = 10.0
-    elif wti_val >= 80.0: wti_pts = 6.0
-    elif wti_val >= 75.0: wti_pts = 3.0
-    else: wti_pts = 0.0
-    
-    # Dollar Index (Max 10 pts) - Tech liquidity drain
-    if dxy_val >= 105.0: dxy_pts = 10.0
-    elif dxy_val >= 103.0: dxy_pts = 6.0
-    elif dxy_val >= 100.0: dxy_pts = 2.0
-    else: dxy_pts = 0.0
-    
-    m_hard = round(us10y_pts + vix_pts + wti_pts + dxy_pts, 1)
-    
-    # 2. Host Spoken NLP Directive Sentiment (M_nlp: max 25 pts)
-    def_count = sum(full_transcript.count(kw) for kw in MACRO_DEFENSE_KEYWORDS)
-    buy_count = sum(full_transcript.count(kw) for kw in ['눌림목', '매수 기회', '담아야', '모아가야', '분할 매수', '순환매 진입', '우상향'])
-    
-    if len(full_transcript) > 500:
-        m_nlp = round(25.0 * (def_count / (def_count + buy_count + 0.1)), 1)
-        m_nlp = min(25.0, max(0.0, m_nlp))
-    else:
-        # Fallback when subtitles are delayed/unavailable in cloud runner
-        title_defense = any(k in title for k in ['쫄아있는', '금리', '하락', '위기', '붕괴', '경고', '리스크', '조심', '전쟁', '부채'])
-        m_nlp = 16.0 if title_defense else 8.0
-    
-    # 3. Geopolitical & External Shock Factor (M_shock: max 15 pts)
-    external_shocks = []
-    m_shock = 0.0
-    if any(k in combined_text for k in ["전쟁", "지정학", "중동", "우크라", "이란", "대만", "WAR", "CONFLICT"]):
-        external_shocks.append("지정학적 분쟁 및 전쟁 리스크")
-        m_shock += 6.0
-    if any(k in combined_text for k in ["관세", "무역", "트럼프", "보복", "TARIFF", "TRADE"]):
-        external_shocks.append("무역 분쟁 및 관세 불확실성")
-        m_shock += 4.0
-    if any(k in combined_text for k in ["금리", "연준", "FOMC", "파월", "국채", "INTEREST", "FED", "RATE"]):
-        external_shocks.append("금리 경로 및 통화정책 영향권")
-        m_shock += 5.0
-    m_shock = min(15.0, m_shock)
-    
-    # Total MSI Calculation (0 ~ 100)
-    msi_score = round(m_hard + m_nlp + m_shock, 1)
-    msi_score = min(100.0, max(0.0, msi_score))
-    
-    if msi_score >= 75.0:
-        macro_stance = "CASH_EXIT"
-        macro_stance_kr = "현금화 / 숏 헤지 주간 (Red 75~100점)"
-        macro_headline = f"[거시 게이트 0단계: 위험 경보 (MSI {msi_score}점) / 신규 매수 전면 중단 및 현금 확보]"
-        macro_action_directive = (
-            f"거시 위험 지수(MSI {msi_score}점)가 위험 경보 구간에 진입했습니다. "
-            f"신규 매수를 전면 중단하고 보유 종목 차익/손절 관리에 집중하십시오."
-        )
-    elif msi_score >= 50.0:
-        macro_stance = "DEFENSE_HOLD"
-        macro_stance_kr = "신규 매수 보류 / 관망·현금 유지 주간 (Orange 50~74점)"
-        macro_headline = f"[거시 게이트 0단계: 거시 위험 지수 {msi_score}점 / 신규 매수 보류 및 관망 권고]"
-        macro_action_directive = (
-            f"거시 위험 지수(MSI {msi_score}점: 10년물 금리 {us10y_val}%, 유가 ${wti_val}) 및 방송 지침상, "
-            f"현재 장세는 신규 매수를 쉬어가고 관망해야 하는 장세입니다. "
-            f"다만 거시 리스크 진정 시 즉시 공략할 최우선 1순위 후보 종목을 사전 선별합니다."
-        )
-    elif msi_score >= 30.0:
-        macro_stance = "SELECTIVE_BUY"
-        macro_stance_kr = "선별적 눌림목 분할 매수 주간 (Yellow 30~49점)"
-        macro_headline = f"[거시 게이트 0단계: 거시 중립 (MSI {msi_score}점) / 선별적 눌림목 매수 유효]"
-        macro_action_directive = (
-            f"거시 위험 지수(MSI {msi_score}점)가 중립 범위에 위치합니다. "
-            f"26일 기준선 지지가 확인된 주도 종목에 한하여 소액 분할 매수가 유효합니다."
-        )
-    else:
-        macro_stance = "ACTIVE_BUY"
-        macro_stance_kr = "적극 분할 매수 주간 (Green 0~29점)"
-        macro_headline = f"[거시 게이트 0단계: 최적 매수 기후 (MSI {msi_score}점) / 적극 분할 매수 가능]"
-        macro_action_directive = (
-            f"거시 지표가 매우 우호적입니다. 1차 추천 종목에 대한 적극적인 분할 매수를 권고합니다."
-        )
-        
-    return {
-        "msi_score": msi_score,
-        "msi_breakdown": {
-            "m_hard": m_hard,
-            "m_hard_max": 60,
-            "us10y_pts": us10y_pts,
-            "dxy_pts": dxy_pts,
-            "vix_pts": vix_pts,
-            "wti_pts": wti_pts,
-            "m_nlp": m_nlp,
-            "m_nlp_max": 25,
-            "def_count": def_count,
-            "buy_count": buy_count,
-            "m_shock": m_shock,
-            "m_shock_max": 15
-        },
-        "macro_stance": macro_stance,
-        "macro_stance_kr": macro_stance_kr,
-        "macro_headline": macro_headline,
-        "macro_action_directive": macro_action_directive,
-        "external_shocks": external_shocks if external_shocks else ["금리 경로 및 통화정책 영향권", "지정학적 리스크"],
-        "defense_keyword_count": def_count
-    }
+    return evaluate_macro_stance(
+        gauges=gauges,
+        transcript=full_transcript,
+        title=title
+    )
 
 def analyze_contextual_mentions(full_transcript):
     stock_analysis = []

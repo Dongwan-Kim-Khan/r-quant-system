@@ -1,57 +1,89 @@
 """
-Pure Quantitative Ichimoku, Kijun-sen, and Volume Dry-Up (VDU) Computation Engine.
+Pure Quantitative Ichimoku, Kijun-sen, Volume Dry-Up (VDU), and Series Payload Engine.
+Single Source of Truth (SSOT) for all mathematical indicator rolling calculations.
 """
+from typing import Dict, Any, List, Tuple, Optional
 import pandas as pd
 import numpy as np
+
 
 def calculate_ichimoku_indicators(df: pd.DataFrame) -> pd.DataFrame:
     """
     Computes all standard Ichimoku parameters, rolling moving averages, and volume ratios.
+    SSOT Indicator Math Engine:
+    - 9-day Tenkan-sen, 26-day Kijun-sen, 52-day Senkou Span B base
+    - RawSpanA ((Tenkan+Kijun)/2), RawSpanB, SpanA (shift +26), SpanB (shift +26)
+    - Chikou Span (shift -26)
+    - SMA20, SMA50, SMA60, SMA200
+    - Vol_SMA20, Vol_Ratio (safe division against 0/NaN)
     """
     df = df.copy()
+    
+    # 1. 9-period Tenkan-sen (Conversion Line)
     high_9 = df['High'].rolling(window=9, min_periods=5).max()
     low_9 = df['Low'].rolling(window=9, min_periods=5).min()
     df['Tenkan'] = (high_9 + low_9) / 2
 
+    # 2. 26-period Kijun-sen (Base Line - Vital Support)
     high_26 = df['High'].rolling(window=26, min_periods=10).max()
     low_26 = df['Low'].rolling(window=26, min_periods=10).min()
     df['Kijun'] = (high_26 + low_26) / 2
 
+    # 3. 52-period High/Low for Span B
     high_52 = df['High'].rolling(window=52, min_periods=20).max()
     low_52 = df['Low'].rolling(window=52, min_periods=20).min()
 
-    # Raw Senkou Spans before 26-day forward shift
+    # 4. Raw Senkou Spans before 26-period forward shift
     df['RawSpanA'] = (df['Tenkan'] + df['Kijun']) / 2
     df['RawSpanB'] = (high_52 + low_52) / 2
 
-    # Historical shifted spans for today's candle alignment
+    # 5. Historical shifted spans aligned with today's candle
     df['SpanA'] = df['RawSpanA'].shift(26)
     df['SpanB'] = df['RawSpanB'].shift(26)
 
+    # 6. Chikou Span (Lagging Span shifted backward 26 bars)
+    df['Chikou'] = df['Close'].shift(-26)
+
+    # 7. Standard Moving Averages
     df['SMA20'] = df['Close'].rolling(window=20, min_periods=10).mean()
+    df['SMA50'] = df['Close'].rolling(window=50, min_periods=15).mean()
     df['SMA60'] = df['Close'].rolling(window=60, min_periods=20).mean()
+    df['SMA200'] = df['Close'].rolling(window=200, min_periods=30).mean()
+
+    # 8. Volume Dry-Up (VDU) Indicators
     df['Vol_SMA20'] = df['Volume'].rolling(window=20, min_periods=5).mean()
-    df['Vol_Ratio'] = df['Volume'] / df['Vol_SMA20']
+    vol_sma = df['Vol_SMA20'].fillna(0)
+    df['Vol_Ratio'] = np.where(vol_sma > 0, df['Volume'] / vol_sma, 1.0)
+
     return df
 
-def project_future_cloud(df_clean: pd.DataFrame, periods: int = 26) -> tuple:
+
+def project_future_cloud(df_clean: pd.DataFrame, periods: int = 26, is_weekly: bool = False) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], List[float], List[float]]:
     """
-    Generates 26 forward trading days for the future Ichimoku cloud.
+    Generates forward trading periods (default +26) for the future Ichimoku cloud visualization.
+    Returns: (future_span_a_pts, future_span_b_pts, future_span_a_vals, future_span_b_vals)
     """
+    if df_clean is None or len(df_clean) == 0:
+        return [], [], [], []
+        
     last_date = df_clean.index[-1]
-    future_dates = pd.bdate_range(start=last_date + pd.Timedelta(days=1), periods=periods)
+    if is_weekly:
+        future_dates = pd.date_range(start=last_date + pd.Timedelta(days=7), periods=periods, freq='W-FRI')
+    else:
+        future_dates = pd.bdate_range(start=last_date + pd.Timedelta(days=1), periods=periods)
     
-    future_span_a_pts = []
-    future_span_b_pts = []
-    future_a_vals = []
-    future_b_vals = []
+    future_span_a_pts: List[Dict[str, Any]] = []
+    future_span_b_pts: List[Dict[str, Any]] = []
+    future_a_vals: List[float] = []
+    future_b_vals: List[float] = []
     
+    n_clean = len(df_clean)
     for k in range(len(future_dates)):
         f_time_str = future_dates[k].strftime("%Y-%m-%d")
-        lookback_idx = len(df_clean) - 26 + k
-        if 0 <= lookback_idx < len(df_clean):
-            val_a = float(df_clean['RawSpanA'].iloc[lookback_idx])
-            val_b = float(df_clean['RawSpanB'].iloc[lookback_idx])
+        lookback_idx = n_clean - 26 + k
+        if 0 <= lookback_idx < n_clean:
+            val_a = float(df_clean['RawSpanA'].iloc[lookback_idx]) if 'RawSpanA' in df_clean.columns else np.nan
+            val_b = float(df_clean['RawSpanB'].iloc[lookback_idx]) if 'RawSpanB' in df_clean.columns else np.nan
             if not pd.isna(val_a):
                 future_span_a_pts.append({"time": f_time_str, "value": round(val_a, 2)})
                 future_a_vals.append(val_a)
@@ -61,79 +93,36 @@ def project_future_cloud(df_clean: pd.DataFrame, periods: int = 26) -> tuple:
                 
     return future_span_a_pts, future_span_b_pts, future_a_vals, future_b_vals
 
-def evaluate_quant_score(close: float, kijun: float, tenkan: float, span_a: float, span_b: float, vol_ratio: float) -> dict:
+
+def detect_cloud_trampoline_bounce(df_clean: pd.DataFrame, max_lookback: int = 14) -> Tuple[bool, int, float, float]:
     """
-    Pure 17-Year Proprietary Quant Scoring Matrix.
-    - Cloud clearance (+35 pt)
-    - 26-Day Kijun sweet-spot support (-0.5% ~ +4.0%) (+35 pt)
-    - 20-Day Volume Dry-Up (VDU <= 0.75) (+20 pt)
-    - 9-Day Tenkan-sen momentum (+10 pt)
+    Scans historical bars within max_lookback to identify a valid Cloud Trampoline Launch:
+    - Candle Low touched within -3.5% to +6.0% of Span A/B Cloud Top
+    - Candle Close held >= -1.5% of Cloud Top
+    Returns: (detected: bool, days_ago: int, touch_gap_pct: float, close_gap_pct: float)
     """
-    cloud_top = max(span_a, span_b)
-    cloud_bottom = min(span_a, span_b)
-    kijun_gap = ((close - kijun) / kijun) * 100 if kijun > 0 else 0.0
+    if df_clean is None or len(df_clean) < 2:
+        return False, 0, 0.0, 0.0
+        
+    n_bars = len(df_clean)
+    for b_offset in range(1, min(max_lookback + 1, n_bars)):
+        hist_bar = df_clean.iloc[-b_offset]
+        h_close = float(hist_bar['Close'])
+        h_low = float(hist_bar['Low'])
+        h_sp_a = float(hist_bar['SpanA']) if ('SpanA' in hist_bar and not pd.isna(hist_bar['SpanA'])) else h_close
+        h_sp_b = float(hist_bar['SpanB']) if ('SpanB' in hist_bar and not pd.isna(hist_bar['SpanB'])) else h_close
+        h_cloud_top = max(h_sp_a, h_sp_b)
+        if h_cloud_top > 0:
+            h_touch_gap = (h_low - h_cloud_top) / h_cloud_top
+            h_close_gap = (h_close - h_cloud_top) / h_cloud_top
+            if (-0.035 <= h_touch_gap <= 0.060) and (h_close_gap >= -0.015):
+                days_ago = b_offset - 1
+                return True, days_ago, round(h_touch_gap * 100, 2), round(h_close_gap * 100, 2)
+                
+    return False, 0, 0.0, 0.0
 
-    bull_score = 0
-    if close >= cloud_top: bull_score += 35
-    if -0.5 <= kijun_gap <= 4.0: bull_score += 35
-    if vol_ratio <= 0.75: bull_score += 20
-    if tenkan >= kijun: bull_score += 10
 
-    bear_score = 0
-    if close < kijun: bear_score += 40
-    if close < cloud_bottom: bear_score += 35
-    if kijun_gap < -2.0: bear_score += 15
-
-    if bull_score >= 70:
-        quant_type = "BULL"
-        quant_verdict = "Bull Accumulation (1차 분할 매수 적합)"
-        quant_score_text = f"{bull_score} / 100 pt (BULL_BUY)"
-        action_directive = "26일 기준선 및 일목 구름대 상단 안착 확인. 거시 변동성 진정 시 1차 분할 매수 적합."
-    elif bear_score >= 50:
-        quant_type = "BEAR"
-        quant_verdict = "Risk Breakdown (생명선 붕괴 / 매수 금지)"
-        quant_score_text = f"{bull_score} / 100 pt (BEAR_EXIT)"
-        action_directive = "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
-    else:
-        quant_type = "NEUTRAL"
-        quant_verdict = "Neutral Consolidation (박스권 수렴)"
-        quant_score_text = f"{bull_score} / 100 pt (HOLD)"
-        action_directive = "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
-
-    kijun_status = "status-bull" if -0.5 <= kijun_gap <= 4.0 else ("status-bear" if kijun_gap < -0.5 else "status-neutral")
-    kijun_badge = "SUPPORTED" if -0.5 <= kijun_gap <= 4.0 else ("BREAKDOWN" if kijun_gap < -0.5 else "OVERHEATED")
-    
-    tenkan_status = "status-bull" if tenkan >= kijun else "status-bear"
-    tenkan_badge = "GOLDEN CROSS" if tenkan >= kijun else "DEAD CROSS"
-    
-    cloud_status = "status-bull" if close >= cloud_top else ("status-bear" if close < cloud_bottom else "status-neutral")
-    cloud_badge = "ABOVE CLOUD" if close >= cloud_top else ("BELOW CLOUD" if close < cloud_bottom else "INSIDE CLOUD")
-    
-    vol_status = "status-bull" if vol_ratio <= 0.75 else ("status-neutral" if vol_ratio <= 1.2 else "status-bear")
-    vol_badge = "VOLUME DRY" if vol_ratio <= 0.75 else ("NORMAL VOL" if vol_ratio <= 1.2 else "HIGH VOL")
-
-    return {
-        "bull_score": bull_score,
-        "bear_score": bear_score,
-        "quant_type": quant_type,
-        "quant_verdict": quant_verdict,
-        "quant_score_text": quant_score_text,
-        "action_directive": action_directive,
-        "intelligence": {
-            "verdict": quant_verdict,
-            "score": quant_score_text,
-            "bull_score": bull_score,
-            "bear_score": bear_score,
-            "type": quant_type,
-            "kijun": {"val": f"${kijun:,.2f} ({kijun_gap:+.1f}%)", "status": kijun_status, "badge": kijun_badge, "desc": f"현재가 ${close:,.2f} / 26일선 ${kijun:,.2f} (이격 {kijun_gap:+.1f}%)"},
-            "tenkan": {"val": f"${tenkan:,.2f}", "status": tenkan_status, "badge": tenkan_badge, "desc": f"9일 전환선 ${tenkan:,.2f} {'상단 정배열' if tenkan >= kijun else '하단 역배열'}"},
-            "cloud": {"val": f"${cloud_top:,.2f}", "status": cloud_status, "badge": cloud_badge, "desc": f"일목 구름대({round(cloud_bottom,1)}~{round(cloud_top,1)}) {'상단 안착' if close >= cloud_top else ('하단 붕괴' if close < cloud_bottom else '내부 횡보')}"},
-            "vol": {"val": f"{round(vol_ratio*100)}% (20D)", "status": vol_status, "badge": vol_badge, "desc": f"20일 평균 거래량 대비 {round(vol_ratio*100)}% ({'매도세 고갈 완벽' if vol_ratio <= 0.75 else '통상 거래량'})"},
-            "action": action_directive
-        }
-    }
-
-def compute_institutional_flow_indicators(df: pd.DataFrame) -> dict:
+def compute_institutional_flow_indicators(df: pd.DataFrame) -> Dict[str, Any]:
     """
     Computes institutional flow signatures:
     1. On-Balance Volume (OBV) and Stealth Accumulation Divergence
@@ -168,7 +157,7 @@ def compute_institutional_flow_indicators(df: pd.DataFrame) -> dict:
     price_change_14d = float((df['Close'].iloc[-1] - df['Close'].iloc[-14]) / df['Close'].iloc[-14] * 100)
     obv_change_14d = float(df['OBV'].iloc[-1] - df['OBV'].iloc[-14])
     
-    # Check for Stealth Accumulation Divergence: Price consolidating (-3.0% ~ +2.0%) while OBV rising
+    # Check for Stealth Accumulation Divergence: Price consolidating (-3.0% ~ +2.5%) while OBV rising & flow >= 1.2
     is_stealth_accum = bool(price_change_14d <= 2.5 and obv_change_14d > 0 and flow_ratio >= 1.2)
     
     if is_stealth_accum:
@@ -202,3 +191,96 @@ def compute_institutional_flow_indicators(df: pd.DataFrame) -> dict:
         "flow_score": int(min(100, flow_score)),
         "is_stealth_accum": bool(is_stealth_accum)
     }
+
+
+def build_ichimoku_series_payload(df_in: pd.DataFrame, is_weekly: bool = False, max_bars: int = 500) -> Dict[str, Any]:
+    """
+    Transforms computed DataFrame into chart-ready JSON series dictionary with forward cloud projection.
+    """
+    if df_in is None or df_in.empty:
+        return {}
+        
+    df_clean = df_in.dropna(subset=['Close', 'High', 'Low', 'Kijun', 'Tenkan']).tail(max_bars)
+    if df_clean.empty:
+        return {}
+        
+    candles = []
+    tenkan_pts = []
+    kijun_pts = []
+    span_a_pts = []
+    span_b_pts = []
+    sma20_pts = []
+    sma50_pts = []
+    sma60_pts = []
+    sma200_pts = []
+    vol_pts = []
+    
+    for idx, row in df_clean.iterrows():
+        time_str = idx.strftime("%Y-%m-%d") if hasattr(idx, 'strftime') else str(idx)
+        candles.append({
+            "time": time_str,
+            "open": round(float(row['Open']), 2),
+            "high": round(float(row['High']), 2),
+            "low": round(float(row['Low']), 2),
+            "close": round(float(row['Close']), 2)
+        })
+        if 'Tenkan' in row and not pd.isna(row['Tenkan']):
+            tenkan_pts.append({"time": time_str, "value": round(float(row['Tenkan']), 2)})
+        if 'Kijun' in row and not pd.isna(row['Kijun']):
+            kijun_pts.append({"time": time_str, "value": round(float(row['Kijun']), 2)})
+        if 'SpanA' in row and not pd.isna(row['SpanA']):
+            span_a_pts.append({"time": time_str, "value": round(float(row['SpanA']), 2)})
+        if 'SpanB' in row and not pd.isna(row['SpanB']):
+            span_b_pts.append({"time": time_str, "value": round(float(row['SpanB']), 2)})
+        if 'SMA20' in row and not pd.isna(row['SMA20']):
+            sma20_pts.append({"time": time_str, "value": round(float(row['SMA20']), 2)})
+        if 'SMA50' in row and not pd.isna(row['SMA50']):
+            sma50_pts.append({"time": time_str, "value": round(float(row['SMA50']), 2)})
+        if 'SMA60' in row and not pd.isna(row['SMA60']):
+            sma60_pts.append({"time": time_str, "value": round(float(row['SMA60']), 2)})
+        if 'SMA200' in row and not pd.isna(row['SMA200']):
+            sma200_pts.append({"time": time_str, "value": round(float(row['SMA200']), 2)})
+        if 'Volume' in row and not pd.isna(row['Volume']):
+            vol_pts.append({
+                "time": time_str,
+                "value": float(row['Volume']),
+                "color": "#059669" if row['Close'] >= row['Open'] else "#dc2626"
+            })
+            
+    # Future 26-bar forward cloud projection
+    fa_pts, fb_pts, future_span_a_vals, future_span_b_vals = project_future_cloud(df_clean, periods=26, is_weekly=is_weekly)
+    span_a_pts.extend(fa_pts)
+    span_b_pts.extend(fb_pts)
+    
+    return {
+        "candles": candles,
+        "kijun_line": kijun_pts,
+        "tenkan_line": tenkan_pts,
+        "span_a_line": span_a_pts,
+        "span_b_line": span_b_pts,
+        "sma20": sma20_pts,
+        "sma50": sma50_pts,
+        "sma60": sma60_pts,
+        "sma200": sma200_pts,
+        "volume": vol_pts,
+        "future_span_a": future_span_a_vals,
+        "future_span_b": future_span_b_vals
+    }
+
+
+# Backwards compatibility export
+def evaluate_quant_score(close: float, kijun: float, tenkan: float, span_a: float, span_b: float, vol_ratio: float, trampoline_detected: bool = False, is_weekly_bull: bool = True) -> Dict[str, Any]:
+    """
+    Adapter delegating to canonical scoring engine in al_sangmoo.domain.quant.scoring.
+    """
+    from al_sangmoo.domain.quant.scoring import evaluate_quant_score as _eval_quant_score
+    return _eval_quant_score(
+        close=close,
+        kijun=kijun,
+        tenkan=tenkan,
+        span_a=span_a,
+        span_b=span_b,
+        vol_ratio=vol_ratio,
+        trampoline_detected=trampoline_detected,
+        is_weekly_bull=is_weekly_bull
+    )

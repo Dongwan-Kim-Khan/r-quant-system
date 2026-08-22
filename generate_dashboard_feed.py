@@ -76,84 +76,16 @@ CHARTS_DIR = os.path.join(BASE_DIR, "data", "charts")
 
 from concurrent.futures import ThreadPoolExecutor
 from al_sangmoo.core.constants import WATCHLIST, STOCK_DICT, TICKER_SECTORS, get_macro_tailwind_sectors
-from al_sangmoo.domain.quant.ichimoku import compute_institutional_flow_indicators
-
-def build_ichimoku_series(df_in, max_bars=500, is_weekly=False):
-    df_clean = df_in.dropna(subset=['Close', 'High', 'Low', 'Kijun', 'Tenkan']).tail(max_bars)
-    if df_clean.empty:
-        return {}
-        
-    candles = []
-    tenkan_pts = []
-    kijun_pts = []
-    span_a_pts = []
-    span_b_pts = []
-    sma20_pts = []
-    sma60_pts = []
-    vol_pts = []
-    
-    for idx, row in df_clean.iterrows():
-        time_str = idx.strftime("%Y-%m-%d")
-        candles.append({
-            "time": time_str,
-            "open": round(float(row['Open']), 2),
-            "high": round(float(row['High']), 2),
-            "low": round(float(row['Low']), 2),
-            "close": round(float(row['Close']), 2)
-        })
-        if not pd.isna(row.get('Tenkan')):
-            tenkan_pts.append({"time": time_str, "value": round(float(row['Tenkan']), 2)})
-        if not pd.isna(row.get('Kijun')):
-            kijun_pts.append({"time": time_str, "value": round(float(row['Kijun']), 2)})
-        if not pd.isna(row.get('SpanA')):
-            span_a_pts.append({"time": time_str, "value": round(float(row['SpanA']), 2)})
-        if not pd.isna(row.get('SpanB')):
-            span_b_pts.append({"time": time_str, "value": round(float(row['SpanB']), 2)})
-        if not pd.isna(row.get('SMA20')):
-            sma20_pts.append({"time": time_str, "value": round(float(row['SMA20']), 2)})
-        if not pd.isna(row.get('SMA60')):
-            sma60_pts.append({"time": time_str, "value": round(float(row['SMA60']), 2)})
-        if not pd.isna(row.get('Volume')):
-            vol_pts.append({
-                "time": time_str,
-                "value": float(row['Volume']),
-                "color": "#059669" if row['Close'] >= row['Open'] else "#dc2626"
-            })
-            
-    # Future 26 forward cloud projection
-    last_date = df_clean.index[-1]
-    if is_weekly:
-        future_dates = pd.date_range(start=last_date + pd.Timedelta(days=7), periods=26, freq='W-FRI')
-    else:
-        future_dates = pd.bdate_range(start=last_date + pd.Timedelta(days=1), periods=26)
-        
-    future_span_a_vals = []
-    future_span_b_vals = []
-    for k in range(len(future_dates)):
-        f_time_str = future_dates[k].strftime("%Y-%m-%d")
-        lookback_idx = len(df_clean) - 26 + k
-        if 0 <= lookback_idx < len(df_clean):
-            val_a = float(df_clean['RawSpanA'].iloc[lookback_idx])
-            val_b = float(df_clean['RawSpanB'].iloc[lookback_idx])
-            if not pd.isna(val_a):
-                span_a_pts.append({"time": f_time_str, "value": round(val_a, 2)})
-                future_span_a_vals.append(val_a)
-            if not pd.isna(val_b):
-                span_b_pts.append({"time": f_time_str, "value": round(val_b, 2)})
-                future_span_b_vals.append(val_b)
-                
-    return {
-        "candles": candles,
-        "kijun_line": kijun_pts,
-        "tenkan_line": tenkan_pts,
-        "span_a_line": span_a_pts,
-        "span_b_line": span_b_pts,
-        "sma20": sma20_pts,
-        "sma60": sma60_pts,
-        "volume": vol_pts,
-        "future_span_a": future_span_a_vals,
-        "future_span_b": future_span_b_vals
-    }
+from al_sangmoo.domain.quant.ichimoku import (
+    calculate_ichimoku_indicators,
+    detect_cloud_trampoline_bounce,
+    compute_institutional_flow_indicators,
+    build_ichimoku_series_payload
+)
+from al_sangmoo.domain.quant.scoring import (
+    evaluate_quant_score,
+    classify_3tier_candidates
+)
 
 def compute_all_indicators(ticker):
     try:
@@ -167,36 +99,18 @@ def compute_all_indicators(ticker):
         if len(df) < 60:
             return None
             
-        # 1. Calculate Daily Ichimoku
-        df['Tenkan'] = (df['High'].rolling(9).max() + df['Low'].rolling(9).min()) / 2
-        df['Kijun'] = (df['High'].rolling(26).max() + df['Low'].rolling(26).min()) / 2
-        df['RawSpanA'] = (df['Tenkan'] + df['Kijun']) / 2
-        df['RawSpanB'] = (df['High'].rolling(52).max() + df['Low'].rolling(52).min()) / 2
-        df['SpanA'] = df['RawSpanA'].shift(26)
-        df['SpanB'] = df['RawSpanB'].shift(26)
-        df['SMA20'] = df['Close'].rolling(20).mean()
-        df['SMA60'] = df['Close'].rolling(60).mean()
-        df['Vol_SMA20'] = df['Volume'].rolling(20).mean()
-        df['Vol_Ratio'] = df['Volume'] / df['Vol_SMA20']
+        # 1. Calculate Daily Ichimoku via SSOT Domain Engine
+        df = calculate_ichimoku_indicators(df)
         
-        # 2. Calculate Weekly Ichimoku (Resampled to Weekly)
+        # 2. Calculate Weekly Ichimoku via SSOT Domain Engine
         df_w = df[['Open', 'High', 'Low', 'Close', 'Volume']].resample('W-FRI').agg({
             'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last', 'Volume': 'sum'
         }).dropna()
-        df_w['Tenkan'] = (df_w['High'].rolling(9).max() + df_w['Low'].rolling(9).min()) / 2
-        df_w['Kijun'] = (df_w['High'].rolling(26).max() + df_w['Low'].rolling(26).min()) / 2
-        df_w['RawSpanA'] = (df_w['Tenkan'] + df_w['Kijun']) / 2
-        df_w['RawSpanB'] = (df_w['High'].rolling(52).max() + df_w['Low'].rolling(52).min()) / 2
-        df_w['SpanA'] = df_w['RawSpanA'].shift(26)
-        df_w['SpanB'] = df_w['RawSpanB'].shift(26)
-        df_w['SMA20'] = df_w['Close'].rolling(20).mean()
-        df_w['SMA60'] = df_w['Close'].rolling(60).mean()
-        df_w['Vol_SMA20'] = df_w['Volume'].rolling(20).mean()
-        df_w['Vol_Ratio'] = df_w['Volume'] / df_w['Vol_SMA20']
+        df_w = calculate_ichimoku_indicators(df_w)
 
-        # Build Daily & Weekly Series Payloads
-        daily_series = build_ichimoku_series(df, max_bars=500, is_weekly=False)
-        weekly_series = build_ichimoku_series(df_w, max_bars=150, is_weekly=True)
+        # Build Daily & Weekly Series Payloads via SSOT Domain Engine
+        daily_series = build_ichimoku_series_payload(df, is_weekly=False, max_bars=500)
+        weekly_series = build_ichimoku_series_payload(df_w, is_weekly=True, max_bars=150)
         
         df_clean = df.dropna(subset=['Close', 'High', 'Low', 'Kijun', 'Tenkan']).tail(500)
         last = df_clean.iloc[-1]
@@ -216,16 +130,12 @@ def compute_all_indicators(ticker):
         if not w_clean.empty:
             w_last = w_clean.iloc[-1]
             w_close = float(w_last['Close'])
-            w_kijun = float(w_last['Kijun'])
             w_span_a = float(w_last['SpanA']) if not pd.isna(w_last['SpanA']) else w_close
             w_span_b = float(w_last['SpanB']) if not pd.isna(w_last['SpanB']) else w_close
             w_cloud_top = max(w_span_a, w_span_b)
-            # Strict Weekly Bull: Price must be at or above Weekly Cloud Top (max 2% tolerance)
             is_weekly_bull = (w_close >= w_cloud_top * 0.98)
         else:
             is_weekly_bull = (close >= cloud_top * 0.97)
-            w_cloud_top = cloud_top
-            w_kijun = kijun
         
         future_span_a_vals = daily_series.get("future_span_a", [])
         future_span_b_vals = daily_series.get("future_span_b", [])
@@ -235,136 +145,36 @@ def compute_all_indicators(ticker):
         future_cloud_type = "양운 (상승 지지 구름대)" if is_future_bull_cloud else "음운 (하락 저항 구름대)"
         future_cloud_gap = abs(future_a_latest - future_b_latest)
         
-        # 1. Strategy 1 (Primary Accumulation - Graduated 17-Year Quant Scoring, Max 100 pt)
-        bull_score = 0
-        if close >= cloud_top:
-            bull_score += 35
-        elif close >= cloud_top * 0.97:
-            bull_score += 25
-        elif close >= cloud_bottom:
-            bull_score += 15
-            
-        if -0.5 <= kijun_gap <= 3.5:
-            bull_score += 35
-        elif -0.8 <= kijun_gap <= 4.8:
-            bull_score += 25
-        elif -1.5 <= kijun_gap <= 7.0:
-            bull_score += 15
-            
-        if vol_ratio <= 0.60:
-            bull_score += 20
-        elif vol_ratio <= 0.85:
-            bull_score += 15
-        elif vol_ratio <= 1.10:
-            bull_score += 10
-            
-        if tenkan >= kijun:
-            bull_score += 10
-        elif close >= tenkan:
-            bull_score += 5
+        # Detect Cloud Trampoline Bounce via SSOT Domain Function
+        trampoline_detected, trampoline_days_ago, touch_gap_pct, close_gap_pct = detect_cloud_trampoline_bounce(df_clean, max_lookback=14)
         
-        bear_score = 0
-        if close < kijun: bear_score += 40
-        if close < cloud_bottom: bear_score += 35
-        if kijun_gap < -2.0: bear_score += 15
-        
-        # 2. Strategy 2 (Cloud Trampoline Bounce Sniper - 4 Distinct Factors, Max 100 pt)
-        # Lookback 14 bars to check if a Cloud Bounce Launch happened
-        trampoline_detected = False
-        trampoline_days_ago = 0
-        n_bars = len(df_clean)
-        for b_offset in range(1, min(15, n_bars)):
-            hist_bar = df_clean.iloc[-b_offset]
-            h_open = float(hist_bar['Open'])
-            h_close = float(hist_bar['Close'])
-            h_low = float(hist_bar['Low'])
-            h_sp_a = float(hist_bar['SpanA']) if not pd.isna(hist_bar['SpanA']) else h_close
-            h_sp_b = float(hist_bar['SpanB']) if not pd.isna(hist_bar['SpanB']) else h_close
-            h_cloud_top = max(h_sp_a, h_sp_b)
-            if h_cloud_top > 0:
-                h_touch_gap = (h_low - h_cloud_top) / h_cloud_top
-                h_close_gap = (h_close - h_cloud_top) / h_cloud_top
-                if (-0.035 <= h_touch_gap <= 0.060) and (h_close_gap >= -0.015):
-                    trampoline_detected = True
-                    trampoline_days_ago = b_offset - 1
-                    break
-        
-        sniper_score = 0
-        if trampoline_detected: sniper_score += 40
-        if close >= cloud_top: sniper_score += 30
-        elif close >= cloud_top * 0.98: sniper_score += 20
-        if kijun_gap >= 0: sniper_score += 15
-        elif kijun_gap >= -1.0: sniper_score += 10
-        if tenkan >= kijun: sniper_score += 15
-        elif close >= tenkan: sniper_score += 10
-        
-        # Apply Weekly Bull Stance Requirement
-        is_sniper_active = is_weekly_bull and trampoline_detected and (sniper_score >= 80) and (close >= cloud_top * 0.97)
-        is_strat1_active = is_weekly_bull and (bull_score >= 80) and (-0.8 <= kijun_gap <= 4.8)
-        
-        if is_strat1_active and is_sniper_active:
-            quant_type = "BULL"
-            quant_verdict = "Dual 5-Star (양대 전략 동시 충족 특급 매수)"
-            quant_score_text = "100 / 100 pt (DUAL_5_STAR)"
-            action_directive = f"[황금 교집합] 주봉 정배열 + 구름대 도약({trampoline_days_ago}일 전) + 26일 기준선({kijun_gap:+.1f}%) 안착."
-        elif is_sniper_active:
-            quant_type = "BULL"
-            quant_verdict = "Sniper Alert (구름대 도약 2단계 특급 매수)"
-            quant_score_text = f"{sniper_score} / 100 pt (SNIPER_BUY)"
-            action_directive = f"[전략 2 스나이퍼] 주봉 상승장 + {trampoline_days_ago}일 전 구름대 지지 도약 후 상방 시세 분출(기준선 대비 {kijun_gap:+.1f}%). 목표 +15% / 손절 -4%."
-        elif is_strat1_active:
-            quant_type = "BULL"
-            quant_verdict = "Bull Accumulation (1차 분할 매수 적합)"
-            quant_score_text = f"{bull_score} / 100 pt (BULL_BUY)"
-            action_directive = "주봉 상승장 + 26일 기준선 및 일목 구름대 상단 안착 확인. 1차 분할 매수 적합."
-        elif bear_score >= 50:
-            quant_type = "BEAR"
-            quant_verdict = "Risk Breakdown (생명선 붕괴 / 매수 금지)"
-            quant_score_text = f"{bull_score} / 100 pt (BEAR_EXIT)"
-            action_directive = "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간."
-        else:
-            quant_type = "NEUTRAL"
-            quant_verdict = "Neutral Consolidation (박스권 수렴)"
-            quant_score_text = f"{bull_score} / 100 pt (HOLD)"
-            action_directive = "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지."
-            
-        # Indicator Detail Cards (Customized for Strategy 1 vs Strategy 2)
-        if is_sniper_active:
-            kijun_status = "status-bull" if kijun_gap >= -0.5 else "status-neutral"
-            kijun_badge = "STAGE 2 MOMENTUM" if kijun_gap > 4.0 else "SUPPORTED"
-            kijun_desc = f"26일 기준선(${kijun:,.2f}) 대비 {kijun_gap:+.1f}% 상방 도약 가속 구간"
-            
-            cloud_status = "status-bull"
-            cloud_badge = "TRAMPOLINE BOUNCE"
-            cloud_desc = f"일목 구름대({round(cloud_bottom,1)}~{round(cloud_top,1)}) {trampoline_days_ago}일 전 지지 반등 확인 완료"
-        else:
-            kijun_status = "status-bull" if -0.5 <= kijun_gap <= 4.0 else ("status-bear" if kijun_gap < -0.5 else "status-neutral")
-            kijun_badge = "SUPPORTED" if -0.5 <= kijun_gap <= 4.0 else ("BREAKDOWN" if kijun_gap < -0.5 else "OVERHEATED")
-            kijun_desc = f"현재가 ${close:,.2f} / 26일선 ${kijun:,.2f} (이격 {kijun_gap:+.1f}%)"
-            
-            cloud_status = "status-bull" if close >= cloud_top else ("status-bear" if close < cloud_bottom else "status-neutral")
-            cloud_badge = "ABOVE CLOUD" if close >= cloud_top else ("BELOW CLOUD" if close < cloud_bottom else "INSIDE CLOUD")
-            cloud_desc = f"일목 구름대({round(cloud_bottom,1)}~{round(cloud_top,1)}) {'상단 안착' if close >= cloud_top else ('하단 붕괴' if close < cloud_bottom else '내부 횡보')}"
-        
-        tenkan_status = "status-bull" if tenkan >= kijun else "status-bear"
-        tenkan_badge = "GOLDEN CROSS" if tenkan >= kijun else "DEAD CROSS"
-        tenkan_desc = f"9일 전환선 ${tenkan:,.2f} {'상단 정배열' if tenkan >= kijun else '하단 역배열'}"
-        
-        vol_status = "status-bull" if vol_ratio <= 0.75 else ("status-neutral" if vol_ratio <= 1.2 else "status-bear")
-        vol_badge = "VOLUME DRY" if vol_ratio <= 0.75 else ("NORMAL VOL" if vol_ratio <= 1.2 else "HIGH VOL")
-        vol_desc = f"20일 평균 거래량 대비 {round(vol_ratio*100)}% ({'매도세 고갈 완벽' if vol_ratio <= 0.75 else '통상 거래량'})"
-        
-        # Institutional Flow Signature & Sector Mapping
+        # Institutional Flow Signature & Sector Mapping via SSOT Domain Function
         sector = TICKER_SECTORS.get(ticker, "GENERAL")
         flow_data = compute_institutional_flow_indicators(df_clean)
         
-        intelligence = {
-            "verdict": quant_verdict,
-            "score": quant_score_text,
-            "bull_score": bull_score,
-            "bear_score": bear_score,
-            "sniper_score": sniper_score,
-            "type": quant_type,
+        # Canonical 17-Year Quant Scoring via SSOT Domain Engine
+        quant_eval = evaluate_quant_score(
+            close=close,
+            kijun=kijun,
+            tenkan=tenkan,
+            span_a=span_a,
+            span_b=span_b,
+            vol_ratio=vol_ratio,
+            trampoline_detected=trampoline_detected,
+            is_weekly_bull=is_weekly_bull,
+            days_ago=trampoline_days_ago
+        )
+        
+        bull_score = quant_eval["bull_score"]
+        bear_score = quant_eval["bear_score"]
+        sniper_score = quant_eval["sniper_score"]
+        is_sniper_active = quant_eval["is_sniper_active"]
+        quant_type = quant_eval["quant_type"]
+        quant_verdict = quant_eval["quant_verdict"]
+        
+        # Construct Intelligence Metadata
+        intelligence = dict(quant_eval["intelligence"])
+        intelligence.update({
             "is_sniper": is_sniper_active,
             "is_weekly_bull": is_weekly_bull,
             "trampoline_detected": trampoline_detected,
@@ -375,12 +185,7 @@ def compute_all_indicators(ticker):
             "flow_label": flow_data["flow_label"],
             "flow_score": flow_data["flow_score"],
             "is_stealth_accum": flow_data["is_stealth_accum"],
-            "kijun": {"val": f"${kijun:,.2f} ({kijun_gap:+.1f}%)", "status": kijun_status, "badge": kijun_badge, "desc": kijun_desc},
-            "tenkan": {"val": f"${tenkan:,.2f}", "status": tenkan_status, "badge": tenkan_badge, "desc": tenkan_desc},
-            "cloud": {"val": f"${cloud_top:,.2f}", "status": cloud_status, "badge": cloud_badge, "desc": cloud_desc},
-            "vol": {"val": f"{round(vol_ratio*100)}% (20D)", "status": vol_status, "badge": vol_badge, "desc": vol_desc},
-            "action": action_directive
-        }
+        })
             
         return {
             "ticker": ticker,
@@ -407,6 +212,10 @@ def compute_all_indicators(ticker):
             "sniper_score": sniper_score,
             "is_sniper": is_sniper_active,
             "is_weekly_bull": is_weekly_bull,
+            "trampoline_detected": trampoline_detected,
+            "trampoline_days_ago": trampoline_days_ago,
+            "touch_gap_pct": touch_gap_pct,
+            "close_gap_pct": close_gap_pct,
             "intelligence": intelligence,
             "status_tag": quant_type,
             "status_text": quant_verdict,
@@ -485,91 +294,12 @@ def build_dashboard_data():
     tailwind_sectors = get_macro_tailwind_sectors(msi_score, us10y_val, wti_val, vix_val)
     macro_info["tailwind_sectors"] = tailwind_sectors
     
-    # 3-Tier Categorization Pools
-    tier1_candidates = []
-    tier2_candidates = []
-    tier3_candidates = []
-    
-    for t, c in chart_data.items():
-        is_stream = t in stream_mentioned_tickers
-        origin_tag = "VIKINGS_LIVE" if is_stream else "QUANT_DISCOVERY"
-        origin_label = "바이킹스 라이브" if is_stream else "60종목 퀀트 발굴"
-        
-        kgap = c["kijun_gap_pct"]
-        v_ratio = c["vol_ratio"]
-        b_score = c["bull_score"]
-        is_sn = c["is_sniper"]
-        s_score = c.get("sniper_score", 95 if is_sn else 0)
-        
-        # Sector & Institutional Flow Signature
-        sector = c.get("sector", TICKER_SECTORS.get(t, "GENERAL"))
-        is_macro_tailwind = (sector in tailwind_sectors)
-        obv_status = c.get("obv_status", "NEUTRAL")
-        obv_label = c.get("obv_label", "[NEUTRAL]")
-        flow_ratio = c.get("flow_ratio", 1.0)
-        flow_label = c.get("flow_label", "1.0x")
-        flow_score = c.get("flow_score", 50)
-        is_stealth_accum = c.get("is_stealth_accum", False)
-        
-        # Safety Gate: Must be in valid Kijun support zone (-0.8% ~ +3.5%)
-        is_safe_entry = (-0.8 <= kgap <= 3.5)
-        is_weekly_bull = c.get("is_weekly_bull", False)
-        
-        # Strategy 1 (Classic Pullback): Weekly Bull, Score >= 80, Kijun gap in range
-        is_strat1 = is_weekly_bull and (b_score >= 80) and (-0.8 <= kgap <= 4.8)
-        # Strategy 2 (Cloud Bounce Sniper): Weekly Bull, Trampoline bounce, Score >= 80
-        is_strat2 = is_weekly_bull and bool(is_sn) and (s_score >= 80)
-        
-        item_score = 100 if (is_strat1 and is_strat2) else (b_score if is_strat1 else s_score)
-        composite_score = round(item_score * 0.45 + flow_score * 0.35 + max(0, 100 - abs(kgap) * 15) * 0.20, 1)
-        
-        item = {
-            "ticker": t,
-            "name": STOCK_DICT.get(t, [t])[0],
-            "price": c["latest_close"],
-            "score": item_score,
-            "composite_score": composite_score,
-            "sector": sector,
-            "is_macro_tailwind": is_macro_tailwind,
-            "obv_status": obv_status,
-            "obv_label": obv_label,
-            "flow_ratio": flow_ratio,
-            "flow_label": flow_label,
-            "flow_score": flow_score,
-            "is_stealth_accum": is_stealth_accum,
-            "kijun_gap": kgap,
-            "vol_ratio": round(v_ratio * 100),
-            "origin": origin_tag,
-            "origin_label": origin_label,
-            "is_sniper": is_strat2,
-            "is_strat1": is_strat1,
-            "action": c["intelligence"]["action"],
-            "target_price": round(c["latest_close"] * 1.15, 2),
-            "stop_price": round(c["latest_close"] * 0.96, 2)
-        }
-        
-        # Tier 1 Qualification: Weekly Bull + (Strat 1 or Strat 2) + Safe Entry + (Macro Tailwind or Stealth Accum or High Flow or 100pt)
-        if is_weekly_bull and (is_strat1 or is_strat2) and is_safe_entry and (is_macro_tailwind or is_stealth_accum or flow_ratio >= 1.3 or item_score == 100):
-            tier1_candidates.append(item)
-        elif is_weekly_bull and is_strat1 and is_safe_entry:
-            tier2_candidates.append(item)
-        elif is_weekly_bull and is_strat2:
-            tier3_candidates.append(item)
-            
-    # Sort each tier by highest institutional conviction
-    tier1_candidates.sort(key=lambda x: (-x["flow_score"], -x["score"], abs(x["kijun_gap"]), x["vol_ratio"]))
-    tier2_candidates.sort(key=lambda x: (-x["score"], abs(x["kijun_gap"]), x["vol_ratio"]))
-    tier3_candidates.sort(key=lambda x: (-x["score"], -x["flow_score"], abs(x["kijun_gap"])))
-    
-    # Exclude Tier 1 picks from Tier 2 and Tier 3 to maintain distinct portfolios
-    tier1_tickers = set(x["ticker"] for x in tier1_candidates[:4])
-    tier2_filtered = [x for x in tier2_candidates if x["ticker"] not in tier1_tickers]
-    tier3_filtered = [x for x in tier3_candidates if x["ticker"] not in tier1_tickers]
-
-    # Concentrate to Top Elite Recommendations
-    dual_consensus_picks = tier1_candidates[:4]
-    strat1_exclusive = tier2_filtered[:4]
-    strat2_exclusive = tier3_filtered[:4]
+    # 3-Tier Categorization via SSOT Domain Engine
+    dual_consensus_picks, strat1_exclusive, strat2_exclusive = classify_3tier_candidates(
+        chart_data=chart_data,
+        tailwind_sectors=tailwind_sectors,
+        stream_mentioned_tickers=stream_mentioned_tickers
+    )
 
     # Load current portfolio & recommendation streaks
     portfolio = db_manager.get_live_portfolio()
@@ -674,22 +404,6 @@ def build_dashboard_data():
             "status": "ACTIVE_BUY",
             "status_label": "ACTIVE_BUY"
         })
-    
-    # Refresh today's 2+2+2 Recommendation Matrix & Permanent Trade Tracking Archive in SQLite DB
-    if dual_consensus_picks or strat1_exclusive or strat2_exclusive:
-        top_bulls = (dual_consensus_picks + strat1_exclusive)[:2]
-        top_neutrals = (strat1_exclusive + dual_consensus_picks)[2:4]
-        top_snipers = strat2_exclusive[:2]
-        
-        b_picks = [{"ticker": x["ticker"], "close": x["price"]} for x in top_bulls]
-        n_picks = [{"ticker": x["ticker"], "close": x["price"]} for x in top_neutrals]
-        s_picks = [{"ticker": x["ticker"], "close": x["price"]} for x in top_snipers]
-        
-        try:
-            db_manager.save_recommendation_matrix_record(today_str, b_picks, n_picks, s_picks)
-            db_manager.archive_daily_recommendations(today_str, dual_consensus_picks, strat1_exclusive, strat2_exclusive)
-        except Exception as e:
-            print(f"[DB Archiving Warning] {e}")
 
     # Load 2+2+2 Matrix and Portfolio from DB
     matrix = db_manager.get_recommendations_matrix()
