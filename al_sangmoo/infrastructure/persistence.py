@@ -9,9 +9,10 @@ from concurrent.futures import ThreadPoolExecutor
 import yfinance as yf
 from al_sangmoo.core.config import DB_FILE, CHARTS_DIR
 
-def get_connection(timeout: float = 30.0) -> sqlite3.Connection:
+def get_connection(timeout: float = 30.0, db_path: str = None) -> sqlite3.Connection:
     """Returns an isolated SQLite connection configured with WAL mode and pragmas."""
-    conn = sqlite3.connect(str(DB_FILE), timeout=timeout)
+    target_db = db_path or os.environ.get("AL_SANGMOO_DB_PATH") or str(DB_FILE)
+    conn = sqlite3.connect(str(target_db), timeout=timeout)
     conn.row_factory = sqlite3.Row
     try:
         conn.execute("PRAGMA journal_mode = WAL;")

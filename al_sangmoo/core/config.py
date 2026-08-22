@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-DB_FILE = BASE_DIR / "quant_trades.db"
+DB_FILE = Path(os.environ.get("AL_SANGMOO_DB_PATH", str(BASE_DIR / "quant_trades.db")))
 OUTPUT_JSON = BASE_DIR / "dashboard_data.json"
 CHARTS_DIR = BASE_DIR / "data" / "charts"
 STREAM_CACHE = BASE_DIR / "wepoll_latest_stream.json"

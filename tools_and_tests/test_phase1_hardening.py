@@ -19,9 +19,24 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, ".."))
 sys.path.insert(0, PROJECT_ROOT)
 
+# Isolate tests to dedicated temporary SQLite database
+TEST_DB = os.path.join(PROJECT_ROOT, "test_quant_trades_p1.db")
+os.environ["AL_SANGMOO_DB_PATH"] = TEST_DB
+
 import db_manager
 from server import BuyOrder, SellOrder, buy_stock, sell_stock, reset_portfolio, get_portfolio, get_recommendation_matrix
 from generate_dashboard_feed import atomic_save_json, atomic_read_json
+
+def setup_test_db():
+    db_manager.init_db()
+
+def cleanup_test_db():
+    for f in [TEST_DB, f"{TEST_DB}-wal", f"{TEST_DB}-shm"]:
+        if os.path.exists(f):
+            try:
+                os.remove(f)
+            except Exception:
+                pass
 
 def test_wal_mode_and_pragmas():
     print("\n[Test 1] Verifying SQLite WAL Mode & High-Concurrency Pragmas...")
@@ -93,125 +108,93 @@ def test_atomic_json_persistence():
 def test_api_endpoints_integrity():
     print("\n[Test 3] Verifying API Endpoint Functionality & Contract Stability...")
     
-    # Backup user's actual portfolio holdings before test
-    conn = db_manager.get_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM my_portfolio")
-    user_portfolio_backup = cursor.fetchall()
-    conn.close()
-    
     async def run_api_tests():
-        try:
-            # 1. Reset portfolio
-            res = await reset_portfolio()
-            assert res["status"] == "success"
-            print("  - POST /api/portfolio/reset handler: OK")
-            
-            # 2. Buy order (with custom price and fractional shares)
-            buy_payload = BuyOrder(ticker="AMZN", buy_price=258.50, quantity=1.5)
-            buy_res = await buy_stock(buy_payload)
-            pos_id = buy_res["id"]
-            assert buy_res["status"] == "success"
-            print(f"  - POST /api/portfolio/buy handler (AMZN 1.5 shares @ $258.50): Position #{pos_id} OK")
-            
-            # 3. Get portfolio
-            p_data = get_portfolio()
-            assert len(p_data["holdings"]) == 1
-            assert p_data["holdings"][0]["ticker"] == "AMZN"
-            assert p_data["holdings"][0]["quantity"] == 1.5
-            print("  - GET /api/portfolio handler: Verified 1.5 shares of AMZN")
-            
-            # 4. Sell order
-            sell_payload = SellOrder(sell_price=270.00, reason="TEST_TP")
-            sell_res = await sell_stock(position_id=pos_id, order=sell_payload)
-            assert sell_res["status"] == "success"
-            print(f"  - POST /api/portfolio/sell/{pos_id} handler: OK")
-            
-            # 5. Recommendations matrix
-            m_data = get_recommendation_matrix()
-            assert isinstance(m_data, list)
-            print("  - GET /api/recommendations/matrix handler: OK")
-            print("  -> PASSED: All REST endpoints executed with 0 runtime errors.")
-        finally:
-            # Restore user's real portfolio holdings
-            c = db_manager.get_db()
-            cur = c.cursor()
-            cur.execute("DELETE FROM my_portfolio")
-            if user_portfolio_backup:
-                placeholders = ",".join(["?"] * len(user_portfolio_backup[0]))
-                cur.executemany(f"INSERT INTO my_portfolio VALUES ({placeholders})", user_portfolio_backup)
-            c.commit()
-            c.close()
+        # 1. Reset portfolio in test DB
+        res = await reset_portfolio()
+        assert res["status"] == "success"
+        print("  - POST /api/portfolio/reset handler: OK")
+        
+        # 2. Buy order (with custom price and fractional shares)
+        buy_payload = BuyOrder(ticker="AMZN", buy_price=258.50, quantity=1.5)
+        buy_res = await buy_stock(buy_payload)
+        pos_id = buy_res["id"]
+        assert buy_res["status"] == "success"
+        print(f"  - POST /api/portfolio/buy handler (AMZN 1.5 shares @ $258.50): Position #{pos_id} OK")
+        
+        # 3. Get portfolio
+        p_data = get_portfolio()
+        assert len(p_data["holdings"]) == 1
+        assert p_data["holdings"][0]["ticker"] == "AMZN"
+        assert p_data["holdings"][0]["quantity"] == 1.5
+        print("  - GET /api/portfolio handler: Verified 1.5 shares of AMZN")
+        
+        # 4. Sell order
+        sell_payload = SellOrder(sell_price=270.00, reason="TEST_TP")
+        sell_res = await sell_stock(position_id=pos_id, order=sell_payload)
+        assert sell_res["status"] == "success"
+        print(f"  - POST /api/portfolio/sell/{pos_id} handler: OK")
+        
+        # 5. Recommendations matrix
+        m_data = get_recommendation_matrix()
+        assert isinstance(m_data, list)
+        print("  - GET /api/recommendations/matrix handler: OK")
+        print("  -> PASSED: All REST endpoints executed with 0 runtime errors.")
 
     asyncio.run(run_api_tests())
 
 def test_50_thread_db_concurrency():
     print("\n[Test 4] 50-Thread High-Concurrency Stress Test on SQLite WAL...")
     
-    # Backup user's portfolio holdings before test
-    conn = db_manager.get_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM my_portfolio")
-    user_portfolio_backup = cursor.fetchall()
-    conn.close()
+    db_manager.reset_all_holdings()
     
-    try:
-        db_manager.reset_all_holdings()
-        
-        tickers = ["NVDA", "AMZN", "MSFT", "AAPL", "GOOGL", "META", "TSLA", "LLY", "AVGO", "COST"]
-        errors = []
-        
-        def worker(idx):
-            try:
-                tk = tickers[idx % len(tickers)]
-                price = 100.0 + idx
-                qty = (idx % 5) + 1.0
-                
-                # Perform Buy
-                pos_id = db_manager.add_portfolio_buy(ticker=tk, buy_price=price, quantity=qty)
-                
-                # Perform Immediate Read
-                conn_w = db_manager.get_db()
-                cur_w = conn_w.cursor()
-                cur_w.execute("SELECT COUNT(*) FROM my_portfolio WHERE status = 'HOLDING'")
-                cnt = cur_w.fetchone()[0]
-                conn_w.close()
-                assert cnt > 0, "No holdings returned after insert"
-                
-                # Perform Sell on some threads
-                if idx % 2 == 0:
-                    db_manager.record_portfolio_sell(holding_id=pos_id, sell_price=price * 1.05, reason="CONCURRENCY_TEST")
-            except Exception as e:
-                errors.append(f"Worker {idx} failed: {e}")
+    tickers = ["NVDA", "AMZN", "MSFT", "AAPL", "GOOGL", "META", "TSLA", "LLY", "AVGO", "COST"]
+    errors = []
+    
+    def worker(idx):
+        try:
+            tk = tickers[idx % len(tickers)]
+            price = 100.0 + idx
+            qty = (idx % 5) + 1.0
+            
+            # Perform Buy
+            pos_id = db_manager.add_portfolio_buy(ticker=tk, buy_price=price, quantity=qty)
+            
+            # Perform Immediate Read
+            conn_w = db_manager.get_db()
+            cur_w = conn_w.cursor()
+            cur_w.execute("SELECT COUNT(*) FROM my_portfolio WHERE status = 'HOLDING'")
+            cnt = cur_w.fetchone()[0]
+            conn_w.close()
+            assert cnt > 0, "No holdings returned after insert"
+            
+            # Perform Sell on some threads
+            if idx % 2 == 0:
+                db_manager.record_portfolio_sell(holding_id=pos_id, sell_price=price * 1.05, reason="CONCURRENCY_TEST")
+        except Exception as e:
+            errors.append(f"Worker {idx} failed: {e}")
 
-        with ThreadPoolExecutor(max_workers=10) as executor:
-            futures = [executor.submit(worker, i) for i in range(50)]
-            for f in futures:
-                f.result()
-                
-        print(f"  - Total Concurrency Operations: 50 / 50")
-        print(f"  - Database Lock Failures: {len(errors)}")
-        assert len(errors) == 0, f"Encountered concurrency lock errors: {errors[:3]}"
-        print("  -> PASSED: 50 concurrent transactions completed with 0 lock errors.")
-    finally:
-        # Restore user's real portfolio holdings
-        c = db_manager.get_db()
-        cur = c.cursor()
-        cur.execute("DELETE FROM my_portfolio")
-        if user_portfolio_backup:
-            placeholders = ",".join(["?"] * len(user_portfolio_backup[0]))
-            cur.executemany(f"INSERT INTO my_portfolio VALUES ({placeholders})", user_portfolio_backup)
-        c.commit()
-        c.close()
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = [executor.submit(worker, i) for i in range(50)]
+        for f in futures:
+            f.result()
+            
+    print(f"  - Total Concurrency Operations: 50 / 50")
+    print(f"  - Database Lock Failures: {len(errors)}")
+    assert len(errors) == 0, f"Encountered concurrency lock errors: {errors[:3]}"
+    print("  -> PASSED: 50 concurrent transactions completed with 0 lock errors.")
 
 if __name__ == "__main__":
     print("=" * 70)
     print("  R-SANGMOO QUANT PLATFORM: PHASE 1 HARDENING TEST SUITE")
     print("=" * 70)
-    test_wal_mode_and_pragmas()
-    test_atomic_json_persistence()
-    test_api_endpoints_integrity()
-    test_50_thread_db_concurrency()
-    print("\n" + "=" * 70)
-    print("  ALL PHASE 1 HARDENING TESTS PASSED SUCCESSFULLY! (100% GREEN)")
-    print("=" * 70)
+    setup_test_db()
+    try:
+        test_wal_mode_and_pragmas()
+        test_atomic_json_persistence()
+        test_api_endpoints_integrity()
+        test_50_thread_db_concurrency()
+        print("\n" + "=" * 70)
+        print("  ALL PHASE 1 HARDENING TESTS PASSED SUCCESSFULLY! (100% GREEN)")
+        print("=" * 70)
+    finally:
+        cleanup_test_db()

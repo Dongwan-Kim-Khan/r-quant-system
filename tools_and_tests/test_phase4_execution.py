@@ -17,11 +17,26 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, ".."))
 sys.path.insert(0, PROJECT_ROOT)
 
+# Isolate tests to dedicated temporary SQLite database
+TEST_DB = os.path.join(PROJECT_ROOT, "test_quant_trades_p4.db")
+os.environ["AL_SANGMOO_DB_PATH"] = TEST_DB
+
 from al_sangmoo.domain.risk.order_guardrail import validate_pre_trade_guardrail
 from al_sangmoo.domain.risk.macro_guardrail import evaluate_macro_circuit_breaker
 from al_sangmoo.infrastructure.brokers.paper_broker import PaperTradingBroker
 from al_sangmoo.infrastructure.backup import create_sqlite_backup, list_backups
 import db_manager
+
+def setup_test_db():
+    db_manager.init_db()
+
+def cleanup_test_db():
+    for f in [TEST_DB, f"{TEST_DB}-wal", f"{TEST_DB}-shm"]:
+        if os.path.exists(f):
+            try:
+                os.remove(f)
+            except Exception:
+                pass
 
 def test_pre_trade_guardrails():
     print("\n[Test 1] Verifying Pre-Trade Risk Guardrails & Sanity Validation...")
@@ -84,44 +99,26 @@ def test_macro_circuit_breakers():
 def test_paper_broker_adapter():
     print("\n[Test 3] Verifying Paper Trading Execution Gateway Adapter...")
     
-    # Backup user's actual portfolio holdings before test
-    conn = db_manager.get_db()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM my_portfolio")
-    user_portfolio_backup = cursor.fetchall()
-    conn.close()
-    
-    try:
-        broker = PaperTradingBroker(initial_cash=100000.0)
-        db_manager.reset_all_holdings()
+    broker = PaperTradingBroker(initial_cash=100000.0)
+    db_manager.reset_all_holdings()
 
-        # Buy order fill
-        buy_fill = broker.submit_buy_order(ticker="LLY", price=950.0, quantity=2.0)
-        assert buy_fill["status"] == "FILLED"
-        pos_id = buy_fill["position_id"]
-        print(f"  - Paper Buy Execution: Filled 2 shares LLY at ${buy_fill['fill_price']:,.2f} (Pos #{pos_id})")
+    # Buy order fill
+    buy_fill = broker.submit_buy_order(ticker="LLY", price=950.0, quantity=2.0)
+    assert buy_fill["status"] == "FILLED"
+    pos_id = buy_fill["position_id"]
+    print(f"  - Paper Buy Execution: Filled 2 shares LLY at ${buy_fill['fill_price']:,.2f} (Pos #{pos_id})")
 
-        # Balance check
-        balance = broker.get_account_balance()
-        assert balance["total_invested"] > 0
-        assert balance["total_equity"] > 0
-        print(f"  - Account Equity: ${balance['total_equity']:,.2f} (Cash: ${balance['cash_available']:,.2f})")
+    # Balance check
+    balance = broker.get_account_balance()
+    assert balance["total_invested"] > 0
+    assert balance["total_equity"] > 0
+    print(f"  - Account Equity: ${balance['total_equity']:,.2f} (Cash: ${balance['cash_available']:,.2f})")
 
-        # Sell order fill
-        sell_fill = broker.submit_sell_order(position_id=pos_id, price=1000.0, reason="PAPER_TP")
-        assert sell_fill["status"] == "FILLED"
-        print(f"  - Paper Sell Execution: Position #{pos_id} closed at ${sell_fill['fill_price']:,.2f}")
-        print("  -> PASSED: Paper broker execution gateway verified.")
-    finally:
-        # Restore user's real portfolio holdings
-        c = db_manager.get_db()
-        cur = c.cursor()
-        cur.execute("DELETE FROM my_portfolio")
-        if user_portfolio_backup:
-            placeholders = ",".join(["?"] * len(user_portfolio_backup[0]))
-            cur.executemany(f"INSERT INTO my_portfolio VALUES ({placeholders})", user_portfolio_backup)
-        c.commit()
-        c.close()
+    # Sell order fill
+    sell_fill = broker.submit_sell_order(position_id=pos_id, price=1000.0, reason="PAPER_TP")
+    assert sell_fill["status"] == "FILLED"
+    print(f"  - Paper Sell Execution: Position #{pos_id} closed at ${sell_fill['fill_price']:,.2f}")
+    print("  -> PASSED: Paper broker execution gateway verified.")
 
 def test_sqlite_snapshot_backup():
     print("\n[Test 4] Verifying Online Non-Blocking SQLite Snapshot Backup...")
@@ -140,12 +137,15 @@ if __name__ == "__main__":
     print("======================================================================")
     print("  R-SANGMOO QUANT PLATFORM: PHASE 4 EXECUTION & RISK TEST SUITE")
     print("======================================================================")
-    
-    test_pre_trade_guardrails()
-    test_macro_circuit_breakers()
-    test_paper_broker_adapter()
-    test_sqlite_snapshot_backup()
-    
-    print("\n======================================================================")
-    print("  ALL PHASE 4 EXECUTION & RISK TESTS PASSED! (100% GREEN)")
-    print("======================================================================")
+    setup_test_db()
+    try:
+        test_pre_trade_guardrails()
+        test_macro_circuit_breakers()
+        test_paper_broker_adapter()
+        test_sqlite_snapshot_backup()
+        
+        print("\n======================================================================")
+        print("  ALL PHASE 4 EXECUTION & RISK TESTS PASSED! (100% GREEN)")
+        print("======================================================================")
+    finally:
+        cleanup_test_db()
