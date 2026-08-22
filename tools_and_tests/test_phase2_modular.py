@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 import time
 import asyncio
@@ -79,23 +79,41 @@ def test_pure_quant_domain():
 
 def test_infrastructure_and_persistence():
     print("\n[Test 3] Verifying Infrastructure & Persistence Layer (al_sangmoo.infrastructure)...")
-    from al_sangmoo.infrastructure.persistence import add_portfolio_buy, record_portfolio_sell, reset_all_holdings, get_live_portfolio
+    from al_sangmoo.infrastructure.persistence import add_portfolio_buy, record_portfolio_sell, reset_all_holdings, get_live_portfolio, get_db
     from al_sangmoo.infrastructure.atomic_io import atomic_save_json, atomic_read_json
     
-    reset_all_holdings()
-    pos_id = add_portfolio_buy(ticker="NVDA", buy_price=125.50, quantity=2.5)
-    assert pos_id > 0
+    # Backup user holdings
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM my_portfolio")
+    user_backup = cur.fetchall()
+    conn.close()
     
-    p = get_live_portfolio()
-    assert len(p["holdings"]) == 1
-    assert p["holdings"][0]["ticker"] == "NVDA"
-    assert p["holdings"][0]["quantity"] == 2.5
-    
-    sell_ok = record_portfolio_sell(holding_id=pos_id, sell_price=135.00, reason="TEST_PHASE2")
-    assert sell_ok is True
-    
-    reset_all_holdings()
-    print("  - SQLite Repository: Buy, Live Portfolio, Sell, and Reset verified.")
+    try:
+        reset_all_holdings()
+        pos_id = add_portfolio_buy(ticker="NVDA", buy_price=125.50, quantity=2.5)
+        assert pos_id > 0
+        
+        p = get_live_portfolio()
+        assert len(p["holdings"]) == 1
+        assert p["holdings"][0]["ticker"] == "NVDA"
+        assert p["holdings"][0]["quantity"] == 2.5
+        
+        sell_ok = record_portfolio_sell(holding_id=pos_id, sell_price=135.00, reason="TEST_PHASE2")
+        assert sell_ok is True
+        
+        reset_all_holdings()
+        print("  - SQLite Repository: Buy, Live Portfolio, Sell, and Reset verified.")
+    finally:
+        # Restore user holdings
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM my_portfolio")
+        if user_backup:
+            placeholders = ",".join(["?"] * len(user_backup[0]))
+            cur.executemany(f"INSERT INTO my_portfolio VALUES ({placeholders})", user_backup)
+        conn.commit()
+        conn.close()
     
     # Test atomic io
     t_file = os.path.join(PROJECT_ROOT, "test_p2_atomic.json")

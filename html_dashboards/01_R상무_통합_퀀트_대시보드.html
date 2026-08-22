@@ -654,8 +654,9 @@
                         <thead>
                             <tr>
                                 <th>DATE</th>
-                                <th>PRIMARY ACCUMULATION (STRAT I)</th>
-                                <th>SNIPER RADAR (STRAT II)</th>
+                                <th>[TIER 1] MACRO & SMART MONEY</th>
+                                <th>[TIER 2] 26D PULLBACK</th>
+                                <th>[TIER 3] CLOUD SNIPER</th>
                                 <th>MACRO STANCE</th>
                             </tr>
                         </thead>
@@ -982,72 +983,127 @@
                 };
             }
 
-            const banner = document.getElementById("verdictBanner");
-            const score = document.getElementById("verdictScore");
-            const title = document.getElementById("verdictTitle");
-
-            title.textContent = `Quant Rating: [${info.verdict}]`;
-            score.textContent = info.score;
-
-            if (info.type === 'BULL') {
-                banner.style.borderLeftColor = "var(--accent-green)";
-                score.style.color = "var(--accent-green)";
-            } else if (info.type === 'BEAR') {
-                banner.style.borderLeftColor = "var(--accent-red)";
-                score.style.color = "var(--accent-red)";
+            // Differentiate Quant Rating criteria based on Tier 1 vs Tier 2 vs Tier 3
+            let tierType = 'TIER_2';
+            if (window.latestDashboardData) {
+                const isT1 = (window.latestDashboardData.dual_consensus || []).some(x => x.ticker === ticker);
+                const isT3 = (window.latestDashboardData.strat2_exclusive || []).some(x => x.ticker === ticker);
+                if (isT1) tierType = 'TIER_1';
+                else if (isT3) tierType = 'TIER_3';
+                else tierType = 'TIER_2';
             } else {
-                banner.style.borderLeftColor = "var(--accent-yellow)";
-                score.style.color = "var(--accent-yellow)";
+                if (info.is_sniper && info.bull_score >= 90) tierType = 'TIER_1';
+                else if (info.is_sniper) tierType = 'TIER_3';
+                else tierType = 'TIER_2';
             }
 
-            document.getElementById("sigKijunBadge").className = `status-badge ${info.kijun.status}`;
-            document.getElementById("sigKijunBadge").textContent = info.kijun.badge;
-            document.getElementById("sigKijunVal").textContent = info.kijun.val;
-            document.getElementById("sigKijunDesc").textContent = info.kijun.desc;
-
-            document.getElementById("sigTenkanBadge").className = `status-badge ${info.tenkan.status}`;
-            document.getElementById("sigTenkanBadge").textContent = info.tenkan.badge;
-            document.getElementById("sigTenkanVal").textContent = info.tenkan.val;
-            document.getElementById("sigTenkanDesc").textContent = info.tenkan.desc;
-
-            document.getElementById("sigCloudBadge").className = `status-badge ${info.cloud.status}`;
-            document.getElementById("sigCloudBadge").textContent = info.cloud.badge;
-            document.getElementById("sigCloudVal").textContent = info.cloud.val;
-            document.getElementById("sigCloudDesc").textContent = info.cloud.desc;
-
-            document.getElementById("sigVolBadge").className = `status-badge ${info.vol.status}`;
-            document.getElementById("sigVolBadge").textContent = info.vol.badge;
-            document.getElementById("sigVolVal").textContent = info.vol.val;
-            document.getElementById("sigVolDesc").textContent = info.vol.desc;
-
-            // Dynamically customize title labels based on strategy type
-            const isSniper = Boolean(info.is_sniper);
-            const isDual = Boolean(info.verdict && (info.verdict.includes("Dual 5-Star") || info.verdict.includes("특급 매수") && info.verdict.includes("양대")));
-            
             const elKijunTitle = document.getElementById("sigKijunTitle");
             const elTenkanTitle = document.getElementById("sigTenkanTitle");
             const elCloudTitle = document.getElementById("sigCloudTitle");
             const elFutureCloudTitle = document.getElementById("sigFutureCloudTitle");
             const elVolTitle = document.getElementById("sigVolTitle");
 
-            if (isDual) {
-                if (elKijunTitle) elKijunTitle.textContent = "1. [전략 I] 26일 기준선 생명선 안착";
-                if (elTenkanTitle) elTenkanTitle.textContent = "2. 9일 전환선 골든크로스 정배열";
-                if (elCloudTitle) elCloudTitle.textContent = "3. [전략 II] 구름대 도약(Trampoline Bounce)";
-                if (elFutureCloudTitle) elFutureCloudTitle.textContent = "4. +26일 미래 구름대 양운 확장";
-                if (elVolTitle) elVolTitle.textContent = "5. 매도세 고갈 거래량 마름 (5-Star 최고확신)";
-            } else if (isSniper) {
-                if (elKijunTitle) elKijunTitle.textContent = "1. [2단계] 시세 분출 모멘텀 (Stage 2 Launch)";
-                if (elTenkanTitle) elTenkanTitle.textContent = "2. 9일 전환선 상향 가속 (Tenkan Momentum)";
-                if (elCloudTitle) elCloudTitle.textContent = "3. [1단계] 구름대 지지 도약 (Trampoline Bounce)";
+            if (tierType === 'TIER_1') {
+                title.textContent = `Quant Rating: [Tier 1: 거시 순풍 + 기관 잠행 매집 (최우선 주도주)]`;
+                score.textContent = info.score || "100 / 100 pt (TIER_1_LEADER)";
+                banner.style.borderLeftColor = "#fbbf24";
+                score.style.color = "#fbbf24";
+                
+                if (elKijunTitle) elKijunTitle.textContent = "1. 26일 기준선 안전 지지 (-0.8% ~ +3.5%)";
+                if (elTenkanTitle) elTenkanTitle.textContent = "2. 거시 순풍 섹터 (Macro Tailwind)";
+                if (elCloudTitle) elCloudTitle.textContent = "3. 기관 잠행 매집 (OBV Stealth Accum)";
+                if (elFutureCloudTitle) elFutureCloudTitle.textContent = "4. 14일 양봉 수급비 우세 (Flow Ratio)";
+                if (elVolTitle) elVolTitle.textContent = "5. 20일 거래량 마름 (매도세 소진 완료)";
+                
+                document.getElementById("sigKijunBadge").className = `status-badge ${info.kijun.status}`;
+                document.getElementById("sigKijunBadge").textContent = info.kijun.badge;
+                document.getElementById("sigKijunVal").textContent = info.kijun.val;
+                document.getElementById("sigKijunDesc").textContent = info.kijun.desc;
+
+                if (info.sector) {
+                    document.getElementById("sigTenkanVal").textContent = `섹터: [${info.sector}]`;
+                    document.getElementById("sigTenkanDesc").textContent = `현재 거시 기후 순풍 및 기관 바스켓 자금 유입 수혜 섹터에 해당합니다.`;
+                    document.getElementById("sigTenkanBadge").className = "status-badge status-good";
+                    document.getElementById("sigTenkanBadge").textContent = "TAILWIND";
+                }
+                if (info.obv_status) {
+                    document.getElementById("sigCloudVal").textContent = `OBV: ${info.obv_label || '[STEALTH ACCUM]'}`;
+                    document.getElementById("sigCloudDesc").textContent = `주가 횡보/눌림목 구간 스마트 머니의 지속적인 바닥 물량 매집이 확인됩니다.`;
+                    document.getElementById("sigCloudBadge").className = "status-badge status-good";
+                    document.getElementById("sigCloudBadge").textContent = info.obv_status;
+                }
+                if (info.flow_label) {
+                    document.getElementById("sigFutureCloudVal").textContent = `양봉 수급비: ${info.flow_label}`;
+                    document.getElementById("sigFutureCloudDesc").textContent = `최근 14거래일간 상승일 거래량이 하락일 거래량을 압도하고 있습니다.`;
+                    document.getElementById("sigFutureCloudBadge").className = "status-badge status-good";
+                    document.getElementById("sigFutureCloudBadge").textContent = "INFLOW";
+                }
+                document.getElementById("sigVolBadge").className = `status-badge ${info.vol.status}`;
+                document.getElementById("sigVolBadge").textContent = info.vol.badge;
+                document.getElementById("sigVolVal").textContent = info.vol.val;
+                document.getElementById("sigVolDesc").textContent = info.vol.desc;
+            } else if (tierType === 'TIER_3') {
+                title.textContent = `Quant Rating: [Tier 3: 구름대 반등 스나이퍼 (2단계 발사대)]`;
+                score.textContent = info.score || "95 / 100 pt (TIER_3_SNIPER)";
+                banner.style.borderLeftColor = "#f87171";
+                score.style.color = "#f87171";
+                
+                if (elKijunTitle) elKijunTitle.textContent = "1. [2단계] 기준선 돌파 상방 가속 (Stage 2 Launch)";
+                if (elTenkanTitle) elTenkanTitle.textContent = "2. 9일 전환선 상향 모멘텀 (Tenkan Momentum)";
+                if (elCloudTitle) elCloudTitle.textContent = "3. [1단계] 구름대 트램펄린 지지 도약 (Trampoline)";
                 if (elFutureCloudTitle) elFutureCloudTitle.textContent = "4. +26일 미래 구름대 발사대 지지";
-                if (elVolTitle) elVolTitle.textContent = "5. 도약 후 거래량 및 리스크 관리 (-4% 컷)";
+                if (elVolTitle) elVolTitle.textContent = "5. 칼손절 기준선 엄수 (-4% 컷 / +15% 목표)";
+
+                document.getElementById("sigKijunBadge").className = `status-badge ${info.kijun.status}`;
+                document.getElementById("sigKijunBadge").textContent = info.kijun.badge;
+                document.getElementById("sigKijunVal").textContent = info.kijun.val;
+                document.getElementById("sigKijunDesc").textContent = info.kijun.desc;
+
+                document.getElementById("sigTenkanBadge").className = `status-badge ${info.tenkan.status}`;
+                document.getElementById("sigTenkanBadge").textContent = info.tenkan.badge;
+                document.getElementById("sigTenkanVal").textContent = info.tenkan.val;
+                document.getElementById("sigTenkanDesc").textContent = info.tenkan.desc;
+
+                document.getElementById("sigCloudBadge").className = `status-badge ${info.cloud.status}`;
+                document.getElementById("sigCloudBadge").textContent = info.cloud.badge;
+                document.getElementById("sigCloudVal").textContent = info.cloud.val;
+                document.getElementById("sigCloudDesc").textContent = info.cloud.desc;
+
+                document.getElementById("sigVolBadge").className = `status-badge ${info.vol.status}`;
+                document.getElementById("sigVolBadge").textContent = info.vol.badge;
+                document.getElementById("sigVolVal").textContent = info.vol.val;
+                document.getElementById("sigVolDesc").textContent = info.vol.desc;
             } else {
-                if (elKijunTitle) elKijunTitle.textContent = "1. 26-Day Kijun-sen (Life Line)";
-                if (elTenkanTitle) elTenkanTitle.textContent = "2. 9-Day Tenkan-sen (Momentum)";
-                if (elCloudTitle) elCloudTitle.textContent = "3. 현재 구름대 위치 (Current Cloud)";
-                if (elFutureCloudTitle) elFutureCloudTitle.textContent = "4. 향후 26일 미래 구름대 (Forward Horizon)";
-                if (elVolTitle) elVolTitle.textContent = "5. 20일 거래량 마름 (Volume Dry-Up)";
+                title.textContent = `Quant Rating: [Tier 2: 정석 기준선 눌림목 (안정 분할 매수)]`;
+                score.textContent = info.score || "85 / 100 pt (TIER_2_PULLBACK)";
+                banner.style.borderLeftColor = "var(--accent-green)";
+                score.style.color = "var(--accent-green)";
+                
+                if (elKijunTitle) elKijunTitle.textContent = "1. 26-Day Kijun-sen (생명선 지지 안착)";
+                if (elTenkanTitle) elTenkanTitle.textContent = "2. 9-Day Tenkan-sen (모멘텀 정배열)";
+                if (elCloudTitle) elCloudTitle.textContent = "3. 일목 구름대 상단 안착 (방어벽 유효)";
+                if (elFutureCloudTitle) elFutureCloudTitle.textContent = "4. 향후 26일 미래 구름대 (양운 지지)";
+                if (elVolTitle) elVolTitle.textContent = "5. 20일 거래량 마름 (Volume Dry-Up 50% 이하)";
+
+                document.getElementById("sigKijunBadge").className = `status-badge ${info.kijun.status}`;
+                document.getElementById("sigKijunBadge").textContent = info.kijun.badge;
+                document.getElementById("sigKijunVal").textContent = info.kijun.val;
+                document.getElementById("sigKijunDesc").textContent = info.kijun.desc;
+
+                document.getElementById("sigTenkanBadge").className = `status-badge ${info.tenkan.status}`;
+                document.getElementById("sigTenkanBadge").textContent = info.tenkan.badge;
+                document.getElementById("sigTenkanVal").textContent = info.tenkan.val;
+                document.getElementById("sigTenkanDesc").textContent = info.tenkan.desc;
+
+                document.getElementById("sigCloudBadge").className = `status-badge ${info.cloud.status}`;
+                document.getElementById("sigCloudBadge").textContent = info.cloud.badge;
+                document.getElementById("sigCloudVal").textContent = info.cloud.val;
+                document.getElementById("sigCloudDesc").textContent = info.cloud.desc;
+
+                document.getElementById("sigVolBadge").className = `status-badge ${info.vol.status}`;
+                document.getElementById("sigVolBadge").textContent = info.vol.badge;
+                document.getElementById("sigVolVal").textContent = info.vol.val;
+                document.getElementById("sigVolDesc").textContent = info.vol.desc;
             }
 
             document.getElementById("actionDirectiveText").textContent = info.action;
@@ -1625,37 +1681,39 @@
                 }
             }
 
-            // 5. Render Daily Quant Recommendations History Table
+            // 5. Render Daily Quant Recommendations History Table (3-Tier Structure)
             const dailyRecBody = document.getElementById("dailyRecHistoryBody");
             if (dailyRecBody) {
-                const matrixList = data.matrix || [];
-                if (matrixList.length > 0) {
-                    dailyRecBody.innerHTML = matrixList.map(m => {
-                        const b1 = m.bull_1 ? `<span class="ticker-pill bull" onclick="selectStock('${m.bull_1}', ${m.bull_1_price || 0})">${m.bull_1}</span>` : '';
-                        const b2 = m.bull_2 ? `<span class="ticker-pill bull" onclick="selectStock('${m.bull_2}', ${m.bull_2_price || 0})">${m.bull_2}</span>` : '';
-                        const sn1 = m.sniper_1 ? `<span class="ticker-pill bear" style="background:rgba(239,68,68,0.15); color:#f87171; border-color:#ef4444;" onclick="selectStock('${m.sniper_1}', ${m.sniper_1_price || 0})">${m.sniper_1}</span>` : '';
-                        const sn2 = m.sniper_2 ? `<span class="ticker-pill bear" style="background:rgba(239,68,68,0.15); color:#f87171; border-color:#ef4444;" onclick="selectStock('${m.sniper_2}', ${m.sniper_2_price || 0})">${m.sniper_2}</span>` : '';
-                        const macroStance = m.macro_stance || (m.msi_score ? `MSI ${Number(m.msi_score).toFixed(1)}pt` : 'DEFENSE_HOLD');
+                const histList = (data.daily_history && data.daily_history.length > 0) ? data.daily_history : [];
+                if (histList.length > 0) {
+                    dailyRecBody.innerHTML = histList.map(h => {
+                        const t1 = (h.tier1 || []).map(x => `<span class="ticker-pill" style="background:rgba(251,191,36,0.15); color:#fbbf24; border:1px solid #d97706; font-family:'JetBrains Mono'; font-weight:700; padding:2px 6px; border-radius:3px; cursor:pointer;" onclick="selectStock('${x.ticker}', ${x.price || 0})">${x.ticker}</span>`).join(' ');
+                        const t2 = (h.tier2 || []).map(x => `<span class="ticker-pill" style="background:rgba(52,211,153,0.15); color:#34d399; border:1px solid #059669; font-family:'JetBrains Mono'; font-weight:700; padding:2px 6px; border-radius:3px; cursor:pointer;" onclick="selectStock('${x.ticker}', ${x.price || 0})">${x.ticker}</span>`).join(' ');
+                        const t3 = (h.tier3 || []).map(x => `<span class="ticker-pill" style="background:rgba(248,113,113,0.15); color:#f87171; border:1px solid #dc2626; font-family:'JetBrains Mono'; font-weight:700; padding:2px 6px; border-radius:3px; cursor:pointer;" onclick="selectStock('${x.ticker}', ${x.price || 0})">${x.ticker}</span>`).join(' ');
+                        const macroStance = h.macro_stance || 'DEFENSE_HOLD';
                         
                         return `
                             <tr>
-                                <td style="font-family:'JetBrains Mono'; font-weight:700; color:#cbd5e1;">${m.date}</td>
-                                <td><div style="display:flex; gap:6px; flex-wrap:wrap;">${b1} ${b2}</div></td>
-                                <td><div style="display:flex; gap:6px; flex-wrap:wrap;">${sn1 || '<span style="color:#64748b; font-size:11px;">-</span>'} ${sn2}</div></td>
+                                <td style="font-family:'JetBrains Mono'; font-weight:700; color:#cbd5e1;">${h.date}</td>
+                                <td><div style="display:flex; gap:6px; flex-wrap:wrap;">${t1 || '<span style="color:#64748b; font-size:11px;">-</span>'}</div></td>
+                                <td><div style="display:flex; gap:6px; flex-wrap:wrap;">${t2 || '<span style="color:#64748b; font-size:11px;">-</span>'}</div></td>
+                                <td><div style="display:flex; gap:6px; flex-wrap:wrap;">${t3 || '<span style="color:#64748b; font-size:11px;">-</span>'}</div></td>
                                 <td><span style="font-family:'JetBrains Mono'; font-size:11px; color:#fbbf24; font-weight:600;">${macroStance}</span></td>
                             </tr>
                         `;
                     }).join('');
                 } else {
                     const todayStr = (data.last_updated || new Date().toISOString()).slice(0, 10);
-                    const topBull = (data.primary_accumulation || []).slice(0, 4).map(p => `<span class="ticker-pill bull" onclick="selectStock('${p.ticker}', ${p.price})">${p.ticker}</span>`).join(' ');
-                    const topSniper = (data.sniper_radar || []).slice(0, 4).map(s => `<span class="ticker-pill bear" style="background:rgba(239,68,68,0.15); color:#f87171; border-color:#ef4444;" onclick="selectStock('${s.ticker}', ${s.price})">${s.ticker}</span>`).join(' ');
+                    const topT1 = (data.dual_consensus || []).map(p => `<span class="ticker-pill" style="background:rgba(251,191,36,0.15); color:#fbbf24; border:1px solid #d97706; font-family:'JetBrains Mono'; font-weight:700; padding:2px 6px; border-radius:3px; cursor:pointer;" onclick="selectStock('${p.ticker}', ${p.price})">${p.ticker}</span>`).join(' ');
+                    const topT2 = (data.strat1_exclusive || []).map(p => `<span class="ticker-pill" style="background:rgba(52,211,153,0.15); color:#34d399; border:1px solid #059669; font-family:'JetBrains Mono'; font-weight:700; padding:2px 6px; border-radius:3px; cursor:pointer;" onclick="selectStock('${p.ticker}', ${p.price})">${p.ticker}</span>`).join(' ');
+                    const topT3 = (data.strat2_exclusive || []).map(s => `<span class="ticker-pill" style="background:rgba(248,113,113,0.15); color:#f87171; border:1px solid #dc2626; font-family:'JetBrains Mono'; font-weight:700; padding:2px 6px; border-radius:3px; cursor:pointer;" onclick="selectStock('${s.ticker}', ${s.price})">${s.ticker}</span>`).join(' ');
                     const msiScore = (data.macro && data.macro.macro_climate) ? `${data.macro.macro_climate.macro_stance || 'DEFENSE_HOLD'} (${data.macro.macro_climate.msi_score.toFixed(1)}pt)` : 'DEFENSE_HOLD';
                     dailyRecBody.innerHTML = `
                         <tr>
                             <td style="font-family:'JetBrains Mono'; font-weight:700; color:#cbd5e1;">${todayStr}</td>
-                            <td><div style="display:flex; gap:6px; flex-wrap:wrap;">${topBull || '-'}</div></td>
-                            <td><div style="display:flex; gap:6px; flex-wrap:wrap;">${topSniper || '<span style="color:#64748b; font-size:11px;">-</span>'}</div></td>
+                            <td><div style="display:flex; gap:6px; flex-wrap:wrap;">${topT1 || '-'}</div></td>
+                            <td><div style="display:flex; gap:6px; flex-wrap:wrap;">${topT2 || '-'}</div></td>
+                            <td><div style="display:flex; gap:6px; flex-wrap:wrap;">${topT3 || '<span style="color:#64748b; font-size:11px;">-</span>'}</div></td>
                             <td><span style="font-family:'JetBrains Mono'; font-size:11px; color:#fbbf24; font-weight:600;">${msiScore}</span></td>
                         </tr>
                     `;

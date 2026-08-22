@@ -15,6 +15,7 @@ from al_sangmoo.infrastructure.persistence import (
     get_live_portfolio,
     save_recommendation_matrix_record,
     get_recommendations_matrix,
+    get_daily_recommendation_history,
     archive_daily_recommendations,
     get_recommendation_streaks,
     close_portfolio_position,

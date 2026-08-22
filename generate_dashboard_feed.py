@@ -736,11 +736,14 @@ def build_dashboard_data():
             }
 
     # 2. Build lightweight executive summary payload (under 50KB)
+    daily_history = db_manager.get_daily_recommendation_history()
+    
     payload = {
         "macro": macro_info,
         "kpis": kpis,
         "trades": trades,
         "matrix": matrix,
+        "daily_history": daily_history,
         "portfolio": portfolio,
         "dual_consensus": dual_consensus_picks,
         "strat1_exclusive": strat1_exclusive,

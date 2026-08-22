@@ -133,11 +133,14 @@ def get_dashboard_summary():
     if not isinstance(matrix, list):
         matrix = [matrix] if matrix else []
         
+    daily_history = db_manager.get_daily_recommendation_history()
+    
     return {
         "macro": macro_info,
         "kpis": kpis,
         "portfolio": portfolio,
         "matrix": matrix,
+        "daily_history": daily_history,
         "dual_consensus": dual_consensus,
         "strat1_exclusive": strat1_exclusive,
         "strat2_exclusive": strat2_exclusive,

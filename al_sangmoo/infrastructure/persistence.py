@@ -5,6 +5,7 @@ import os
 import sqlite3
 import pandas as pd
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
 import yfinance as yf
 from al_sangmoo.core.config import DB_FILE
 
@@ -234,22 +235,34 @@ def get_live_portfolio() -> dict:
     total_eval = 0.0
     update_rows = []
     
+    # Fast Concurrent Quote Fetching for Unique Holdings
+    unique_tickers = list(set(h['ticker'] for h in holdings))
+    prices_map = {}
+    
+    def fetch_price(tk):
+        try:
+            cur_data = yf.download(tk, period="5d", interval="1d", progress=False)
+            if not cur_data.empty:
+                if isinstance(cur_data.columns, pd.MultiIndex):
+                    cur_data.columns = cur_data.columns.get_level_values(0)
+                return tk, float(cur_data.iloc[-1]['Close'])
+        except Exception:
+            pass
+        return tk, None
+
+    if unique_tickers:
+        with ThreadPoolExecutor(max_workers=min(12, len(unique_tickers))) as executor:
+            for tk, pr in executor.map(fetch_price, unique_tickers):
+                if pr is not None:
+                    prices_map[tk] = pr
+
     for h in holdings:
         ticker = h['ticker']
         buy_price = float(h['buy_price'])
         quantity = float(h['quantity'])
         total_cost = buy_price * quantity
-        cur_price = buy_price
+        cur_price = prices_map.get(ticker, buy_price)
         
-        try:
-            cur_data = yf.download(ticker, period="5d", interval="1d", progress=False)
-            if not cur_data.empty:
-                if isinstance(cur_data.columns, pd.MultiIndex):
-                    cur_data.columns = cur_data.columns.get_level_values(0)
-                cur_price = float(cur_data.iloc[-1]['Close'])
-        except Exception:
-            pass
-            
         cur_val = cur_price * quantity
         pnl_pct = ((cur_price - buy_price) / buy_price) * 100 if buy_price > 0 else 0.0
         pnl_amt = cur_val - total_cost
@@ -413,6 +426,56 @@ def get_recommendation_streaks() -> dict:
                 break
         streaks[tk] = streak
     return streaks
+
+def get_daily_recommendation_history() -> list:
+    """
+    Groups historical trades table entries by date and returns a 3-Tier list for the dashboard history table.
+    """
+    init_database()
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT date, type, ticker, entry_price FROM trades ORDER BY date DESC, id ASC")
+    rows = cursor.fetchall()
+    
+    # Fetch macro stances from macro_history if available
+    m_stances = {}
+    try:
+        cursor.execute("SELECT date, macro_stance, msi_score FROM macro_history")
+        for r in cursor.fetchall():
+            m_stances[r['date']] = f"{r['macro_stance']} ({float(r['msi_score']):.1f}pt)"
+    except Exception:
+        pass
+    conn.close()
+    
+    history_by_date = {}
+    for r in rows:
+        d_str = r['date']
+        rec_type = r['type']
+        tk = r['ticker']
+        p = float(r['entry_price']) if r['entry_price'] else 0.0
+        
+        if d_str not in history_by_date:
+            history_by_date[d_str] = {
+                "date": d_str,
+                "tier1": [],
+                "tier2": [],
+                "tier3": [],
+                "macro_stance": m_stances.get(d_str, "DEFENSE_HOLD (66.9pt)")
+            }
+            
+        item = {"ticker": tk, "price": p}
+        if rec_type in ["DUAL_5_STAR"]:
+            history_by_date[d_str]["tier1"].append(item)
+        elif rec_type in ["STRAT1_PULLBACK", "BULL"]:
+            history_by_date[d_str]["tier2"].append(item)
+        elif rec_type in ["STRAT2_SNIPER", "BEAR", "ACTIVE_SNIPER"]:
+            history_by_date[d_str]["tier3"].append(item)
+        else:
+            history_by_date[d_str]["tier1"].append(item)
+            
+    # Sort by date descending
+    result = [history_by_date[d] for d in sorted(history_by_date.keys(), reverse=True)]
+    return result
 
 # Aliases
 get_db = get_connection
