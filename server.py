@@ -3,6 +3,7 @@ import sys
 import re
 import json
 import sqlite3
+import asyncio
 from typing import Optional
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -361,25 +362,68 @@ def get_ticker_chart(ticker: str):
     CHART_CACHE[ticker_resolved] = data
     return data
 
-@app.post("/api/scan_now")
-async def trigger_scan_now():
+# Concurrency State Guard for Background Scanning
+_is_scanning: bool = False
+_scan_lock = asyncio.Lock()
+
+async def _run_background_scan_pipeline():
+    global _is_scanning, CHART_CACHE
     try:
-        import al_sangmoo_daily_bot
-        bull_picks, neutral_picks, bear_picks, macro_climate = al_sangmoo_daily_bot.scan_and_select_2x2x2()
-        today_str = datetime.now().strftime("%Y-%m-%d")
-        db_manager.save_recommendation_matrix_record(today_str, bull_picks, neutral_picks, bear_picks)
-        data = build_dashboard_data()
-        global CHART_CACHE
+        await hub.broadcast("scan_status", {
+            "status": "started",
+            "message": "백그라운드 3-Gate 스캔이 시작되었습니다."
+        })
+        
+        def _sync_worker():
+            import al_sangmoo_daily_bot
+            bull_picks, neutral_picks, bear_picks, macro_climate = al_sangmoo_daily_bot.scan_and_select_2x2x2()
+            today_str = datetime.now().strftime("%Y-%m-%d")
+            db_manager.save_recommendation_matrix_record(today_str, bull_picks, neutral_picks, bear_picks)
+            data = build_dashboard_data()
+            return today_str, data, macro_climate
+
+        today_str, data, macro_climate = await asyncio.to_thread(_sync_worker)
         CHART_CACHE = data.get("charts", {})
+        load_feed_cache()
+        
+        # Broadcast full dashboard refresh & completion status
         await hub.broadcast("live_feed_update", data)
-        return {
-            "status": "success",
+        await hub.broadcast("scan_status", {
+            "status": "completed",
             "message": f"{today_str} 실시간 3-Gate 스캔 & 대시보드 갱신 완료!",
             "macro_stance": macro_climate.get("macro_stance") if macro_climate else "NORMAL"
-        }
-    except Exception as e:
-        print(f"[Scan Error] {e}", file=sys.stderr)
-        return {"status": "error", "message": "스캔 중 내부 오류가 발생했습니다."}
+        })
+    except Exception as exc:
+        print(f"[Background Scan Error] {exc}", file=sys.stderr)
+        await hub.broadcast("scan_status", {
+            "status": "error",
+            "message": "스캔 실행 중 내부 오류가 발생했습니다."
+        })
+    finally:
+        async with _scan_lock:
+            _is_scanning = False
+
+@app.post("/api/scan_now")
+async def trigger_scan_now():
+    global _is_scanning
+    async with _scan_lock:
+        if _is_scanning:
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "status": "already_scanning",
+                    "message": "백그라운드 스캔이 이미 진행 중입니다.",
+                    "is_scanning": True
+                }
+            )
+        _is_scanning = True
+        
+    asyncio.create_task(_run_background_scan_pipeline())
+    return {
+        "status": "scanning_started",
+        "message": "백그라운드 스캔이 시작되었습니다.",
+        "is_scanning": True
+    }
 
 @app.get("/api/backtest/{ticker}")
 def get_backtest_report(ticker: str, period: str = "2y"):

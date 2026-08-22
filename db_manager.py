@@ -13,6 +13,7 @@ from al_sangmoo.infrastructure.persistence import (
     record_portfolio_sell,
     reset_all_holdings,
     get_live_portfolio,
+    sync_portfolio_prices,
     save_recommendation_matrix_record,
     get_recommendations_matrix,
     get_daily_recommendation_history,

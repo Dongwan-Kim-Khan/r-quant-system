@@ -39,6 +39,13 @@ class WebSocketBroadcastHub:
                 self.active_connections.remove(websocket)
         print(f"[WebSocket Hub] Client disconnected. Active clients: {len(self.active_connections)}")
 
+    async def _safe_close(self, ws: WebSocket, code: int = 1000, reason: str = "") -> None:
+        if hasattr(ws, "close"):
+            try:
+                await ws.close(code=code, reason=reason)
+            except Exception:
+                pass
+
     async def broadcast(self, event_type: str, data: Any = None) -> None:
         """
         Broadcasts an event message to all connected clients using non-blocking dispatch with timeouts.
@@ -56,20 +63,23 @@ class WebSocketBroadcastHub:
         if not sockets:
             return
 
-        async def send_to_client(ws: WebSocket):
+        async def send_to_client(ws: WebSocket) -> bool:
             try:
                 await asyncio.wait_for(ws.send_json(message), timeout=2.0)
-                return None
+                return True
             except Exception:
-                return ws
+                return False
 
         results = await asyncio.gather(*(send_to_client(ws) for ws in sockets), return_exceptions=True)
-        dead_connections = [ws for ws in results if ws is not None and not isinstance(ws, Exception)]
+        dead_connections = [ws for ws, success in zip(sockets, results) if success is not True]
 
         if dead_connections:
             async with self._lock:
                 for dead in dead_connections:
                     if dead in self.active_connections:
                         self.active_connections.remove(dead)
+
+            for dead in dead_connections:
+                asyncio.create_task(self._safe_close(dead, code=1011, reason="Broadcast timeout/error"))
 
 hub = WebSocketBroadcastHub()

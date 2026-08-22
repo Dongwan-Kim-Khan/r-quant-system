@@ -1870,10 +1870,45 @@
             btn.disabled = false;
         }
 
+        // =====================================================================
+        // Robust Real-Time WebSocket & Fallback Resiliency Engine (CONC-05 / R5)
+        // =====================================================================
         let liveSocket = null;
-        let wsReconnectTimer = null;
+        let wsReconnectTimeoutId = null;
+        let wsReconnectAttempts = 0;
+        let httpFallbackIntervalId = null;
+        const WS_BASE_DELAY_MS = 1000;
+        const WS_MAX_DELAY_MS = 16000;
+        const HTTP_FALLBACK_INTERVAL_MS = 30000;
+
+        function startHttpFallbackPolling() {
+            if (httpFallbackIntervalId) return;
+            console.log("[Fallback] Starting 30s HTTP polling fallback...");
+            httpFallbackIntervalId = setInterval(() => {
+                if (!liveSocket || liveSocket.readyState !== WebSocket.OPEN) {
+                    loadDashboard();
+                }
+            }, HTTP_FALLBACK_INTERVAL_MS);
+        }
+
+        function stopHttpFallbackPolling() {
+            if (httpFallbackIntervalId) {
+                console.log("[Fallback] Stopping HTTP polling fallback (WebSocket active).");
+                clearInterval(httpFallbackIntervalId);
+                httpFallbackIntervalId = null;
+            }
+        }
+
+        function clearWsReconnectTimer() {
+            if (wsReconnectTimeoutId) {
+                clearTimeout(wsReconnectTimeoutId);
+                wsReconnectTimeoutId = null;
+            }
+        }
 
         function connectWebSocket() {
+            clearWsReconnectTimer();
+
             if (liveSocket && (liveSocket.readyState === WebSocket.OPEN || liveSocket.readyState === WebSocket.CONNECTING)) {
                 return;
             }
@@ -1897,16 +1932,16 @@
                 liveSocket.onopen = function () {
                     console.log("[WebSocket] Connected to real-time feed:", wsUrl);
                     isBackendOnline = true;
+                    wsReconnectAttempts = 0;
+                    clearWsReconnectTimer();
+                    stopHttpFallbackPolling();
+
                     const statusText = document.getElementById("serverStatusText");
                     const statusDot = document.getElementById("serverDot");
                     if (statusText) statusText.textContent = "LIVE WS CONNECTED";
                     if (statusDot) {
                         statusDot.style.background = "#10b981";
                         statusDot.style.boxShadow = "0 0 8px #10b981";
-                    }
-                    if (wsReconnectTimer) {
-                        clearInterval(wsReconnectTimer);
-                        wsReconnectTimer = null;
                     }
                 };
 
@@ -1925,6 +1960,28 @@
                             renderDashboardData(payload.data);
                             if (payload.data.charts && payload.data.charts[currentSelectedTicker]) {
                                 loadChartData(currentSelectedTicker);
+                            }
+                            const btn = document.getElementById("btnScanNow");
+                            if (btn) {
+                                btn.textContent = "Run Live Scan";
+                                btn.disabled = false;
+                            }
+                        } else if (payload.event === "scan_status") {
+                            const btn = document.getElementById("btnScanNow");
+                            if (btn && payload.data) {
+                                if (payload.data.status === "started") {
+                                    btn.textContent = "Scanning...";
+                                    btn.disabled = true;
+                                } else if (payload.data.status === "completed" || payload.data.status === "error") {
+                                    btn.textContent = "Run Live Scan";
+                                    btn.disabled = false;
+                                }
+                            }
+                        } else if (payload.event === "scan_started") {
+                            const btn = document.getElementById("btnScanNow");
+                            if (btn) {
+                                btn.textContent = "Scanning...";
+                                btn.disabled = true;
                             }
                         } else if (payload.event === "connected" && payload.data && payload.data.portfolio) {
                             renderPortfolioOnly(payload.data.portfolio);
@@ -1947,6 +2004,9 @@
         }
 
         function scheduleWsReconnect() {
+            clearWsReconnectTimer();
+            startHttpFallbackPolling();
+
             const statusText = document.getElementById("serverStatusText");
             const statusDot = document.getElementById("serverDot");
             if (statusText) {
@@ -1956,9 +2016,21 @@
                 statusDot.style.background = isBackendOnline ? "#10b981" : "#3b82f6";
                 statusDot.style.boxShadow = "none";
             }
-            if (!wsReconnectTimer && window.location.protocol !== "file:") {
-                wsReconnectTimer = setInterval(connectWebSocket, 5000);
-            }
+
+            if (window.location.protocol === "file:") return;
+
+            // Exponential Backoff calculation: 1s, 2s, 4s, 8s, max 16s with random jitter (0-1000ms)
+            const exponent = Math.min(wsReconnectAttempts, 4);
+            const baseDelay = Math.min(WS_MAX_DELAY_MS, WS_BASE_DELAY_MS * Math.pow(2, exponent));
+            const jitter = Math.floor(Math.random() * 1000);
+            const totalDelay = baseDelay + jitter;
+
+            console.log(`[WebSocket] Scheduling reconnect attempt #${wsReconnectAttempts + 1} in ${totalDelay}ms...`);
+            wsReconnectAttempts++;
+
+            wsReconnectTimeoutId = setTimeout(() => {
+                connectWebSocket();
+            }, totalDelay);
         }
 
         function renderPortfolioOnly(portfolio) {
@@ -2213,7 +2285,6 @@
             selectStock("NVDA", 225.16);
             loadDashboard();
             connectWebSocket();
-            setInterval(loadDashboard, 30000); // 30s fallback poll
         });
 
         window.addEventListener("resize", () => {
