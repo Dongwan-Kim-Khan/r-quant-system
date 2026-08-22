@@ -66,6 +66,23 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CHANNEL_URL = "https://www.youtube.com/@wepoll_original/streams"
 CACHE_FILE = os.path.join(BASE_DIR, "wepoll_latest_stream.json")
 
+YOUTUBE_ID_REGEX = re.compile(r'^[a-zA-Z0-9_-]{11}$')
+
+def validate_youtube_id(video_id: str) -> str:
+    """Validates that video_id matches strict YouTube ID format."""
+    if not video_id or not isinstance(video_id, str) or not YOUTUBE_ID_REGEX.match(video_id):
+        raise ValueError(f"Invalid YouTube video ID format: {video_id}")
+    return video_id
+
+def get_safe_vtt_path(video_id: str) -> str:
+    """Validates video_id and ensures resolved VTT path resides inside BASE_DIR."""
+    valid_id = validate_youtube_id(video_id)
+    vtt_path = os.path.abspath(os.path.join(BASE_DIR, f"live_sub_{valid_id}.ko.vtt"))
+    base_dir_abs = os.path.abspath(BASE_DIR)
+    if not vtt_path.startswith(base_dir_abs):
+        raise PermissionError("Path traversal attempt detected.")
+    return vtt_path
+
 # Stock Dictionary with Korean and English aliases
 STOCK_DICT = {
     "NVDA": ["엔비디아", "엔비디", "NVIDIA", "NVDA"],
@@ -219,10 +236,16 @@ def fetch_realtime_macro_gauges():
     return gauges
 
 def extract_transcript_from_vtt(vtt_file):
-    if not os.path.exists(vtt_file):
+    if not vtt_file:
+        return ""
+    vtt_abs = os.path.abspath(vtt_file)
+    base_dir_abs = os.path.abspath(BASE_DIR)
+    if not vtt_abs.startswith(base_dir_abs):
+        raise PermissionError("Path traversal attempt detected.")
+    if not os.path.exists(vtt_abs):
         return ""
     try:
-        with open(vtt_file, "r", encoding="utf-8") as f:
+        with open(vtt_abs, "r", encoding="utf-8") as f:
             text = f.read()
         clean_lines = []
         for line in text.split('\n'):
@@ -452,16 +475,23 @@ def parse_live_stream_broadcast():
         for entry in entries:
             v_id = entry.get("id")
             title = entry.get("title", "")
-            if not v_id:
+            if not v_id or not YOUTUBE_ID_REGEX.match(str(v_id)):
                 continue
                 
-            vtt_out = os.path.join(BASE_DIR, f"live_sub_{v_id}.ko.vtt")
+            try:
+                vtt_out = get_safe_vtt_path(str(v_id))
+            except (ValueError, PermissionError):
+                continue
+                
             if not os.path.exists(vtt_out):
+                sub_pattern = os.path.abspath(os.path.join(BASE_DIR, f"live_sub_{v_id}.%(ext)s"))
+                if not sub_pattern.startswith(os.path.abspath(BASE_DIR)):
+                    continue
                 sub_cmd = [
                     sys.executable, "-m", "yt_dlp",
                     "--write-auto-sub", "--sub-lang", "ko", "--skip-download",
                     "--sub-format", "vtt/srt",
-                    "-o", os.path.join(BASE_DIR, f"live_sub_{v_id}.%(ext)s"),
+                    "-o", sub_pattern,
                     f"https://www.youtube.com/watch?v={v_id}"
                 ]
                 subprocess.run(sub_cmd, capture_output=True, text=True, encoding="utf-8", errors="ignore", timeout=35)
@@ -477,9 +507,17 @@ def parse_live_stream_broadcast():
         if not target_entry:
             target_entry = entries[0]
             v_id = target_entry.get("id")
-            full_transcript = extract_transcript_from_vtt(os.path.join(BASE_DIR, f"live_sub_{v_id}.ko.vtt"))
+            if not v_id or not YOUTUBE_ID_REGEX.match(str(v_id)):
+                return load_fallback_cache()
+            try:
+                vtt_out = get_safe_vtt_path(str(v_id))
+            except (ValueError, PermissionError):
+                return load_fallback_cache()
+            full_transcript = extract_transcript_from_vtt(vtt_out)
             
         v_id = target_entry.get("id")
+        if not v_id or not YOUTUBE_ID_REGEX.match(str(v_id)):
+            return load_fallback_cache()
         title = target_entry.get("title", "")
         url = f"https://www.youtube.com/watch?v={v_id}"
         

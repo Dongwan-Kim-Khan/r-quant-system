@@ -2,12 +2,15 @@
 SQLite Persistence Repository Layer with WAL Mode & Atomic Transactions.
 """
 import os
+import re
 import sqlite3
 import pandas as pd
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 import yfinance as yf
 from al_sangmoo.core.config import DB_FILE, CHARTS_DIR
+
+REASON_REGEX = re.compile(r'^[A-Za-z0-9_\-\s\(\)가-힣.,%]{1,100}$')
 
 def get_connection(timeout: float = 30.0, db_path: str = None) -> sqlite3.Connection:
     """Returns an isolated SQLite connection configured with WAL mode and pragmas."""
@@ -190,6 +193,12 @@ def record_portfolio_sell(holding_id: int, sell_price: float, sell_date: str = N
     if not sell_date:
         sell_date = datetime.now().strftime("%Y-%m-%d")
         
+    # Defensive sanitization & length constraint
+    clean_reason = str(reason).strip()[:100] if reason else "MANUAL_SELL"
+    if not REASON_REGEX.match(clean_reason):
+        clean_reason = re.sub(r'[^A-Za-z0-9_\-\s\(\)가-힣.,%]', '', clean_reason).strip() or "MANUAL_SELL"
+        clean_reason = clean_reason[:100]
+        
     cursor.execute("SELECT * FROM my_portfolio WHERE id = ?", (holding_id,))
     row = cursor.fetchone()
     if not row:
@@ -209,7 +218,7 @@ def record_portfolio_sell(holding_id: int, sell_price: float, sell_date: str = N
     """, (
         sell_date, sell_price, sell_price,
         sell_price * quantity, pnl_pct, pnl_amt,
-        f"청산 완료 ({pnl_pct:+.2f}%) - {reason}", holding_id
+        f"청산 완료 ({pnl_pct:+.2f}%) - {clean_reason}", holding_id
     ))
     conn.commit()
     conn.close()

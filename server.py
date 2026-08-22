@@ -3,10 +3,12 @@ import sys
 import re
 import json
 import sqlite3
+from typing import Optional
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 import uvicorn
 import pandas as pd
 import yfinance as yf
@@ -33,13 +35,51 @@ if sys.platform.startswith('win'):
 
 app = FastAPI(title="Al-Sangmoo Quant Portfolio Backend", version="2.6")
 
+ALLOWED_ORIGINS = [
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000"
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8000", "http://127.0.0.1:8000", "http://localhost:3000", "*"],
-    allow_credentials=False,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    if isinstance(exc, HTTPException):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.detail},
+            headers=getattr(exc, "headers", None)
+        )
+    if isinstance(exc, RequestValidationError):
+        return JSONResponse(
+            status_code=422,
+            content={"detail": exc.errors()}
+        )
+    print(f"[ERROR 500] Unhandled exception on {request.method} {request.url.path}: {exc}", file=sys.stderr)
+    return JSONResponse(
+        status_code=500,
+        content={"status": "error", "message": "An internal server error occurred"}
+    )
+
+@app.middleware("http")
+async def add_security_headers_middleware(request: Request, call_next):
+    try:
+        response = await call_next(request)
+    except Exception as exc:
+        response = await global_exception_handler(request, exc)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    return response
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DASHBOARD_HTML = os.path.join(BASE_DIR, "al_sangmoo_dashboard.html")
@@ -52,6 +92,8 @@ FEED_CACHE = {}
 LAST_FEED_MTIME = 0
 
 TICKER_REGEX = re.compile(r'^[A-Za-z0-9.\^=-]{1,15}$')
+DATE_REGEX = re.compile(r'^\d{4}-\d{2}-\d{2}$')
+REASON_REGEX = re.compile(r'^[A-Za-z0-9_\-\s\(\)가-힣.,%]{1,100}$')
 
 def load_feed_cache():
     global FEED_CACHE, LAST_FEED_MTIME
@@ -67,14 +109,50 @@ def load_feed_cache():
 
 class BuyOrder(BaseModel):
     ticker: str = Field(..., min_length=1, max_length=15)
-    buy_price: float = Field(..., gt=0)
-    quantity: float = Field(..., gt=0)
-    buy_date: str = None
+    buy_price: float = Field(..., gt=0, le=10_000_000.0)
+    quantity: float = Field(..., gt=0, le=1_000_000.0)
+    buy_date: Optional[str] = Field(default=None)
+
+    @field_validator("ticker")
+    @classmethod
+    def validate_ticker(cls, v: str) -> str:
+        clean = v.strip().upper()
+        if not TICKER_REGEX.match(clean):
+            raise ValueError(f"유효하지 않은 티커 심볼 형식입니다: '{v}'")
+        return clean
+
+    @field_validator("buy_date")
+    @classmethod
+    def validate_buy_date(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v.strip():
+            clean = v.strip()
+            if not DATE_REGEX.match(clean):
+                raise ValueError("날짜 형식은 YYYY-MM-DD 이어야 합니다.")
+            return clean
+        return None
 
 class SellOrder(BaseModel):
-    sell_price: float = Field(..., gt=0)
-    sell_date: str = None
-    reason: str = "MANUAL_SELL"
+    sell_price: float = Field(..., gt=0, le=10_000_000.0)
+    sell_date: Optional[str] = Field(default=None)
+    reason: str = Field(default="MANUAL_SELL", max_length=100)
+
+    @field_validator("sell_date")
+    @classmethod
+    def validate_sell_date(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v.strip():
+            clean = v.strip()
+            if not DATE_REGEX.match(clean):
+                raise ValueError("날짜 형식은 YYYY-MM-DD 이어야 합니다.")
+            return clean
+        return None
+
+    @field_validator("reason")
+    @classmethod
+    def validate_reason(cls, v: str) -> str:
+        clean = v.strip()
+        if not REASON_REGEX.match(clean):
+            raise ValueError("유효하지 않은 사유 형식입니다. 특수문자가 제한됩니다.")
+        return clean
 
 @app.on_event("startup")
 def startup_event():
@@ -153,7 +231,14 @@ def get_dashboard_summary():
 
 @app.websocket("/ws/live_feed")
 async def websocket_live_feed(websocket: WebSocket):
-    await hub.connect(websocket)
+    origin = websocket.headers.get("origin")
+    if origin and origin not in ALLOWED_ORIGINS:
+        await websocket.close(code=1008, reason="Forbidden Origin")
+        return
+        
+    connected = await hub.connect(websocket)
+    if not connected:
+        return
     try:
         p_data = db_manager.get_live_portfolio()
         await websocket.send_json({"event": "connected", "data": {"portfolio": p_data}})
@@ -228,12 +313,17 @@ def get_ticker_chart(ticker: str):
     if not TICKER_REGEX.match(ticker_resolved):
         raise HTTPException(status_code=400, detail=f"유효하지 않은 티커 심볼 형식입니다: '{ticker}'")
         
+    # Security: Verify resolved chart path resides inside CHARTS_DIR
+    chart_file = os.path.abspath(os.path.join(CHARTS_DIR, f"{ticker_resolved}.json"))
+    charts_dir_abs = os.path.abspath(CHARTS_DIR)
+    if not chart_file.startswith(charts_dir_abs):
+        raise HTTPException(status_code=400, detail="유효하지 않은 차트 파일 경로입니다.")
+        
     # 1. Return from in-memory fast cache (instant sub-millisecond)
     if ticker_resolved in CHART_CACHE:
         return CHART_CACHE[ticker_resolved]
         
     # 2. Check modular individual chart file cache (data/charts/{ticker_resolved}.json)
-    chart_file = os.path.join(CHARTS_DIR, f"{ticker_resolved}.json")
     if os.path.exists(chart_file):
         try:
             with open(chart_file, "r", encoding="utf-8") as f:
@@ -259,7 +349,7 @@ def get_ticker_chart(ticker: str):
     # Cache individual chart file for subsequent instant loads
     try:
         os.makedirs(CHARTS_DIR, exist_ok=True)
-        atomic_save_json(os.path.join(CHARTS_DIR, f"{ticker_resolved}.json"), data)
+        atomic_save_json(chart_file, data)
     except Exception:
         pass
         
@@ -288,7 +378,8 @@ async def trigger_scan_now():
             "macro_stance": macro_climate.get("macro_stance") if macro_climate else "NORMAL"
         }
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        print(f"[Scan Error] {e}", file=sys.stderr)
+        return {"status": "error", "message": "스캔 중 내부 오류가 발생했습니다."}
 
 @app.get("/api/backtest/{ticker}")
 def get_backtest_report(ticker: str, period: str = "2y"):
@@ -299,7 +390,8 @@ def get_backtest_report(ticker: str, period: str = "2y"):
         report = run_backtest_simulation(ticker_upper, period=period)
         return report
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"백테스트 실행 실패: {str(e)}")
+        print(f"[Backtest Error] {e}", file=sys.stderr)
+        raise HTTPException(status_code=500, detail="백테스트 실행 중 내부 오류가 발생했습니다.")
 
 @app.get("/api/quant/mtf/{ticker}")
 def get_mtf_consensus(ticker: str):
@@ -310,7 +402,8 @@ def get_mtf_consensus(ticker: str):
         mtf_data = calculate_mtf_consensus(ticker_upper)
         return mtf_data
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"MTF 분석 실패: {str(e)}")
+        print(f"[MTF Error] {e}", file=sys.stderr)
+        raise HTTPException(status_code=500, detail="MTF 분석 중 내부 오류가 발생했습니다.")
 
 @app.get("/api/risk/size/{ticker}")
 def get_recommended_position_size(ticker: str, equity: float = 100000.0, msi: float = 50.0):
@@ -328,8 +421,11 @@ def get_recommended_position_size(ticker: str, equity: float = 100000.0, msi: fl
         sizing = calculate_dynamic_position_size(portfolio_equity=equity, current_price=cur_price, atr_14=atr_14, msi_score=msi)
         sizing["ticker"] = ticker_upper
         return sizing
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"포지션 사이징 계산 실패: {str(e)}")
+        print(f"[Position Sizing Error] {e}", file=sys.stderr)
+        raise HTTPException(status_code=500, detail="포지션 사이징 계산 중 내부 오류가 발생했습니다.")
 
 @app.get("/api/risk/circuit_breaker")
 def get_circuit_breaker_status(msi: float = None):
@@ -384,7 +480,8 @@ def trigger_database_backup():
         res = create_sqlite_backup()
         return res
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"[Backup Error] {e}", file=sys.stderr)
+        raise HTTPException(status_code=500, detail="데이터베이스 백업 생성 중 내부 오류가 발생했습니다.")
 
 @app.get("/api/backup/list")
 def get_backup_list():

@@ -1,4 +1,4 @@
-﻿"""
+"""
 WebSocket Broadcast Gateway & Real-Time Event Hub.
 """
 import asyncio
@@ -6,16 +6,32 @@ import time
 from typing import List, Dict, Any
 from fastapi import WebSocket, WebSocketDisconnect
 
+MAX_CONNECTIONS = 50
+
 class WebSocketBroadcastHub:
-    def __init__(self):
+    def __init__(self, max_connections: int = MAX_CONNECTIONS):
+        self.max_connections = max_connections
         self.active_connections: List[WebSocket] = []
         self._lock = asyncio.Lock()
 
-    async def connect(self, websocket: WebSocket) -> None:
-        await websocket.accept()
+    async def connect(self, websocket: WebSocket) -> bool:
         async with self._lock:
+            if len(self.active_connections) >= self.max_connections:
+                if hasattr(websocket, "close"):
+                    try:
+                        await websocket.close(code=1008, reason="Connection limit exceeded")
+                    except Exception:
+                        pass
+                return False
+
+            if hasattr(websocket, "accept"):
+                try:
+                    await websocket.accept()
+                except Exception:
+                    return False
             self.active_connections.append(websocket)
-        print(f"[WebSocket Hub] Client connected. Active clients: {len(self.active_connections)}")
+            print(f"[WebSocket Hub] Client connected. Active clients: {len(self.active_connections)}")
+            return True
 
     async def disconnect(self, websocket: WebSocket) -> None:
         async with self._lock:
@@ -25,7 +41,7 @@ class WebSocketBroadcastHub:
 
     async def broadcast(self, event_type: str, data: Any = None) -> None:
         """
-        Broadcasts an event message to all connected clients.
+        Broadcasts an event message to all connected clients using non-blocking dispatch with timeouts.
         Automatically prunes disconnected clients.
         """
         message = {
@@ -35,14 +51,25 @@ class WebSocketBroadcastHub:
         }
         
         async with self._lock:
-            dead_connections = []
-            for ws in self.active_connections:
-                try:
-                    await ws.send_json(message)
-                except Exception:
-                    dead_connections.append(ws)
-            for dead in dead_connections:
-                if dead in self.active_connections:
-                    self.active_connections.remove(dead)
+            sockets = list(self.active_connections)
+            
+        if not sockets:
+            return
+
+        async def send_to_client(ws: WebSocket):
+            try:
+                await asyncio.wait_for(ws.send_json(message), timeout=2.0)
+                return None
+            except Exception:
+                return ws
+
+        results = await asyncio.gather(*(send_to_client(ws) for ws in sockets), return_exceptions=True)
+        dead_connections = [ws for ws in results if ws is not None and not isinstance(ws, Exception)]
+
+        if dead_connections:
+            async with self._lock:
+                for dead in dead_connections:
+                    if dead in self.active_connections:
+                        self.active_connections.remove(dead)
 
 hub = WebSocketBroadcastHub()
