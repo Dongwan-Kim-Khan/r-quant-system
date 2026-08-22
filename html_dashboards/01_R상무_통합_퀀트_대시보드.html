@@ -1802,6 +1802,15 @@
                 return;
             }
             
+            // If opened via local file protocol, inform user and use local cache
+            if (window.location.protocol === "file:") {
+                const statusText = document.getElementById("serverStatusText");
+                const statusDot = document.getElementById("serverDot");
+                if (statusText) statusText.textContent = "LOCAL FILE (CACHE)";
+                if (statusDot) statusDot.style.background = "#3b82f6";
+                return;
+            }
+
             const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
             const host = window.location.host || "localhost:8000";
             const wsUrl = `${protocol}//${host}/ws/live_feed`;
@@ -1854,7 +1863,7 @@
                 };
 
                 liveSocket.onerror = function () {
-                    liveSocket.close();
+                    if (liveSocket) liveSocket.close();
                 };
             } catch (err) {
                 scheduleWsReconnect();
@@ -1864,12 +1873,15 @@
         function scheduleWsReconnect() {
             const statusText = document.getElementById("serverStatusText");
             const statusDot = document.getElementById("serverDot");
-            if (statusText && isBackendOnline) {
-                statusText.textContent = "API ACTIVE (HTTP)";
-                if (statusDot) statusDot.style.boxShadow = "none";
+            if (statusText) {
+                statusText.textContent = isBackendOnline ? "API ACTIVE (HTTP)" : "LOCAL CACHE";
             }
-            if (!wsReconnectTimer) {
-                wsReconnectTimer = setInterval(connectWebSocket, 3000);
+            if (statusDot) {
+                statusDot.style.background = isBackendOnline ? "#10b981" : "#3b82f6";
+                statusDot.style.boxShadow = "none";
+            }
+            if (!wsReconnectTimer && window.location.protocol !== "file:") {
+                wsReconnectTimer = setInterval(connectWebSocket, 5000);
             }
         }
 

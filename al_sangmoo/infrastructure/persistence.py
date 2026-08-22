@@ -7,7 +7,7 @@ import pandas as pd
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 import yfinance as yf
-from al_sangmoo.core.config import DB_FILE
+from al_sangmoo.core.config import DB_FILE, CHARTS_DIR
 
 def get_connection(timeout: float = 30.0) -> sqlite3.Connection:
     """Returns an isolated SQLite connection configured with WAL mode and pragmas."""
@@ -235,24 +235,41 @@ def get_live_portfolio() -> dict:
     total_eval = 0.0
     update_rows = []
     
-    # Fast Concurrent Quote Fetching for Unique Holdings
+    # Fast Local Cache Quote Lookup with ThreadPool Network Fallback
     unique_tickers = list(set(h['ticker'] for h in holdings))
     prices_map = {}
+    missing_tickers = []
     
-    def fetch_price(tk):
-        try:
-            cur_data = yf.download(tk, period="5d", interval="1d", progress=False)
-            if not cur_data.empty:
-                if isinstance(cur_data.columns, pd.MultiIndex):
-                    cur_data.columns = cur_data.columns.get_level_values(0)
-                return tk, float(cur_data.iloc[-1]['Close'])
-        except Exception:
-            pass
-        return tk, None
+    for tk in unique_tickers:
+        chart_file = os.path.join(str(CHARTS_DIR), f"{tk}.json")
+        if os.path.exists(chart_file):
+            try:
+                import json
+                with open(chart_file, 'r', encoding='utf-8') as f:
+                    c_data = json.load(f)
+                    if "latest_close" in c_data and c_data["latest_close"] is not None:
+                        prices_map[tk] = float(c_data["latest_close"])
+                    elif "candles" in c_data and len(c_data["candles"]) > 0:
+                        prices_map[tk] = float(c_data["candles"][-1]["close"])
+            except Exception:
+                missing_tickers.append(tk)
+        else:
+            missing_tickers.append(tk)
+            
+    if missing_tickers:
+        def fetch_price(tk):
+            try:
+                cur_data = yf.download(tk, period="5d", interval="1d", progress=False)
+                if not cur_data.empty:
+                    if isinstance(cur_data.columns, pd.MultiIndex):
+                        cur_data.columns = cur_data.columns.get_level_values(0)
+                    return tk, float(cur_data.iloc[-1]['Close'])
+            except Exception:
+                pass
+            return tk, None
 
-    if unique_tickers:
-        with ThreadPoolExecutor(max_workers=min(12, len(unique_tickers))) as executor:
-            for tk, pr in executor.map(fetch_price, unique_tickers):
+        with ThreadPoolExecutor(max_workers=min(12, len(missing_tickers))) as executor:
+            for tk, pr in executor.map(fetch_price, missing_tickers):
                 if pr is not None:
                     prices_map[tk] = pr
 

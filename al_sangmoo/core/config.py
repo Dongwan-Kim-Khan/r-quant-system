@@ -1,4 +1,4 @@
-﻿"""
+"""
 Application Configuration & Environment Loader.
 """
 import os
@@ -7,6 +7,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DB_FILE = BASE_DIR / "quant_trades.db"
 OUTPUT_JSON = BASE_DIR / "dashboard_data.json"
+CHARTS_DIR = BASE_DIR / "data" / "charts"
 STREAM_CACHE = BASE_DIR / "wepoll_latest_stream.json"
 ENV_FILE = BASE_DIR / ".env"
 
