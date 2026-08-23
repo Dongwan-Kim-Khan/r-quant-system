@@ -236,7 +236,9 @@ def compute_all_indicators(ticker):
         print(f"Error computing {ticker}: {e}")
         return None
 
-def build_dashboard_data():
+def build_dashboard_data(output_file=None, charts_dir=None):
+    target_charts_dir = charts_dir or CHARTS_DIR
+    target_out_path = output_file or OUTPUT_JSON
     print(f"Building full dashboard data feed for {len(WATCHLIST)} universe tickers...")
     
     trades = []
@@ -422,12 +424,12 @@ def build_dashboard_data():
                     chart_data[tk] = d
 
     # 1. Save individual modular chart files into data/charts/{ticker}.json
-    os.makedirs(CHARTS_DIR, exist_ok=True)
+    os.makedirs(target_charts_dir, exist_ok=True)
     chart_intelligence = {}
     for ticker, c_obj in chart_data.items():
         if isinstance(c_obj, dict):
             # Save individual ticker chart cache
-            ticker_chart_path = os.path.join(CHARTS_DIR, f"{ticker}.json")
+            ticker_chart_path = os.path.join(target_charts_dir, f"{ticker}.json")
             atomic_save_json(ticker_chart_path, c_obj)
             
             # Extract lightweight intelligence metadata for instant dashboard loading
@@ -469,10 +471,10 @@ def build_dashboard_data():
         "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
     
-    out_path = os.path.join(BASE_DIR, OUTPUT_JSON)
+    out_path = target_out_path
     atomic_save_json(out_path, payload)
         
-    print(f"Successfully generated modular feed: {out_path} (Size: {os.path.getsize(out_path)/1024:.1f} KB, Charts: {len(chart_data)} saved in {CHARTS_DIR})")
+    print(f"Successfully generated modular feed: {out_path} (Size: {os.path.getsize(out_path)/1024:.1f} KB, Charts: {len(chart_data)} saved in {target_charts_dir})")
     return payload
 
 if __name__ == "__main__":

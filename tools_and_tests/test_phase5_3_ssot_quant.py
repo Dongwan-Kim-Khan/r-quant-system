@@ -687,6 +687,10 @@ class TestTier4CQRSSideEffectFreePipeline(unittest.TestCase):
         os.environ["AL_SANGMOO_DB_PATH"] = self.temp_db_path
         db_manager.init_database()
 
+        self.temp_feed_dir = tempfile.mkdtemp(suffix="_tier4_feed")
+        self.temp_out_json = os.path.join(self.temp_feed_dir, "dashboard_data.json")
+        self.temp_charts_dir = os.path.join(self.temp_feed_dir, "charts")
+
     def tearDown(self):
         if self.old_env is not None:
             os.environ["AL_SANGMOO_DB_PATH"] = self.old_env
@@ -699,6 +703,12 @@ class TestTier4CQRSSideEffectFreePipeline(unittest.TestCase):
                     os.remove(p)
                 except Exception:
                     pass
+        import shutil
+        if hasattr(self, "temp_feed_dir") and os.path.exists(self.temp_feed_dir):
+            try:
+                shutil.rmtree(self.temp_feed_dir)
+            except Exception:
+                pass
 
     @patch("yfinance.download")
     def test_build_dashboard_data_side_effect_free_cqrs(self, mock_yf):
@@ -723,7 +733,10 @@ class TestTier4CQRSSideEffectFreePipeline(unittest.TestCase):
              patch.object(db_manager, "sync_portfolio_prices") as mock_sync_prices:
             
             # Execute dashboard data pipeline
-            payload = generate_dashboard_feed.build_dashboard_data()
+            payload = generate_dashboard_feed.build_dashboard_data(
+                output_file=self.temp_out_json,
+                charts_dir=self.temp_charts_dir
+            )
             
             # STRICT ZERO-WRITE ASSERTIONS
             mock_save_matrix.assert_not_called()
@@ -794,7 +807,10 @@ class TestTier4CQRSSideEffectFreePipeline(unittest.TestCase):
             mock_yf.return_value = synthetic_df
             
             # Execute dashboard feed build against real SQLite DB
-            payload = generate_dashboard_feed.build_dashboard_data()
+            payload = generate_dashboard_feed.build_dashboard_data(
+                output_file=self.temp_out_json,
+                charts_dir=self.temp_charts_dir
+            )
             
             # Snapshot post-execution table counts
             post_counts = get_all_table_counts()
@@ -830,8 +846,14 @@ class TestTier4CQRSSideEffectFreePipeline(unittest.TestCase):
         
         import generate_dashboard_feed
         
-        p1 = generate_dashboard_feed.build_dashboard_data()
-        p2 = generate_dashboard_feed.build_dashboard_data()
+        p1 = generate_dashboard_feed.build_dashboard_data(
+            output_file=self.temp_out_json,
+            charts_dir=self.temp_charts_dir
+        )
+        p2 = generate_dashboard_feed.build_dashboard_data(
+            output_file=self.temp_out_json,
+            charts_dir=self.temp_charts_dir
+        )
         
         self.assertEqual(len(p1["matrix"]), len(p2["matrix"]))
         self.assertEqual(len(p1["signal_tracker"]), len(p2["signal_tracker"]))
