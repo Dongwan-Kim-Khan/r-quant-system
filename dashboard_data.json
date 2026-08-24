@@ -1,8 +1,8 @@
 {
   "macro": {
-    "video_id": "LImnhlhG-ng",
-    "title": "금리만이 시장을 압박하고 있을까? / 주주환원은 성장 동력이 될까? / 순환매 시장은 하반기 어떤 이벤트를 바라볼까?",
-    "url": "https://www.youtube.com/watch?v=LImnhlhG-ng",
+    "video_id": "-JQd5PnGxng",
+    "title": "[Vikings] Shortened Correction Period and Rising NVIDIA Server Prices | [Buddy Buddy] High-Intere...",
+    "url": "https://www.youtube.com/watch?v=-JQd5PnGxng",
     "macro_gauges": {
       "us10y": {
         "val": 4.738,
@@ -11,8 +11,8 @@
         "label": "미국채 10년물"
       },
       "dxy": {
-        "val": 98.84,
-        "delta": "-0.1%",
+        "val": 98.82,
+        "delta": "+0.0%",
         "status": "SOFT_DOLLAR",
         "label": "달러 인덱스(DXY)"
       },
@@ -23,20 +23,20 @@
         "label": "VIX 공포지수"
       },
       "wti": {
-        "val": 86.64,
-        "delta": "-1.4%",
+        "val": 85.71,
+        "delta": "-1.6%",
         "status": "INFLATION_SHOCK",
         "label": "WTI 국제유가"
       },
       "gold": {
-        "val": 4661.6,
-        "delta": "+3.2%",
+        "val": 4696.3,
+        "delta": "+1.6%",
         "status": "HEDGE_DEMAND",
         "label": "국제 금시세"
       }
     },
     "macro_climate": {
-      "msi_score": 74.9,
+      "msi_score": 72.8,
       "msi_breakdown": {
         "m_hard": 35.0,
         "m_hard_max": 60,
@@ -44,67 +44,129 @@
         "dxy_pts": 0.0,
         "vix_pts": 0.0,
         "wti_pts": 10.0,
-        "m_nlp": 24.9,
+        "m_nlp": 22.8,
         "m_nlp_max": 25,
-        "def_count": 45,
-        "buy_count": 0,
+        "def_count": 63,
+        "buy_count": 6,
         "m_shock": 15.0,
         "m_shock_max": 15
       },
       "macro_stance": "DEFENSE_HOLD",
       "macro_stance_kr": "신규 매수 보류 / 관망·현금 유지 주간 (Orange 50~74점)",
-      "macro_headline": "[거시 게이트 0단계: 거시 위험 지수 74.9점 / 신규 매수 보류 및 관망 권고]",
-      "macro_action_directive": "거시 위험 지수(MSI 74.9점: 10년물 금리 4.738%, 유가 $86.64) 및 방송 지침상, 현재 장세는 신규 매수를 쉬어가고 관망해야 하는 장세입니다. 다만 거시 리스크 진정 시 즉시 공략할 최우선 1순위 후보 종목을 사전 선별합니다.",
+      "macro_headline": "[거시 게이트 0단계: 거시 위험 지수 72.8점 / 신규 매수 보류 및 관망 권고]",
+      "macro_action_directive": "거시 위험 지수(MSI 72.8점: 10년물 금리 4.738%, 유가 $85.71) 및 방송 지침상, 현재 장세는 신규 매수를 쉬어가고 관망해야 하는 장세입니다. 다만 거시 리스크 진정 시 즉시 공략할 최우선 1순위 후보 종목을 사전 선별합니다.",
       "external_shocks": [
         "지정학적 분쟁 및 전쟁 리스크",
         "무역 분쟁 및 관세 불확실성",
         "금리 경로 및 통화정책 영향권"
       ],
-      "defense_keyword_count": 45
+      "defense_keyword_count": 63
     },
     "macro_narrative": "지정학적 분쟁 및 전쟁 리스크 / 무역 분쟁 및 관세 불확실성 / 금리 경로 및 통화정책 영향권",
     "mentioned_stocks": [
       {
-        "ticker": "005930.KS",
-        "mentions": 60,
-        "pos_score": 30,
-        "neg_score": 17,
+        "ticker": "NVDA",
+        "mentions": 102,
+        "pos_score": 50,
+        "neg_score": 26,
+        "net_sentiment": 24,
+        "host_intent": "BULLISH_RECOMMENDED",
+        "intent_desc": "진행자 적극 추천 / 긍정 주목 (순환매·매수 유망)",
+        "positive_reasons": [
+          "실적",
+          "긍정",
+          "관심",
+          "반등"
+        ],
+        "caution_reasons": [
+          "부담",
+          "경고",
+          "조정"
+        ],
+        "sample_context": "고하게 막아주는 사방이 약간은 좀 경고하게 막아주는 그런 느낌이 지난주 금요일에 좀 그런 느낌이 지난주 금요일에 좀 그런 느낌이 지난주 금요일에 좀 있었습니다. 그래서 물론 이번 주 있었습니다. 그래서 물론 이번 주 있었습니다. 그래서 물론 이번 주 엔비디아 실적 발표에 따라서 기업별로 엔비디아 실적 발표에 따라서 기업별로 엔비디아 실적 발표에 따라서 기업별로 막 움직이겠죠. 엄청나게 큰 어 막 움직이겠죠. 엄청나게 큰 어 막 움직이겠죠. 엄청나게 큰 어 변동성이 좀 나올 수도 있는 그런 변동성이 좀 나"
+      },
+      {
+        "ticker": "PLTR",
+        "mentions": 33,
+        "pos_score": 25,
+        "neg_score": 12,
         "net_sentiment": 13,
         "host_intent": "BULLISH_RECOMMENDED",
         "intent_desc": "진행자 적극 추천 / 긍정 주목 (순환매·매수 유망)",
         "positive_reasons": [
-          "바닥",
+          "실적",
           "반등",
-          "수급",
-          "순환매"
+          "긍정"
         ],
         "caution_reasons": [
-          "박살",
-          "폭락",
-          "안 좋",
-          "빠지"
+          "매도",
+          "손절"
         ],
-        "sample_context": "Kind: captions Language: ko 방심하는 순간 박살나는 시장. 자, 방심하는 순간 박살나는 시장. 자, 방심하는 순간 박살나는 시장. 자, 삼성전자의 주주 환원 정책이 지금 삼성전자의 주주 환원 정책이 지금 삼성전자의 주주 환원 정책이 지금 방금 속보로 나오고 있습니다. 아, 방금 속보로 나오고 있습니다. 아, 방금 속보로 나오고 있습니다. 아, 시장은 너무나도 실망하고 있는 시장은 너무나도 실"
+        "sample_context": "지가 뭐 100만 달러에서 레인지가 뭐 100만 달러에서 500만 달러씩 이렇게 돼 있고 500만 달러씩 이렇게 돼 있고 500만 달러씩 이렇게 돼 있고 매도한 종목 메타 모토라 솔루션 매도한 종목 메타 모토라 솔루션 매도한 종목 메타 모토라 솔루션 팔란티어 팔란티어를 왜됐어? 예. 못 팔란티어 팔란티어를 왜됐어? 예. 못 팔란티어 팔란티어를 왜됐어? 예. 못 먹었단 얘기야. 손절했단 얘기죠. 먹었단 얘기야. 손절했단 얘기죠. 먹었단 얘기야. 손절했단 얘기죠. 예. 자, 그래서 이렇게 매도를 예. 자,"
       },
       {
-        "ticker": "000660.KS",
-        "mentions": 33,
-        "pos_score": 6,
-        "neg_score": 1,
-        "net_sentiment": 5,
+        "ticker": "AMZN",
+        "mentions": 9,
+        "pos_score": 4,
+        "neg_score": 0,
+        "net_sentiment": 4,
         "host_intent": "BULLISH_RECOMMENDED",
         "intent_desc": "진행자 적극 추천 / 긍정 주목 (순환매·매수 유망)",
         "positive_reasons": [
-          "매수"
+          "실적",
+          "성장"
         ],
-        "caution_reasons": [
-          "빠지"
-        ],
-        "sample_context": "아. 그분들은 뭐 나중에 대미 투자 금액 확정될 때까지 버티시면 환율 금액 확정될 때까지 버티시면 환율 금액 확정될 때까지 버티시면 환율 다시 또 올라올 거니까 다시 또 올라올 거니까 다시 또 올라올 거니까 &gt;&gt; 지금은 계속 3전도 그렇고 하이닉스도 &gt;&gt; 지금은 계속 3전도 그렇고 하이닉스도 &gt;&gt; 지금은 계속 3전도 그렇고 하이닉스도 그렇고 뭐 하이닉스 어차피 자사주 그렇고 뭐 하이닉스 어차피 자사주 그렇고 뭐 하이닉스 어차피 자사주 매수하려면 계속 매수하려면 계속 매수하"
+        "caution_reasons": [],
+        "sample_context": "기 실적 발 실적이 지금 24분기 EPS 성장률이 분기별 24분기 EPS 성장률이 분기별 24분기 EPS 성장률이 분기별 EPS 성장률이 50%가 넘는다는 거 EPS 성장률이 50%가 넘는다는 거 EPS 성장률이 50%가 넘는다는 거 아닙니까? 예. 아마존을 빼면 30% 아닙니까? 예. 아마존을 빼면 30% 아닙니까? 예. 아마존을 빼면 30% 어마어마한 수치예요. 어마어마한 수치예요. 어마어마한 수치예요. &gt;&gt; 분기별 EPS 이익 성장이 50%맞 &gt;&gt; 분기별 EPS 이익 성장이"
       },
       {
-        "ticker": "NVDA",
-        "mentions": 6,
+        "ticker": "005930.KS",
+        "mentions": 24,
+        "pos_score": 3,
+        "neg_score": 0,
+        "net_sentiment": 3,
+        "host_intent": "BULLISH_RECOMMENDED",
+        "intent_desc": "진행자 적극 추천 / 긍정 주목 (순환매·매수 유망)",
+        "positive_reasons": [
+          "좋은"
+        ],
+        "caution_reasons": [],
+        "sample_context": "있는 것은 당연히 안에 제가 바라보고 있는 것은 당연히 전력 에너지 쪽 그쪽이 이제 앞으로 전력 에너지 쪽 그쪽이 이제 앞으로 전력 에너지 쪽 그쪽이 이제 앞으로 조금은 좋은 흐름이 나오지않 조금은 좋은 흐름이 나오지않 조금은 좋은 흐름이 나오지않 삼성전자가 -3.5%예요. 5%예요. 삼성전자가 -3.5%예요. 5%예요. 삼성전자가 -3.5%예요. 5%예요. 하이닉스가 2%입니다. 삼성 SDI가 하이닉스가 2%입니다. 삼성 SDI가 하이닉스가 2%입니다. 삼성 SDI가 4.5%. 자, 그렇게 상승을 4"
+      },
+      {
+        "ticker": "000660.KS",
+        "mentions": 12,
+        "pos_score": 3,
+        "neg_score": 0,
+        "net_sentiment": 3,
+        "host_intent": "BULLISH_RECOMMENDED",
+        "intent_desc": "진행자 적극 추천 / 긍정 주목 (순환매·매수 유망)",
+        "positive_reasons": [
+          "좋은"
+        ],
+        "caution_reasons": [],
+        "sample_context": "이 이제 앞으로 전력 에너지 쪽 그쪽이 이제 앞으로 조금은 좋은 흐름이 나오지않 조금은 좋은 흐름이 나오지않 조금은 좋은 흐름이 나오지않 삼성전자가 -3.5%예요. 5%예요. 삼성전자가 -3.5%예요. 5%예요. 삼성전자가 -3.5%예요. 5%예요. 하이닉스가 2%입니다. 삼성 SDI가 하이닉스가 2%입니다. 삼성 SDI가 하이닉스가 2%입니다. 삼성 SDI가 4.5%. 자, 그렇게 상승을 4.5%. 자, 그렇게 상승을 4.5%. 자, 그렇게 상승을 삼성전자가 왜 아 주주환원 때문에 삼성전자가 왜 아 주"
+      },
+      {
+        "ticker": "TSLA",
+        "mentions": 18,
+        "pos_score": 4,
+        "neg_score": 2,
+        "net_sentiment": 2,
+        "host_intent": "BULLISH_RECOMMENDED",
+        "intent_desc": "진행자 적극 추천 / 긍정 주목 (순환매·매수 유망)",
+        "positive_reasons": [
+          "실적",
+          "관심"
+        ],
+        "caution_reasons": [
+          "조정"
+        ],
+        "sample_context": "아니었나 알려 주는 그러한 뉴스가 아니었나 알려 주는 그러한 뉴스가 아니었나 싶습니다. 자 그래서 이번 주 잘 좀 싶습니다. 자 그래서 이번 주 잘 좀 싶습니다. 자 그래서 이번 주 잘 좀 바라보셔도 좋을 것 같다. 테슬라 바라보셔도 좋을 것 같다. 테슬라 바라보셔도 좋을 것 같다. 테슬라 5% 상승했고요. 자 그다음에 머 5% 상승했고요. 자 그다음에 머 5% 상승했고요. 자 그다음에 머 상승했고 모더나도 같이 상승했고 모더나도 같이 상승했고 모더나도 같이 상승했습니다.네 다시 조정뒀던 거 상승했습니"
+      },
+      {
+        "ticker": "GOOGL",
+        "mentions": 24,
         "pos_score": 0,
         "neg_score": 0,
         "net_sentiment": 0,
@@ -115,7 +177,19 @@
         "sample_context": ""
       },
       {
-        "ticker": "ARM",
+        "ticker": "MSFT",
+        "mentions": 9,
+        "pos_score": 0,
+        "neg_score": 0,
+        "net_sentiment": 0,
+        "host_intent": "NEUTRAL_WATCH",
+        "intent_desc": "진행자 단순 언급 / 수급 관망",
+        "positive_reasons": [],
+        "caution_reasons": [],
+        "sample_context": ""
+      },
+      {
+        "ticker": "AMD",
         "mentions": 3,
         "pos_score": 0,
         "neg_score": 0,
@@ -125,25 +199,90 @@
         "positive_reasons": [],
         "caution_reasons": [],
         "sample_context": ""
+      },
+      {
+        "ticker": "MU",
+        "mentions": 15,
+        "pos_score": 0,
+        "neg_score": 6,
+        "net_sentiment": -6,
+        "host_intent": "BEARISH_CAUTION",
+        "intent_desc": "진행자 주의 / 하락 우려 (리스크 경고)",
+        "positive_reasons": [],
+        "caution_reasons": [
+          "부담",
+          "조정"
+        ],
+        "sample_context": "여기서 나타내는 것이겠죠. 왜냐면은 계속 가격에 대한 것이겠죠. 왜냐면은 계속 가격에 대한 것이겠죠. 왜냐면은 계속 가격에 대한 수요 부담이 만약에 생기게 된다면 수요 부담이 만약에 생기게 된다면 수요 부담이 만약에 생기게 된다면 엔비디아도 만약에 마이크론에 대해서 엔비디아도 만약에 마이크론에 대해서 엔비디아도 만약에 마이크론에 대해서 또는 엔비디아도 SK이닉스에 대해서 또는 엔비디아도 SK이닉스에 대해서 또는 엔비디아도 SK이닉스에 대해서 가격적인 부분을 조정을 할 텐데 자 가격적인 부분을 조정을 할"
+      },
+      {
+        "ticker": "META",
+        "mentions": 9,
+        "pos_score": 0,
+        "neg_score": 6,
+        "net_sentiment": -6,
+        "host_intent": "BEARISH_CAUTION",
+        "intent_desc": "진행자 주의 / 하락 우려 (리스크 경고)",
+        "positive_reasons": [],
+        "caution_reasons": [
+          "매도",
+          "손절"
+        ],
+        "sample_context": "다 비슷비슷한데 거. 아, 금액은 다 비슷비슷한데 레인지가 뭐 100만 달러에서 레인지가 뭐 100만 달러에서 레인지가 뭐 100만 달러에서 500만 달러씩 이렇게 돼 있고 500만 달러씩 이렇게 돼 있고 500만 달러씩 이렇게 돼 있고 매도한 종목 메타 모토라 솔루션 매도한 종목 메타 모토라 솔루션 매도한 종목 메타 모토라 솔루션 팔란티어 팔란티어를 왜됐어? 예. 못 팔란티어 팔란티어를 왜됐어? 예. 못 팔란티어 팔란티어를 왜됐어? 예. 못 먹었단 얘기야. 손절했단 얘기죠. 먹었단 얘기야. 손절했단"
+      },
+      {
+        "ticker": "ARM",
+        "mentions": 33,
+        "pos_score": 3,
+        "neg_score": 14,
+        "net_sentiment": -11,
+        "host_intent": "BEARISH_CAUTION",
+        "intent_desc": "진행자 주의 / 하락 우려 (리스크 경고)",
+        "positive_reasons": [
+          "긍정"
+        ],
+        "caution_reasons": [
+          "조심",
+          "떨어",
+          "조정"
+        ],
+        "sample_context": "호 요즘에 핀테크도 좀 올라가고 암호 앞에도 좀 올라가고 그죠 앞에도 좀 올라가고 그죠 앞에도 좀 올라가고 그죠 미리 뭔가 있으려나 미리 뭔가 있으려나 미리 뭔가 있으려나 비자 마스터카드에 비자 마스터카드에 비자 마스터카드에 뭐가 있을래나 어 핀테크 암호화폐 어 뭐가 있을래나 어 핀테크 암호화폐 어 뭐가 있을래나 어 핀테크 암호화폐 어 클리티 법안에 대해서 일부 SC가 클리티 법안에 대해서 일부 SC가 클리티 법안에 대해서 일부 SC가 조금은 긍정적인 분위기가 좀 조금은 긍정적인 분위기가 좀 조금은"
       }
     ],
     "bullish_stream_tickers": [
-      "005930.KS",
-      "000660.KS"
-    ],
-    "neutral_stream_tickers": [
       "NVDA",
-      "ARM"
-    ],
-    "bearish_stream_tickers": [],
-    "live_stream_tickers": [
+      "PLTR",
+      "AMZN",
       "005930.KS",
       "000660.KS",
-      "NVDA",
+      "TSLA"
+    ],
+    "neutral_stream_tickers": [
+      "GOOGL",
+      "MSFT",
+      "AMD"
+    ],
+    "bearish_stream_tickers": [
+      "MU",
+      "META",
       "ARM"
     ],
-    "transcript_char_count": 81527,
-    "fetched_at": "2026-08-22 12:30:12",
+    "live_stream_tickers": [
+      "NVDA",
+      "PLTR",
+      "AMZN",
+      "005930.KS",
+      "000660.KS",
+      "TSLA",
+      "GOOGL",
+      "MSFT",
+      "AMD",
+      "MU",
+      "META",
+      "ARM"
+    ],
+    "transcript_char_count": 141883,
+    "fetched_at": "2026-08-24 12:30:19",
     "tailwind_sectors": [
       "DEFENSE",
       "ENERGY",
@@ -158,7 +297,7 @@
     "active_positions": 11,
     "closed_trades": 1,
     "win_rate": "0.0%",
-    "last_updated": "2026-08-23 09:56:22"
+    "last_updated": "2026-08-24 20:54:17"
   },
   "trades": [
     {
@@ -308,344 +447,28 @@
   ],
   "matrix": [
     {
-      "id": 33,
-      "date": "2026-08-22",
-      "bull_1": "JPM",
-      "bull_1_price": 351.58,
-      "bull_2": "ETN",
-      "bull_2_price": 419.2,
-      "neutral_1": "JPM",
-      "neutral_1_price": 351.58,
-      "neutral_2": "ETN",
-      "neutral_2_price": 419.2,
-      "bear_1": "JNJ",
-      "bear_1_price": 270.24,
-      "bear_2": "CVX",
-      "bear_2_price": 205.27,
-      "created_at": "2026-08-22 12:30:21"
-    },
-    {
-      "id": 24,
-      "date": "2026-08-21",
-      "bull_1": "PANW",
-      "bull_1_price": 352.54,
-      "bull_2": "JPM",
-      "bull_2_price": 352.1,
-      "neutral_1": "COST",
-      "neutral_1_price": 948.98,
-      "neutral_2": "ASML",
-      "neutral_2_price": 1754.05,
-      "bear_1": "CVX",
-      "bear_1_price": 206.74,
-      "bear_2": "LLY",
-      "bear_2_price": 1264.79,
-      "created_at": "2026-08-21 23:47:25"
-    },
-    {
-      "id": 17,
-      "date": "2026-08-20",
-      "bull_1": "AMZN",
-      "bull_1_price": 265.8399963378906,
-      "bull_2": "ETN",
-      "bull_2_price": 424.6700134277344,
-      "neutral_1": "QCOM",
-      "neutral_1_price": 161.91000366210938,
-      "neutral_2": "TSLA",
-      "neutral_2_price": 351.1199951171875,
-      "bear_1": "AVGO",
-      "bear_1_price": 362.4800109863281,
-      "bear_2": "META",
-      "bear_2_price": 546.030029296875,
-      "created_at": "2026-08-20 12:30:41"
-    },
-    {
-      "id": 16,
-      "date": "2026-08-19",
-      "bull_1": "AMZN",
-      "bull_1_price": 259.45001220703125,
-      "bull_2": "ETN",
-      "bull_2_price": 431.3299865722656,
-      "neutral_1": "CEG",
-      "neutral_1_price": 266.8299865722656,
-      "neutral_2": "COST",
-      "neutral_2_price": 961.3499755859375,
-      "bear_1": "META",
-      "bear_1_price": 543.6699829101562,
-      "bear_2": "000660.KS",
-      "bear_2_price": 1489000.0,
-      "created_at": "2026-08-19 15:34:30"
-    },
-    {
-      "id": 15,
-      "date": "2026-08-18",
-      "bull_1": "NVDA",
-      "bull_1_price": 225.16000366210938,
-      "bull_2": "AMZN",
-      "bull_2_price": 262.6499938964844,
-      "neutral_1": "QCOM",
-      "neutral_1_price": 165.7899932861328,
-      "neutral_2": "AVGO",
-      "neutral_2_price": 392.989990234375,
-      "bear_1": "000660.KS",
-      "bear_1_price": 1671000.0,
-      "bear_2": "TSLA",
-      "bear_2_price": 342.2699890136719,
-      "created_at": "2026-08-18 14:41:42"
+      "id": 1,
+      "date": "2026-08-24",
+      "bull_1": "-",
+      "bull_1_price": 0.0,
+      "bull_2": "-",
+      "bull_2_price": 0.0,
+      "neutral_1": "-",
+      "neutral_1_price": 0.0,
+      "neutral_2": "-",
+      "neutral_2_price": 0.0,
+      "bear_1": "-",
+      "bear_1_price": 0.0,
+      "bear_2": "-",
+      "bear_2_price": 0.0,
+      "created_at": "2026-08-24 20:54:08"
     }
   ],
-  "daily_history": [
-    {
-      "date": "2026-08-22",
-      "tier1": [
-        {
-          "ticker": "PANW",
-          "price": 351.55
-        },
-        {
-          "ticker": "JPM",
-          "price": 352.9
-        },
-        {
-          "ticker": "ETN",
-          "price": 422.02
-        },
-        {
-          "ticker": "AMZN",
-          "price": 259.55
-        }
-      ],
-      "tier2": [
-        {
-          "ticker": "RTX",
-          "price": 211.17
-        },
-        {
-          "ticker": "MA",
-          "price": 579.28
-        },
-        {
-          "ticker": "ASML",
-          "price": 1753.29
-        }
-      ],
-      "tier3": [
-        {
-          "ticker": "XOM",
-          "price": 165.89
-        },
-        {
-          "ticker": "LLY",
-          "price": 1270.18
-        },
-        {
-          "ticker": "DIS",
-          "price": 107.83
-        }
-      ],
-      "macro_stance": "DEFENSE_HOLD (66.9pt)"
-    },
-    {
-      "date": "2026-08-21",
-      "tier1": [
-        {
-          "ticker": "QCOM",
-          "price": 160.74000549316406
-        },
-        {
-          "ticker": "TSLA",
-          "price": 345.1300048828125
-        }
-      ],
-      "tier2": [
-        {
-          "ticker": "MSFT",
-          "price": 481.1499938964844
-        },
-        {
-          "ticker": "AMZN",
-          "price": 260.1099853515625
-        }
-      ],
-      "tier3": [
-        {
-          "ticker": "AVGO",
-          "price": 364.0299987792969
-        },
-        {
-          "ticker": "ARM",
-          "price": 250.72000122070312
-        }
-      ],
-      "macro_stance": "DEFENSE_HOLD (66.9pt)"
-    },
-    {
-      "date": "2026-08-20",
-      "tier1": [
-        {
-          "ticker": "QCOM",
-          "price": 161.91000366210938
-        },
-        {
-          "ticker": "TSLA",
-          "price": 351.1199951171875
-        }
-      ],
-      "tier2": [
-        {
-          "ticker": "AMZN",
-          "price": 265.8399963378906
-        },
-        {
-          "ticker": "ETN",
-          "price": 424.6700134277344
-        }
-      ],
-      "tier3": [
-        {
-          "ticker": "AVGO",
-          "price": 362.4800109863281
-        },
-        {
-          "ticker": "META",
-          "price": 546.030029296875
-        }
-      ],
-      "macro_stance": "DEFENSE_HOLD (66.9pt)"
-    },
-    {
-      "date": "2026-08-19",
-      "tier1": [
-        {
-          "ticker": "CEG",
-          "price": 266.8299865722656
-        },
-        {
-          "ticker": "COST",
-          "price": 961.3499755859376
-        }
-      ],
-      "tier2": [
-        {
-          "ticker": "AMZN",
-          "price": 259.45001220703125
-        },
-        {
-          "ticker": "ETN",
-          "price": 431.3299865722656
-        }
-      ],
-      "tier3": [
-        {
-          "ticker": "META",
-          "price": 543.6699829101562
-        },
-        {
-          "ticker": "000660.KS",
-          "price": 1489000.0
-        }
-      ],
-      "macro_stance": "DEFENSE_HOLD (66.9pt)"
-    },
-    {
-      "date": "2026-08-18",
-      "tier1": [
-        {
-          "ticker": "AVGO",
-          "price": 394.2650146484375
-        },
-        {
-          "ticker": "COST",
-          "price": 950.77001953125
-        }
-      ],
-      "tier2": [
-        {
-          "ticker": "AMZN",
-          "price": 261.0450134277344
-        },
-        {
-          "ticker": "LLY",
-          "price": 1197.5799560546875
-        }
-      ],
-      "tier3": [
-        {
-          "ticker": "META",
-          "price": 573.8800048828125
-        },
-        {
-          "ticker": "TSLA",
-          "price": 339.5799865722656
-        }
-      ],
-      "macro_stance": "DEFENSE_HOLD (66.9pt)"
-    }
-  ],
+  "daily_history": [],
   "portfolio": {
-    "holdings": [
-      {
-        "id": 5,
-        "ticker": "JNJ",
-        "buy_date": "2026-08-22",
-        "buy_price": 270.24,
-        "quantity": 1.0,
-        "current_price": 270.24,
-        "total_cost": 270.24,
-        "current_value": 270.24,
-        "pnl_pct": 0.0,
-        "pnl_amount": 0.0,
-        "status": "HOLDING",
-        "sell_date": null,
-        "sell_price": null,
-        "exit_advice": "보유 지속 (손절선 $262.13 유지)",
-        "created_at": "2026-08-22 14:22:18",
-        "target_price": 310.78,
-        "stop_loss_price": 262.13,
-        "partial_tp_price": 291.86
-      },
-      {
-        "id": 2,
-        "ticker": "PANW",
-        "buy_date": "2026-08-22",
-        "buy_price": 357.87,
-        "quantity": 1.0,
-        "current_price": 357.87,
-        "total_cost": 357.87,
-        "current_value": 357.87,
-        "pnl_pct": 0.0,
-        "pnl_amount": 0.0,
-        "status": "HOLDING",
-        "sell_date": null,
-        "sell_price": null,
-        "exit_advice": "보유 지속 (손절선 $347.13 유지)",
-        "created_at": "2026-08-22 13:02:47",
-        "target_price": 411.55,
-        "stop_loss_price": 347.13,
-        "partial_tp_price": 386.5
-      },
-      {
-        "id": 1,
-        "ticker": "JPM",
-        "buy_date": "2026-08-22",
-        "buy_price": 351.58,
-        "quantity": 1.0,
-        "current_price": 351.58,
-        "total_cost": 351.58,
-        "current_value": 351.58,
-        "pnl_pct": 0.0,
-        "pnl_amount": 0.0,
-        "status": "HOLDING",
-        "sell_date": null,
-        "sell_price": null,
-        "exit_advice": "보유 지속 (손절선 $341.03 유지)",
-        "created_at": "2026-08-22 13:02:41",
-        "target_price": 404.32,
-        "stop_loss_price": 341.03,
-        "partial_tp_price": 379.71
-      }
-    ],
-    "total_invested": 979.69,
-    "total_eval": 979.69,
+    "holdings": [],
+    "total_invested": 0.0,
+    "total_eval": 0.0,
     "overall_pnl_pct": 0.0,
     "overall_pnl_amount": 0.0
   },
@@ -703,10 +526,10 @@
       "action": "[황금 교집합] 주봉 정배열 + 구름대 도약(0일 전) + 26일 기준선(+0.2%) 안착.",
       "target_price": 404.32,
       "stop_price": 337.52,
-      "in_wallet": true,
+      "in_wallet": false,
       "holding_pnl": 0.0,
-      "holding_qty": 1.0,
-      "holding_price": 351.58,
+      "holding_qty": 0.0,
+      "holding_price": 0.0,
       "streak_days": 1,
       "streak_label": ""
     },
@@ -763,10 +586,10 @@
       "action": "[황금 교집합] 주봉 정배열 + 구름대 도약(0일 전) + 26일 기준선(+1.2%) 안착.",
       "target_price": 411.55,
       "stop_price": 343.56,
-      "in_wallet": true,
+      "in_wallet": false,
       "holding_pnl": 0.0,
-      "holding_qty": 1.0,
-      "holding_price": 357.87,
+      "holding_qty": 0.0,
+      "holding_price": 0.0,
       "streak_days": 1,
       "streak_label": ""
     }
@@ -827,10 +650,10 @@
       "action": "[황금 교집합] 주봉 정배열 + 구름대 도약(0일 전) + 26일 기준선(+3.5%) 안착.",
       "target_price": 310.78,
       "stop_price": 259.43,
-      "in_wallet": true,
+      "in_wallet": false,
       "holding_pnl": 0.0,
-      "holding_qty": 1.0,
-      "holding_price": 270.24,
+      "holding_qty": 0.0,
+      "holding_price": 0.0,
       "streak_days": 1,
       "streak_label": ""
     },
@@ -979,10 +802,10 @@
       "action": "[황금 교집합] 주봉 정배열 + 구름대 도약(0일 전) + 26일 기준선(+0.2%) 안착.",
       "target_price": 404.32,
       "stop_price": 337.52,
-      "in_wallet": true,
+      "in_wallet": false,
       "holding_pnl": 0.0,
-      "holding_qty": 1.0,
-      "holding_price": 351.58,
+      "holding_qty": 0.0,
+      "holding_price": 0.0,
       "streak_days": 1,
       "streak_label": ""
     },
@@ -1039,10 +862,10 @@
       "action": "[황금 교집합] 주봉 정배열 + 구름대 도약(0일 전) + 26일 기준선(+1.2%) 안착.",
       "target_price": 411.55,
       "stop_price": 343.56,
-      "in_wallet": true,
+      "in_wallet": false,
       "holding_pnl": 0.0,
-      "holding_qty": 1.0,
-      "holding_price": 357.87,
+      "holding_qty": 0.0,
+      "holding_price": 0.0,
       "streak_days": 1,
       "streak_label": ""
     },
@@ -1131,10 +954,10 @@
       "action": "[황금 교집합] 주봉 정배열 + 구름대 도약(0일 전) + 26일 기준선(+0.2%) 안착.",
       "target_price": 404.32,
       "stop_price": 337.52,
-      "in_wallet": true,
+      "in_wallet": false,
       "holding_pnl": 0.0,
-      "holding_qty": 1.0,
-      "holding_price": 351.58,
+      "holding_qty": 0.0,
+      "holding_price": 0.0,
       "streak_days": 1,
       "streak_label": ""
     },
@@ -1191,10 +1014,10 @@
       "action": "[황금 교집합] 주봉 정배열 + 구름대 도약(0일 전) + 26일 기준선(+1.2%) 안착.",
       "target_price": 411.55,
       "stop_price": 343.56,
-      "in_wallet": true,
+      "in_wallet": false,
       "holding_pnl": 0.0,
-      "holding_qty": 1.0,
-      "holding_price": 357.87,
+      "holding_qty": 0.0,
+      "holding_price": 0.0,
       "streak_days": 1,
       "streak_label": ""
     },
@@ -1221,10 +1044,10 @@
       "action": "[황금 교집합] 주봉 정배열 + 구름대 도약(0일 전) + 26일 기준선(+3.5%) 안착.",
       "target_price": 310.78,
       "stop_price": 259.43,
-      "in_wallet": true,
+      "in_wallet": false,
       "holding_pnl": 0.0,
-      "holding_qty": 1.0,
-      "holding_price": 270.24,
+      "holding_qty": 0.0,
+      "holding_price": 0.0,
       "streak_days": 1,
       "streak_label": ""
     },
@@ -1321,7 +1144,7 @@
   ],
   "signal_tracker": [
     {
-      "date": "2026-08-23",
+      "date": "2026-08-24",
       "ticker": "ASML",
       "name": "에이에스엠엘",
       "sector": "SEMIS",
@@ -1342,7 +1165,7 @@
       "status_label": "DUAL_5_STAR"
     },
     {
-      "date": "2026-08-23",
+      "date": "2026-08-24",
       "ticker": "JPM",
       "name": "제이피모건",
       "sector": "FINANCE",
@@ -1356,14 +1179,14 @@
       "score": 100,
       "flow_ratio": 0.89,
       "obv_status": "BULL_FLOW",
-      "in_wallet": true,
+      "in_wallet": false,
       "streak_days": 1,
       "streak_label": "",
       "status": "DUAL_5_STAR",
       "status_label": "DUAL_5_STAR"
     },
     {
-      "date": "2026-08-23",
+      "date": "2026-08-24",
       "ticker": "ETN",
       "name": "이튼",
       "sector": "POWER/INFRA",
@@ -1384,7 +1207,7 @@
       "status_label": "DUAL_5_STAR"
     },
     {
-      "date": "2026-08-23",
+      "date": "2026-08-24",
       "ticker": "PANW",
       "name": "팔로알토",
       "sector": "CYBER/SAAS",
@@ -1398,14 +1221,14 @@
       "score": 100,
       "flow_ratio": 1.11,
       "obv_status": "NEUTRAL",
-      "in_wallet": true,
+      "in_wallet": false,
       "streak_days": 1,
       "streak_label": "",
       "status": "DUAL_5_STAR",
       "status_label": "DUAL_5_STAR"
     },
     {
-      "date": "2026-08-23",
+      "date": "2026-08-24",
       "ticker": "JNJ",
       "name": "존슨앤존슨",
       "sector": "HEALTHCARE",
@@ -1419,14 +1242,14 @@
       "score": 100,
       "flow_ratio": 2.71,
       "obv_status": "BULL_FLOW",
-      "in_wallet": true,
+      "in_wallet": false,
       "streak_days": 1,
       "streak_label": "",
       "status": "ACTIVE_SNIPER",
       "status_label": "ACTIVE_SNIPER"
     },
     {
-      "date": "2026-08-23",
+      "date": "2026-08-24",
       "ticker": "CVX",
       "name": "셰브론",
       "sector": "ENERGY",
@@ -1447,7 +1270,7 @@
       "status_label": "ACTIVE_SNIPER"
     },
     {
-      "date": "2026-08-23",
+      "date": "2026-08-24",
       "ticker": "XOM",
       "name": "엑슨모빌",
       "sector": "ENERGY",
@@ -1468,7 +1291,7 @@
       "status_label": "ACTIVE_SNIPER"
     },
     {
-      "date": "2026-08-23",
+      "date": "2026-08-24",
       "ticker": "DIS",
       "name": "디즈니",
       "sector": "CONSUMER",
@@ -1489,7 +1312,7 @@
       "status_label": "ACTIVE_SNIPER"
     },
     {
-      "date": "2026-08-23",
+      "date": "2026-08-24",
       "ticker": "NET",
       "name": "클라우드플레어",
       "sector": "CYBER/SAAS",
@@ -2576,16 +2399,16 @@
     "005930.KS": {
       "intelligence": {
         "verdict": "Neutral Consolidation (박스권 수렴)",
-        "score": "20 / 100 pt (HOLD)",
-        "bull_score": 20,
+        "score": "10 / 100 pt (HOLD)",
+        "bull_score": 10,
         "sniper_score": 30,
         "bear_score": 35,
         "type": "NEUTRAL",
         "kijun": {
-          "val": "$238,600.00 (+18.0%)",
+          "val": "$238,600.00 (+7.7%)",
           "status": "status-neutral",
           "badge": "OVERHEATED",
-          "desc": "현재가 $281,500.00 / 26일선 $238,600.00 (이격 +18.0%)"
+          "desc": "현재가 $257,000.00 / 26일선 $238,600.00 (이격 +7.7%)"
         },
         "tenkan": {
           "val": "$257,750.00",
@@ -2600,10 +2423,10 @@
           "desc": "일목 구름대(296173.4~298271.9) 하단 붕괴"
         },
         "vol": {
-          "val": "90% (20D)",
-          "status": "status-neutral",
-          "badge": "NORMAL VOL",
-          "desc": "20일 평균 거래량 대비 90% (통상 거래량)"
+          "val": "112% (20D)",
+          "status": "status-bear",
+          "badge": "HIGH VOL",
+          "desc": "20일 평균 거래량 대비 112% (통상 거래량)"
         },
         "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지.",
         "is_sniper": false,
@@ -2612,23 +2435,23 @@
         "sector": "SEMIS",
         "obv_status": "BULL_FLOW",
         "obv_label": "[BULL FLOW]",
-        "flow_ratio": 0.66,
-        "flow_label": "0.7x",
+        "flow_ratio": 0.64,
+        "flow_label": "0.6x",
         "flow_score": 30,
         "is_stealth_accum": false
       },
-      "latest_close": 281500.0,
+      "latest_close": 257000.0,
       "kijun": 238600.0,
       "tenkan": 257750.0,
-      "kijun_gap_pct": 17.98,
-      "vol_ratio": 0.9,
+      "kijun_gap_pct": 7.71,
+      "vol_ratio": 1.12,
       "future_cloud_type": "음운 (하락 저항 구름대)",
       "future_cloud_gap": 33468.72,
       "future_span_a_latest": 248175.0,
       "future_span_b_latest": 281643.72,
       "status_text": "Neutral Consolidation (박스권 수렴)",
       "status_tag": "NEUTRAL",
-      "bull_score": 20,
+      "bull_score": 10,
       "bear_score": 35,
       "is_sniper": false
     },
@@ -2641,10 +2464,10 @@
         "bear_score": 35,
         "type": "NEUTRAL",
         "kijun": {
-          "val": "$1,708,500.00 (+1.3%)",
+          "val": "$1,626,000.00 (+2.8%)",
           "status": "status-bull",
           "badge": "SUPPORTED",
-          "desc": "현재가 $1,730,000.00 / 26일선 $1,708,500.00 (이격 +1.3%)"
+          "desc": "현재가 $1,671,000.00 / 26일선 $1,626,000.00 (이격 +2.8%)"
         },
         "tenkan": {
           "val": "$1,582,500.00",
@@ -2659,10 +2482,10 @@
           "desc": "일목 구름대(2133892.9~2210000.0) 하단 붕괴"
         },
         "vol": {
-          "val": "74% (20D)",
+          "val": "75% (20D)",
           "status": "status-neutral",
           "badge": "NORMAL VOL",
-          "desc": "20일 평균 거래량 대비 74% (통상 거래량)"
+          "desc": "20일 평균 거래량 대비 75% (통상 거래량)"
         },
         "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지.",
         "is_sniper": false,
@@ -2671,19 +2494,19 @@
         "sector": "SEMIS",
         "obv_status": "BULL_FLOW",
         "obv_label": "[BULL FLOW]",
-        "flow_ratio": 0.54,
-        "flow_label": "0.5x",
+        "flow_ratio": 0.55,
+        "flow_label": "0.6x",
         "flow_score": 30,
         "is_stealth_accum": false
       },
-      "latest_close": 1730000.0,
-      "kijun": 1708500.0,
+      "latest_close": 1671000.0,
+      "kijun": 1626000.0,
       "tenkan": 1582500.0,
-      "kijun_gap_pct": 1.26,
-      "vol_ratio": 0.74,
+      "kijun_gap_pct": 2.77,
+      "vol_ratio": 0.75,
       "future_cloud_type": "음운 (하락 저항 구름대)",
-      "future_cloud_gap": 471000.0,
-      "future_span_a_latest": 1645500.0,
+      "future_cloud_gap": 512250.0,
+      "future_span_a_latest": 1604250.0,
       "future_span_b_latest": 2116500.0,
       "status_text": "Neutral Consolidation (박스권 수렴)",
       "status_tag": "NEUTRAL",
@@ -5052,5 +4875,5 @@
       "is_sniper": true
     }
   },
-  "last_updated": "2026-08-23 09:56:28"
+  "last_updated": "2026-08-24 20:54:31"
 }

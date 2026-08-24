@@ -10,3 +10,15 @@ __pycache__/
 
 # Local Database
 *.db-journal
+*.db-wal
+*.db-shm
+test_*.db*
+backups/*.db
+*.vtt
+.pytest_cache/
+data/charts/PRN.json
+data/charts/NUL.json
+data/charts/CON.json
+data/charts/AUX.json
+
+

@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>R QUANT TERMINAL (알상무 실전 퀀트 매매 시스템)</title>
+    <!-- Lightweight Charts from TradingView -->
+    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Modular CSS -->
+    <link rel="stylesheet" href="/static/css/terminal.css">
+</head>
+<body>
+
+    <!-- Top Navigation Header -->
+    <header>
+        <div class="brand">
+            <h1>R QUANT TERMINAL</h1>
+            <span class="badge">R's QUANT 3.5 INSTITUTIONAL</span>
+            <div class="live-tag"><div class="live-dot"></div> ACTIVE QUANT ENGINE</div>
+        </div>
+
+        <!-- Universal Stock Search Bar -->
+        <div class="search-wrapper" style="position:relative; flex:1; max-width:440px; margin:0 16px;">
+            <div style="position:relative; display:flex; align-items:center;">
+                <input type="text" id="stockSearchInput" 
+                       placeholder="[SEARCH] 종목명 / 티커 검색 (예: AAPL, 애플, 삼전, TSM)  [/]" 
+                       autocomplete="off" 
+                       style="width:100%; background:#1e293b; border:1px solid #334155; color:#f8fafc; padding:8px 36px 8px 12px; font-size:12px; border-radius:4px; font-family:'JetBrains Mono', 'Inter', sans-serif; outline:none; transition:border-color 0.2s;" />
+                <span id="searchShortcutKey" style="position:absolute; right:10px; font-size:10px; color:#64748b; background:#0f172a; border:1px solid #334155; padding:1px 5px; border-radius:3px; pointer-events:none; font-family:'JetBrains Mono';">/</span>
+                <div id="searchSpinner" style="display:none; position:absolute; right:32px; width:12px; height:12px; border:2px solid #38bdf8; border-top-color:transparent; border-radius:50%; animation:spin 0.8s linear infinite;"></div>
+            </div>
+            <div id="searchDropdown" style="display:none; position:absolute; top:100%; left:0; right:0; background:#0f172a; border:1px solid #38bdf8; border-radius:4px; margin-top:4px; max-height:280px; overflow-y:auto; z-index:9999; box-shadow:0 10px 25px rgba(0,0,0,0.5);"></div>
+        </div>
+
+        <div class="header-actions">
+            <div class="server-status-pill" id="serverStatus">
+                <div class="server-dot" id="serverDot"></div>
+                <span id="serverStatusText">CONNECTING...</span>
+            </div>
+            <div style="font-size:11px; color:var(--text-secondary); font-family:'JetBrains Mono';" id="lastUpdated">Updated: Loading...</div>
+            <button class="btn-action scan" id="btnScanNow">Run Live Scan</button>
+            <button class="btn-action" id="btnRefresh">Refresh</button>
+        </div>
+    </header>
+
+    <!-- Gate-0 Macro Climate & Real-Time Financial Gauges Bar -->
+    <div style="background:#0f172a; border-bottom:1px solid var(--border); padding:14px 28px;">
+        
+        <!-- Macro Directive Banner -->
+        <div style="background:#1e293b; border:1px solid #d97706; border-left:5px solid #f59e0b; padding:12px 18px; border-radius:2px; margin-bottom:12px;">
+            <div style="font-size:13px; font-weight:800; color:#fbbf24; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                <span id="macroHeadline">[거시 게이트 0단계: 이번 주 신규 매수 보류 / 관망·현금 유지 권고]</span>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-size:11px; color:#cbd5e1;">Macro Stance Index (MSI):</span>
+                    <span id="msiScoreBadge" style="background:#f59e0b; color:#0f172a; font-size:12px; font-weight:800; padding:2px 8px; border-radius:2px; font-family:'JetBrains Mono';">-- / 100</span>
+                    <span id="macroStanceBadge" style="background:rgba(245,158,11,0.2); color:#fbbf24; font-size:11px; padding:2px 8px; border-radius:2px; font-family:'JetBrains Mono'; font-weight:700;">DEFENSE HOLD</span>
+                </div>
+            </div>
+            <div style="font-size:12px; color:#cbd5e1; margin-top:6px; line-height:1.5;" id="macroDirectiveText">
+                거시 위험 지수 및 방송 지침 데이터를 불러오는 중입니다...
+            </div>
+
+            <!-- MSI 0~100 Visual Gauge Bar -->
+            <div style="margin-top:10px;">
+                <div style="display:flex; justify-content:space-between; font-size:10px; color:#94a3b8; font-weight:600; text-transform:uppercase; margin-bottom:3px;">
+                    <span>Active Buy (0~29)</span>
+                    <span>Selective Buy (30~49)</span>
+                    <span style="color:#fbbf24; font-weight:800;">Defense Hold (50~74)</span>
+                    <span style="color:#f87171; font-weight:800;">Cash Exit (75~100)</span>
+                </div>
+                <div style="height:6px; background:linear-gradient(to right, #10b981 0%, #10b981 30%, #eab308 30%, #eab308 50%, #f97316 50%, #f97316 75%, #ef4444 75%, #ef4444 100%); border-radius:3px; position:relative;">
+                    <div id="msiNeedle" style="position:absolute; left:50%; top:-4px; width:4px; height:14px; background:#ffffff; border-radius:2px; box-shadow:0 0 6px #ffffff; transform:translateX(-50%);"></div>
+                </div>
+            </div>
+
+            <!-- MSI 3-Factor Breakdown Grid -->
+            <div class="macro-banner-grid" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-top:12px; background:rgba(0,0,0,0.25); padding:10px 14px; border-radius:2px; font-size:11px;">
+                <div>
+                    <div style="color:#94a3b8; font-size:10px; font-weight:600;">1. 금융 거시 4대 축 (M_hard: 60%)</div>
+                    <div style="font-weight:700; color:#f8fafc; font-family:'JetBrains Mono';" id="msiHardVal">-- / 60.0 pt</div>
+                    <div style="color:#64748b; font-size:10px;" id="msiHardSub">Loading...</div>
+                </div>
+                <div>
+                    <div style="color:#94a3b8; font-size:10px; font-weight:600;">2. 방송 육성 지침 (M_nlp: 25%)</div>
+                    <div style="font-weight:700; color:#f8fafc; font-family:'JetBrains Mono';" id="msiNlpVal">-- / 25.0 pt</div>
+                    <div style="color:#64748b; font-size:10px;" id="msiNlpSub">Loading...</div>
+                </div>
+                <div>
+                    <div style="color:#94a3b8; font-size:10px; font-weight:600;">3. 외생 충격 (M_shock: 15%)</div>
+                    <div style="font-weight:700; color:#f8fafc; font-family:'JetBrains Mono';" id="msiShockVal">-- / 15.0 pt</div>
+                    <div style="color:#64748b; font-size:10px;" id="msiShockSub">Loading...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="macro-gauges-strip" style="display:grid; grid-template-columns: repeat(5, 1fr); gap:10px; width:100%; margin-top:12px;">
+            <div style="background:#111827; border:1px solid var(--border); border-radius:4px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div style="font-size:11px; color:#94a3af; text-transform:uppercase; font-weight:700; letter-spacing:0.02em;">미국채 10년물 금리</div>
+                    <div style="font-size:17px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6; margin-top:3px;" id="gaugeUs10yVal">4.696%</div>
+                </div>
+                <span id="gaugeUs10yBadge" style="background:rgba(239,68,68,0.15); color:#f87171; font-size:11px; padding:3px 8px; border-radius:3px; font-weight:700;">CRITICAL</span>
+            </div>
+
+            <div style="background:#111827; border:1px solid var(--border); border-radius:4px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div style="font-size:11px; color:#94a3af; text-transform:uppercase; font-weight:700; letter-spacing:0.02em;">달러 인덱스 (DXY)</div>
+                    <div style="font-size:17px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6; margin-top:3px;" id="gaugeDxyVal">98.75</div>
+                </div>
+                <span id="gaugeDxyBadge" style="background:rgba(16,185,129,0.15); color:#34d399; font-size:11px; padding:3px 8px; border-radius:3px; font-weight:700;">SOFT</span>
+            </div>
+
+            <div style="background:#111827; border:1px solid var(--border); border-radius:4px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div style="font-size:11px; color:#94a3af; text-transform:uppercase; font-weight:700; letter-spacing:0.02em;">VIX 공포지수</div>
+                    <div style="font-size:17px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6; margin-top:3px;" id="gaugeVixVal">15.87</div>
+                </div>
+                <span id="gaugeVixBadge" style="background:rgba(16,185,129,0.15); color:#34d399; font-size:11px; padding:3px 8px; border-radius:3px; font-weight:700;">NORMAL</span>
+            </div>
+
+            <div style="background:#111827; border:1px solid var(--border); border-radius:4px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div style="font-size:11px; color:#94a3af; text-transform:uppercase; font-weight:700; letter-spacing:0.02em;">WTI 국제유가</div>
+                    <div style="font-size:17px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6; margin-top:3px;" id="gaugeWtiVal">$86.30</div>
+                </div>
+                <span id="gaugeWtiBadge" style="background:rgba(239,68,68,0.15); color:#f87171; font-size:11px; padding:3px 8px; border-radius:3px; font-weight:700;">SHOCK</span>
+            </div>
+
+            <div style="background:#111827; border:1px solid var(--border); border-radius:4px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div style="font-size:11px; color:#94a3af; text-transform:uppercase; font-weight:700; letter-spacing:0.02em;">국제 금시세</div>
+                    <div style="font-size:17px; font-weight:800; font-family:'JetBrains Mono'; color:#f3f4f6; margin-top:3px;" id="gaugeGoldVal">$4,628</div>
+                </div>
+                <span id="gaugeGoldBadge" style="background:rgba(59,130,246,0.15); color:#60a5fa; font-size:11px; padding:3px 8px; border-radius:3px; font-weight:700;">STABLE</span>
+            </div>
+
+            <div style="grid-column: 1 / -1; background:#111827; border:1px solid var(--border); border-radius:4px; padding:10px 14px; font-size:12px; margin-top:4px;">
+                <div style="color:#94a3af; font-weight:700; font-size:11px;">LIVE BROADCAST & MACRO RISK NARRATIVE:</div>
+                <div style="margin-top:4px;">
+                    <a href="https://www.youtube.com/@wepoll_original/streams" target="_blank" id="streamLink" style="color:#60a5fa; text-decoration:none; font-weight:700; font-size:13px;">시장이 쫄아있는 근본적인 이유</a>
+                    <span style="color:#9ca3af; margin-left:8px;" id="macroNarrative">| 지정학적 리스크 / 금리 경로 불확실성</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPI Metrics -->
+    <div class="kpi-container">
+        <div class="kpi-card">
+            <div class="kpi-title">Active Portfolio Positions</div>
+            <div class="kpi-val" id="kpiCount" style="color:var(--accent-blue);">0</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">Total Invested Cost</div>
+            <div class="kpi-val" id="kpiInvested">$0.00</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">Current Portfolio Value</div>
+            <div class="kpi-val" id="kpiEval">$0.00</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">Realized / Unrealized PnL</div>
+            <div class="kpi-val" id="kpiPnl" style="color:var(--accent-green);">+0.00% ($0.00)</div>
+        </div>
+    </div>
+
+    <!-- Tactical 3-Tier Quant Alpha Grid -->
+    <div class="today-section">
+        <div class="today-banner">
+            <div class="today-title">
+                <span>TACTICAL QUANT SIGNALS (17-YEAR AL-SANGMOO QUANT MATRIX)</span>
+                <span style="font-size:10px; color:#10b981; font-weight:600;">● SSOT QUANT ENGINE ONLINE</span>
+            </div>
+            
+            <div class="today-grid">
+                <div class="rec-card-group" style="border-top: 3px solid #10b981;">
+                    <div class="group-header" style="color:#34d399;">
+                        <span>TIER 2: STRUCTURAL PULLBACK</span>
+                        <span style="font-size:10px; color:#94a3b8;">26일 기준선 안착</span>
+                    </div>
+                    <div id="strat1ExclusiveCards"></div>
+                </div>
+
+                <div class="rec-card-group" style="border-top: 3px solid #fbbf24;">
+                    <div class="group-header" style="color:#fbbf24;">
+                        <span>TIER 1: MACRO LEADER + SMART MONEY</span>
+                        <span style="font-size:10px; color:#94a3b8;">거시순풍+OBV매집</span>
+                    </div>
+                    <div id="dualConsensusCards"></div>
+                </div>
+
+                <div class="rec-card-group" style="border-top: 3px solid #f87171;">
+                    <div class="group-header" style="color:#f87171;">
+                        <span>TIER 3: CLOUD BOUNCE SNIPER</span>
+                        <span style="font-size:10px; color:#94a3b8;">구름대 트램펄린</span>
+                    </div>
+                    <div id="strat2ExclusiveCards"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main 2-Column Workstation Layout -->
+    <div class="main-layout">
+        
+        <!-- Left Column: Signal Tracker, Portfolio & History -->
+        <div class="left-col">
+            
+            <!-- Quick Simulated Buy Order Box -->
+            <div class="quick-buy-box">
+                <div>
+                    <div style="font-size:11px; color:#94a3af; font-weight:700;">ACTIVE TARGET: <span id="qbTicker" style="color:#38bdf8; font-size:13px;">NVDA</span></div>
+                    <div style="font-size:15px; font-weight:800; font-family:'JetBrains Mono';" id="qbPrice">$0.00</div>
+                    <div style="font-size:10px; color:#94a3b8; margin-top:2px;">
+                        목표가 <span id="qbTargetVal" style="color:#34d399; font-weight:700;">-</span> | 손절선 <span id="qbStopVal" style="color:#f87171; font-weight:700;">-</span>
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <input type="number" step="0.01" id="qbBuyPrice" class="quick-buy-input" placeholder="Price" />
+                    <button class="btn-buy-action" id="btnExecuteBuy">포트폴리오 즉시 매수</button>
+                </div>
+            </div>
+
+            <!-- Signal Tracker Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span>Active Tactical Quant Signal Tracker</span>
+                    <span style="font-size:10px; color:#38bdf8;">TP: +15% / SL: -3%</span>
+                </div>
+                <div class="table-responsive" style="max-height:260px; overflow-y:auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Ticker</th>
+                                <th>Tier</th>
+                                <th>Source</th>
+                                <th>Price</th>
+                                <th>Target</th>
+                                <th>Stop</th>
+                                <th>Score</th>
+                            </tr>
+                        </thead>
+                        <tbody id="signalTrackerBody">
+                            <tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:16px;">신호 로딩 중...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Portfolio Holdings Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span>Active Simulated Portfolio</span>
+                    <button class="btn-reset-portfolio" id="btnResetPortfolio">초기화</button>
+                </div>
+                <div class="table-responsive" style="max-height:220px; overflow-y:auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Ticker</th>
+                                <th>Qty</th>
+                                <th>Buy Price</th>
+                                <th>Current</th>
+                                <th>PnL</th>
+                                <th>Advice</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="portfolioTableBody">
+                            <tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:16px;">보유 포지션 로딩 중...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Daily Recommendation History Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span>Daily Recommendation Matrix History (2+2+2)</span>
+                </div>
+                <div class="table-responsive" style="max-height:200px; overflow-y:auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Bull (주도주)</th>
+                                <th>Neutral (박스권)</th>
+                                <th>Bear (생명선붕괴)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dailyRecHistoryBody">
+                            <tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:16px;">기록 로딩 중...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Interactive TradingView Chart & 5-Factor Decoder -->
+        <div class="right-pane">
+            <div class="chart-header">
+                <div>
+                    <span class="ticker-title" id="curTicker">NVDA</span>
+                    <span class="ticker-price" id="curPrice">Loading...</span>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <!-- Timeframe Switcher -->
+                    <div style="display:flex; background:#0f172a; border:1px solid #334155; border-radius:3px; padding:2px; gap:2px;">
+                        <button class="tf-btn active" id="tfDaily">일봉 (1D)</button>
+                        <button class="tf-btn" id="tfWeekly">주봉 (1W)</button>
+                    </div>
+
+                    <!-- Indicator Toggles -->
+                    <button class="toggle-btn active" id="btnKijun">기준선(26)</button>
+                    <button class="toggle-btn active" id="btnTenkan">전환선(9)</button>
+                    <button class="toggle-btn active" id="btnSpan">선행구름(26)</button>
+                </div>
+            </div>
+
+            <!-- Chart Divs -->
+            <div id="chartContainer"></div>
+            <div id="volumeContainer"></div>
+
+            <!-- Quantitative Indicator Decoder -->
+            <div class="decoder-card">
+                <div class="verdict-banner" id="verdictBanner">
+                    <div class="verdict-title" id="verdictTitle">Quant Rating: [Tier 1: 거시 순풍 + 스마트머니 매집]</div>
+                    <div class="verdict-score" id="verdictScore" style="color:#fbbf24;">100 / 100 pt</div>
+                </div>
+
+                <div class="decoder-grid">
+                    <div class="indicator-item">
+                        <div class="indicator-head">
+                            <span class="indicator-name">26일 기준선 (생명선 지지)</span>
+                            <span class="status-badge status-good" id="sigKijunBadge">SUPPORT INTACT</span>
+                        </div>
+                        <div class="indicator-val" id="sigKijunVal">$0.00 (+0.0% 이격)</div>
+                        <div class="indicator-desc" id="sigKijunDesc">주가가 26일 기준선(생명선) 위에 위치하여 중기 지지선이 유효합니다.</div>
+                    </div>
+
+                    <div class="indicator-item">
+                        <div class="indicator-head">
+                            <span class="indicator-name">9일 전환선 (단기 모멘텀 호전)</span>
+                            <span class="status-badge status-good" id="sigTenkanBadge">BULLISH CROSS</span>
+                        </div>
+                        <div class="indicator-val" id="sigTenkanVal">$0.00 (9일선 > 26일선)</div>
+                        <div class="indicator-desc" id="sigTenkanDesc">단기 9일 전환선이 26일 기준선 위에 위치하여 단기 모멘텀이 유지됩니다.</div>
+                    </div>
+
+                    <div class="indicator-item">
+                        <div class="indicator-head">
+                            <span class="indicator-name">일목균형표 구름대 상단 안착</span>
+                            <span class="status-badge status-good" id="sigCloudBadge">ABOVE CLOUD</span>
+                        </div>
+                        <div class="indicator-val" id="sigCloudVal">구름대 상단 안착 완료</div>
+                        <div class="indicator-desc" id="sigCloudDesc">주가가 선행스팬1/2 구름대 위에 위치하여 매물대 상방 돌파 상태입니다.</div>
+                    </div>
+
+                    <div class="indicator-item">
+                        <div class="indicator-head">
+                            <span class="indicator-name">20일 평균 거래량 마름 (수급 건조)</span>
+                            <span class="status-badge status-good" id="sigVolBadge">OPTIMAL DRY-UP</span>
+                        </div>
+                        <div class="indicator-val" id="sigVolVal">20일 평균 대비 68%</div>
+                        <div class="indicator-desc" id="sigVolDesc">눌림목에서 거래량이 75% 이하로 건조되어 매도 압력 소진 및 반등 타점 형성.</div>
+                    </div>
+
+                    <div class="indicator-item" style="grid-column: 1 / -1;">
+                        <div class="indicator-head">
+                            <span class="indicator-name">+26일 미래 선행스팬 구름대 (Future Cloud)</span>
+                            <span class="status-badge status-good" id="sigFutureCloudBadge">양운 (지지대)</span>
+                        </div>
+                        <div class="indicator-val" id="sigFutureCloudVal">+26일 선행스팬1 $0.00 | 선행스팬2 $0.00</div>
+                        <div class="indicator-desc" id="sigFutureCloudDesc">향후 26거래일 미래 선행스팬1이 선행스팬2 위에 위치하여 하방 지지 매물대를 형성 중입니다.</div>
+                    </div>
+                </div>
+
+                <div class="action-directive-box" id="actionDirectiveText">
+                    [QUANT DIRECTIVE] 1차 분할 매수 적합 타점입니다. 손절선 -3.0% 엄수를 권고합니다.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modular Script Bootstrapper -->
+    <script type="module">
+        import { ApiClient } from '/static/js/api.js';
+        import { ChartEngine } from '/static/js/chart.js';
+        import { UI } from '/static/js/ui.js';
+        import { WebSocketClient } from '/static/js/websocket.js';
+
+        async function initApp() {
+            // 1. Initialize Chart
+            ChartEngine.init();
+
+            // 2. Setup Timeframe buttons
+            document.getElementById("tfDaily")?.addEventListener("click", () => ChartEngine.setTimeframe("daily"));
+            document.getElementById("tfWeekly")?.addEventListener("click", () => ChartEngine.setTimeframe("weekly"));
+
+            // 3. Setup Refresh button
+            document.getElementById("btnRefresh")?.addEventListener("click", async () => {
+                const fresh = await ApiClient.getDashboardData();
+                if (fresh) UI.renderDashboard(fresh);
+            });
+
+            // 4. Setup Event Delegation & Universal Search
+            UI.initDelegation();
+            UI.initSearch();
+
+            // 5. Initial Data Load
+            const data = await ApiClient.getDashboardData();
+            if (data) {
+                UI.renderDashboard(data);
+                const initialTicker = (data.dual_consensus && data.dual_consensus[0]) 
+                    ? data.dual_consensus[0].ticker 
+                    : (data.strat1_exclusive && data.strat1_exclusive[0] ? data.strat1_exclusive[0].ticker : "NVDA");
+                UI.selectStock(initialTicker);
+            }
+
+            // 6. Connect WebSocket Hub with Smart Polling Pause
+            WebSocketClient.init();
+        }
+
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", initApp);
+        } else {
+            initApp();
+        }
+    </script>
+</body>
+</html>
