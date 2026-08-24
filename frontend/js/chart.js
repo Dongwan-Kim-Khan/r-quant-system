@@ -134,6 +134,11 @@ export const ChartEngine = {
         this.currentLoadedChartObj = chartObj;
         const targetTf = tf || this.currentTimeframe;
 
+        if (!this.candleSeries) {
+            this.init();
+            if (!this.candleSeries) return;
+        }
+
         let tfData = null;
         if (chartObj.timeframes && chartObj.timeframes[targetTf] && chartObj.timeframes[targetTf].candles && chartObj.timeframes[targetTf].candles.length > 0) {
             tfData = chartObj.timeframes[targetTf];
@@ -178,14 +183,16 @@ export const ChartEngine = {
     },
 
     renderNotFound(ticker) {
-        this.candleSeries.setData([]);
-        this.kijunSeries.setData([]);
-        this.tenkanSeries.setData([]);
-        this.spanASeries.setData([]);
-        this.spanBSeries.setData([]);
-        this.sma20Series.setData([]);
-        this.sma60Series.setData([]);
-        this.volumeSeries.setData([]);
+        if (this.candleSeries) {
+            this.candleSeries.setData([]);
+            this.kijunSeries.setData([]);
+            this.tenkanSeries.setData([]);
+            this.spanASeries.setData([]);
+            this.spanBSeries.setData([]);
+            this.sma20Series.setData([]);
+            this.sma60Series.setData([]);
+            this.volumeSeries.setData([]);
+        }
 
         const curPrice = document.getElementById("curPrice");
         const qbPrice = document.getElementById("qbPrice");

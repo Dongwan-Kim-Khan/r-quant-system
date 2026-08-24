@@ -393,35 +393,51 @@
         import { WebSocketClient } from '/static/js/websocket.js';
 
         async function initApp() {
-            // 1. Initialize Chart
-            ChartEngine.init();
-
-            // 2. Setup Timeframe buttons
-            document.getElementById("tfDaily")?.addEventListener("click", () => ChartEngine.setTimeframe("daily"));
-            document.getElementById("tfWeekly")?.addEventListener("click", () => ChartEngine.setTimeframe("weekly"));
-
-            // 3. Setup Refresh button
-            document.getElementById("btnRefresh")?.addEventListener("click", async () => {
-                const fresh = await ApiClient.getDashboardData();
-                if (fresh) UI.renderDashboard(fresh);
-            });
-
-            // 4. Setup Event Delegation & Universal Search
-            UI.initDelegation();
-            UI.initSearch();
-
-            // 5. Initial Data Load
-            const data = await ApiClient.getDashboardData();
-            if (data) {
-                UI.renderDashboard(data);
-                const initialTicker = (data.dual_consensus && data.dual_consensus[0]) 
-                    ? data.dual_consensus[0].ticker 
-                    : (data.strat1_exclusive && data.strat1_exclusive[0] ? data.strat1_exclusive[0].ticker : "NVDA");
-                UI.selectStock(initialTicker);
+            try {
+                // 1. Initialize Chart
+                ChartEngine.init();
+            } catch (e) {
+                console.error("[Init] ChartEngine error:", e);
             }
 
-            // 6. Connect WebSocket Hub with Smart Polling Pause
-            WebSocketClient.init();
+            try {
+                // 2. Setup Timeframe buttons
+                document.getElementById("tfDaily")?.addEventListener("click", () => ChartEngine.setTimeframe("daily"));
+                document.getElementById("tfWeekly")?.addEventListener("click", () => ChartEngine.setTimeframe("weekly"));
+
+                // 3. Setup Refresh button
+                document.getElementById("btnRefresh")?.addEventListener("click", async () => {
+                    const fresh = await ApiClient.getDashboardData();
+                    if (fresh) UI.renderDashboard(fresh);
+                });
+
+                // 4. Setup Event Delegation & Universal Search
+                UI.initDelegation();
+                UI.initSearch();
+            } catch (e) {
+                console.error("[Init] UI Setup error:", e);
+            }
+
+            try {
+                // 5. Connect WebSocket Hub immediately
+                WebSocketClient.init();
+            } catch (e) {
+                console.error("[Init] WebSocket error:", e);
+            }
+
+            try {
+                // 6. Initial Data Load & Render
+                const data = await ApiClient.getDashboardData();
+                if (data) {
+                    UI.renderDashboard(data);
+                    const initialTicker = (data.dual_consensus && data.dual_consensus[0]) 
+                        ? data.dual_consensus[0].ticker 
+                        : (data.strat1_exclusive && data.strat1_exclusive[0] ? data.strat1_exclusive[0].ticker : "NVDA");
+                    UI.selectStock(initialTicker);
+                }
+            } catch (e) {
+                console.error("[Init] Dashboard initial load error:", e);
+            }
         }
 
         if (document.readyState === "loading") {

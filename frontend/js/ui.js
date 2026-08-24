@@ -35,22 +35,46 @@ export const UI = {
         if (lastUpEl) lastUpEl.textContent = `Updated: ${updatedTime}`;
 
         // 1. Macro Climate & Gauges
-        this.renderMacro(data.macro);
+        try {
+            this.renderMacro(data.macro);
+        } catch (e) {
+            console.warn("[UI] renderMacro error:", e);
+        }
 
         // 2. KPIs
-        this.renderKPIs(data.kpis);
+        try {
+            this.renderKPIs(data.kpis, data.portfolio);
+        } catch (e) {
+            console.warn("[UI] renderKPIs error:", e);
+        }
 
         // 3. 3-Tier Tactical Quant Signal Cards
-        this.renderTacticalCards(data);
+        try {
+            this.renderTacticalCards(data);
+        } catch (e) {
+            console.warn("[UI] renderTacticalCards error:", e);
+        }
 
         // 4. Unified Signal Tracker Table
-        this.renderSignalTracker(data.signal_tracker || []);
+        try {
+            this.renderSignalTracker(data.signal_tracker || []);
+        } catch (e) {
+            console.warn("[UI] renderSignalTracker error:", e);
+        }
 
         // 5. Portfolio Table
-        this.renderPortfolio(data.portfolio || []);
+        try {
+            this.renderPortfolio(data.portfolio);
+        } catch (e) {
+            console.warn("[UI] renderPortfolio error:", e);
+        }
 
         // 6. Recommendation History
-        this.renderDailyHistory(data.daily_history || []);
+        try {
+            this.renderDailyHistory(data.daily_history || []);
+        } catch (e) {
+            console.warn("[UI] renderDailyHistory error:", e);
+        }
     },
 
     renderMacro(macro) {
@@ -65,21 +89,28 @@ export const UI = {
             const ms = document.getElementById("msiScoreBadge");
             const needle = document.getElementById("msiNeedle");
 
-            if (hl && mc.action_headline) hl.textContent = mc.action_headline;
-            if (dt && mc.narrative) dt.textContent = mc.narrative;
-            if (sb && mc.macro_stance) sb.textContent = mc.macro_stance;
+            const headlineText = mc.macro_headline || mc.action_headline;
+            const narrativeText = mc.macro_action_directive || mc.narrative;
+            const stanceText = mc.macro_stance || 'DEFENSE_HOLD';
+
+            if (hl && headlineText) hl.textContent = headlineText;
+            if (dt && narrativeText) dt.textContent = narrativeText;
+            if (sb && stanceText) {
+                sb.textContent = stanceText.replace('_', ' ');
+                sb.style.color = stanceText.includes('BULL') ? '#34d399' : '#fbbf24';
+            }
 
             if (mc.msi_score !== undefined) {
-                if (ms) ms.textContent = `${mc.msi_score.toFixed(1)} / 100`;
+                if (ms) ms.textContent = `${Number(mc.msi_score).toFixed(1)} / 100`;
                 if (needle) {
-                    const pct = Math.min(100, Math.max(0, mc.msi_score));
+                    const pct = Math.min(100, Math.max(0, Number(mc.msi_score)));
                     needle.style.left = `${pct}%`;
                 }
             }
 
             // MSI Factor Breakdown
-            if (mc.breakdown) {
-                const b = mc.breakdown;
+            const mb = mc.msi_breakdown || mc.breakdown;
+            if (mb) {
                 const hVal = document.getElementById("msiHardVal");
                 const hSub = document.getElementById("msiHardSub");
                 const nVal = document.getElementById("msiNlpVal");
@@ -87,66 +118,105 @@ export const UI = {
                 const sVal = document.getElementById("msiShockVal");
                 const sSub = document.getElementById("msiShockSub");
 
-                if (hVal && b.hard_4axis_score !== undefined) hVal.textContent = `${b.hard_4axis_score.toFixed(1)} / 60.0 pt`;
-                if (hSub && b.hard_stance) hSub.textContent = `금융 4대 축: ${b.hard_stance}`;
+                const hardScore = mb.m_hard !== undefined ? mb.m_hard : (mb.hard_4axis_score || 0);
+                const hardMax = mb.m_hard_max || 60;
+                if (hVal) hVal.textContent = `${Number(hardScore).toFixed(1)} / ${hardMax}.0 pt`;
+                if (hSub) hSub.textContent = mb.hard_stance || `10Y:${mb.us10y_pts || 0} | DXY:${mb.dxy_pts || 0} | VIX:${mb.vix_pts || 0} | WTI:${mb.wti_pts || 0}`;
 
-                if (nVal && b.nlp_sentiment_score !== undefined) nVal.textContent = `${b.nlp_sentiment_score.toFixed(1)} / 25.0 pt`;
-                if (nSub && b.nlp_stance) nSub.textContent = `방송 지침: ${b.nlp_stance}`;
+                const nlpScore = mb.m_nlp !== undefined ? mb.m_nlp : (mb.nlp_sentiment_score || 0);
+                const nlpMax = mb.m_nlp_max || 25;
+                if (nVal) nVal.textContent = `${Number(nlpScore).toFixed(1)} / ${nlpMax}.0 pt`;
+                if (nSub) nSub.textContent = mb.nlp_stance || `방어 ${mb.def_count || 0}회 vs 매수 ${mb.buy_count || 0}회`;
 
-                if (sVal && b.shock_penalty_score !== undefined) sVal.textContent = `${b.shock_penalty_score.toFixed(1)} / 15.0 pt`;
-                if (sSub && b.shock_stance) sSub.textContent = `외생 충격: ${b.shock_stance}`;
+                const shockScore = mb.m_shock !== undefined ? mb.m_shock : (mb.shock_penalty_score || 0);
+                const shockMax = mb.m_shock_max || 15;
+                if (sVal) sVal.textContent = `${Number(shockScore).toFixed(1)} / ${shockMax}.0 pt`;
+                if (sSub) sSub.textContent = mb.shock_stance || `외생 충격 반영`;
             }
         }
 
         // Live Financial Gauges
-        if (macro.gauges) {
-            const g = macro.gauges;
-            const updateGauge = (valId, badgeId, obj) => {
+        const mg = macro.macro_gauges || macro.gauges;
+        if (mg) {
+            const updateGauge = (valId, badgeId, obj, isPct = false, isDollar = false) => {
                 if (!obj) return;
                 const vEl = document.getElementById(valId);
                 const bEl = document.getElementById(badgeId);
-                if (vEl && obj.val) vEl.textContent = obj.val;
-                if (bEl && obj.badge) {
-                    bEl.textContent = obj.badge;
-                    const isGood = obj.badge === 'SOFT' || obj.badge === 'NORMAL' || obj.badge === 'STABLE';
+                if (vEl && obj.val !== undefined) {
+                    const prefix = isDollar ? '$' : '';
+                    const suffix = isPct ? '%' : '';
+                    vEl.textContent = `${prefix}${obj.val}${suffix}`;
+                }
+                if (bEl && (obj.status || obj.badge)) {
+                    const statusName = obj.status || obj.badge;
+                    bEl.textContent = statusName;
+                    const isGood = statusName === 'SOFT' || statusName === 'NORMAL' || statusName === 'STABLE' || statusName === 'CALM' || statusName === 'SOFT_DOLLAR';
                     bEl.style.background = isGood ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)';
                     bEl.style.color = isGood ? '#34d399' : '#f87171';
                 }
             };
 
-            updateGauge("gaugeUs10yVal", "gaugeUs10yBadge", g.us10y);
-            updateGauge("gaugeDxyVal", "gaugeDxyBadge", g.dxy);
-            updateGauge("gaugeVixVal", "gaugeVixBadge", g.vix);
-            updateGauge("gaugeWtiVal", "gaugeWtiBadge", g.wti);
-            updateGauge("gaugeGoldVal", "gaugeGoldBadge", g.gold);
+            updateGauge("gaugeUs10yVal", "gaugeUs10yBadge", mg.us10y, true);
+            updateGauge("gaugeDxyVal", "gaugeDxyBadge", mg.dxy);
+            updateGauge("gaugeVixVal", "gaugeVixBadge", mg.vix);
+            updateGauge("gaugeWtiVal", "gaugeWtiBadge", mg.wti, false, true);
+            updateGauge("gaugeGoldVal", "gaugeGoldBadge", mg.gold, false, true);
         }
 
-        if (macro.stream_title) {
+        const sTitle = macro.title || macro.stream_title;
+        if (sTitle) {
             const sLink = document.getElementById("streamLink");
-            if (sLink) sLink.textContent = macro.stream_title;
+            if (sLink) {
+                sLink.textContent = sTitle;
+                if (macro.url && /^https?:\/\//i.test(macro.url)) {
+                    sLink.href = macro.url;
+                }
+            }
         }
-        if (macro.macro_summary) {
+        const mNarrative = macro.macro_narrative || macro.macro_summary;
+        if (mNarrative) {
             const mNarr = document.getElementById("macroNarrative");
-            if (mNarr) mNarr.textContent = `| ${macro.macro_summary}`;
+            if (mNarr) mNarr.textContent = `| ${mNarrative}`;
         }
     },
 
-    renderKPIs(kpis) {
-        if (!kpis) return;
+    renderKPIs(kpis, portfolioData) {
         const countEl = document.getElementById("kpiCount");
         const invEl = document.getElementById("kpiInvested");
         const evalEl = document.getElementById("kpiEval");
         const pnlEl = document.getElementById("kpiPnl");
 
-        if (countEl && kpis.active_count !== undefined) countEl.textContent = kpis.active_count;
-        if (invEl && kpis.total_invested !== undefined) invEl.textContent = `$${Number(kpis.total_invested).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-        if (evalEl && kpis.total_eval !== undefined) evalEl.textContent = `$${Number(kpis.total_eval).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        const holdings = Array.isArray(portfolioData)
+            ? portfolioData
+            : (portfolioData && Array.isArray(portfolioData.holdings) ? portfolioData.holdings : []);
 
-        if (pnlEl && kpis.total_pnl_pct !== undefined) {
-            const pnlPct = Number(kpis.total_pnl_pct);
-            const pnlVal = Number(kpis.total_pnl_val || 0);
+        const activeCount = holdings.length > 0 
+            ? holdings.length 
+            : (kpis && kpis.active_positions !== undefined ? kpis.active_positions : 0);
+
+        const totalInvested = (portfolioData && portfolioData.total_invested !== undefined)
+            ? Number(portfolioData.total_invested)
+            : (kpis && kpis.total_invested !== undefined ? Number(kpis.total_invested) : 0.0);
+
+        const totalEval = (portfolioData && portfolioData.total_eval !== undefined)
+            ? Number(portfolioData.total_eval)
+            : (kpis && kpis.total_eval !== undefined ? Number(kpis.total_eval) : 0.0);
+
+        const pnlPct = (portfolioData && portfolioData.overall_pnl_pct !== undefined)
+            ? Number(portfolioData.overall_pnl_pct)
+            : (kpis && kpis.overall_pnl_pct !== undefined ? Number(kpis.overall_pnl_pct) : 0.0);
+
+        const pnlAmt = (portfolioData && portfolioData.overall_pnl_amount !== undefined)
+            ? Number(portfolioData.overall_pnl_amount)
+            : (kpis && kpis.overall_pnl_amount !== undefined ? Number(kpis.overall_pnl_amount) : 0.0);
+
+        if (countEl) countEl.textContent = activeCount;
+        if (invEl) invEl.textContent = `$${totalInvested.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        if (evalEl) evalEl.textContent = `$${totalEval.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+        if (pnlEl) {
             const isPos = pnlPct >= 0;
-            pnlEl.textContent = `${isPos ? '+' : ''}${pnlPct.toFixed(2)}% ($${isPos ? '+' : ''}${pnlVal.toFixed(2)})`;
+            pnlEl.textContent = `${isPos ? '+' : ''}${pnlPct.toFixed(2)}% ($${isPos ? '+' : ''}${pnlAmt.toFixed(2)})`;
             pnlEl.style.color = isPos ? 'var(--accent-green)' : 'var(--accent-red)';
         }
     },
@@ -155,7 +225,7 @@ export const UI = {
         const renderGroup = (containerId, items, defaultBorder) => {
             const container = document.getElementById(containerId);
             if (!container) return;
-            if (!items || items.length === 0) {
+            if (!items || !Array.isArray(items) || items.length === 0) {
                 container.innerHTML = '<div style="color:var(--text-muted); font-size:11px; padding:8px 0; text-align:center;">조건 만족 종목 없음</div>';
                 return;
             }
@@ -169,7 +239,7 @@ export const UI = {
                 const isActive = tk === this.currentSelectedTicker ? 'active' : '';
 
                 return `
-                    <div class="rec-item ${isActive}" data-ticker="${tk}" data-price="${price}" style="border-left: 3px solid ${defaultBorder};">
+                    <div class="rec-item ${isActive}" data-ticker="${tk}" data-price="${price}" style="border-left: 3px solid ${defaultBorder}; cursor:pointer;" onclick="window.TerminalUI.selectStock('${tk}', ${price})">
                         <div>
                             <div class="rec-item-title">${tk} <span style="font-size:11px; color:#94a3b8; font-weight:normal;">${name}</span></div>
                             <div class="rec-item-sub">${reason}</div>
@@ -197,7 +267,7 @@ export const UI = {
         const tbody = document.getElementById("signalTrackerBody");
         if (!tbody) return;
 
-        if (!signals || signals.length === 0) {
+        if (!signals || !Array.isArray(signals) || signals.length === 0) {
             tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:16px;">활성화된 전략 신호가 없습니다.</td></tr>';
             return;
         }
@@ -208,7 +278,6 @@ export const UI = {
             const price = Number(sig.price || 0);
             const score = sig.score || 90;
             const origin = sig.origin || 'QUANT_DISCOVERY';
-            const sector = this.escapeHtml(sig.sector || '-');
 
             let tierBadge = '<span class="strategy-pill strategy-pullback-pill">TIER 2 (눌림목)</span>';
             if (sig.tier === 'TIER_1' || origin.includes('DUAL') || origin.includes('VIKINGS')) {
@@ -238,11 +307,15 @@ export const UI = {
         }).join('');
     },
 
-    renderPortfolio(holdings) {
+    renderPortfolio(portfolioData) {
         const tbody = document.getElementById("portfolioTableBody");
         if (!tbody) return;
 
-        if (!holdings || holdings.length === 0) {
+        const holdings = Array.isArray(portfolioData)
+            ? portfolioData
+            : (portfolioData && Array.isArray(portfolioData.holdings) ? portfolioData.holdings : []);
+
+        if (holdings.length === 0) {
             tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:16px;">보유 중인 포지션이 없습니다.</td></tr>';
             return;
         }
@@ -250,15 +323,15 @@ export const UI = {
         tbody.innerHTML = holdings.map(h => {
             const id = h.id;
             const tk = this.escapeHtml(h.ticker);
-            const qty = h.qty || 1;
+            const qty = h.quantity || h.qty || 1;
             const buyPrice = Number(h.buy_price || 0);
             const curPrice = Number(h.current_price || buyPrice);
-            const pnlPct = Number(h.pnl_pct || (((curPrice - buyPrice)/buyPrice)*100));
+            const pnlPct = Number(h.pnl_pct !== undefined ? h.pnl_pct : (((curPrice - buyPrice)/buyPrice)*100));
             const isPos = pnlPct >= 0;
 
             return `
                 <tr>
-                    <td><span class="ticker-pill ${isPos ? 'bull' : 'bear'}" onclick="window.TerminalUI.selectStock('${tk}', ${curPrice})">${tk}</span></td>
+                    <td><span class="ticker-pill ${isPos ? 'bull' : 'bear'}" style="cursor:pointer;" onclick="window.TerminalUI.selectStock('${tk}', ${curPrice})">${tk}</span></td>
                     <td style="font-family:'JetBrains Mono';">${qty}주</td>
                     <td style="font-family:'JetBrains Mono';">$${buyPrice.toFixed(2)}</td>
                     <td style="font-family:'JetBrains Mono'; font-weight:700;">$${curPrice.toFixed(2)}</td>
@@ -280,7 +353,7 @@ export const UI = {
         const tbody = document.getElementById("dailyRecHistoryBody");
         if (!tbody) return;
 
-        if (!history || history.length === 0) {
+        if (!history || !Array.isArray(history) || history.length === 0) {
             tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:16px;">추천 이력이 없습니다.</td></tr>';
             return;
         }
@@ -288,26 +361,31 @@ export const UI = {
         tbody.innerHTML = history.map(rec => {
             const dateStr = this.escapeHtml(rec.date);
             const renderPills = (arr, cls) => {
-                if (!arr || arr.length === 0) return '-';
+                if (!arr || !Array.isArray(arr) || arr.length === 0) return '-';
                 return arr.map(item => {
                     const tk = typeof item === 'string' ? item : item.ticker;
                     const price = typeof item === 'object' ? item.price : null;
-                    return `<span class="ticker-pill ${cls}" onclick="window.TerminalUI.selectStock('${this.escapeHtml(tk)}', ${price})">${this.escapeHtml(tk)}</span>`;
+                    return `<span class="ticker-pill ${cls}" style="cursor:pointer;" onclick="window.TerminalUI.selectStock('${this.escapeHtml(tk)}', ${price})">${this.escapeHtml(tk)}</span>`;
                 }).join(' ');
             };
+
+            const bullPicks = rec.tier1 || rec.bull_picks || [];
+            const neutralPicks = rec.tier2 || rec.neutral_picks || [];
+            const bearPicks = rec.tier3 || rec.bear_picks || [];
 
             return `
                 <tr>
                     <td style="font-family:'JetBrains Mono'; font-weight:700;">${dateStr}</td>
-                    <td>${renderPills(rec.bull_picks, 'bull')}</td>
-                    <td>${renderPills(rec.neutral_picks, 'neutral')}</td>
-                    <td>${renderPills(rec.bear_picks, 'bear')}</td>
+                    <td>${renderPills(bullPicks, 'bull')}</td>
+                    <td>${renderPills(neutralPicks, 'neutral')}</td>
+                    <td>${renderPills(bearPicks, 'bear')}</td>
                 </tr>
             `;
         }).join('');
     },
 
     async selectStock(ticker, price = null) {
+        if (!ticker) return;
         this.currentSelectedTicker = ticker;
         const curTickerEl = document.getElementById("curTicker");
         const qbTickerEl = document.getElementById("qbTicker");
@@ -333,21 +411,27 @@ export const UI = {
         }
 
         // Fetch chart data via ApiClient
-        const chartData = await ApiClient.getChartData(ticker);
-        if (chartData && !chartData.aborted && chartData.candles) {
-            this.currentSelectedPrice = Number(chartData.latest_close);
-            const formatted = `$${this.currentSelectedPrice.toFixed(2)}`;
-            const cpEl = document.getElementById("curPrice");
-            const qpEl = document.getElementById("qbPrice");
-            const bpEl = document.getElementById("qbBuyPrice");
-            if (cpEl) cpEl.textContent = formatted;
-            if (qpEl) qpEl.textContent = formatted;
-            if (bpEl) bpEl.value = this.currentSelectedPrice.toFixed(2);
-            this.updateTargetStop();
+        try {
+            const chartData = await ApiClient.getChartData(ticker);
+            if (chartData && !chartData.aborted && chartData.candles) {
+                this.currentSelectedPrice = Number(chartData.latest_close);
+                const formatted = `$${this.currentSelectedPrice.toFixed(2)}`;
+                const cpEl = document.getElementById("curPrice");
+                const qpEl = document.getElementById("qbPrice");
+                const bpEl = document.getElementById("qbBuyPrice");
+                if (cpEl) cpEl.textContent = formatted;
+                if (qpEl) qpEl.textContent = formatted;
+                if (bpEl) bpEl.value = this.currentSelectedPrice.toFixed(2);
+                this.updateTargetStop();
 
-            ChartEngine.renderData(chartData);
-            QuantDecoder.update(ticker, chartData, this.latestDashboardData);
-        } else if (!chartData || !chartData.aborted) {
+                ChartEngine.renderData(chartData);
+                QuantDecoder.update(ticker, chartData, this.latestDashboardData);
+            } else if (!chartData || !chartData.aborted) {
+                ChartEngine.renderNotFound(ticker);
+                QuantDecoder.update(ticker, null, this.latestDashboardData);
+            }
+        } catch (e) {
+            console.warn("[UI] selectStock error:", e);
             ChartEngine.renderNotFound(ticker);
             QuantDecoder.update(ticker, null, this.latestDashboardData);
         }
@@ -391,9 +475,9 @@ export const UI = {
                     <div class="search-result-item" data-ticker="${this.escapeHtml(r.ticker)}" style="padding:8px 12px; border-bottom:1px solid #1e293b; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
                         <div>
                             <span style="color:#38bdf8; font-weight:700; font-family:'JetBrains Mono';">${this.escapeHtml(r.ticker)}</span>
-                            <span style="color:#cbd5e1; font-size:11px; margin-left:6px;">${this.escapeHtml(r.name)}</span>
+                            <span style="color:#cbd5e1; font-size:11px; margin-left:6px;">${this.escapeHtml(r.name_kr || r.name || '')}</span>
                         </div>
-                        <span style="color:#64748b; font-size:10px;">${this.escapeHtml(r.sector || '')}</span>
+                        <span style="color:#64748b; font-size:10px;">${this.escapeHtml(r.sector || r.market || '')}</span>
                     </div>
                 `).join('');
                 dropdown.style.display = "block";
@@ -458,7 +542,7 @@ export const UI = {
                 try {
                     btnBuy.disabled = true;
                     btnBuy.textContent = "주문 중...";
-                    await ApiClient.buyHolding({ ticker, buy_price: price, qty });
+                    await ApiClient.buyHolding({ ticker, buy_price: price, quantity: qty });
                     const fresh = await ApiClient.getDashboardData();
                     this.renderDashboard(fresh);
                 } catch (err) {
