@@ -66,7 +66,9 @@ ALLOWED_ORIGINS = [
     "http://localhost:8000",
     "http://127.0.0.1:8000",
     "http://localhost:3000",
-    "http://127.0.0.1:3000"
+    "http://127.0.0.1:3000",
+    "null",
+    "file://"
 ]
 
 app.add_middleware(
@@ -149,7 +151,7 @@ async def serve_legacy_dashboard():
 async def websocket_live_hub(websocket: WebSocket):
     """Real-time WebSocket connection to broadcast hub with CSWSH protection."""
     origin = websocket.headers.get("origin")
-    if origin and origin not in ALLOWED_ORIGINS:
+    if origin and origin not in ALLOWED_ORIGINS and not origin.startswith("http://localhost:") and not origin.startswith("http://127.0.0.1:"):
         await websocket.close(code=1008, reason="Forbidden Origin")
         return
         

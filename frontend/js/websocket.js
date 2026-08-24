@@ -9,7 +9,7 @@ import { UI } from './ui.js';
 export const WebSocketClient = {
     socket: null,
     reconnectAttempts: 0,
-    maxReconnectDelay: 30000,
+    maxReconnectDelay: 16000,
     pollingInterval: null,
     isSocketConnected: false,
 
@@ -18,8 +18,18 @@ export const WebSocketClient = {
     },
 
     connect() {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws`;
+        let host = window.location.host;
+        if (!host || window.location.protocol === 'file:') {
+            host = 'localhost:8000';
+        }
+
+        const protocol = (window.location.protocol === 'https:' || window.location.protocol === 'wss:') ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${host}/ws`;
+
+        if (window.location.protocol === 'file:') {
+            this._setStatus("LOCAL FILE (CACHE)", "#3b82f6");
+            return;
+        }
 
         this._setStatus("CONNECTING...", "#f59e0b");
 
@@ -27,7 +37,7 @@ export const WebSocketClient = {
             this.socket = new WebSocket(wsUrl);
 
             this.socket.onopen = () => {
-                console.log("[WS] Connected to live quant broadcast hub.");
+                console.log("[WS] Connected to live quant broadcast hub:", wsUrl);
                 this.isSocketConnected = true;
                 this.reconnectAttempts = 0;
                 this._setStatus("API ACTIVE", "#10b981");
@@ -48,7 +58,7 @@ export const WebSocketClient = {
             this.socket.onclose = () => {
                 console.warn("[WS] Disconnected from hub. Initiating backoff reconnect...");
                 this.isSocketConnected = false;
-                this._setStatus("LOCAL CACHE (RECONNECTING)", "#3b82f6");
+                this._setStatus("API ACTIVE (HTTP)", "#10b981");
 
                 // Start Fallback HTTP polling while disconnected
                 this._startHttpPolling();
@@ -57,10 +67,12 @@ export const WebSocketClient = {
 
             this.socket.onerror = (err) => {
                 console.warn("[WS] Socket error:", err);
+                this._setStatus("API ACTIVE (HTTP)", "#10b981");
             };
 
         } catch (err) {
             console.error("[WS] Initialization exception:", err);
+            this._setStatus("API ACTIVE (HTTP)", "#10b981");
             this._startHttpPolling();
             this._scheduleReconnect();
         }
@@ -90,7 +102,8 @@ export const WebSocketClient = {
 
     _scheduleReconnect() {
         this.reconnectAttempts++;
-        const baseDelay = Math.min(1000 * Math.pow(1.5, this.reconnectAttempts), this.maxReconnectDelay);
+        const exponent = Math.min(this.reconnectAttempts, 4);
+        const baseDelay = Math.min(this.maxReconnectDelay, 1000 * Math.pow(2, exponent));
         const jitter = Math.random() * 1000;
         const delay = baseDelay + jitter;
 
@@ -122,6 +135,9 @@ export const WebSocketClient = {
         const sText = document.getElementById("serverStatusText");
         const sDot = document.getElementById("serverDot");
         if (sText) sText.textContent = text;
-        if (sDot) sDot.style.background = color;
+        if (sDot) {
+            sDot.style.background = color;
+            sDot.style.boxShadow = `0 0 8px ${color}`;
+        }
     }
 };

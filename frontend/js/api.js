@@ -1,7 +1,14 @@
 /**
  * R QUANT TERMINAL: REST API CLIENT MODULE
- * Handles all backend HTTP endpoints with error handling and AbortController support.
+ * Handles all backend HTTP endpoints with error handling, base URL resolution, and AbortController support.
  */
+
+function getBaseUrl() {
+    if (typeof window !== 'undefined' && (window.location.protocol === 'file:' || !window.location.host)) {
+        return 'http://localhost:8000';
+    }
+    return '';
+}
 
 export const ApiClient = {
     // Current in-flight chart abort controller
@@ -11,8 +18,9 @@ export const ApiClient = {
      * Fetch complete executive dashboard feed
      */
     async getDashboardData() {
+        const base = getBaseUrl();
         try {
-            const res = await fetch('/api/dashboard');
+            const res = await fetch(`${base}/api/dashboard`);
             if (res.ok) {
                 return await res.json();
             }
@@ -41,9 +49,10 @@ export const ApiClient = {
         }
         this._chartAbortController = new AbortController();
         const signal = this._chartAbortController.signal;
+        const base = getBaseUrl();
 
         try {
-            const res = await fetch(`/api/chart/${encodeURIComponent(ticker)}`, { signal });
+            const res = await fetch(`${base}/api/chart/${encodeURIComponent(ticker)}`, { signal });
             if (res.ok) {
                 return await res.json();
             }
@@ -62,11 +71,12 @@ export const ApiClient = {
      */
     async searchStocks(query) {
         if (!query || !query.trim()) return [];
+        const base = getBaseUrl();
         try {
-            const res = await fetch(`/api/search?q=${encodeURIComponent(query.trim())}`);
+            const res = await fetch(`${base}/api/search?q=${encodeURIComponent(query.trim())}`);
             if (res.ok) {
                 const data = await res.json();
-                return data.results || [];
+                return data.results || data.suggestions || [];
             }
         } catch (err) {
             console.warn('[API] Stock search failed:', err);
@@ -78,7 +88,8 @@ export const ApiClient = {
      * Execute quick portfolio buy
      */
     async buyHolding(order) {
-        const res = await fetch('/api/portfolio/buy', {
+        const base = getBaseUrl();
+        const res = await fetch(`${base}/api/portfolio/buy`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(order)
@@ -94,7 +105,8 @@ export const ApiClient = {
      * Execute portfolio sell/exit
      */
     async sellHolding(id, currentPrice) {
-        const res = await fetch(`/api/portfolio/sell/${id}`, {
+        const base = getBaseUrl();
+        const res = await fetch(`${base}/api/portfolio/sell/${id}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ current_price: currentPrice })
@@ -110,7 +122,8 @@ export const ApiClient = {
      * Reset all simulated portfolio holdings
      */
     async resetPortfolio() {
-        const res = await fetch('/api/portfolio/reset', { method: 'POST' });
+        const base = getBaseUrl();
+        const res = await fetch(`${base}/api/portfolio/reset`, { method: 'POST' });
         if (!res.ok) {
             throw new Error('Portfolio reset failed');
         }
@@ -121,7 +134,8 @@ export const ApiClient = {
      * Trigger on-demand background 3-Gate quant scan
      */
     async triggerScanNow() {
-        const res = await fetch('/api/scan_now', { method: 'POST' });
+        const base = getBaseUrl();
+        const res = await fetch(`${base}/api/scan_now`, { method: 'POST' });
         if (!res.ok) {
             const err = await res.json().catch(() => ({ detail: 'Scan trigger failed' }));
             throw new Error(err.detail || 'Scan trigger failed');
