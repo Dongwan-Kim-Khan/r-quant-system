@@ -158,12 +158,14 @@ class PortfolioGuardian:
                     cur_price = default_kis_broker.get_live_price(ticker)
                 
                 if cur_price is None or cur_price <= 0:
+                    import logging as _logging
+                    _logging.getLogger("yfinance").setLevel(_logging.CRITICAL)
                     ticker_obj = yf.Ticker(ticker)
                     # Safe fast_info lookup (resilient to yfinance 'currentTradingPeriod' KeyError)
                     try:
                         fast_info = getattr(ticker_obj, "fast_info", None)
                         if fast_info:
-                            p = getattr(fast_info, "last_price", None) or getattr(fast_info, "regular_market_price", None)
+                            p = getattr(fast_info, "last_price", None) or getattr(fast_info, "regular_market_price", None) or getattr(fast_info, "previous_close", None)
                             if p and float(p) > 0:
                                 cur_price = float(p)
                     except Exception:

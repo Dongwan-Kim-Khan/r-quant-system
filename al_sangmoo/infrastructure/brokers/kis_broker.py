@@ -464,38 +464,42 @@ class KISBrokerAdapter:
                 except Exception as e:
                     logger.debug(f"[KIS Live Price] Attempt {excd} for {sym_clean} failed: {e}")
         
-        # 2. Real-time fast quote with Pre/Post-market awareness
+        # 2. Real-time fast quote with fast_info and Pre/Post-market awareness
         try:
             import yfinance as yf
+            import logging as _logging
+            _logging.getLogger("yfinance").setLevel(_logging.CRITICAL)
             t_obj = yf.Ticker(sym_clean)
             
-            # Check 1: 1-minute pre/post market real-time tick (captures after-hours drops)
+            # Check 1: fast_info (ultra-fast < 0.05ms, real-time price & previous close)
             try:
-                hist_prepost = t_obj.history(period="1d", interval="1m", prepost=True)
+                fi = getattr(t_obj, "fast_info", None)
+                if fi:
+                    fast_p = getattr(fi, "last_price", None) or getattr(fi, "regular_market_price", None) or getattr(fi, "previous_close", None)
+                    if fast_p and float(fast_p) > 0:
+                        return round(float(fast_p), 2)
+            except Exception:
+                pass
+
+            # Check 2: Daily history fallback (resilient 5-day window)
+            try:
+                hist = t_obj.history(period="5d", raise_errors=False)
+                if not hist.empty and "Close" in hist.columns:
+                    last_val = float(hist["Close"].dropna().iloc[-1])
+                    if last_val > 0:
+                        return round(last_val, 2)
+            except Exception:
+                pass
+
+            # Check 3: 1-minute pre/post market tick fallback
+            try:
+                hist_prepost = t_obj.history(period="1d", interval="1m", prepost=True, raise_errors=False)
                 if not hist_prepost.empty and "Close" in hist_prepost.columns:
                     c_series = hist_prepost["Close"].dropna()
                     if not c_series.empty:
                         last_tick = float(c_series.iloc[-1])
                         if last_tick > 0:
                             return round(last_tick, 2)
-            except Exception:
-                pass
-
-            # Check 2: fast_info / regular market price
-            try:
-                fast_p = getattr(getattr(t_obj, "fast_info", None), "last_price", None)
-                if fast_p and float(fast_p) > 0:
-                    return round(float(fast_p), 2)
-            except Exception:
-                pass
-
-            # Check 3: Daily history fallback
-            try:
-                hist = t_obj.history(period="5d")
-                if not hist.empty and "Close" in hist.columns:
-                    last_val = float(hist["Close"].dropna().iloc[-1])
-                    if last_val > 0:
-                        return round(last_val, 2)
             except Exception:
                 pass
         except Exception:
