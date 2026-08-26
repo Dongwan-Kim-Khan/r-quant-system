@@ -9,6 +9,25 @@ DASHBOARD_JSON = os.path.join(BASE_DIR, "dashboard_data.json")
 
 FEED_CACHE = {}
 LAST_FEED_MTIME = 0
+LAST_MACRO_TIME = 0.0
+CACHED_MACRO_GAUGES = None
+
+def get_live_macro_gauges():
+    global LAST_MACRO_TIME, CACHED_MACRO_GAUGES
+    import time
+    now = time.time()
+    if CACHED_MACRO_GAUGES and (now - LAST_MACRO_TIME < 30.0):
+        return CACHED_MACRO_GAUGES
+    try:
+        import youtube_stream_scanner
+        gauges = youtube_stream_scanner.fetch_realtime_macro_gauges()
+        if gauges and isinstance(gauges, dict):
+            CACHED_MACRO_GAUGES = gauges
+            LAST_MACRO_TIME = now
+            return CACHED_MACRO_GAUGES
+    except Exception:
+        pass
+    return CACHED_MACRO_GAUGES
 
 def get_feed_cache():
     global FEED_CACHE, LAST_FEED_MTIME
@@ -28,7 +47,7 @@ def load_feed_cache():
 
 @router.get("/api/dashboard")
 async def get_dashboard_data():
-    """Returns the full executive dashboard data payload enriched with real-time portfolio in < 1ms."""
+    """Returns the full executive dashboard data payload enriched with real-time portfolio & macro in < 1ms."""
     feed = get_feed_cache()
     if not feed:
         if os.path.exists(DASHBOARD_JSON):
@@ -43,6 +62,15 @@ async def get_dashboard_data():
     # Shallow copy dictionary for high-performance non-mutating response
     feed_out = dict(feed)
     
+    # Inject real-time macro gauges (30s TTL cache)
+    try:
+        live_gauges = get_live_macro_gauges()
+        if live_gauges and isinstance(feed_out.get("macro"), dict):
+            feed_out["macro"] = dict(feed_out["macro"])
+            feed_out["macro"]["macro_gauges"] = live_gauges
+    except Exception:
+        pass
+
     # Inject real-time live portfolio from SQLite SSOT (pure CQRS fast read < 0.5ms)
     try:
         import db_manager
