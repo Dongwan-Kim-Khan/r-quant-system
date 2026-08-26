@@ -182,6 +182,16 @@ export const WebSocketClient = {
         } else if (eventType === "portfolio_update" && msg.data) {
             UI.renderPortfolio(msg.data);
             UI.renderKPIs(null, msg.data, null);
+            if (msg.data.holdings && Array.isArray(msg.data.holdings) && ChartEngine.currentTicker) {
+                const match = msg.data.holdings.find(h => h.ticker && h.ticker.toUpperCase() === ChartEngine.currentTicker);
+                if (match && match.current_price) {
+                    ChartEngine.updateLiveTick(match.ticker, match.current_price);
+                }
+            }
+        } else if (eventType === "price_update" && msg.data) {
+            if (msg.data.ticker && msg.data.price) {
+                ChartEngine.updateLiveTick(msg.data.ticker, msg.data.price);
+            }
         } else if (eventType === "connected" && msg.data && msg.data.portfolio) {
             UI.renderPortfolio(msg.data.portfolio);
             UI.renderKPIs(null, msg.data.portfolio, null);
