@@ -449,8 +449,21 @@ class KISBrokerAdapter:
                 try:
                     self._limiter.acquire(0.2)
                     res = requests.get(url, headers=headers, params=params, timeout=0.6)
+                    if res.status_code == 401:
+                        # Auto-renew expired token and retry
+                        if self.authenticate(force_refresh=True):
+                            headers = self._get_headers("HHDFS00000300")
+                            res = requests.get(url, headers=headers, params=params, timeout=0.6)
+
                     if res.status_code == 200:
                         data = res.json()
+                        if data.get("msg_cd") in ["EGW00121", "EGW00122", "EGW00123"]:
+                            if self.authenticate(force_refresh=True):
+                                headers = self._get_headers("HHDFS00000300")
+                                res = requests.get(url, headers=headers, params=params, timeout=0.6)
+                                if res.status_code == 200:
+                                    data = res.json()
+
                         if data.get("rt_cd") == "0":
                             out = data.get("output", {})
                             last_str = out.get("last")

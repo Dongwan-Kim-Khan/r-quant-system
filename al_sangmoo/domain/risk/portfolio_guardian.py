@@ -177,25 +177,11 @@ class PortfolioGuardian:
                     # Resilient 5-day history fallback
                     if cur_price is None or cur_price <= 0:
                         try:
-                            hist = ticker_obj.history(period="5d")
+                            hist = ticker_obj.history(period="5d", raise_errors=False)
                             if not hist.empty and "Close" in hist.columns:
                                 close_series = hist["Close"].dropna()
                                 if not close_series.empty:
                                     cur_price = float(close_series.iloc[-1])
-                        except Exception:
-                            pass
-
-                    # Final fallback: 1mo OHLCV for Ichimoku Kijun reference
-                    if cur_price is None or cur_price <= 0:
-                        try:
-                            df = yf.download(ticker, period="1mo", interval="1d", progress=False)
-                            if not df.empty:
-                                if isinstance(df.columns, pd.MultiIndex):
-                                    df.columns = df.columns.get_level_values(0)
-                                df = calculate_ichimoku_indicators(df)
-                                last_row = df.iloc[-1]
-                                cur_price = float(last_row["Close"])
-                                kijun_line = float(last_row.get("Kijun", kijun_line))
                         except Exception:
                             pass
             except Exception as exc:

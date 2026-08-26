@@ -23,30 +23,69 @@ export const WebSocketClient = {
     },
 
     _setupLifecycleListeners() {
-        // Auto-Resume when switching tabs or waking computer from sleep
+        // Auto-Resume when switching tabs, waking computer from sleep, or focusing window
         document.addEventListener("visibilitychange", () => {
             if (document.visibilityState === "visible") {
                 this.checkAndReconnect();
             }
         });
 
+        window.addEventListener("focus", () => {
+            this.checkAndReconnect();
+        });
+
+        window.addEventListener("pageshow", () => {
+            this.checkAndReconnect();
+        });
+
         window.addEventListener("online", () => {
             this.checkAndReconnect();
         });
 
-        // Periodic 30-second sanity check for idle tabs
+        // Web Worker 24/7 Anti-Sleep Ticker (Immune to browser background tab throttling)
+        try {
+            const blob = new Blob([`
+                setInterval(function() {
+                    postMessage('tick');
+                }, 3000);
+            `], { type: 'application/javascript' });
+            const worker = new Worker(URL.createObjectURL(blob));
+            worker.onmessage = () => {
+                if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+                    try { this.socket.send("ping"); } catch(e) {}
+                } else if (!this.socket || this.socket.readyState === WebSocket.CLOSED) {
+                    this.checkAndReconnect();
+                }
+            };
+        } catch (e) {
+            console.warn("[WS] WebWorker background ticker fallback:", e);
+        }
+
+        // Periodic 10-second fallback check for idle tabs
         setInterval(() => {
             if (document.visibilityState === "visible") {
                 this.checkAndReconnect();
             }
-        }, 30000);
+        }, 10000);
     },
 
     checkAndReconnect() {
+        // 1. Instant HTTP refresh on visibility/wake (renders in < 10ms without waiting for WS push)
+        ApiClient.getDashboardData().then(fresh => {
+            if (fresh) UI.renderDashboard(fresh);
+        }).catch(() => {});
+        ApiClient.getPortfolioData().then(freshPort => {
+            if (freshPort) UI.renderPortfolio(freshPort);
+        }).catch(() => {});
+        if (ChartEngine.currentTicker) {
+            ChartEngine.loadChart(ChartEngine.currentTicker);
+        }
+
+        // 2. Check WebSocket connection health
         if (this.socket && this.socket.readyState === WebSocket.CONNECTING) {
             return; // Still establishing connection, do not interrupt
         }
-        const isStale = (Date.now() - this.lastPongReceived) > 60000;
+        const isStale = (Date.now() - this.lastPongReceived) > 30000;
         if (!this.socket || this.socket.readyState !== WebSocket.OPEN || isStale) {
             console.log("[WS] Resuming connection (stale or disconnected)...");
             this.reconnectAttempts = 0;
@@ -429,63 +468,32 @@ export const TerminalApp = {
         const tfDaily = document.getElementById("tfDaily");
         const tfWeekly = document.getElementById("tfWeekly");
         if (tfDaily && tfWeekly) {
-            tfDaily.onclick = () => {
-                tfDaily.classList.add("active");
-                tfWeekly.classList.remove("active");
-                ChartEngine.switchTimeframe("daily");
-            };
-            tfWeekly.onclick = () => {
-                tfWeekly.classList.add("active");
-                tfDaily.classList.remove("active");
-                ChartEngine.switchTimeframe("weekly");
-            };
+            tfDaily.onclick = () => { tfDaily.classList.add("active"); tfWeekly.classList.remove("active"); ChartEngine.switchTimeframe("daily"); };
+            tfWeekly.onclick = () => { tfWeekly.classList.add("active"); tfDaily.classList.remove("active"); ChartEngine.switchTimeframe("weekly"); };
         }
 
-        // Guardian Daemon Toggle Badge
-        const guardianBadge = document.getElementById("guardianBadge");
-        if (guardianBadge) {
-            guardianBadge.style.cursor = "pointer";
-            guardianBadge.onclick = async () => {
+        // Toggle Helper for Badges
+        const setupToggleBadge = (id, getFn, toggleFn, labelPrefix) => {
+            const badge = document.getElementById(id);
+            if (!badge) return;
+            badge.style.cursor = "pointer";
+            badge.onclick = async () => {
                 try {
-                    const status = await ApiClient.getGuardianStatus();
-                    const nextState = !(status && status.enabled);
-                    await ApiClient.toggleGuardian(nextState);
-                    guardianBadge.className = nextState ? "chip chip-green" : "chip chip-gray";
-                    guardianBadge.textContent = nextState ? "GUARDIAN: ACTIVE" : "GUARDIAN: DISABLED";
-                    console.log(`[GUARDIAN] Toggled to ${nextState ? 'ACTIVE' : 'DISABLED'}`);
-                } catch (e) {
-                    console.error("[GUARDIAN] Toggle error:", e);
-                }
+                    const st = await getFn();
+                    const next = !(st && st.enabled);
+                    await toggleFn(next);
+                    badge.className = next ? "chip chip-green" : "chip chip-gray";
+                    badge.textContent = `${labelPrefix}: ${next ? 'ACTIVE' : 'DISABLED'}`;
+                } catch (e) { console.error(`[${labelPrefix}] Toggle error:`, e); }
             };
-        }
-
-        // AutoPilot Daemon Toggle Badge
-        const autopilotBadge = document.getElementById("autopilotBadge");
-        if (autopilotBadge) {
-            autopilotBadge.style.cursor = "pointer";
-            autopilotBadge.onclick = async () => {
-                try {
-                    const status = await ApiClient.getAutoPilotStatus();
-                    const nextState = !(status && status.enabled);
-                    await ApiClient.toggleAutoPilot(nextState);
-                    autopilotBadge.className = nextState ? "chip chip-green" : "chip chip-gray";
-                    autopilotBadge.textContent = nextState ? "AUTOPILOT: ACTIVE" : "AUTOPILOT: DISABLED";
-                    console.log(`[AUTOPILOT] Toggled to ${nextState ? 'ACTIVE' : 'DISABLED'}`);
-                } catch (e) {
-                    console.error("[AUTOPILOT] Toggle error:", e);
-                }
-            };
-        }
+        };
+        setupToggleBadge("guardianBadge", () => ApiClient.getGuardianStatus(), (n) => ApiClient.toggleGuardian(n), "GUARDIAN");
+        setupToggleBadge("autopilotBadge", () => ApiClient.getAutoPilotStatus(), (n) => ApiClient.toggleAutoPilot(n), "AUTOPILOT");
 
         // Indicator Toggles
         const attachToggle = (id, fn) => {
             const btn = document.getElementById(id);
-            if (btn) {
-                btn.onclick = () => {
-                    const isActive = btn.classList.toggle("active");
-                    fn(isActive);
-                };
-            }
+            if (btn) btn.onclick = () => fn(btn.classList.toggle("active"));
         };
         attachToggle("btnKijun", (v) => ChartEngine.toggleSeries("kijun", v));
         attachToggle("btnTenkan", (v) => ChartEngine.toggleSeries("tenkan", v));
@@ -528,12 +536,7 @@ export const TerminalApp = {
                         dropdown.innerHTML = '';
                         results.forEach(r => {
                             const isKr = (r.ticker || '').endsWith('.KS') || (r.ticker || '').endsWith('.KQ');
-                            const priceDisplay = r.price && r.price > 0
-                                ? (isKr ? '₩' + Number(r.price).toLocaleString() : '$' + Number(r.price).toFixed(2))
-                                : '';
-                            const nameDisplay = r.name || r.name_kr || '';
-
-                            // SEC-04: Build DOM nodes via textContent to prevent XSS
+                            const priceDisplay = r.price && r.price > 0 ? (isKr ? '₩' + Number(r.price).toLocaleString() : '$' + Number(r.price).toFixed(2)) : '';
                             const item = document.createElement('div');
                             item.className = 'search-item';
                             item.style.cssText = 'padding:8px 12px; border-bottom:1px solid #1e293b; cursor:pointer; display:flex; justify-content:space-between; align-items:center;';
@@ -544,11 +547,9 @@ export const TerminalApp = {
                             const strongEl = document.createElement('strong');
                             strongEl.style.cssText = 'color:#f8fafc; font-family:\'JetBrains Mono\';';
                             strongEl.textContent = r.ticker || '';
-
                             const spanEl = document.createElement('span');
                             spanEl.style.cssText = 'color:#94a3b8; font-size:11px; margin-left:6px;';
-                            spanEl.textContent = nameDisplay;
-
+                            spanEl.textContent = r.name || r.name_kr || '';
                             leftDiv.appendChild(strongEl);
                             leftDiv.appendChild(spanEl);
 
@@ -558,19 +559,14 @@ export const TerminalApp = {
 
                             item.appendChild(leftDiv);
                             item.appendChild(priceSpan);
-                            dropdown.appendChild(item);
-                        });
-                        dropdown.style.display = "block";
-
-                        dropdown.querySelectorAll('.search-item').forEach(item => {
                             item.onclick = () => {
-                                const t = item.getAttribute('data-ticker');
-                                const p = parseFloat(item.getAttribute('data-price'));
-                                UI.selectStock(t, p);
+                                UI.selectStock(r.ticker, parseFloat(r.price || 0));
                                 dropdown.style.display = "none";
                                 input.value = '';
                             };
+                            dropdown.appendChild(item);
                         });
+                        dropdown.style.display = "block";
                     } else {
                         dropdown.innerHTML = `<div style="padding:10px; color:#64748b; font-size:11px; text-align:center;">NO RESULTS FOUND</div>`;
                         dropdown.style.display = "block";
@@ -582,9 +578,7 @@ export const TerminalApp = {
         });
 
         document.addEventListener("click", (e) => {
-            if (!input.contains(e.target) && !dropdown.contains(e.target)) {
-                dropdown.style.display = "none";
-            }
+            if (!input.contains(e.target) && !dropdown.contains(e.target)) dropdown.style.display = "none";
         });
     }
 };
