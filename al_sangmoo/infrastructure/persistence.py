@@ -126,8 +126,48 @@ def init_database() -> None:
             created_at TEXT
         )
         """)
-        
+
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS trade_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            holding_id INTEGER,
+            ticker TEXT NOT NULL,
+            buy_date TEXT,
+            sell_date TEXT,
+            buy_price REAL,
+            sell_price REAL,
+            quantity REAL,
+            pnl_pct REAL,
+            pnl_amount REAL,
+            reason TEXT,
+            created_at TEXT
+        )
+        """)
+
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS execution_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            ticker TEXT NOT NULL,
+            side TEXT NOT NULL,
+            quantity REAL NOT NULL,
+            price REAL NOT NULL,
+            total_amount REAL NOT NULL,
+            order_type TEXT DEFAULT 'MARKETABLE',
+            status TEXT DEFAULT 'FILLED',
+            message TEXT,
+            order_id TEXT
+        )
+        """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_execution_logs_ts ON execution_logs(timestamp DESC);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_trade_history_ticker ON trade_history(ticker);")
         cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_trades_date_ticker ON trades(date, ticker);")
+        
+        # Schema migration for existing databases
+        try:
+            cursor.execute("ALTER TABLE macro_history ADD COLUMN msi_score REAL DEFAULT 50.0")
+        except Exception:
+            pass
         conn.commit()
 
 def save_macro_history_record(date_str: str, macro_climate: dict, macro_gauges: dict) -> None:
@@ -168,15 +208,23 @@ def get_latest_macro_record() -> dict:
         row = cursor.fetchone()
         return dict(row) if row else None
 
-def add_portfolio_buy(ticker: str, buy_price: float, quantity: float, buy_date: str = None) -> int:
+def add_portfolio_buy(
+    ticker: str,
+    buy_price: float,
+    quantity: float,
+    buy_date: str = None,
+    target_price: float = None,
+    stop_loss_price: float = None,
+    partial_tp_price: float = None
+) -> int:
     init_database()
     if not buy_date:
         buy_date = datetime.now().strftime("%Y-%m-%d")
         
     total_cost = buy_price * quantity
-    target_price = round(buy_price * 1.15, 2)
-    stop_loss_price = round(buy_price * 0.97, 2)
-    partial_tp_price = round(buy_price * 1.08, 2)
+    eff_target_price = target_price if target_price is not None else round(buy_price * 1.15, 2)
+    eff_stop_loss_price = stop_loss_price if stop_loss_price is not None else round(buy_price * 0.96, 2)
+    eff_partial_tp_price = partial_tp_price if partial_tp_price is not None else round(buy_price * 1.08, 2)
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
     with get_connection() as conn:
@@ -191,7 +239,7 @@ def add_portfolio_buy(ticker: str, buy_price: float, quantity: float, buy_date: 
         """, (
             ticker, buy_date, buy_price, quantity, buy_price,
             total_cost, total_cost, 0.0, 0.0,
-            target_price, stop_loss_price, partial_tp_price, now_str
+            eff_target_price, eff_stop_loss_price, eff_partial_tp_price, now_str
         ))
         inserted_id = cursor.lastrowid
         conn.commit()
@@ -230,6 +278,17 @@ def record_portfolio_sell(holding_id: int, sell_price: float, sell_date: str = N
             sell_price * quantity, pnl_pct, pnl_amt,
             f"청산 완료 ({pnl_pct:+.2f}%) - {clean_reason}", holding_id
         ))
+
+        cursor.execute("""
+        INSERT INTO trade_history (
+            holding_id, ticker, buy_date, sell_date, buy_price,
+            sell_price, quantity, pnl_pct, pnl_amount, reason, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            holding_id, str(row['ticker']), str(row['buy_date']), sell_date, buy_price,
+            sell_price, quantity, pnl_pct, pnl_amt, clean_reason, datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        ))
+
         conn.commit()
         return True
 
@@ -269,26 +328,71 @@ def get_live_portfolio() -> dict:
         h['quantity'] = quantity
         h['total_cost'] = total_cost
         h['current_price'] = cur_price
-        h['current_value'] = cur_val
-        h['pnl_pct'] = pnl_pct
-        h['pnl_amount'] = pnl_amt
+        # v2 Trailing Stop Floor & Hard Stop (-4%)
+        stop_p = float(h.get('stop_loss_price') or round(buy_price * 0.96, 2))
+        h['stop_loss_price'] = stop_p
+        
+        # Calculate dynamic trailing stop floor if gain >= +15%
+        if pnl_pct >= 15.0:
+            trailing_floor = max(cur_price * 0.93, buy_price * 1.10)
+            h['trailing_floor'] = round(trailing_floor, 2)
+            h['is_trailing_active'] = True
+        else:
+            h['trailing_floor'] = round(buy_price * 1.15, 2)
+            h['is_trailing_active'] = False
+
         h['target_price'] = float(h.get('target_price', round(buy_price * 1.15, 2)))
-        h['stop_loss_price'] = float(h.get('stop_loss_price', round(buy_price * 0.97, 2)))
         h['partial_tp_price'] = float(h.get('partial_tp_price', round(buy_price * 1.08, 2)))
-        h['exit_advice'] = h.get('exit_advice') or "보유 지속"
+        h['exit_advice'] = h.get('exit_advice') or "보유 지속 (v2 가디언 감시 중)"
         
         total_invested += total_cost
         total_eval += cur_val
         
-    overall_pnl_pct = ((total_eval - total_invested) / total_invested * 100) if total_invested > 0 else 0.0
-    overall_pnl_amt = total_eval - total_invested
+    unrealized_pnl_usd = total_eval - total_invested
+    unrealized_pnl_pct = ((unrealized_pnl_usd) / total_invested * 100) if total_invested > 0 else 0.0
+
+    # Financial Cash & Equity Accounting (Base: $7,500 / 10,000,000 KRW account)
+    base_account_usd = 7500.0
+    usd_krw_rate = 1380.0
+
+    # 1. Fetch Realized Trading PnL from SQLite SSOT closed records (CQRS Pure Read)
+    realized_pnl_usd = 0.0
+    realized_pnl_pct = 0.0
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT SUM(pnl_amount) FROM my_portfolio WHERE status = 'SOLD'")
+        row = cursor.fetchone()
+        if row and row[0] is not None:
+            realized_pnl_usd = float(row[0])
+            realized_pnl_pct = (realized_pnl_usd / base_account_usd) * 100.0
+
+    total_pnl_usd = realized_pnl_usd + unrealized_pnl_usd
+    total_equity_usd = max(0.0, base_account_usd + total_pnl_usd)
+    free_cash_usd = max(0.0, total_equity_usd - total_eval)
     
+    total_cumulative_pnl_pct = ((total_equity_usd - base_account_usd) / base_account_usd * 100.0)
+    free_cash_krw = int(free_cash_usd * usd_krw_rate)
+    total_equity_krw = int(total_equity_usd * usd_krw_rate)
+    cash_ratio_pct = (free_cash_usd / total_equity_usd * 100.0) if total_equity_usd > 0 else 100.0
+
     return {
         "holdings": holdings,
-        "total_invested": total_invested,
-        "total_eval": total_eval,
-        "overall_pnl_pct": overall_pnl_pct,
-        "overall_pnl_amount": overall_pnl_amt
+        "total_invested": round(total_invested, 2),
+        "total_eval": round(total_eval, 2),
+        "unrealized_pnl_pct": round(unrealized_pnl_pct, 2),
+        "unrealized_pnl_amount": round(unrealized_pnl_usd, 2),
+        "realized_pnl_pct": round(realized_pnl_pct, 2),
+        "realized_pnl_amount": round(realized_pnl_usd, 2),
+        "overall_pnl_pct": round(total_cumulative_pnl_pct, 2),
+        "overall_pnl_amount": round(total_pnl_usd, 2),
+        "total_equity_usd": round(total_equity_usd, 2),
+        "total_equity_krw": total_equity_krw,
+        "free_cash_usd": round(free_cash_usd, 2),
+        "free_cash_krw": free_cash_krw,
+        "cash_ratio_pct": round(cash_ratio_pct, 1),
+        "usd_krw_rate": usd_krw_rate,
+        "active_slot_count": len(holdings),
+        "available_slots": max(0, 3 - len(holdings))
     }
 
 def sync_portfolio_prices() -> dict:
@@ -310,7 +414,21 @@ def sync_portfolio_prices() -> dict:
     prices_map = {}
     missing_tickers = []
     
+    # 1. Primary Source: KIS Live Price (Ultra-fast 0.1s real-time quote via TR HHDFS00000300)
+    try:
+        from al_sangmoo.infrastructure.brokers.kis_broker import default_kis_broker
+        if default_kis_broker.is_configured():
+            for tk in unique_tickers:
+                live_p = default_kis_broker.get_live_price(tk)
+                if live_p is not None and live_p > 0:
+                    prices_map[tk] = live_p
+    except Exception as e:
+        pass
+
+    # 2. Secondary Fallback: Local chart cache
     for tk in unique_tickers:
+        if tk in prices_map:
+            continue
         chart_file = os.path.join(str(CHARTS_DIR), f"{tk}.json")
         if os.path.exists(chart_file):
             try:
@@ -326,6 +444,7 @@ def sync_portfolio_prices() -> dict:
         else:
             missing_tickers.append(tk)
             
+    # 3. Tertiary Fallback: Yahoo Finance
     if missing_tickers:
         def fetch_price(tk):
             try:
@@ -342,6 +461,7 @@ def sync_portfolio_prices() -> dict:
             for tk, pr in executor.map(fetch_price, missing_tickers):
                 if pr is not None:
                     prices_map[tk] = pr
+
                     
     update_rows = []
     for h in holdings:
@@ -357,12 +477,12 @@ def sync_portfolio_prices() -> dict:
         
         if pnl_pct >= 15.0:
             advice = f"전량 익절 매도 권고 (목표가 달성 {pnl_pct:+.2f}%)"
-        elif pnl_pct <= -3.0:
+        elif pnl_pct <= -4.0:
             advice = f"칼손절 긴급 매도 권고 (손절선 이탈 {pnl_pct:+.2f}%)"
         elif 8.0 <= pnl_pct < 15.0:
             advice = f"50% 분할 익절 권고 (수익률 {pnl_pct:+.1f}%)"
         else:
-            advice = f"보유 지속 (손절선 ${buy_price * 0.97:,.2f} 유지)"
+            advice = f"보유 지속 (손절선 ${buy_price * 0.96:,.2f} 유지)"
             
         update_rows.append((cur_price, cur_val, pnl_pct, pnl_amt, advice, h['id']))
         
@@ -372,11 +492,42 @@ def sync_portfolio_prices() -> dict:
             cursor.executemany("""
             UPDATE my_portfolio
             SET current_price = ?, current_value = ?, pnl_pct = ?, pnl_amount = ?, exit_advice = ?
-            WHERE id = ?
+            WHERE id = ? AND status = 'HOLDING'
             """, update_rows)
             conn.commit()
             
     return get_live_portfolio()
+
+def get_trade_history_records(limit: int = 100) -> list:
+    """Returns closed trade history and realized returns from SQLite SSOT."""
+    init_database()
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+        SELECT id, holding_id, ticker, buy_date, sell_date, buy_price,
+               sell_price, quantity, pnl_pct, pnl_amount, reason, created_at
+        FROM trade_history
+        ORDER BY id DESC
+        LIMIT ?
+        """, (limit,))
+        rows = cursor.fetchall()
+        return [
+            {
+                "id": r[0],
+                "holding_id": r[1],
+                "ticker": r[2],
+                "buy_date": r[3],
+                "sell_date": r[4],
+                "buy_price": r[5],
+                "sell_price": r[6],
+                "quantity": r[7],
+                "pnl_pct": r[8],
+                "pnl_amount": r[9],
+                "reason": r[10],
+                "created_at": r[11]
+            }
+            for r in rows
+        ]
 
 def save_recommendation_matrix_record(date_str: str, bull_picks: list, neutral_picks: list, bear_picks: list) -> None:
     init_database()
@@ -544,6 +695,45 @@ def get_daily_recommendation_history() -> list:
     # Sort by date descending
     result = [history_by_date[d] for d in sorted(history_by_date.keys(), reverse=True)]
     return result
+
+def record_execution_log(
+    ticker: str,
+    side: str,
+    quantity: float,
+    price: float,
+    order_type: str = "MARKETABLE_LIMIT",
+    status: str = "FILLED",
+    message: str = "",
+    order_id: str = "",
+    timestamp: str = None
+) -> int:
+    """Records an executed broker or terminal trade log for the real-time audit trail."""
+    init_database()
+    ts = timestamp or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    tot_amt = round(float(price) * float(quantity), 2)
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+        INSERT INTO execution_logs (
+            timestamp, ticker, side, quantity, price, total_amount,
+            order_type, status, message, order_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            ts, ticker.upper(), side.upper(), float(quantity), float(price),
+            tot_amt, str(order_type), str(status), str(message), str(order_id)
+        ))
+        inserted_id = cursor.lastrowid
+        conn.commit()
+        return inserted_id
+
+def get_execution_logs(limit: int = 50) -> list:
+    """Returns the most recent execution logs in chronological order (latest first)."""
+    init_database()
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM execution_logs ORDER BY timestamp DESC, id DESC LIMIT ?", (limit,))
+        rows = cursor.fetchall()
+        return [dict(r) for r in rows]
 
 # Aliases
 get_db = get_connection

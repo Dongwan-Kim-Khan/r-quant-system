@@ -36,8 +36,8 @@ jobs:
 
       - name: Commit and Push Updated Forward Tracking History
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add trade_history.csv daily_reports/
-          git commit -m "chore: auto-update forward trade history & daily briefing [skip ci]" || echo "No changes to commit"
-          git push
+            git config --global user.name "github-actions[bot]"
+            git config --global user.email "github-actions[bot]@users.noreply.github.com"
+            git add trade_history.csv daily_reports/ dashboard_data.json
+            git commit -m "chore: auto-update forward trade history & daily briefing [skip ci]" || echo "No changes to commit"
+            git push

@@ -5,13 +5,16 @@ High-performance, CQRS-compliant trading server mounting modular APIRouters and 
 
 import os
 import sys
+import json
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
+from contextlib import asynccontextmanager
+import pandas as pd
 import db_manager
 from al_sangmoo.api.hub import hub
 from al_sangmoo.interfaces.api.routers import (
@@ -19,8 +22,13 @@ from al_sangmoo.interfaces.api.routers import (
     charts,
     portfolio,
     scanner,
-    broker
+    broker,
+    guardian,
+    autopilot
 )
+from al_sangmoo.domain.risk.portfolio_guardian import default_guardian
+from al_sangmoo.domain.risk.autopilot_trader import default_autopilot
+
 from al_sangmoo.interfaces.api.routers.portfolio import (
     BuyOrder,
     SellOrder,
@@ -49,6 +57,75 @@ from al_sangmoo.interfaces.api.routers.charts import (
     CHART_CACHE
 )
 
+# Legacy aliases for backwards compatibility
+def get_ticker_chart(ticker: str):
+    import asyncio
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+    if loop and loop.is_running():
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(lambda: asyncio.run(get_chart_data(ticker)))
+            return future.result()
+    else:
+        return asyncio.run(get_chart_data(ticker))
+
+try:
+    from al_sangmoo.backtest.engine import run_backtest_simulation
+    get_backtest_report = run_backtest_simulation
+except ImportError:
+    pass
+
+try:
+    from al_sangmoo.domain.quant.ichimoku import calculate_ichimoku_indicators
+    get_ichimoku_indicators = calculate_ichimoku_indicators
+except ImportError:
+    pass
+
+try:
+    from al_sangmoo.domain.quant.macro import calculate_msi_regime
+    get_macro_climate = calculate_msi_regime
+except ImportError:
+    pass
+
+try:
+    from al_sangmoo.domain.quant.scoring import evaluate_quant_score
+    get_quant_score = evaluate_quant_score
+except ImportError:
+    pass
+
+try:
+    from al_sangmoo.domain.quant.multi_timeframe import calculate_mtf_consensus
+    get_mtf_consensus = calculate_mtf_consensus
+except ImportError:
+    pass
+
+def get_recommended_position_size(ticker: str = "SPY", equity: float = 100000.0, msi: float = 50.0, **kwargs):
+    from al_sangmoo.domain.risk.position_sizer import calculate_dynamic_position_size, calculate_atr
+    import yfinance as yf
+    try:
+        df = yf.download(ticker, period="1mo", interval="1d", progress=False)
+        if isinstance(df.columns, pd.MultiIndex):
+            if 'Close' in df.columns.get_level_values(0):
+                df.columns = df.columns.get_level_values(0)
+            elif 'Close' in df.columns.get_level_values(1):
+                df.columns = df.columns.get_level_values(1)
+        cur_price = float(df['Close'].iloc[-1]) if not df.empty else 100.0
+        atr = calculate_atr(df) if not df.empty else (cur_price * 0.02)
+    except Exception:
+        cur_price = 100.0
+        atr = 2.0
+    res = calculate_dynamic_position_size(
+        portfolio_equity=equity,
+        current_price=cur_price,
+        atr_14=atr,
+        msi_score=msi
+    )
+    res["ticker"] = ticker
+    return res
+
 # Windows UTF-8 encoding fix
 if sys.platform.startswith('win'):
     try:
@@ -56,10 +133,20 @@ if sys.platform.startswith('win'):
     except Exception:
         pass
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    db_manager.init_database()
+    default_guardian.start()
+    default_autopilot.start()
+    yield
+    default_guardian.stop()
+    default_autopilot.stop()
+
 app = FastAPI(
     title="Al-Sangmoo Institutional Quant Platform",
     description="Algorithmic trading workstation, Ichimoku 3-Tier quant matrix, and KIS REST broker gateway.",
-    version="3.5"
+    version="3.5",
+    lifespan=lifespan
 )
 
 ALLOWED_ORIGINS = [
@@ -123,10 +210,10 @@ app.include_router(charts.router)
 app.include_router(portfolio.router)
 app.include_router(scanner.router)
 app.include_router(broker.router)
+app.include_router(guardian.router)
+app.include_router(autopilot.router)
 
-@app.on_event("startup")
-def startup_event():
-    db_manager.init_database()
+
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_dashboard():
@@ -137,19 +224,23 @@ async def serve_dashboard():
         return FileResponse(LEGACY_DASHBOARD, media_type="text/html")
     return HTMLResponse("<h1>R Quant Terminal: Frontend Not Found</h1>", status_code=404)
 
-@app.get("/legacy", response_class=HTMLResponse)
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    """Handles browser favicon requests without 404 log clutter."""
+    from fastapi.responses import Response
+    return Response(status_code=204)
+
+@app.get("/legacy")
 async def serve_legacy_dashboard():
-    """Serves the monolithic single-file dashboard for backward compatibility."""
-    if os.path.exists(LEGACY_DASHBOARD):
-        return FileResponse(LEGACY_DASHBOARD, media_type="text/html")
-    return HTMLResponse("<h1>Legacy Dashboard Not Found</h1>", status_code=404)
+    """Redirects legacy dashboard permanently to modern modular terminal."""
+    return RedirectResponse(url="/", status_code=307)
 
 @app.websocket("/ws")
 @app.websocket("/ws/live_feed")
 async def websocket_live_hub(websocket: WebSocket):
     """Real-time WebSocket connection to broadcast hub with CSWSH protection."""
     origin = websocket.headers.get("origin")
-    if origin and origin not in ALLOWED_ORIGINS and not origin.startswith("http://localhost:") and not origin.startswith("http://127.0.0.1:"):
+    if not origin or origin not in ALLOWED_ORIGINS:
         await websocket.close(code=1008, reason="Forbidden Origin")
         return
         
@@ -158,15 +249,22 @@ async def websocket_live_hub(websocket: WebSocket):
         return
     try:
         p_data = db_manager.get_live_portfolio()
-        await websocket.send_json({"type": "connected", "data": {"portfolio": p_data}})
+        await websocket.send_json({"type": "connected", "event": "connected", "data": {"portfolio": p_data}})
         while True:
             msg = await websocket.receive_text()
             if msg == "ping":
                 await websocket.send_text("pong")
+            else:
+                try:
+                    data = json.loads(msg)
+                    if data.get("type") == "ping" or data.get("event") == "ping":
+                        await websocket.send_text("pong")
+                except Exception:
+                    pass
     except WebSocketDisconnect:
         await hub.disconnect(websocket)
     except Exception:
         await hub.disconnect(websocket)
 
 if __name__ == "__main__":
-    uvicorn.run("server:app", host="127.0.0.1", port=8000, reload=False, log_level="info")
+    uvicorn.run("server:app", host="127.0.0.1", port=8000, reload=False, log_level="info", ws_ping_interval=20.0, ws_ping_timeout=30.0)
