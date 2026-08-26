@@ -181,10 +181,10 @@ export const WebSocketClient = {
             UI.renderDashboard(msg.data);
         } else if (eventType === "portfolio_update" && msg.data) {
             UI.renderPortfolio(msg.data);
-            UI.renderKPIs(null, msg.data, false);
+            UI.renderKPIs(null, msg.data, null);
         } else if (eventType === "connected" && msg.data && msg.data.portfolio) {
             UI.renderPortfolio(msg.data.portfolio);
-            UI.renderKPIs(null, msg.data.portfolio, false);
+            UI.renderKPIs(null, msg.data.portfolio, null);
         } else if (eventType === "autopilot_buy_alert" && msg.data) {
             const tr = msg.data;
             alert(`[AUTOPILOT: ORDER COMPLETED]\n\n• TICKER: ${tr.ticker} (${tr.name})\n• SHARES: ${tr.shares} SH\n• PRICE: $${Number(tr.buy_price).toFixed(2)}\n• STRATEGY: ${tr.strategy}`);

@@ -1,18 +1,17 @@
 /**
- * R QUANT TERMINAL: UI RENDERING & EVENT DISPATCHER MODULE
- * Renders 3-Tier Cards, Signal Tracker, Macro Gauges, Portfolio Tables, and Search.
+ * R QUANT TERMINAL v2: UI RENDERING & EVENT DISPATCHER MODULE
+ * Professional Bloomberg Dark Terminal Aesthetic (Zero Emojis).
+ * Al-Sangmoo GS-Quant Upgraded 3-Slot Trading Cockpit.
  */
-
-import { ApiClient } from './api.js';
-import { ChartEngine } from './chart.js';
-import { QuantDecoder } from './decoder.js';
+import { ApiClient } from './api.js?v=4.0.6';
+import { ChartEngine } from './chart.js?v=4.0.6';
+import { QuantDecoder } from './decoder.js?v=4.0.6';
 
 export const UI = {
-    currentSelectedTicker: "NVDA",
+    currentSelectedTicker: "",
     currentSelectedPrice: 0.0,
     latestDashboardData: null,
 
-    // Safe HTML Escape to prevent XSS (SEC-01 compliance)
     escapeHtml(str) {
         if (str === null || str === undefined) return '';
         return String(str)
@@ -23,568 +22,447 @@ export const UI = {
             .replace(/'/g, '&#039;');
     },
 
-    /**
-     * Render full dashboard feed
-     */
     renderDashboard(data) {
         if (!data) return;
         this.latestDashboardData = data;
-
-        const updatedTime = data.last_updated || (data.kpis && data.kpis.last_updated) || new Date().toLocaleString();
+        
+        const updatedTime = data.last_updated || (data.kpis && data.kpis.last_updated) || new Date().toLocaleTimeString();
         const lastUpEl = document.getElementById("lastUpdated");
-        if (lastUpEl) lastUpEl.textContent = `Updated: ${updatedTime}`;
+        if (lastUpEl) lastUpEl.textContent = `UPDATED: ${updatedTime}`;
 
-        // 1. Macro Climate & Gauges
-        try {
-            this.renderMacro(data.macro);
-        } catch (e) {
-            console.warn("[UI] renderMacro error:", e);
-        }
+        const isBullRegime = (data.slot_allocation_summary && data.slot_allocation_summary.is_bull_regime !== undefined) 
+            ? data.slot_allocation_summary.is_bull_regime 
+            : true;
 
-        // 2. KPIs
-        try {
-            this.renderKPIs(data.kpis, data.portfolio);
-        } catch (e) {
-            console.warn("[UI] renderKPIs error:", e);
-        }
-
-        // 3. 3-Tier Tactical Quant Signal Cards
-        try {
-            this.renderTacticalCards(data);
-        } catch (e) {
-            console.warn("[UI] renderTacticalCards error:", e);
-        }
-
-        // 4. Unified Signal Tracker Table
-        try {
-            this.renderSignalTracker(data.signal_tracker || []);
-        } catch (e) {
-            console.warn("[UI] renderSignalTracker error:", e);
-        }
-
-        // 5. Portfolio Table
-        try {
-            this.renderPortfolio(data.portfolio);
-        } catch (e) {
-            console.warn("[UI] renderPortfolio error:", e);
-        }
-
-        // 6. Recommendation History
-        try {
-            this.renderDailyHistory(data.daily_history || []);
-        } catch (e) {
-            console.warn("[UI] renderDailyHistory error:", e);
-        }
+        try { this.renderMacro(data.macro, isBullRegime); } catch (e) { console.warn("[UI] renderMacro error:", e); }
+        try { this.renderKPIs(data.kpis, data.portfolio, isBullRegime); } catch (e) { console.warn("[UI] renderKPIs error:", e); }
+        try { this.renderSlotVisualizer(data.portfolio, isBullRegime, data.top_conviction_pick); } catch (e) { console.warn("[UI] renderSlotVisualizer error:", e); }
+        try { this.renderTopPicks(data.top_conviction_pick, data.top_conviction_runner_up); } catch (e) { console.warn("[UI] renderTopPicks error:", e); }
+        try { this.renderPortfolio(data.portfolio); } catch (e) { console.warn("[UI] renderPortfolio error:", e); }
+        try { this.renderTradeLogs(data.execution_logs); } catch (e) { console.warn("[UI] renderTradeLogs error:", e); }
     },
 
-    renderMacro(macro) {
+    renderMacro(macro, isBullRegime) {
         if (!macro) return;
+        const mc = macro.macro_climate || {};
+        const mg = macro.macro_gauges || {};
 
-        // Macro Climate & Directive
-        if (macro.macro_climate) {
-            const mc = macro.macro_climate;
-            const hl = document.getElementById("macroHeadline");
-            const dt = document.getElementById("macroDirectiveText");
-            const sb = document.getElementById("macroStanceBadge");
-            const ms = document.getElementById("msiScoreBadge");
-            const needle = document.getElementById("msiNeedle");
-
-            const headlineText = mc.macro_headline || mc.action_headline;
-            const narrativeText = mc.macro_action_directive || mc.narrative;
-            const stanceText = mc.macro_stance || 'DEFENSE_HOLD';
-
-            if (hl && headlineText) hl.textContent = headlineText;
-            if (dt && narrativeText) dt.textContent = narrativeText;
-            if (sb && stanceText) {
-                sb.textContent = stanceText.replace('_', ' ');
-                sb.style.color = stanceText.includes('BULL') ? '#34d399' : '#fbbf24';
-            }
-
-            if (mc.msi_score !== undefined) {
-                if (ms) ms.textContent = `${Number(mc.msi_score).toFixed(1)} / 100`;
-                if (needle) {
-                    const pct = Math.min(100, Math.max(0, Number(mc.msi_score)));
-                    needle.style.left = `${pct}%`;
-                }
-            }
-
-            // MSI Factor Breakdown
-            const mb = mc.msi_breakdown || mc.breakdown;
-            if (mb) {
-                const hVal = document.getElementById("msiHardVal");
-                const hSub = document.getElementById("msiHardSub");
-                const nVal = document.getElementById("msiNlpVal");
-                const nSub = document.getElementById("msiNlpSub");
-                const sVal = document.getElementById("msiShockVal");
-                const sSub = document.getElementById("msiShockSub");
-
-                const hardScore = mb.m_hard !== undefined ? mb.m_hard : (mb.hard_4axis_score || 0);
-                const hardMax = mb.m_hard_max || 60;
-                if (hVal) hVal.textContent = `${Number(hardScore).toFixed(1)} / ${hardMax}.0 pt`;
-                if (hSub) hSub.textContent = mb.hard_stance || `10Y:${mb.us10y_pts || 0} | DXY:${mb.dxy_pts || 0} | VIX:${mb.vix_pts || 0} | WTI:${mb.wti_pts || 0}`;
-
-                const nlpScore = mb.m_nlp !== undefined ? mb.m_nlp : (mb.nlp_sentiment_score || 0);
-                const nlpMax = mb.m_nlp_max || 25;
-                if (nVal) nVal.textContent = `${Number(nlpScore).toFixed(1)} / ${nlpMax}.0 pt`;
-                if (nSub) nSub.textContent = mb.nlp_stance || `방어 ${mb.def_count || 0}회 vs 매수 ${mb.buy_count || 0}회`;
-
-                const shockScore = mb.m_shock !== undefined ? mb.m_shock : (mb.shock_penalty_score || 0);
-                const shockMax = mb.m_shock_max || 15;
-                if (sVal) sVal.textContent = `${Number(shockScore).toFixed(1)} / ${shockMax}.0 pt`;
-                if (sSub) sSub.textContent = mb.shock_stance || `외생 충격 반영`;
-            }
+        const stanceEl = document.getElementById("macroStanceBadge");
+        if (stanceEl) {
+            stanceEl.textContent = isBullRegime ? "[REGIME: BULL]" : "[REGIME: BEAR]";
+            stanceEl.style.color = isBullRegime ? "#34d399" : "#f87171";
+            stanceEl.style.borderColor = isBullRegime ? "#059669" : "#dc2626";
+            stanceEl.style.background = isBullRegime ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)";
         }
 
-        // Live Financial Gauges
-        const mg = macro.macro_gauges || macro.gauges;
-        if (mg) {
-            const updateGauge = (valId, badgeId, obj, isPct = false, isDollar = false) => {
-                if (!obj) return;
-                const vEl = document.getElementById(valId);
-                const bEl = document.getElementById(badgeId);
-                if (vEl && obj.val !== undefined) {
-                    const prefix = isDollar ? '$' : '';
-                    const suffix = isPct ? '%' : '';
-                    vEl.textContent = `${prefix}${obj.val}${suffix}`;
-                }
-                if (bEl && (obj.status || obj.badge)) {
-                    const statusName = obj.status || obj.badge;
-                    bEl.textContent = statusName;
-                    const isGood = statusName === 'SOFT' || statusName === 'NORMAL' || statusName === 'STABLE' || statusName === 'CALM' || statusName === 'SOFT_DOLLAR';
-                    bEl.style.background = isGood ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)';
-                    bEl.style.color = isGood ? '#34d399' : '#f87171';
-                }
-            };
-
-            updateGauge("gaugeUs10yVal", "gaugeUs10yBadge", mg.us10y, true);
-            updateGauge("gaugeDxyVal", "gaugeDxyBadge", mg.dxy);
-            updateGauge("gaugeVixVal", "gaugeVixBadge", mg.vix);
-            updateGauge("gaugeWtiVal", "gaugeWtiBadge", mg.wti, false, true);
-            updateGauge("gaugeGoldVal", "gaugeGoldBadge", mg.gold, false, true);
+        const headlineEl = document.getElementById("macroHeadline");
+        if (headlineEl) {
+            headlineEl.textContent = mc.macro_headline || "[MACRO DIRECTIVE: DUAL MOMENTUM + 3M RS CONVICTION SELECTION]";
         }
 
-        const sTitle = macro.title || macro.stream_title;
-        if (sTitle) {
-            const sLink = document.getElementById("streamLink");
-            if (sLink) {
-                sLink.textContent = sTitle;
-                if (macro.url && /^https?:\/\//i.test(macro.url)) {
-                    sLink.href = macro.url;
-                }
-            }
+        const updateVal = (id, val, prefix = '', suffix = '') => {
+            const el = document.getElementById(id);
+            if (el && val !== undefined) el.textContent = `${prefix}${val}${suffix}`;
+        };
+
+        if (mg.us10y) updateVal("gaugeUs10yVal", mg.us10y.val, '', '%');
+        if (mg.dxy) updateVal("gaugeDxyVal", mg.dxy.val);
+        if (mg.vix) updateVal("gaugeVixVal", mg.vix.val);
+        if (mg.wti) updateVal("gaugeWtiVal", mg.wti.val, '$');
+        if (mg.gold) updateVal("gaugeGoldVal", mg.gold.val, '$');
+    },
+
+    renderKPIs(kpis, portfolioData, isBullRegime) {
+        const p = portfolioData || {};
+        const holdings = Array.isArray(p.holdings) ? p.holdings : [];
+
+        const effectiveIsBull = (isBullRegime !== undefined && isBullRegime !== null)
+            ? Boolean(isBullRegime)
+            : ((this.latestDashboardData && this.latestDashboardData.slot_allocation_summary && this.latestDashboardData.slot_allocation_summary.is_bull_regime !== undefined)
+                ? this.latestDashboardData.slot_allocation_summary.is_bull_regime
+                : true);
+
+        const totalEquityUsd = Number(p.total_equity_usd !== undefined ? p.total_equity_usd : (p.total_equity || 7500.0));
+        const totalEquityKrw = Number(p.total_equity_krw || Math.round(totalEquityUsd * (p.usd_krw_rate || 1380)));
+        const freeCashUsd = Number(p.free_cash_usd !== undefined ? p.free_cash_usd : Math.max(0, totalEquityUsd - (p.total_eval || 0)));
+        const freeCashKrw = Number(p.free_cash_krw !== undefined ? p.free_cash_krw : Math.round(freeCashUsd * (p.usd_krw_rate || 1380)));
+        const cashRatioPct = Number(p.cash_ratio_pct !== undefined ? p.cash_ratio_pct : (totalEquityUsd > 0 ? (freeCashUsd / totalEquityUsd * 100) : 100));
+        const totalEvalUsd = Number(p.total_eval !== undefined ? p.total_eval : 0.0);
+        const pnlPct = Number(p.overall_pnl_pct || 0.0);
+        const pnlAmt = Number(p.overall_pnl_amount || 0.0);
+        const maxSlots = effectiveIsBull ? 3 : 2;
+        const availableSlots = Math.max(0, maxSlots - holdings.length);
+
+        const initialCapitalUsd = Number(p.initial_capital_usd || p.base_account_usd || (totalEquityUsd - pnlAmt) || 7500.0);
+        const totalCumulativePnlUsd = totalEquityUsd - initialCapitalUsd;
+        const totalCumulativeReturnPct = (initialCapitalUsd > 0) ? (totalCumulativePnlUsd / initialCapitalUsd) * 100.0 : 0.0;
+        const isTotalPos = totalCumulativePnlUsd >= 0;
+
+        const realizedPnlUsd = Number(p.realized_pnl_amount || 0.0);
+        const realizedPnlPct = Number(p.realized_pnl_pct || 0.0);
+        const unrealizedPnlUsd = Number(p.unrealized_pnl_amount || 0.0);
+        const unrealizedPnlPct = Number(p.unrealized_pnl_pct || 0.0);
+
+        // 1. Total Equity Card
+        const eqUsdEl = document.getElementById("kpiTotalEquityUsd");
+        if (eqUsdEl) eqUsdEl.textContent = `$${totalEquityUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        const eqKrwEl = document.getElementById("kpiTotalEquityKrw");
+        if (eqKrwEl) {
+            const retColor = isTotalPos ? 'var(--accent-green)' : 'var(--accent-red)';
+            const rlzColor = realizedPnlUsd >= 0 ? '#34d399' : '#f87171';
+            eqKrwEl.innerHTML = `INIT: $${initialCapitalUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} | RETURN: <strong style="color:${retColor}">${isTotalPos ? '+' : ''}${totalCumulativeReturnPct.toFixed(2)}% (${isTotalPos ? '+' : ''}$${totalCumulativePnlUsd.toFixed(2)})</strong> <span style="font-size:10px; color:${rlzColor}; margin-left:4px;">[실현: ${realizedPnlPct >= 0 ? '+' : ''}${realizedPnlPct.toFixed(2)}%]</span>`;
         }
-        const mNarrative = macro.macro_narrative || macro.macro_summary;
-        if (mNarrative) {
-            const mNarr = document.getElementById("macroNarrative");
-            if (mNarr) mNarr.textContent = `| ${mNarrative}`;
+
+        // 2. Free Cash Card
+        const cashUsdEl = document.getElementById("kpiFreeCashUsd");
+        if (cashUsdEl) cashUsdEl.textContent = `$${freeCashUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        const cashTextEl = document.getElementById("kpiCashRatioText");
+        if (cashTextEl) {
+            cashTextEl.textContent = `RATIO: ${cashRatioPct.toFixed(1)}% (KRW: ${freeCashKrw.toLocaleString()}) | ${availableSlots > 0 ? `${availableSlots} SLOTS READY` : 'SLOTS FULL'}`;
+            cashTextEl.style.color = availableSlots > 0 ? '#a7f3d0' : '#fca5a5';
+        }
+
+        // 3. Holdings Evaluation Card
+        const evalUsdEl = document.getElementById("kpiHoldingsEvalUsd");
+        if (evalUsdEl) evalUsdEl.textContent = `$${totalEvalUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        const pnlTextEl = document.getElementById("kpiPnlText");
+        if (pnlTextEl) {
+            const isUnrealPos = unrealizedPnlUsd >= 0;
+            const isRlzPos = realizedPnlUsd >= 0;
+            pnlTextEl.innerHTML = `평가: <span style="color:${isUnrealPos ? 'var(--accent-green)' : 'var(--accent-red)'}">${isUnrealPos ? '+' : ''}${unrealizedPnlPct.toFixed(2)}% (${isUnrealPos ? '+' : ''}$${unrealizedPnlUsd.toFixed(2)})</span> | 실현: <span style="color:${isRlzPos ? 'var(--accent-green)' : 'var(--accent-red)'}">${isRlzPos ? '+' : ''}${realizedPnlPct.toFixed(2)}% (${isRlzPos ? '+' : ''}$${realizedPnlUsd.toFixed(2)})</span>`;
+        }
+
+        // 4. Market Regime Card
+        const regimeEl = document.getElementById("kpiRegimeBadge");
+        if (regimeEl) {
+            regimeEl.textContent = effectiveIsBull ? "[BULL REGIME]" : "[BEAR REGIME]";
+            regimeEl.style.color = effectiveIsBull ? "#34d399" : "#f87171";
+        }
+        const regimeDescEl = document.getElementById("kpiRegimeDesc");
+        if (regimeDescEl) {
+            regimeDescEl.textContent = effectiveIsBull ? "BULL MARKET: 3-SLOT 100% CAPITAL DEPLOYMENT" : "BEAR MARKET: 2-SLOT 50% CASH DEFENSE";
         }
     },
 
-    renderKPIs(kpis, portfolioData) {
-        const countEl = document.getElementById("kpiCount");
-        const invEl = document.getElementById("kpiInvested");
-        const evalEl = document.getElementById("kpiEval");
-        const pnlEl = document.getElementById("kpiPnl");
+    renderSlotVisualizer(portfolioData, isBullRegime, topPick) {
+        const grid = document.getElementById("slotVisualizerGrid");
+        const summaryText = document.getElementById("slotSummaryText");
+        if (!grid) return;
 
-        const holdings = Array.isArray(portfolioData)
-            ? portfolioData
-            : (portfolioData && Array.isArray(portfolioData.holdings) ? portfolioData.holdings : []);
-
-        const activeCount = holdings.length > 0 
-            ? holdings.length 
-            : (kpis && kpis.active_positions !== undefined ? kpis.active_positions : 0);
-
-        const totalInvested = (portfolioData && portfolioData.total_invested !== undefined)
-            ? Number(portfolioData.total_invested)
-            : (kpis && kpis.total_invested !== undefined ? Number(kpis.total_invested) : 0.0);
-
-        const totalEval = (portfolioData && portfolioData.total_eval !== undefined)
-            ? Number(portfolioData.total_eval)
-            : (kpis && kpis.total_eval !== undefined ? Number(kpis.total_eval) : 0.0);
-
-        const pnlPct = (portfolioData && portfolioData.overall_pnl_pct !== undefined)
-            ? Number(portfolioData.overall_pnl_pct)
-            : (kpis && kpis.overall_pnl_pct !== undefined ? Number(kpis.overall_pnl_pct) : 0.0);
-
-        const pnlAmt = (portfolioData && portfolioData.overall_pnl_amount !== undefined)
-            ? Number(portfolioData.overall_pnl_amount)
-            : (kpis && kpis.overall_pnl_amount !== undefined ? Number(kpis.overall_pnl_amount) : 0.0);
-
-        if (countEl) countEl.textContent = activeCount;
-        if (invEl) invEl.textContent = `$${totalInvested.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-        if (evalEl) evalEl.textContent = `$${totalEval.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-        if (pnlEl) {
-            const isPos = pnlPct >= 0;
-            pnlEl.textContent = `${isPos ? '+' : ''}${pnlPct.toFixed(2)}% ($${isPos ? '+' : ''}${pnlAmt.toFixed(2)})`;
-            pnlEl.style.color = isPos ? 'var(--accent-green)' : 'var(--accent-red)';
+        const p = portfolioData || {};
+        const holdings = Array.isArray(p.holdings) ? p.holdings : [];
+        const maxSlots = isBullRegime ? 3 : 2;
+        
+        if (summaryText) {
+            summaryText.textContent = `${holdings.length} / ${maxSlots} SLOTS OCCUPIED`;
+            summaryText.style.color = holdings.length >= maxSlots ? '#f87171' : '#38bdf8';
         }
-    },
 
-    renderTacticalCards(data) {
-        const renderGroup = (containerId, items, defaultBorder) => {
-            const container = document.getElementById(containerId);
-            if (!container) return;
-            if (!items || !Array.isArray(items) || items.length === 0) {
-                container.innerHTML = '<div style="color:var(--text-muted); font-size:11px; padding:8px 0; text-align:center;">조건 만족 종목 없음</div>';
-                return;
-            }
+        const totalEquity = Number(p.total_equity_usd !== undefined ? p.total_equity_usd : (p.total_equity || 7500.0));
+        const curHoldingsVal = holdings.reduce((acc, h) => acc + Number(h.current_value || (Number(h.current_price || h.buy_price || 0) * Number(h.quantity || 1))), 0);
+        const maxEquityDeployable = totalEquity * (isBullRegime ? 1.0 : 0.50); // 100% in Bull, 50% in Bear
+        const remainingDeployable = Math.max(0, maxEquityDeployable - curHoldingsVal);
+        const emptySlotsCount = Math.max(1, maxSlots - holdings.length);
+        const targetSlotUsd = Math.round(remainingDeployable / emptySlotsCount);
+        const slotWeightPct = totalEquity > 0 ? ((targetSlotUsd / totalEquity) * 100).toFixed(1) : (isBullRegime ? '33.3' : '25.0');
+        const cashReserveUsd = Math.round(totalEquity * 0.5);
 
-            container.innerHTML = items.map(item => {
-                const tk = this.escapeHtml(item.ticker);
-                const name = this.escapeHtml(item.name || tk);
-                const price = Number(item.price || 0);
-                const score = item.score !== undefined ? item.score : 90;
-                const reason = this.escapeHtml(item.reason || item.quant_reason || '조건 부합');
-                const isActive = tk === this.currentSelectedTicker ? 'active' : '';
+        let slotHtml = '';
+        for (let i = 0; i < 3; i++) {
+            if (i < holdings.length) {
+                // Occupied Slot
+                const h = holdings[i];
+                const pnl = Number(h.pnl_pct || 0);
+                const isPos = pnl >= 0;
+                const pnlColor = isPos ? '#34d399' : '#f87171';
+                const curPrice = Number(h.current_price || h.buy_price || 0);
+                const buyPrice = Number(h.buy_price || 0);
+                const isTrailing = Boolean(h.is_trailing_active);
+                const curQty = Number(h.quantity || 1);
+                const curVal = Number(h.current_value || curPrice * curQty);
+                const actualWeightPct = totalEquity > 0 ? ((curVal / totalEquity) * 100).toFixed(1) : '0.0';
 
-                return `
-                    <div class="rec-item ${isActive}" data-ticker="${tk}" data-price="${price}" style="border-left: 3px solid ${defaultBorder}; cursor:pointer;" onclick="window.TerminalUI.selectStock('${tk}', ${price})">
-                        <div>
-                            <div class="rec-item-title">${tk} <span style="font-size:11px; color:#94a3b8; font-weight:normal;">${name}</span></div>
-                            <div class="rec-item-sub">${reason}</div>
+                slotHtml += `
+                    <div class="slot-card occupied" style="background:var(--surface-card); border:1px solid var(--hairline-dark); border-top:3px solid ${pnlColor}; border-radius:14px; padding:12px 14px; cursor:pointer;" onclick="window.TerminalUI.selectStock('${this.escapeHtml(h.ticker)}', ${curPrice})">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                            <span style="font-size:10px; font-weight:800; color:var(--text-muted); font-family:'JetBrains Mono';">SLOT #${i + 1} (${actualWeightPct}%)</span>
+                            <span style="font-size:9px; font-weight:800; padding:2px 8px; border-radius:9999px; font-family:'JetBrains Mono'; ${isTrailing ? 'background:rgba(251,191,36,0.15); color:#fbbf24;' : 'background:rgba(255,255,255,0.08); color:var(--text-secondary);'}">${isTrailing ? '[TRAILING]' : '[HOLDING]'}</span>
                         </div>
-                        <div style="text-align:right;">
-                            <div class="rec-item-price">$${price.toFixed(2)}</div>
-                            <div style="font-size:10px; color:${defaultBorder}; font-weight:bold; font-family:'JetBrains Mono';">${score} pt</div>
+                        <div style="display:flex; justify-content:space-between; align-items:baseline;">
+                            <strong style="font-size:15px; color:#ffffff; font-family:'JetBrains Mono';">${this.escapeHtml(h.ticker)}</strong>
+                            <span style="font-size:14px; font-weight:800; color:${pnlColor}; font-family:'JetBrains Mono';">${isPos ? '+' : ''}${pnl.toFixed(1)}%</span>
+                        </div>
+                        <div style="font-size:11px; color:var(--text-muted); margin-top:4px; display:flex; justify-content:space-between; font-family:'JetBrains Mono';">
+                            <span>$${curPrice.toFixed(2)} (${curQty} SH)</span>
+                            <span style="color:${isTrailing ? '#fbbf24' : '#f87171'}; font-weight:700;">${isTrailing ? `TP: $${Number(h.trailing_floor || curPrice * 0.93).toFixed(2)}` : `SL: $${Number(h.stop_loss_price || buyPrice * 0.96).toFixed(2)}`}</span>
                         </div>
                     </div>
                 `;
-            }).join('');
-        };
-
-        // Tier 2: Structural Pullback
-        renderGroup("strat1ExclusiveCards", data.strat1_exclusive || [], "#10b981");
-
-        // Tier 1: Dual Consensus Macro Leader
-        renderGroup("dualConsensusCards", data.dual_consensus || [], "#fbbf24");
-
-        // Tier 3: Cloud Bounce Sniper
-        renderGroup("strat2ExclusiveCards", data.strat2_exclusive || [], "#f87171");
+            } else if (i < maxSlots) {
+                // Empty Available Slot (Dynamically sizes to fill the 50% Bear or 100% Bull Cap)
+                slotHtml += `
+                    <div class="slot-card empty" style="background:var(--surface-deep); border:1px dashed rgba(52,211,153,0.3); border-radius:14px; padding:12px 14px; display:flex; flex-direction:column; justify-content:center; text-align:center;">
+                        <div style="font-size:10px; font-weight:800; color:#34d399; font-family:'JetBrains Mono';">SLOT #${i + 1} [EMPTY]</div>
+                        <div style="font-size:12px; font-weight:700; color:#ffffff; margin-top:3px; font-family:'JetBrains Mono';">$${targetSlotUsd.toLocaleString()} (${slotWeightPct}%)</div>
+                        <div style="font-size:10px; color:var(--text-muted); margin-top:3px; font-family:'JetBrains Mono';">진입 가능</div>
+                    </div>
+                `;
+            } else {
+                // Locked Slot (Bear Mode 50% Cash Defense)
+                slotHtml += `
+                    <div class="slot-card locked" style="background:var(--surface-deep); border:1px dashed rgba(73,79,223,0.4); border-radius:14px; padding:12px 14px; display:flex; flex-direction:column; justify-content:center; text-align:center;">
+                        <div style="font-size:10px; font-weight:800; color:#c7d2fe; font-family:'JetBrains Mono';">SLOT #${i + 1} [현금 방어]</div>
+                        <div style="font-size:12px; font-weight:700; color:#e0e7ff; margin-top:3px; font-family:'JetBrains Mono';">50% 대피 ($${cashReserveUsd.toLocaleString()})</div>
+                        <div style="font-size:10px; color:var(--text-muted); margin-top:3px; font-family:'JetBrains Mono';">하락장 쉴드</div>
+                    </div>
+                `;
+            }
+        }
+        grid.innerHTML = slotHtml;
     },
 
-    renderSignalTracker(signals) {
-        const tbody = document.getElementById("signalTrackerBody");
-        if (!tbody) return;
+    renderTopPicks(topPick, runnerUp) {
+        const container = document.getElementById("topPicksContainer");
+        if (!container) return;
 
-        if (!signals || !Array.isArray(signals) || signals.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:16px;">활성화된 전략 신호가 없습니다.</td></tr>';
-            return;
-        }
-
-        tbody.innerHTML = signals.map(sig => {
-            const tk = this.escapeHtml(sig.ticker);
-            const name = this.escapeHtml(sig.name || tk);
-            const price = Number(sig.price || 0);
-            const score = sig.score || 90;
-            const origin = sig.origin || 'QUANT_DISCOVERY';
-
-            let tierBadge = '<span class="strategy-pill strategy-pullback-pill">TIER 2 (눌림목)</span>';
-            if (sig.tier === 'TIER_1' || origin.includes('DUAL') || origin.includes('VIKINGS')) {
-                tierBadge = '<span class="origin-badge origin-vikings">TIER 1 (거시주도)</span>';
-            } else if (sig.tier === 'TIER_3' || sig.strategy_type === 'STRATEGY_2_SNIPER') {
-                tierBadge = '<span class="strategy-pill strategy-sniper-pill">TIER 3 (스나이퍼)</span>';
+        const renderCard = (pick, rankNum, badgeBg, badgeColor) => {
+            if (!pick) {
+                return `
+                    <div style="background:var(--surface-card); border:1px dashed var(--hairline-dark); border-radius:16px; padding:16px; text-align:center; color:var(--text-muted); font-size:11px; font-family:'JetBrains Mono';">
+                        RANK #${rankNum} NO CANDIDATE
+                    </div>
+                `;
             }
 
-            const originBadge = origin.includes('VIKINGS') 
-                ? '<span class="origin-badge origin-vikings">VIKINGS</span>'
-                : '<span class="origin-badge origin-quant">QUANT</span>';
-
-            const tgt = (price * 1.15).toFixed(2);
-            const stop = (price * 0.97).toFixed(2);
+            const ticker = this.escapeHtml(pick.ticker || '');
+            const name = this.escapeHtml(pick.name || ticker);
+            const price = Number(pick.price || 0);
+            const score = Number(pick.conviction_score || 0);
+            const rs3m = Number(pick.rs_3m || pick.momentum_3m || 0);
+            const isBreakout = Boolean(pick.is_breakout);
+            const sizing = pick.sizing || {};
+            const shares = sizing.shares || 1;
+            const allocUsd = Number(sizing.allocated_usd || price * shares);
+            const allocKrw = sizing.allocated_krw || Math.round(allocUsd * 1380);
 
             return `
-                <tr style="cursor:pointer;" onclick="window.TerminalUI.selectStock('${tk}', ${price})">
-                    <td><span class="ticker-pill bull">${tk}</span> <span style="color:#94a3b8; font-size:11px;">${name}</span></td>
-                    <td>${tierBadge}</td>
-                    <td>${originBadge}</td>
-                    <td style="font-family:'JetBrains Mono'; font-weight:700;">$${price.toFixed(2)}</td>
-                    <td style="font-family:'JetBrains Mono'; color:#34d399;">$${tgt} (+15%)</td>
-                    <td style="font-family:'JetBrains Mono'; color:#f87171;">$${stop} (-3%)</td>
-                    <td><span style="font-family:'JetBrains Mono'; font-weight:800; color:#fbbf24;">${score} pt</span></td>
-                </tr>
+                <div class="top-pick-card" style="background:var(--surface-card); border:1px solid var(--hairline-dark); border-radius:16px; padding:14px 16px; cursor:pointer;" onclick="window.TerminalUI.selectStock('${ticker}', ${price})">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                        <span style="font-size:10px; font-weight:800; background:${badgeBg}; color:${badgeColor}; padding:2px 8px; border-radius:9999px; font-family:'JetBrains Mono';">${rankNum === 1 ? '🥇 RANK #1' : '🥈 RANK #2'}</span>
+                        <span style="font-size:11px; font-weight:800; color:var(--primary-bright); font-family:'JetBrains Mono';">${score} PT</span>
+                    </div>
+
+                    <div style="display:flex; justify-content:space-between; align-items:baseline;">
+                        <div>
+                            <span style="font-size:17px; font-weight:800; color:#ffffff; font-family:'JetBrains Mono';">${ticker}</span>
+                            <span style="font-size:11.5px; color:var(--text-muted); margin-left:6px;">${name}</span>
+                        </div>
+                        <span style="font-size:15px; font-weight:800; color:#34d399; font-family:'JetBrains Mono';">$${price.toFixed(2)}</span>
+                    </div>
+
+                    <div style="font-size:11px; color:var(--text-secondary); margin-top:6px; font-family:'JetBrains Mono'; display:flex; justify-content:space-between;">
+                        <span>RS: <strong style="color:#fbbf24;">${rs3m >= 0 ? '+' : ''}${rs3m.toFixed(1)}%</strong> ${isBreakout ? '[돌파]' : ''}</span>
+                        <span style="color:var(--primary-bright); font-weight:700;">${shares}주 ($${allocUsd.toFixed(0)})</span>
+                    </div>
+
+                    <div style="margin-top:10px;">
+                        <button class="btn-primary-pill" style="width:100%; padding:7px 10px; font-size:11px; font-weight:700; font-family:'JetBrains Mono';" onclick="event.stopPropagation(); window.TerminalUI.executeQuickBuy('${ticker}', ${price}, ${shares}, ${allocUsd}, ${allocKrw}, this)">
+                            BUY ${shares}주 ($${allocUsd.toFixed(0)})
+                        </button>
+                    </div>
+                </div>
             `;
-        }).join('');
+        };
+
+        container.innerHTML = `
+            ${renderCard(topPick, 1, "var(--primary)", "#ffffff")}
+            ${renderCard(runnerUp, 2, "rgba(52,211,153,0.15)", "#34d399")}
+        `;
+    },
+
+    async executeQuickBuy(ticker, price, shares, allocUsd, allocKrw, btnEl) {
+        if (btnEl && btnEl.disabled) return;
+        if (btnEl) {
+            btnEl.disabled = true;
+            btnEl.textContent = "[PROCESSING...]";
+        }
+
+        try {
+            const res = await ApiClient.buyStock(ticker, price, shares);
+            console.log("[ORDER SUCCESS]", res);
+            if (window.TerminalApp) window.TerminalApp.refreshData();
+        } catch (err) {
+            alert(`Order Failed: ${err.message}`);
+        } finally {
+            if (btnEl) {
+                setTimeout(() => {
+                    btnEl.disabled = false;
+                    btnEl.textContent = `[QUICK BUY ${shares} SH] ($${allocUsd.toFixed(0)})`;
+                }, 2000);
+            }
+        }
     },
 
     renderPortfolio(portfolioData) {
-        const tbody = document.getElementById("portfolioTableBody");
-        if (!tbody) return;
+        const pBody = document.getElementById("portfolioTableBody");
+        if (!pBody) return;
 
-        const holdings = Array.isArray(portfolioData)
-            ? portfolioData
-            : (portfolioData && Array.isArray(portfolioData.holdings) ? portfolioData.holdings : []);
+        const p = portfolioData || {};
+        const holdings = Array.isArray(p.holdings) ? p.holdings : [];
 
         if (holdings.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:16px;">보유 중인 포지션이 없습니다.</td></tr>';
+            pBody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:28px; font-family:'Inter', sans-serif; font-size:12px;">No active holdings. Select a top conviction pick or search above to enter a slot.</td></tr>`;
             return;
         }
 
-        tbody.innerHTML = holdings.map(h => {
-            const id = h.id;
-            const tk = this.escapeHtml(h.ticker);
-            const qty = h.quantity || h.qty || 1;
-            const buyPrice = Number(h.buy_price || 0);
-            const curPrice = Number(h.current_price || buyPrice);
-            const pnlPct = Number(h.pnl_pct !== undefined ? h.pnl_pct : (((curPrice - buyPrice)/buyPrice)*100));
-            const isPos = pnlPct >= 0;
+        pBody.innerHTML = holdings.map(h => {
+            const pnlVal = Number(h.pnl_pct || 0);
+            const isPos = pnlVal >= 0;
+            const pnlColor = isPos ? 'var(--accent-green)' : 'var(--accent-red)';
+            const safeTicker = this.escapeHtml(h.ticker || '');
+            const safeId = Number(h.id);
+            const safeCurrentPrice = Number(h.current_price || h.buy_price || 0);
+            const safeBuyPrice = Number(h.buy_price || 0);
+            const safeQty = Number(h.quantity || 1);
+            const pnlAmt = Number(h.pnl_amount !== undefined ? h.pnl_amount : (safeCurrentPrice - safeBuyPrice) * safeQty);
+            const pnlAmtFormatted = `${pnlAmt >= 0 ? '+$' : '-$'}${Math.abs(pnlAmt).toFixed(2)}`;
+
+            const stopLossP = Number(h.stop_loss_price || safeBuyPrice * 0.96);
+            const trailingP = Number(h.trailing_floor || (safeBuyPrice * 1.15));
+            const isTrailing = Boolean(h.is_trailing_active);
 
             return `
                 <tr>
-                    <td><span class="ticker-pill ${isPos ? 'bull' : 'bear'}" style="cursor:pointer;" onclick="window.TerminalUI.selectStock('${tk}', ${curPrice})">${tk}</span></td>
-                    <td style="font-family:'JetBrains Mono';">${qty}주</td>
-                    <td style="font-family:'JetBrains Mono';">$${buyPrice.toFixed(2)}</td>
-                    <td style="font-family:'JetBrains Mono'; font-weight:700;">$${curPrice.toFixed(2)}</td>
-                    <td style="font-family:'JetBrains Mono'; font-weight:700; color:${isPos ? '#34d399' : '#f87171'};">
-                        ${isPos ? '+' : ''}${pnlPct.toFixed(2)}%
+                    <td><strong class="ticker-pill ${isPos ? 'bull' : 'bear'}" style="cursor:pointer;" onclick="window.TerminalUI.selectStock('${safeTicker}', ${safeCurrentPrice})">${safeTicker}</strong></td>
+                    <td style="font-family:'JetBrains Mono'; font-variant-numeric:tabular-nums;">$${safeBuyPrice.toFixed(2)}</td>
+                    <td style="font-family:'JetBrains Mono'; font-weight:700; color:${pnlColor}; font-variant-numeric:tabular-nums;">$${safeCurrentPrice.toFixed(2)}</td>
+                    <td style="font-family:'JetBrains Mono'; font-weight:600; color:var(--primary-bright); font-variant-numeric:tabular-nums;">${safeQty}</td>
+                    <td style="color:${pnlColor}; font-weight:700; font-family:'JetBrains Mono'; font-variant-numeric:tabular-nums;">${isPos ? '+' : ''}${pnlVal.toFixed(2)}% <span style="font-size:10px; opacity:0.85;">(${pnlAmtFormatted})</span></td>
+                    <td style="color:#f87171; font-weight:700; font-family:'JetBrains Mono'; font-variant-numeric:tabular-nums;">$${stopLossP.toFixed(2)}</td>
+                    <td style="color:#fbbf24; font-weight:700; font-family:'JetBrains Mono'; font-variant-numeric:tabular-nums;">
+                        $${trailingP.toFixed(2)} ${isTrailing ? '<span style="font-size:9px; background:rgba(251,191,36,0.15); color:#fbbf24; padding:2px 6px; border-radius:9999px; border:1px solid rgba(251,191,36,0.3); font-weight:700;">[TRAILING]</span>' : ''}
                     </td>
-                    <td style="font-size:11px; color:#94a3b8;">${this.escapeHtml(h.exit_advice || '보유')}</td>
                     <td>
-                        <button class="btn-exit-holding" data-holding-id="${id}" data-current-price="${curPrice}" style="background:#ef4444; border:none; color:white; padding:3px 8px; border-radius:2px; font-size:10px; cursor:pointer; font-weight:700;">
-                            청산
-                        </button>
+                        <button class="btn-exit-holding" data-holding-id="${safeId}" data-current-price="${safeCurrentPrice}" style="background:rgba(226,59,74,0.12); color:#f87171; border:1px solid rgba(226,59,74,0.35); padding:3px 10px; border-radius:9999px; font-size:10px; cursor:pointer; font-weight:700; font-family:'Inter', sans-serif; transition:all 0.15s ease;">EXIT</button>
                     </td>
                 </tr>
             `;
         }).join('');
+
+        // Attach exit event listeners
+        pBody.querySelectorAll('.btn-exit-holding').forEach(btn => {
+            btn.onclick = async (e) => {
+                const id = btn.getAttribute('data-holding-id');
+                const price = btn.getAttribute('data-current-price');
+                if (!confirm(`Execute full position liquidation? (Price: $${price})`)) return;
+                try {
+                    btn.disabled = true;
+                    btn.textContent = "CLOSING...";
+                    await ApiClient.sellStock(id, price);
+                    if (window.TerminalApp) window.TerminalApp.refreshData();
+                } catch (err) {
+                    alert(`Exit Failed: ${err.message}`);
+                    btn.disabled = false;
+                    btn.textContent = "EXIT";
+                }
+            };
+        });
     },
 
-    renderDailyHistory(history) {
-        const tbody = document.getElementById("dailyRecHistoryBody");
-        if (!tbody) return;
+    selectStock(ticker, price) {
+        if (!ticker) return;
+        const cleanTicker = ticker.trim().toUpperCase();
+        const p = Number(price || 0.0);
+        this.currentSelectedTicker = cleanTicker;
+        this.currentSelectedPrice = p;
 
-        if (!history || !Array.isArray(history) || history.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:16px;">추천 이력이 없습니다.</td></tr>';
+        // Immediate Header DOM Update for zero-latency responsiveness
+        const curTickerEl = document.getElementById("curTicker");
+        const curPriceEl = document.getElementById("curPrice");
+        if (curTickerEl) curTickerEl.textContent = cleanTicker;
+        if (curPriceEl && p > 0) curPriceEl.textContent = `$${p.toFixed(2)}`;
+
+        ChartEngine.loadChart(cleanTicker, p);
+        this.updateQuickBuyConsole(cleanTicker, p);
+    },
+
+    updateQuickBuyConsole(ticker, price) {
+        const p = price || 0.0;
+        const qbTicker = document.getElementById("qbTicker");
+        const qbPrice = document.getElementById("qbPrice");
+        const qbBuyPrice = document.getElementById("qbBuyPrice");
+        const qbStop = document.getElementById("qbStopVal");
+        const qbTarget = document.getElementById("qbTargetVal");
+
+        if (qbTicker) qbTicker.textContent = ticker;
+        if (qbPrice) qbPrice.textContent = `$${p.toFixed(2)}`;
+        if (qbBuyPrice) qbBuyPrice.value = p.toFixed(2);
+        if (qbStop) qbStop.textContent = `$${(p * 0.96).toFixed(2)}`;
+        if (qbTarget) qbTarget.textContent = `$${(p * 1.15).toFixed(2)}`;
+    },
+
+    renderTradeLogs(logs) {
+        const tBody = document.getElementById("tradeLogTableBody");
+        const countEl = document.getElementById("tradeLogCount");
+        if (!tBody) return;
+
+        const tradeList = Array.isArray(logs) ? logs : [];
+        if (countEl) countEl.textContent = `${tradeList.length} EXECUTIONS LOGGED`;
+
+        if (tradeList.length === 0) {
+            tBody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:18px; color:var(--text-muted); font-family:'JetBrains Mono'; font-size:11px;">No execution logs recorded yet.</td></tr>`;
             return;
         }
 
-        tbody.innerHTML = history.map(rec => {
-            const dateStr = this.escapeHtml(rec.date);
-            const renderPills = (arr, cls) => {
-                if (!arr || !Array.isArray(arr) || arr.length === 0) return '-';
-                return arr.map(item => {
-                    const tk = typeof item === 'string' ? item : item.ticker;
-                    const price = typeof item === 'object' ? item.price : null;
-                    return `<span class="ticker-pill ${cls}" style="cursor:pointer;" onclick="window.TerminalUI.selectStock('${this.escapeHtml(tk)}', ${price})">${this.escapeHtml(tk)}</span>`;
-                }).join(' ');
-            };
+        tBody.innerHTML = tradeList.map(item => {
+            const side = String(item.side || 'BUY').toUpperCase();
+            const isBuy = side === 'BUY';
+            const sideColor = isBuy ? '#34d399' : '#f87171';
+            const sideBg = isBuy ? 'rgba(52,211,153,0.15)' : 'rgba(248,113,113,0.15)';
+            const ticker = this.escapeHtml(item.ticker || '');
+            const price = Number(item.price || 0);
+            const qty = Number(item.quantity || item.qty || 1);
+            const totAmt = Number(item.total_amount || (price * qty));
+            const rawTs = this.escapeHtml(item.timestamp || '');
+            const ts = rawTs.includes(' ') ? rawTs.split(' ')[1] : rawTs;
+            const msg = this.escapeHtml(item.message || item.order_type || 'MARKETABLE_ORDER');
+            const status = this.escapeHtml(item.status || 'FILLED');
 
-            const bullPicks = rec.tier1 || rec.bull_picks || [];
-            const neutralPicks = rec.tier2 || rec.neutral_picks || [];
-            const bearPicks = rec.tier3 || rec.bear_picks || [];
-
-            return `
-                <tr>
-                    <td style="font-family:'JetBrains Mono'; font-weight:700;">${dateStr}</td>
-                    <td>${renderPills(bullPicks, 'bull')}</td>
-                    <td>${renderPills(neutralPicks, 'neutral')}</td>
-                    <td>${renderPills(bearPicks, 'bear')}</td>
-                </tr>
-            `;
-        }).join('');
-    },
-
-    async selectStock(ticker, price = null) {
-        if (!ticker) return;
-        this.currentSelectedTicker = ticker;
-        const curTickerEl = document.getElementById("curTicker");
-        const qbTickerEl = document.getElementById("qbTicker");
-        if (curTickerEl) curTickerEl.textContent = ticker;
-        if (qbTickerEl) qbTickerEl.textContent = ticker;
-
-        // Update active highlight on cards
-        document.querySelectorAll(".rec-item").forEach(card => {
-            if (card.getAttribute("data-ticker") === ticker) card.classList.add("active");
-            else card.classList.remove("active");
-        });
-
-        if (price !== null && Number(price) > 0) {
-            this.currentSelectedPrice = Number(price);
-            const formatted = `$${this.currentSelectedPrice.toFixed(2)}`;
-            const cpEl = document.getElementById("curPrice");
-            const qpEl = document.getElementById("qbPrice");
-            const bpEl = document.getElementById("qbBuyPrice");
-            if (cpEl) cpEl.textContent = formatted;
-            if (qpEl) qpEl.textContent = formatted;
-            if (bpEl) bpEl.value = this.currentSelectedPrice.toFixed(2);
-            this.updateTargetStop();
-        }
-
-        // Fetch chart data via ApiClient
-        try {
-            const chartData = await ApiClient.getChartData(ticker);
-            if (chartData && !chartData.aborted && chartData.candles) {
-                this.currentSelectedPrice = Number(chartData.latest_close);
-                const formatted = `$${this.currentSelectedPrice.toFixed(2)}`;
-                const cpEl = document.getElementById("curPrice");
-                const qpEl = document.getElementById("qbPrice");
-                const bpEl = document.getElementById("qbBuyPrice");
-                if (cpEl) cpEl.textContent = formatted;
-                if (qpEl) qpEl.textContent = formatted;
-                if (bpEl) bpEl.value = this.currentSelectedPrice.toFixed(2);
-                this.updateTargetStop();
-
-                ChartEngine.renderData(chartData);
-                QuantDecoder.update(ticker, chartData, this.latestDashboardData);
-            } else if (!chartData || !chartData.aborted) {
-                ChartEngine.renderNotFound(ticker);
-                QuantDecoder.update(ticker, null, this.latestDashboardData);
-            }
-        } catch (e) {
-            console.warn("[UI] selectStock error:", e);
-            ChartEngine.renderNotFound(ticker);
-            QuantDecoder.update(ticker, null, this.latestDashboardData);
-        }
-    },
-
-    updateTargetStop() {
-        const buyInput = document.getElementById("qbBuyPrice");
-        const price = buyInput ? parseFloat(buyInput.value) : this.currentSelectedPrice;
-        if (isNaN(price) || price <= 0) return;
-
-        const tgtP = (price * 1.15).toFixed(2);
-        const stopP = (price * 0.97).toFixed(2);
-        const tgtEl = document.getElementById("qbTargetVal");
-        const stopEl = document.getElementById("qbStopVal");
-
-        if (tgtEl) tgtEl.textContent = `$${tgtP}`;
-        if (stopEl) stopEl.textContent = `$${stopP}`;
-    },
-
-    initSearch() {
-        const input = document.getElementById("stockSearchInput");
-        const dropdown = document.getElementById("searchDropdown");
-        if (!input || !dropdown) return;
-
-        let debounceTimer = null;
-        input.addEventListener("input", (e) => {
-            clearTimeout(debounceTimer);
-            const q = e.target.value.trim();
-            if (!q) {
-                dropdown.style.display = "none";
-                return;
-            }
-            debounceTimer = setTimeout(async () => {
-                const results = await ApiClient.searchStocks(q);
-                if (results.length === 0) {
-                    dropdown.innerHTML = '<div style="padding:10px 14px; color:#64748b; font-size:11px;">검색 결과 없음 (Enter 누르면 직접 조회)</div>';
-                    dropdown.style.display = "block";
-                    return;
-                }
-                dropdown.innerHTML = results.map(r => `
-                    <div class="search-result-item" data-ticker="${this.escapeHtml(r.ticker)}" style="padding:8px 12px; border-bottom:1px solid #1e293b; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <span style="color:#38bdf8; font-weight:700; font-family:'JetBrains Mono';">${this.escapeHtml(r.ticker)}</span>
-                            <span style="color:#cbd5e1; font-size:11px; margin-left:6px;">${this.escapeHtml(r.name_kr || r.name || '')}</span>
-                        </div>
-                        <span style="color:#64748b; font-size:10px;">${this.escapeHtml(r.sector || r.market || '')}</span>
-                    </div>
-                `).join('');
-                dropdown.style.display = "block";
-            }, 180);
-        });
-
-        dropdown.addEventListener("click", (e) => {
-            const item = e.target.closest(".search-result-item");
-            if (item) {
-                const tk = item.getAttribute("data-ticker");
-                input.value = tk;
-                dropdown.style.display = "none";
-                this.selectStock(tk);
-            }
-        });
-
-        // Keyboard Shortcut '/'
-        window.addEventListener("keydown", (e) => {
-            if (e.key === "/" && document.activeElement !== input) {
-                e.preventDefault();
-                input.focus();
-            }
-        });
-    },
-
-    initDelegation() {
-        // Event delegation for portfolio sell buttons
-        const pBody = document.getElementById("portfolioTableBody");
-        if (pBody) {
-            pBody.addEventListener("click", async (e) => {
-                const btn = e.target.closest(".btn-exit-holding");
-                if (btn) {
-                    const id = parseInt(btn.getAttribute("data-holding-id"), 10);
-                    const price = parseFloat(btn.getAttribute("data-current-price"));
-                    if (!isNaN(id) && !isNaN(price)) {
-                        try {
-                            btn.disabled = true;
-                            btn.textContent = "...";
-                            await ApiClient.sellHolding(id, price);
-                            const fresh = await ApiClient.getDashboardData();
-                            this.renderDashboard(fresh);
-                        } catch (err) {
-                            alert(err.message || '청산 처리 실패');
-                            btn.disabled = false;
-                            btn.textContent = "청산";
-                        }
+            // Parse or compute Trade PnL %
+            let pnlDisplay = '<span style="color:var(--text-muted); font-family:\'JetBrains Mono\'; font-size:10px;">[ENTRY]</span>';
+            if (!isBuy) {
+                let pnlVal = null;
+                if (item.pnl_pct !== undefined && item.pnl_pct !== null && !isNaN(Number(item.pnl_pct))) {
+                    pnlVal = Number(item.pnl_pct);
+                } else {
+                    const match = String(item.message || '').match(/([+\-]\d+(?:\.\d+)?)\s*%/);
+                    if (match) {
+                        pnlVal = parseFloat(match[1]);
                     }
                 }
-            });
-        }
 
-        // Quick Buy Button
-        const btnBuy = document.getElementById("btnExecuteBuy");
-        if (btnBuy) {
-            btnBuy.addEventListener("click", async () => {
-                const ticker = this.currentSelectedTicker;
-                const buyInput = document.getElementById("qbBuyPrice");
-                const price = buyInput ? parseFloat(buyInput.value) : this.currentSelectedPrice;
-                const qty = 1;
-                if (!ticker || isNaN(price) || price <= 0) return;
-
-                try {
-                    btnBuy.disabled = true;
-                    btnBuy.textContent = "주문 중...";
-                    await ApiClient.buyHolding({ ticker, buy_price: price, quantity: qty });
-                    const fresh = await ApiClient.getDashboardData();
-                    this.renderDashboard(fresh);
-                } catch (err) {
-                    alert(err.message || '매수 주문 실패');
-                } finally {
-                    btnBuy.disabled = false;
-                    btnBuy.textContent = "포트폴리오 즉시 매수";
+                if (pnlVal !== null) {
+                    const isPos = pnlVal >= 0;
+                    const pnlColor = isPos ? '#34d399' : '#f87171';
+                    pnlDisplay = `<strong style="color:${pnlColor}; font-family:'JetBrains Mono'; font-size:11px;">${isPos ? '+' : ''}${pnlVal.toFixed(2)}%</strong>`;
+                } else {
+                    pnlDisplay = '<span style="color:var(--text-secondary); font-family:\'JetBrains Mono\'; font-size:10.5px;">-</span>';
                 }
-            });
-        }
+            }
 
-        // Reset Portfolio Button
-        const btnReset = document.getElementById("btnResetPortfolio");
-        if (btnReset) {
-            btnReset.addEventListener("click", async () => {
-                if (!confirm("시뮬레이션 포트폴리오를 전체 초기화하시겠습니까?")) return;
-                try {
-                    await ApiClient.resetPortfolio();
-                    const fresh = await ApiClient.getDashboardData();
-                    this.renderDashboard(fresh);
-                } catch (err) {
-                    alert(err.message || '초기화 실패');
-                }
-            });
-        }
-
-        // Scan Now Button
-        const btnScan = document.getElementById("btnScanNow");
-        if (btnScan) {
-            btnScan.addEventListener("click", async () => {
-                try {
-                    btnScan.disabled = true;
-                    btnScan.textContent = "스캔 진행 중...";
-                    await ApiClient.triggerScanNow();
-                } catch (err) {
-                    alert(err.message || '스캔 시작 실패');
-                    btnScan.disabled = false;
-                    btnScan.textContent = "Run Live Scan";
-                }
-            });
-        }
+            return `
+                <tr style="border-bottom:1px solid rgba(255,255,255,0.04); transition:background 0.1s ease;">
+                    <td style="padding:7px 12px; font-family:'JetBrains Mono'; color:var(--text-muted); font-size:10.5px;">${ts}</td>
+                    <td style="padding:7px 12px;"><span style="background:${sideBg}; color:${sideColor}; padding:2px 8px; border-radius:9999px; font-weight:800; font-family:'JetBrains Mono'; font-size:9.5px;">${side}</span></td>
+                    <td style="padding:7px 12px;"><strong style="color:#ffffff; font-family:'JetBrains Mono'; cursor:pointer; font-size:11px;" onclick="window.TerminalUI.selectStock('${ticker}', ${price})">${ticker}</strong></td>
+                    <td style="padding:7px 12px; text-align:right; font-family:'JetBrains Mono'; color:var(--primary-bright); font-weight:700; font-size:11px;">${qty} SH</td>
+                    <td style="padding:7px 12px; text-align:right; font-family:'JetBrains Mono'; color:#ffffff; font-size:11px;">$${price.toFixed(2)}</td>
+                    <td style="padding:7px 12px; text-align:right; font-family:'JetBrains Mono'; font-weight:700; color:#ffffff; font-size:11px;">$${totAmt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td style="padding:7px 12px; text-align:right;">${pnlDisplay}</td>
+                    <td style="padding:7px 12px; font-family:'Inter', sans-serif; color:var(--text-secondary); font-size:10.5px; max-width:260px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${msg}">${msg}</td>
+                    <td style="padding:7px 12px; text-align:center;"><span style="background:rgba(52,211,153,0.12); color:#34d399; padding:2px 6px; border-radius:4px; font-size:9px; font-weight:700; font-family:'JetBrains Mono';">[${status}]</span></td>
+                </tr>
+            `;
+        }).join('');
     }
 };
-
-window.TerminalUI = UI;

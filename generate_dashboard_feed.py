@@ -7,59 +7,7 @@ import pandas as pd
 import yfinance as yf
 from datetime import datetime
 import db_manager
-
-def safe_json_default(o):
-    if hasattr(o, 'item'):
-        return o.item()
-    if isinstance(o, (pd.Timestamp, datetime)):
-        return o.strftime("%Y-%m-%d")
-    return str(o)
-
-def atomic_save_json(file_path, data, indent=2, max_retries=10):
-    dir_name = os.path.dirname(os.path.abspath(file_path))
-    os.makedirs(dir_name, exist_ok=True)
-    temp_name = None
-    with tempfile.NamedTemporaryFile("w", dir=dir_name, delete=False, encoding="utf-8") as tf:
-        temp_name = tf.name
-        json.dump(data, tf, ensure_ascii=False, indent=indent, default=safe_json_default)
-        tf.flush()
-        os.fsync(tf.fileno())
-        
-    for attempt in range(max_retries):
-        try:
-            os.replace(temp_name, file_path)
-            return
-        except (PermissionError, OSError):
-            if attempt == max_retries - 1:
-                try:
-                    with open(file_path, "w", encoding="utf-8") as f:
-                        json.dump(data, f, ensure_ascii=False, indent=indent, default=safe_json_default)
-                    if temp_name and os.path.exists(temp_name):
-                        os.remove(temp_name)
-                    return
-                except Exception:
-                    pass
-                raise
-            time.sleep(0.01 * (1.5 ** attempt))
-            
-    if temp_name and os.path.exists(temp_name):
-        try:
-            os.remove(temp_name)
-        except Exception:
-            pass
-
-def atomic_read_json(file_path, default=None, max_retries=5):
-    if not os.path.exists(file_path):
-        return default if default is not None else {}
-    for attempt in range(max_retries):
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except (PermissionError, json.JSONDecodeError, OSError):
-            if attempt == max_retries - 1:
-                return default if default is not None else {}
-            time.sleep(0.01 * (attempt + 1))
-    return default if default is not None else {}
+from al_sangmoo.infrastructure.atomic_io import atomic_save_json, atomic_read_json
 
 # Windows encoding fix
 if sys.platform.startswith('win'):
@@ -86,14 +34,17 @@ from al_sangmoo.domain.quant.scoring import (
     evaluate_quant_score,
     classify_3tier_candidates
 )
+from al_sangmoo.domain.quant.conviction_engine import rank_and_select_top_picks
+
 
 def compute_all_indicators(ticker):
     try:
         df = yf.download(ticker, period="3y", interval="1d", progress=False)
-        if df.empty:
-            return None
         if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.get_level_values(0)
+            if 'Close' in df.columns.get_level_values(0):
+                df.columns = df.columns.get_level_values(0)
+            elif 'Close' in df.columns.get_level_values(1):
+                df.columns = df.columns.get_level_values(1)
             
         df = df.dropna(subset=['Close', 'High', 'Low', 'Volume']).copy()
         if len(df) < 60:
@@ -172,6 +123,22 @@ def compute_all_indicators(ticker):
         quant_type = quant_eval["quant_type"]
         quant_verdict = quant_eval["quant_verdict"]
         
+        # 3-Month Momentum / RS Calculation & 20D Breakout Detection
+        if len(df_clean) >= 60:
+            close_60d_ago = float(df_clean.iloc[-60]['Close'])
+            rs_3m = ((close - close_60d_ago) / close_60d_ago) * 100.0
+        elif len(df_clean) > 1:
+            close_first = float(df_clean.iloc[0]['Close'])
+            rs_3m = ((close - close_first) / close_first) * 100.0
+        else:
+            rs_3m = 0.0
+
+        if len(df_clean) >= 21:
+            high_20d_max = float(df_clean.iloc[-21:-1]['High'].max())
+            is_breakout = bool(close >= high_20d_max)
+        else:
+            is_breakout = False
+
         # Construct Intelligence Metadata
         intelligence = dict(quant_eval["intelligence"])
         intelligence.update({
@@ -185,6 +152,9 @@ def compute_all_indicators(ticker):
             "flow_label": flow_data["flow_label"],
             "flow_score": flow_data["flow_score"],
             "is_stealth_accum": flow_data["is_stealth_accum"],
+            "rs_3m": round(rs_3m, 2),
+            "momentum_3m": round(rs_3m, 2),
+            "is_breakout": is_breakout
         })
             
         return {
@@ -216,6 +186,9 @@ def compute_all_indicators(ticker):
             "trampoline_days_ago": trampoline_days_ago,
             "touch_gap_pct": touch_gap_pct,
             "close_gap_pct": close_gap_pct,
+            "rs_3m": round(rs_3m, 2),
+            "momentum_3m": round(rs_3m, 2),
+            "is_breakout": is_breakout,
             "intelligence": intelligence,
             "status_tag": quant_type,
             "status_text": quant_verdict,
@@ -265,8 +238,8 @@ def build_dashboard_data(output_file=None, charts_dir=None):
             
     chart_data = {}
     
-    # Fast Parallel Batch Computation for 60 tickers
-    with ThreadPoolExecutor(max_workers=12) as executor:
+    # Parallel Batch Computation for 60 tickers (throttled to 6 workers to avoid HTTP 429)
+    with ThreadPoolExecutor(max_workers=6) as executor:
         results = list(executor.map(compute_all_indicators, WATCHLIST))
         
     for res in results:
@@ -454,6 +427,18 @@ def build_dashboard_data(output_file=None, charts_dir=None):
     # 2. Build lightweight executive summary payload (under 50KB)
     daily_history = db_manager.get_daily_recommendation_history()
     
+    # Goldman Sachs-Style Conviction Alpha Ranking & Dynamic Regime Slot Allocator (v2)
+    all_candidates = dual_consensus_picks + strat1_exclusive + strat2_exclusive
+    msi_val = float(macro_info.get("msi_score") or macro_info.get("macro_climate", {}).get("msi_score") or macro_info.get("msi", 50.0))
+    is_bull_regime = (msi_val < 65.0)  # MSI < 65 indicates healthy/bull market climate
+    
+    conviction_res = rank_and_select_top_picks(
+        candidates=all_candidates,
+        portfolio_equity_usd=float(portfolio.get("total_equity_usd", 7500.0)),
+        msi_score=msi_val,
+        is_bull_regime=is_bull_regime
+    )
+
     payload = {
         "macro": macro_info,
         "kpis": kpis,
@@ -461,6 +446,10 @@ def build_dashboard_data(output_file=None, charts_dir=None):
         "matrix": matrix,
         "daily_history": daily_history,
         "portfolio": portfolio,
+        "top_conviction_pick": conviction_res.get("top_pick"),
+        "top_conviction_runner_up": conviction_res.get("runner_up"),
+        "ranked_conviction_list": conviction_res.get("ranked_candidates", []),
+        "slot_allocation_summary": conviction_res.get("slot_summary", {}),
         "dual_consensus": dual_consensus_picks,
         "strat1_exclusive": strat1_exclusive,
         "strat2_exclusive": strat2_exclusive,
@@ -476,6 +465,7 @@ def build_dashboard_data(output_file=None, charts_dir=None):
         
     print(f"Successfully generated modular feed: {out_path} (Size: {os.path.getsize(out_path)/1024:.1f} KB, Charts: {len(chart_data)} saved in {target_charts_dir})")
     return payload
+
 
 if __name__ == "__main__":
     build_dashboard_data()

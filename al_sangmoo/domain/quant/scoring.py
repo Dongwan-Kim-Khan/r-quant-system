@@ -576,7 +576,10 @@ def classify_3tier_candidates(
                 "is_strat1": tier_eval.is_tier2_qualified or (tier_eval.is_tier1_qualified and tier_eval.strategy_code in ["DUAL_5_STAR", "STRAT1_PULLBACK"]),
                 "action": action_desc,
                 "target_price": tier_eval.target_price,
-                "stop_price": tier_eval.stop_price
+                "stop_price": tier_eval.stop_price,
+                "rs_3m": float(c.get("rs_3m", 0.0)),
+                "momentum_3m": float(c.get("rs_3m", 0.0)),
+                "is_breakout": bool(c.get("is_breakout", False))
             }
             
             if tier_eval.is_tier1_qualified:
