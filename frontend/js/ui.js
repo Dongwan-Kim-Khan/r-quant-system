@@ -248,7 +248,7 @@ export const UI = {
             return `
                 <div class="top-pick-card" style="background:var(--surface-card); border:1px solid var(--hairline-dark); border-radius:16px; padding:14px 16px; cursor:pointer;" onclick="window.TerminalUI.selectStock('${ticker}', ${price})">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                        <span style="font-size:10px; font-weight:800; background:${badgeBg}; color:${badgeColor}; padding:2px 8px; border-radius:9999px; font-family:'JetBrains Mono';">${rankNum === 1 ? '🥇 RANK #1' : '🥈 RANK #2'}</span>
+                        <span style="font-size:10px; font-weight:800; background:${badgeBg}; color:${badgeColor}; padding:2px 8px; border-radius:9999px; font-family:'JetBrains Mono';">${rankNum === 1 ? 'RANK #1' : 'RANK #2'}</span>
                         <span style="font-size:11px; font-weight:800; color:var(--primary-bright); font-family:'JetBrains Mono';">${score} PT</span>
                     </div>
 

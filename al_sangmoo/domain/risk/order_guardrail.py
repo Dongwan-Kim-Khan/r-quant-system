@@ -1,10 +1,12 @@
-﻿"""
+"""
 Pre-Trade Risk Guardrails & Sanity Validation Engine.
 """
 from typing import Dict, Any, List
 import re
+import asyncio
 
 TICKER_REGEX = re.compile(r'^[A-Za-z0-9.\^=-]{1,15}$')
+ORDER_MUTEX = asyncio.Lock()
 
 def validate_pre_trade_guardrail(
     ticker: str,
@@ -36,7 +38,7 @@ def validate_pre_trade_guardrail(
     if msi_score >= 75.0:
         return {
             "allowed": False,
-            "reason": f"🚨 거시 위험 지수 임계치 초과(MSI {msi_score:.1f}점: CASH_EXIT)로 신규 매수가 전면 차단되었습니다."
+            "reason": f"[CASH_EXIT] 거시 위험 지수 임계치 초과(MSI {msi_score:.1f}점)로 신규 매수가 전면 차단되었습니다."
         }
 
     # 3. Single-Asset Max Allocation Cap (25% Equity Rule)

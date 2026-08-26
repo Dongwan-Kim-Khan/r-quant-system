@@ -32,12 +32,12 @@ export const QuantDecoder = {
         // 1. Update Institutional Verdict Banner (Revolut Clean Style)
         if (title && score && banner) {
             if (isTopPick) {
-                title.textContent = `QUANT VERDICT: [🥇 1위 TOP PICK]`;
+                title.textContent = `QUANT VERDICT: [1위 TOP PICK]`;
                 score.textContent = `${convictionScore.toFixed(1)} PT (최우선 진입)`;
                 score.style.color = "var(--primary-bright)";
                 banner.style.borderLeft = "4px solid var(--primary-bright)";
             } else if (isRunnerUp) {
-                title.textContent = `QUANT VERDICT: [🥈 2위 RUNNER UP]`;
+                title.textContent = `QUANT VERDICT: [2위 RUNNER UP]`;
                 score.textContent = `${convictionScore.toFixed(1)} PT (강력 추천)`;
                 score.style.color = "var(--accent-green)";
                 banner.style.borderLeft = "4px solid var(--accent-green)";
