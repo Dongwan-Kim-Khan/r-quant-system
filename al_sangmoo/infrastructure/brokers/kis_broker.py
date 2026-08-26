@@ -430,8 +430,8 @@ class KISBrokerAdapter:
         """
         sym_clean = ticker.upper().strip()
         
-        # 1. In Production Real Mode: Use KIS live price TR (HHDFS00000300)
-        if self.is_configured() and not self.is_paper and self.authenticate():
+        # 1. Primary Source: Official KIS Live Price TR (HHDFS00000300) for both Real & Virtual Paper
+        if self.is_configured() and self.authenticate():
             url = f"{self.base_url}/uapi/overseas-price/v1/quotations/price-detail"
             headers = self._get_headers("HHDFS00000300")
             
@@ -464,7 +464,7 @@ class KISBrokerAdapter:
                 except Exception as e:
                     logger.debug(f"[KIS Live Price] Attempt {excd} for {sym_clean} failed: {e}")
         
-        # 2. Real-time fast quote with fast_info and Pre/Post-market awareness
+        # 2. Secondary Fallback: Real-time fast quote via fast_info and multi-day history
         try:
             import yfinance as yf
             import logging as _logging
@@ -481,25 +481,13 @@ class KISBrokerAdapter:
             except Exception:
                 pass
 
-            # Check 2: Daily history fallback (resilient 5-day window)
+            # Check 2: Daily history fallback (resilient 5-day window without noisy 1m errors)
             try:
                 hist = t_obj.history(period="5d", raise_errors=False)
                 if not hist.empty and "Close" in hist.columns:
                     last_val = float(hist["Close"].dropna().iloc[-1])
                     if last_val > 0:
                         return round(last_val, 2)
-            except Exception:
-                pass
-
-            # Check 3: 1-minute pre/post market tick fallback
-            try:
-                hist_prepost = t_obj.history(period="1d", interval="1m", prepost=True, raise_errors=False)
-                if not hist_prepost.empty and "Close" in hist_prepost.columns:
-                    c_series = hist_prepost["Close"].dropna()
-                    if not c_series.empty:
-                        last_tick = float(c_series.iloc[-1])
-                        if last_tick > 0:
-                            return round(last_tick, 2)
             except Exception:
                 pass
         except Exception:
