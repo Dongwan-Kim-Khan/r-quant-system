@@ -19,10 +19,19 @@ CACHE_TTL_SECONDS = 3.0
 def _enrich_chart_with_realtime_price(data: dict, ticker: str) -> dict:
     """
     Enriches modular chart data with official real-time price from KIS OpenAPI / live portfolio SSOT.
-    Updates latest_close, the most recent candle's close/high/low, Kijun gap %, and signal intelligence.
+    Updates latest_close, appends/updates today's live candle (today_str), Kijun gap %, and signal intelligence.
     """
     if not isinstance(data, dict):
         return data
+
+    from datetime import datetime, timezone, timedelta
+
+    # Determine market trading date (New York EDT for US stocks, KST for Korean stocks)
+    if ticker.endswith(".KS") or ticker.endswith(".KQ"):
+        now_mkt = datetime.now(timezone(timedelta(hours=9)))
+    else:
+        now_mkt = datetime.now(timezone(timedelta(hours=-4)))
+    today_str = now_mkt.strftime("%Y-%m-%d")
 
     live_price = None
     # 1. Fast in-memory check from SQLite live portfolio SSOT (< 0.1ms)
@@ -50,23 +59,63 @@ def _enrich_chart_with_realtime_price(data: dict, ticker: str) -> dict:
         live_price = round(float(live_price), 2)
         data["latest_close"] = live_price
 
-        # Update daily candles
+        # Update or append daily candles
         if "candles" in data and isinstance(data["candles"], list) and len(data["candles"]) > 0:
             last_c = dict(data["candles"][-1])
-            last_c["close"] = live_price
-            last_c["high"] = max(float(last_c.get("high", live_price)), live_price)
-            last_c["low"] = min(float(last_c.get("low", live_price)), live_price)
-            data["candles"][-1] = last_c
+            last_date = str(last_c.get("time", ""))
+            
+            if last_date == today_str:
+                last_c["close"] = live_price
+                last_c["high"] = max(float(last_c.get("high", live_price)), live_price)
+                last_c["low"] = min(float(last_c.get("low", live_price)), live_price)
+                data["candles"][-1] = last_c
+            elif last_date < today_str:
+                prev_close = float(last_c.get("close", live_price))
+                new_today_candle = {
+                    "time": today_str,
+                    "open": prev_close,
+                    "high": max(prev_close, live_price),
+                    "low": min(prev_close, live_price),
+                    "close": live_price
+                }
+                data["candles"].append(new_today_candle)
+
+        # Update indicator lines to extend to today's date
+        for line_key in ["kijun_line", "tenkan_line", "span_a_line", "span_b_line", "sma20", "sma60"]:
+            if line_key in data and isinstance(data[line_key], list) and len(data[line_key]) > 0:
+                last_pt = dict(data[line_key][-1])
+                if str(last_pt.get("time", "")) < today_str:
+                    data[line_key].append({
+                        "time": today_str,
+                        "value": last_pt.get("value", 0)
+                    })
 
         # Update multi-timeframe candles
         if "timeframes" in data and isinstance(data["timeframes"], dict):
             for tf_key, tf_data in data["timeframes"].items():
                 if isinstance(tf_data, dict) and "candles" in tf_data and len(tf_data["candles"]) > 0:
                     last_tf = dict(tf_data["candles"][-1])
-                    last_tf["close"] = live_price
-                    last_tf["high"] = max(float(last_tf.get("high", live_price)), live_price)
-                    last_tf["low"] = min(float(last_tf.get("low", live_price)), live_price)
-                    tf_data["candles"][-1] = last_tf
+                    last_tf_date = str(last_tf.get("time", ""))
+                    if tf_key == "daily":
+                        if last_tf_date == today_str:
+                            last_tf["close"] = live_price
+                            last_tf["high"] = max(float(last_tf.get("high", live_price)), live_price)
+                            last_tf["low"] = min(float(last_tf.get("low", live_price)), live_price)
+                            tf_data["candles"][-1] = last_tf
+                        elif last_tf_date < today_str:
+                            prev_c = float(last_tf.get("close", live_price))
+                            tf_data["candles"].append({
+                                "time": today_str,
+                                "open": prev_c,
+                                "high": max(prev_c, live_price),
+                                "low": min(prev_c, live_price),
+                                "close": live_price
+                            })
+                    else:
+                        last_tf["close"] = live_price
+                        last_tf["high"] = max(float(last_tf.get("high", live_price)), live_price)
+                        last_tf["low"] = min(float(last_tf.get("low", live_price)), live_price)
+                        tf_data["candles"][-1] = last_tf
 
         # Update Kijun line gap & narrative
         kijun_val = float(data.get("kijun", 0))
