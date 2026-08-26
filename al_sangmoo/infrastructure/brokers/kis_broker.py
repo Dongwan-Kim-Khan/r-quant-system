@@ -435,20 +435,20 @@ class KISBrokerAdapter:
             url = f"{self.base_url}/uapi/overseas-price/v1/quotations/price-detail"
             headers = self._get_headers("HHDFS00000300")
             
-            # Prioritize likely exchange: NYSE for energy/industrials, NAS for tech
+            # Prioritize exact exchange: NYSE for energy/industrials, NAS for tech
             nyse_tickers = {"XOM", "CVX", "TSM", "ORCL", "CRM", "NOW", "JNJ", "UNH", "LLY", "DIS", "JPM", "V", "MA", "LMT", "RTX", "NOC", "GE", "GEV", "ETN", "CCJ", "OKLO", "VST", "CEG", "SNOW", "NET", "APP"}
             primary_ex = "NYS" if sym_clean in nyse_tickers else "NAS"
-            ex_list = [primary_ex] + [e for e in ["NAS", "NYS", "AMS", "BAY", "BAQ"] if e != primary_ex]
+            secondary_ex = "NAS" if primary_ex == "NYS" else "NYS"
             
-            for excd in ex_list:
+            for excd in [primary_ex, secondary_ex]:
                 params = {
                     "AUTH": "",
                     "EXCD": excd,
                     "SYMB": sym_clean
                 }
                 try:
-                    self._limiter.acquire(1.0)
-                    res = requests.get(url, headers=headers, params=params, timeout=2.5)
+                    self._limiter.acquire(0.2)
+                    res = requests.get(url, headers=headers, params=params, timeout=0.6)
                     if res.status_code == 200:
                         data = res.json()
                         if data.get("rt_cd") == "0":

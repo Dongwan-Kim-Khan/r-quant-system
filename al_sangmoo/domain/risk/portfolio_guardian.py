@@ -126,11 +126,14 @@ class PortfolioGuardian:
         """Synchronous worker executing broker TRs, price lookups, and DB state changes."""
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        # Auto-Reconcile against KIS Broker SSOT on every guardian cycle
-        if default_kis_broker.is_configured():
+        # Auto-Reconcile against KIS Broker SSOT periodically (every 5 minutes, non-blocking for 3s loop)
+        import time as _time
+        now_ts = _time.time()
+        if default_kis_broker.is_configured() and (now_ts - getattr(self, "_last_reconcile_time", 0.0) > 300.0):
             try:
                 from al_sangmoo.domain.reconciliation import check_sync
                 check_sync(auto_calibrate=True)
+                self._last_reconcile_time = now_ts
             except Exception as sync_exc:
                 logger.debug(f"[Guardian Auto-Sync] {sync_exc}")
 
