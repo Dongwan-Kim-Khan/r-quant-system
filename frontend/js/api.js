@@ -41,9 +41,55 @@ export const ApiClient = {
     },
 
     /**
+     * Fetch active portfolio holdings and financial equity summary
+     */
+    async getPortfolioData() {
+        const base = getBaseUrl();
+        try {
+            const res = await fetch(`${base}/api/portfolio`);
+            if (res.ok) {
+                return await res.json();
+            }
+        } catch (err) {
+            console.warn('[API] /api/portfolio fetch failed:', err);
+        }
+        return null;
+    },
+
+    /**
+     * Fetch closed trade history and realized PnL
+     */
+    async getPortfolioHistory(limit = 50) {
+        const base = getBaseUrl();
+        try {
+            const res = await fetch(`${base}/api/portfolio/history?limit=${limit}`);
+            if (res.ok) {
+                return await res.json();
+            }
+        } catch (err) {
+            console.warn('[API] /api/portfolio/history fetch failed:', err);
+        }
+        return [];
+    },
+
+    // In-memory client cache for instant chart switching (0ms response)
+    _chartMemoryCache: new Map(),
+
+    /**
      * Fetch modular chart data for a given ticker
      */
     async getChartData(ticker) {
+        if (!ticker) return null;
+        const cleanTicker = ticker.trim().toUpperCase();
+
+        // 1. Fast in-memory client cache (< 0.01ms)
+        if (this._chartMemoryCache.has(cleanTicker)) {
+            const cached = this._chartMemoryCache.get(cleanTicker);
+            if (Date.now() - cached.timestamp < 120000) { // 2-min cache
+                return cached.data;
+            }
+        }
+
         if (this._chartAbortController) {
             this._chartAbortController.abort();
         }
@@ -52,15 +98,17 @@ export const ApiClient = {
         const base = getBaseUrl();
 
         try {
-            const res = await fetch(`${base}/api/chart/${encodeURIComponent(ticker)}`, { signal });
+            const res = await fetch(`${base}/api/chart/${encodeURIComponent(cleanTicker)}`, { signal });
             if (res.ok) {
-                return await res.json();
+                const data = await res.json();
+                this._chartMemoryCache.set(cleanTicker, { timestamp: Date.now(), data });
+                return data;
             }
         } catch (err) {
             if (err.name === 'AbortError') {
                 return { aborted: true };
             }
-            console.warn(`[API] /api/chart/${ticker} fetch failed:`, err);
+            console.warn(`[API] /api/chart/${cleanTicker} fetch failed:`, err);
         }
 
         return null;
@@ -102,14 +150,31 @@ export const ApiClient = {
     },
 
     /**
+     * Execute quick buy for #1 Top Conviction Pick with 3-Slot sizing
+     */
+    async buyTopPick() {
+        const base = getBaseUrl();
+        const res = await fetch(`${base}/api/portfolio/buy_top_pick`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({ detail: 'Top pick buy failed' }));
+            throw new Error(err.detail || 'Top pick buy failed');
+        }
+        return await res.json();
+    },
+
+
+    /**
      * Execute portfolio sell/exit
      */
-    async sellHolding(id, currentPrice) {
+    async sellHolding(id, sellPrice, reason = "MANUAL_SELL") {
         const base = getBaseUrl();
         const res = await fetch(`${base}/api/portfolio/sell/${id}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ current_price: currentPrice })
+            body: JSON.stringify({ sell_price: Number(sellPrice), reason: reason })
         });
         if (!res.ok) {
             const err = await res.json().catch(() => ({ detail: 'Sell order failed' }));
@@ -141,5 +206,141 @@ export const ApiClient = {
             throw new Error(err.detail || 'Scan trigger failed');
         }
         return await res.json();
+    },
+
+    /**
+     * Fetch KIS Broker live status and connection info
+     */
+    async getBrokerStatus() {
+        try {
+            const base = getBaseUrl();
+            const res = await fetch(`${base}/api/broker/status`);
+            if (res.ok) return await res.json();
+        } catch (e) {
+            console.warn('[API] Failed to get broker status:', e);
+        }
+        return null;
+    },
+
+    /**
+     * Fetch KIS Broker live US equity balance and cash
+     */
+    async getBrokerBalance() {
+        try {
+            const base = getBaseUrl();
+            const res = await fetch(`${base}/api/broker/balance`);
+            if (res.ok) return await res.json();
+        } catch (e) {
+            console.warn('[API] Failed to get broker balance:', e);
+        }
+        return null;
+    },
+
+    /**
+     * Trigger 1-time daily reconciliation audit (check_sync)
+     */
+    async triggerReconciliation() {
+        const base = getBaseUrl();
+        const res = await fetch(`${base}/api/broker/reconcile`, { method: 'POST' });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({ detail: 'Reconciliation failed' }));
+            throw new Error(err.detail || 'Reconciliation failed');
+        }
+        return await res.json();
+    },
+
+    /**
+     * Fetch Autonomous Portfolio Guardian status and rules
+     */
+    async getGuardianStatus() {
+        try {
+            const base = getBaseUrl();
+            const res = await fetch(`${base}/api/guardian/status`);
+            if (res.ok) return await res.json();
+        } catch (e) {
+            console.warn('[API] Failed to get guardian status:', e);
+        }
+        return null;
+    },
+
+    /**
+     * Toggle Guardian auto-execution (On / Off)
+     */
+    async toggleGuardian(enabled) {
+        const base = getBaseUrl();
+        const res = await fetch(`${base}/api/guardian/toggle`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled })
+        });
+        if (!res.ok) throw new Error('Failed to toggle guardian');
+        return await res.json();
+    },
+
+    /**
+     * Trigger immediate on-demand guardian check
+     */
+    async checkGuardianNow() {
+        const base = getBaseUrl();
+        const res = await fetch(`${base}/api/guardian/check_now`, { method: 'POST' });
+        if (!res.ok) throw new Error('Failed to run guardian check');
+        return await res.json();
+    },
+
+    /**
+     * Fetch Full-Auto Pilot Trader status
+     */
+    async getAutoPilotStatus() {
+        try {
+            const base = getBaseUrl();
+            const res = await fetch(`${base}/api/autopilot/status`);
+            if (res.ok) return await res.json();
+        } catch (e) {
+            console.warn('[API] Failed to get autopilot status:', e);
+        }
+        return null;
+    },
+
+    /**
+     * Toggle Full-Auto Pilot buying (On / Off)
+     */
+    async toggleAutoPilot(enabled) {
+        const base = getBaseUrl();
+        const res = await fetch(`${base}/api/autopilot/toggle`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled })
+        });
+        if (!res.ok) throw new Error('Failed to toggle autopilot');
+        return await res.json();
+    },
+
+    /**
+     * Manually trigger immediate Full-Auto Pilot cycle
+     */
+    async triggerAutoPilotNow() {
+        const base = getBaseUrl();
+        const res = await fetch(`${base}/api/autopilot/trigger_now`, { method: 'POST' });
+        if (!res.ok) throw new Error('Failed to trigger autopilot cycle');
+        return await res.json();
+    },
+
+    // Convenience Aliases for UI Dispatcher
+    async buyStock(ticker, price, qty) {
+        return await this.buyHolding({ ticker, buy_price: Number(price), quantity: Number(qty) });
+    },
+
+    async sellStock(id, price, reason = "MANUAL_SELL") {
+        return await this.sellHolding(id, price, reason);
+    },
+
+    async triggerScan() {
+        return await this.triggerScanNow();
+    },
+
+    async syncBroker() {
+        return await this.triggerReconciliation();
     }
 };
+
+

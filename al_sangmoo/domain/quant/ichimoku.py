@@ -18,6 +18,11 @@ def calculate_ichimoku_indicators(df: pd.DataFrame) -> pd.DataFrame:
     - Vol_SMA20, Vol_Ratio (safe division against 0/NaN)
     """
     df = df.copy()
+    if isinstance(df.columns, pd.MultiIndex):
+        if 'Close' in df.columns.get_level_values(0):
+            df.columns = df.columns.get_level_values(0)
+        elif 'Close' in df.columns.get_level_values(1):
+            df.columns = df.columns.get_level_values(1)
     
     # 1. 9-period Tenkan-sen (Conversion Line)
     high_9 = df['High'].rolling(window=9, min_periods=5).max()
@@ -54,6 +59,26 @@ def calculate_ichimoku_indicators(df: pd.DataFrame) -> pd.DataFrame:
     df['Vol_SMA20'] = df['Volume'].rolling(window=20, min_periods=5).mean()
     vol_sma = df['Vol_SMA20'].fillna(0)
     df['Vol_Ratio'] = np.where(vol_sma > 0, df['Volume'] / vol_sma, 1.0)
+
+    # 9. Goldman Sachs / Al-Sangmoo v2 Upgraded Quantitative Features
+    # 20D Highest High (Momentum Breakout Engine)
+    df['High_20D'] = df['High'].rolling(window=20, min_periods=10).max().shift(1)
+
+    # ATR(14) Volatility Channel (Uncapped Trailing Stop Engine)
+    tr = pd.concat([
+        df['High'] - df['Low'],
+        (df['High'] - df['Close'].shift(1)).abs(),
+        (df['Low'] - df['Close'].shift(1)).abs()
+    ], axis=1).max(axis=1)
+    df['ATR14'] = tr.rolling(window=14, min_periods=5).mean()
+
+    # 3-Month Cross-Sectional Relative Strength (RS_3M)
+    df['RS_3M'] = df['Close'].pct_change(periods=63).fillna(0) * 100.0
+
+    # On-Balance Volume (OBV) & 20D MA
+    direction = np.where(df['Close'].diff() > 0, 1, np.where(df['Close'].diff() < 0, -1, 0))
+    df['OBV'] = (direction * df['Volume']).fillna(0).cumsum()
+    df['OBV_MA20'] = df['OBV'].rolling(window=20, min_periods=5).mean()
 
     return df
 

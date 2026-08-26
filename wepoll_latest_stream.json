@@ -1,110 +1,104 @@
 {
-  "video_id": "-JQd5PnGxng",
-  "title": "[Vikings] Shortened Correction Period and Rising NVIDIA Server Prices | [Buddy Buddy] High-Intere...",
-  "url": "https://www.youtube.com/watch?v=-JQd5PnGxng",
+  "video_id": "68t7GAFXnP8",
+  "title": "[Vikings] Honey, we should install a nuclear power plant at your father's house\n[BuddyBuddy] Ahea...",
+  "url": "https://www.youtube.com/watch?v=68t7GAFXnP8",
   "macro_gauges": {
     "us10y": {
-      "val": 4.738,
-      "delta": "+0.04%p",
+      "val": 4.639,
+      "delta": "-0.07%p",
       "status": "CRITICAL_BURDEN",
       "label": "미국채 10년물"
     },
     "dxy": {
-      "val": 98.82,
-      "delta": "+0.0%",
+      "val": 99.02,
+      "delta": "+0.1%",
       "status": "SOFT_DOLLAR",
       "label": "달러 인덱스(DXY)"
     },
     "vix": {
-      "val": 15.13,
-      "delta": "-5.5%",
+      "val": 15.45,
+      "delta": "-2.5%",
       "status": "CALM",
       "label": "VIX 공포지수"
     },
     "wti": {
-      "val": 85.71,
-      "delta": "-1.6%",
-      "status": "INFLATION_SHOCK",
+      "val": 80.73,
+      "delta": "-2.0%",
+      "status": "ELEVATED",
       "label": "WTI 국제유가"
     },
     "gold": {
-      "val": 4696.3,
-      "delta": "+1.6%",
-      "status": "HEDGE_DEMAND",
+      "val": 4685.6,
+      "delta": "+1.0%",
+      "status": "STABLE",
       "label": "국제 금시세"
     }
   },
   "macro_climate": {
-    "msi_score": 72.8,
+    "msi_score": 70.9,
     "msi_breakdown": {
-      "m_hard": 35.0,
+      "m_hard": 31.0,
       "m_hard_max": 60,
       "us10y_pts": 25.0,
       "dxy_pts": 0.0,
       "vix_pts": 0.0,
-      "wti_pts": 10.0,
-      "m_nlp": 22.8,
+      "wti_pts": 6.0,
+      "m_nlp": 24.9,
       "m_nlp_max": 25,
-      "def_count": 63,
-      "buy_count": 6,
+      "def_count": 34,
+      "buy_count": 0,
       "m_shock": 15.0,
       "m_shock_max": 15
     },
     "macro_stance": "DEFENSE_HOLD",
     "macro_stance_kr": "신규 매수 보류 / 관망·현금 유지 주간 (Orange 50~74점)",
-    "macro_headline": "[거시 게이트 0단계: 거시 위험 지수 72.8점 / 신규 매수 보류 및 관망 권고]",
-    "macro_action_directive": "거시 위험 지수(MSI 72.8점: 10년물 금리 4.738%, 유가 $85.71) 및 방송 지침상, 현재 장세는 신규 매수를 쉬어가고 관망해야 하는 장세입니다. 다만 거시 리스크 진정 시 즉시 공략할 최우선 1순위 후보 종목을 사전 선별합니다.",
+    "macro_headline": "[거시 게이트 0단계: 거시 위험 지수 70.9점 / 신규 매수 보류 및 관망 권고]",
+    "macro_action_directive": "거시 위험 지수(MSI 70.9점: 10년물 금리 4.639%, 유가 $80.73) 및 방송 지침상, 현재 장세는 신규 매수를 쉬어가고 관망해야 하는 장세입니다. 다만 거시 리스크 진정 시 즉시 공략할 최우선 1순위 후보 종목을 사전 선별합니다.",
     "external_shocks": [
       "지정학적 분쟁 및 전쟁 리스크",
       "무역 분쟁 및 관세 불확실성",
       "금리 경로 및 통화정책 영향권"
     ],
-    "defense_keyword_count": 63
+    "defense_keyword_count": 34
   },
   "macro_narrative": "지정학적 분쟁 및 전쟁 리스크 / 무역 분쟁 및 관세 불확실성 / 금리 경로 및 통화정책 영향권",
   "mentioned_stocks": [
     {
       "ticker": "NVDA",
-      "mentions": 102,
-      "pos_score": 50,
-      "neg_score": 26,
-      "net_sentiment": 24,
-      "host_intent": "BULLISH_RECOMMENDED",
-      "intent_desc": "진행자 적극 추천 / 긍정 주목 (순환매·매수 유망)",
-      "positive_reasons": [
-        "실적",
-        "긍정",
-        "관심",
-        "반등"
-      ],
-      "caution_reasons": [
-        "부담",
-        "경고",
-        "조정"
-      ],
-      "sample_context": "고하게 막아주는 사방이 약간은 좀 경고하게 막아주는 그런 느낌이 지난주 금요일에 좀 그런 느낌이 지난주 금요일에 좀 그런 느낌이 지난주 금요일에 좀 있었습니다. 그래서 물론 이번 주 있었습니다. 그래서 물론 이번 주 있었습니다. 그래서 물론 이번 주 엔비디아 실적 발표에 따라서 기업별로 엔비디아 실적 발표에 따라서 기업별로 엔비디아 실적 발표에 따라서 기업별로 막 움직이겠죠. 엄청나게 큰 어 막 움직이겠죠. 엄청나게 큰 어 막 움직이겠죠. 엄청나게 큰 어 변동성이 좀 나올 수도 있는 그런 변동성이 좀 나"
-    },
-    {
-      "ticker": "PLTR",
-      "mentions": 33,
-      "pos_score": 25,
+      "mentions": 174,
+      "pos_score": 54,
       "neg_score": 12,
-      "net_sentiment": 13,
+      "net_sentiment": 42,
       "host_intent": "BULLISH_RECOMMENDED",
       "intent_desc": "진행자 적극 추천 / 긍정 주목 (순환매·매수 유망)",
       "positive_reasons": [
+        "좋은",
+        "기회",
         "실적",
-        "반등",
-        "긍정"
+        "관심"
       ],
       "caution_reasons": [
-        "매도",
-        "손절"
+        "떨어"
       ],
-      "sample_context": "지가 뭐 100만 달러에서 레인지가 뭐 100만 달러에서 500만 달러씩 이렇게 돼 있고 500만 달러씩 이렇게 돼 있고 500만 달러씩 이렇게 돼 있고 매도한 종목 메타 모토라 솔루션 매도한 종목 메타 모토라 솔루션 매도한 종목 메타 모토라 솔루션 팔란티어 팔란티어를 왜됐어? 예. 못 팔란티어 팔란티어를 왜됐어? 예. 못 팔란티어 팔란티어를 왜됐어? 예. 못 먹었단 얘기야. 손절했단 얘기죠. 먹었단 얘기야. 손절했단 얘기죠. 먹었단 얘기야. 손절했단 얘기죠. 예. 자, 그래서 이렇게 매도를 예. 자,"
+      "sample_context": "요. 그러니까 정도까진 아닌 거 같아요. 그러니까 뭔가 시장에서는 지켜보고 싶은게 뭔가 시장에서는 지켜보고 싶은게 뭔가 시장에서는 지켜보고 싶은게 있어요. 뭘 지켜보고 싶습니까? 있어요. 뭘 지켜보고 싶습니까? 있어요. 뭘 지켜보고 싶습니까? 당연히 엔비디아겠죠. 비디아 실적 당연히 엔비디아겠죠. 비디아 실적 당연히 엔비디아겠죠. 비디아 실적 발표를 보면서 왜 그럴까요? 발표를 보면서 왜 그럴까요? 발표를 보면서 왜 그럴까요? 엔비디아는 단순하게 한 기업의 실적 엔비디아는 단순하게 한 기업의 실적 엔비디"
     },
     {
       "ticker": "AMZN",
+      "mentions": 6,
+      "pos_score": 6,
+      "neg_score": 0,
+      "net_sentiment": 6,
+      "host_intent": "BULLISH_RECOMMENDED",
+      "intent_desc": "진행자 적극 추천 / 긍정 주목 (순환매·매수 유망)",
+      "positive_reasons": [
+        "좋은",
+        "기회"
+      ],
+      "caution_reasons": [],
+      "sample_context": "않으셨으면 좋겠고 제일 어떻게 보면 이렇게 흔들릴 때는 좋은 어떻게 보면 이렇게 흔들릴 때는 좋은 어떻게 보면 이렇게 흔들릴 때는 좋은 종목들 있잖아요. 엔비디아, 알파벳, 종목들 있잖아요. 엔비디아, 알파벳, 종목들 있잖아요. 엔비디아, 알파벳, 아마존 이런 기업들 이런 기업들 아마존 이런 기업들 이런 기업들 아마존 이런 기업들 이런 기업들 갖다가 그냥 네포트 안에 까득까득 갖다가 그냥 네포트 안에 까득까득 갖다가 그냥 네포트 안에 까득까득 채워갈 수 있는 좋은 기회라 보시면 채워갈 수 있는 좋은"
+    },
+    {
+      "ticker": "GOOGL",
       "mentions": 9,
       "pos_score": 4,
       "neg_score": 0,
@@ -112,84 +106,31 @@
       "host_intent": "BULLISH_RECOMMENDED",
       "intent_desc": "진행자 적극 추천 / 긍정 주목 (순환매·매수 유망)",
       "positive_reasons": [
-        "실적",
-        "성장"
+        "좋은",
+        "기회"
       ],
       "caution_reasons": [],
-      "sample_context": "기 실적 발 실적이 지금 24분기 EPS 성장률이 분기별 24분기 EPS 성장률이 분기별 24분기 EPS 성장률이 분기별 EPS 성장률이 50%가 넘는다는 거 EPS 성장률이 50%가 넘는다는 거 EPS 성장률이 50%가 넘는다는 거 아닙니까? 예. 아마존을 빼면 30% 아닙니까? 예. 아마존을 빼면 30% 아닙니까? 예. 아마존을 빼면 30% 어마어마한 수치예요. 어마어마한 수치예요. 어마어마한 수치예요. &gt;&gt; 분기별 EPS 이익 성장이 50%맞 &gt;&gt; 분기별 EPS 이익 성장이"
+      "sample_context": "대해서 너무 흔들리지 않으셨으면 좋겠고 제일 흔들리지 않으셨으면 좋겠고 제일 흔들리지 않으셨으면 좋겠고 제일 어떻게 보면 이렇게 흔들릴 때는 좋은 어떻게 보면 이렇게 흔들릴 때는 좋은 어떻게 보면 이렇게 흔들릴 때는 좋은 종목들 있잖아요. 엔비디아, 알파벳, 종목들 있잖아요. 엔비디아, 알파벳, 종목들 있잖아요. 엔비디아, 알파벳, 아마존 이런 기업들 이런 기업들 아마존 이런 기업들 이런 기업들 아마존 이런 기업들 이런 기업들 갖다가 그냥 네포트 안에 까득까득 갖다가 그냥 네포트 안에 까득까득 갖다가"
     },
     {
       "ticker": "005930.KS",
-      "mentions": 24,
+      "mentions": 3,
       "pos_score": 3,
-      "neg_score": 0,
-      "net_sentiment": 3,
-      "host_intent": "BULLISH_RECOMMENDED",
-      "intent_desc": "진행자 적극 추천 / 긍정 주목 (순환매·매수 유망)",
-      "positive_reasons": [
-        "좋은"
-      ],
-      "caution_reasons": [],
-      "sample_context": "있는 것은 당연히 안에 제가 바라보고 있는 것은 당연히 전력 에너지 쪽 그쪽이 이제 앞으로 전력 에너지 쪽 그쪽이 이제 앞으로 전력 에너지 쪽 그쪽이 이제 앞으로 조금은 좋은 흐름이 나오지않 조금은 좋은 흐름이 나오지않 조금은 좋은 흐름이 나오지않 삼성전자가 -3.5%예요. 5%예요. 삼성전자가 -3.5%예요. 5%예요. 삼성전자가 -3.5%예요. 5%예요. 하이닉스가 2%입니다. 삼성 SDI가 하이닉스가 2%입니다. 삼성 SDI가 하이닉스가 2%입니다. 삼성 SDI가 4.5%. 자, 그렇게 상승을 4"
-    },
-    {
-      "ticker": "000660.KS",
-      "mentions": 12,
-      "pos_score": 3,
-      "neg_score": 0,
-      "net_sentiment": 3,
-      "host_intent": "BULLISH_RECOMMENDED",
-      "intent_desc": "진행자 적극 추천 / 긍정 주목 (순환매·매수 유망)",
-      "positive_reasons": [
-        "좋은"
-      ],
-      "caution_reasons": [],
-      "sample_context": "이 이제 앞으로 전력 에너지 쪽 그쪽이 이제 앞으로 조금은 좋은 흐름이 나오지않 조금은 좋은 흐름이 나오지않 조금은 좋은 흐름이 나오지않 삼성전자가 -3.5%예요. 5%예요. 삼성전자가 -3.5%예요. 5%예요. 삼성전자가 -3.5%예요. 5%예요. 하이닉스가 2%입니다. 삼성 SDI가 하이닉스가 2%입니다. 삼성 SDI가 하이닉스가 2%입니다. 삼성 SDI가 4.5%. 자, 그렇게 상승을 4.5%. 자, 그렇게 상승을 4.5%. 자, 그렇게 상승을 삼성전자가 왜 아 주주환원 때문에 삼성전자가 왜 아 주"
-    },
-    {
-      "ticker": "TSLA",
-      "mentions": 18,
-      "pos_score": 4,
       "neg_score": 2,
-      "net_sentiment": 2,
+      "net_sentiment": 1,
       "host_intent": "BULLISH_RECOMMENDED",
       "intent_desc": "진행자 적극 추천 / 긍정 주목 (순환매·매수 유망)",
       "positive_reasons": [
-        "실적",
-        "관심"
+        "좋다"
       ],
       "caution_reasons": [
-        "조정"
+        "안 좋"
       ],
-      "sample_context": "아니었나 알려 주는 그러한 뉴스가 아니었나 알려 주는 그러한 뉴스가 아니었나 싶습니다. 자 그래서 이번 주 잘 좀 싶습니다. 자 그래서 이번 주 잘 좀 싶습니다. 자 그래서 이번 주 잘 좀 바라보셔도 좋을 것 같다. 테슬라 바라보셔도 좋을 것 같다. 테슬라 바라보셔도 좋을 것 같다. 테슬라 5% 상승했고요. 자 그다음에 머 5% 상승했고요. 자 그다음에 머 5% 상승했고요. 자 그다음에 머 상승했고 모더나도 같이 상승했고 모더나도 같이 상승했고 모더나도 같이 상승했습니다.네 다시 조정뒀던 거 상승했습니"
+      "sample_context": "얘기가 되는 거고 수요가 안 좋다는 얘긴 되는 거고 수요가 안 좋다는 얘긴 되는 거고 수요가 안 좋다는 얘긴 거고이 산업이 끝난다는 얘긴 건데 거고이 산업이 끝난다는 얘긴 건데 거고이 산업이 끝난다는 얘긴 건데 지금 지금 지금 &gt;&gt; 그러면 삼성전자 SK닉스가 먼저 &gt;&gt; 그러면 삼성전자 SK닉스가 먼저 &gt;&gt; 그러면 삼성전자 SK닉스가 먼저 반응이 옵니까? M비디어가 먼저 반응이 옵니까? M비디어가 먼저 반응이 옵니까? M비디어가 먼저 반응이 옵니까? 구조상 반응이 옵니까?"
     },
     {
-      "ticker": "GOOGL",
-      "mentions": 24,
-      "pos_score": 0,
-      "neg_score": 0,
-      "net_sentiment": 0,
-      "host_intent": "NEUTRAL_WATCH",
-      "intent_desc": "진행자 단순 언급 / 수급 관망",
-      "positive_reasons": [],
-      "caution_reasons": [],
-      "sample_context": ""
-    },
-    {
-      "ticker": "MSFT",
-      "mentions": 9,
-      "pos_score": 0,
-      "neg_score": 0,
-      "net_sentiment": 0,
-      "host_intent": "NEUTRAL_WATCH",
-      "intent_desc": "진행자 단순 언급 / 수급 관망",
-      "positive_reasons": [],
-      "caution_reasons": [],
-      "sample_context": ""
-    },
-    {
-      "ticker": "AMD",
-      "mentions": 3,
+      "ticker": "META",
+      "mentions": 6,
       "pos_score": 0,
       "neg_score": 0,
       "net_sentiment": 0,
@@ -201,85 +142,105 @@
     },
     {
       "ticker": "MU",
-      "mentions": 15,
+      "mentions": 3,
       "pos_score": 0,
-      "neg_score": 6,
-      "net_sentiment": -6,
-      "host_intent": "BEARISH_CAUTION",
-      "intent_desc": "진행자 주의 / 하락 우려 (리스크 경고)",
+      "neg_score": 0,
+      "net_sentiment": 0,
+      "host_intent": "NEUTRAL_WATCH",
+      "intent_desc": "진행자 단순 언급 / 수급 관망",
       "positive_reasons": [],
-      "caution_reasons": [
-        "부담",
-        "조정"
-      ],
-      "sample_context": "여기서 나타내는 것이겠죠. 왜냐면은 계속 가격에 대한 것이겠죠. 왜냐면은 계속 가격에 대한 것이겠죠. 왜냐면은 계속 가격에 대한 수요 부담이 만약에 생기게 된다면 수요 부담이 만약에 생기게 된다면 수요 부담이 만약에 생기게 된다면 엔비디아도 만약에 마이크론에 대해서 엔비디아도 만약에 마이크론에 대해서 엔비디아도 만약에 마이크론에 대해서 또는 엔비디아도 SK이닉스에 대해서 또는 엔비디아도 SK이닉스에 대해서 또는 엔비디아도 SK이닉스에 대해서 가격적인 부분을 조정을 할 텐데 자 가격적인 부분을 조정을 할"
+      "caution_reasons": [],
+      "sample_context": ""
     },
     {
-      "ticker": "META",
-      "mentions": 9,
-      "pos_score": 0,
-      "neg_score": 6,
-      "net_sentiment": -6,
-      "host_intent": "BEARISH_CAUTION",
-      "intent_desc": "진행자 주의 / 하락 우려 (리스크 경고)",
-      "positive_reasons": [],
-      "caution_reasons": [
-        "매도",
-        "손절"
-      ],
-      "sample_context": "다 비슷비슷한데 거. 아, 금액은 다 비슷비슷한데 레인지가 뭐 100만 달러에서 레인지가 뭐 100만 달러에서 레인지가 뭐 100만 달러에서 500만 달러씩 이렇게 돼 있고 500만 달러씩 이렇게 돼 있고 500만 달러씩 이렇게 돼 있고 매도한 종목 메타 모토라 솔루션 매도한 종목 메타 모토라 솔루션 매도한 종목 메타 모토라 솔루션 팔란티어 팔란티어를 왜됐어? 예. 못 팔란티어 팔란티어를 왜됐어? 예. 못 팔란티어 팔란티어를 왜됐어? 예. 못 먹었단 얘기야. 손절했단 얘기죠. 먹었단 얘기야. 손절했단"
-    },
-    {
-      "ticker": "ARM",
-      "mentions": 33,
-      "pos_score": 3,
-      "neg_score": 14,
-      "net_sentiment": -11,
-      "host_intent": "BEARISH_CAUTION",
-      "intent_desc": "진행자 주의 / 하락 우려 (리스크 경고)",
+      "ticker": "AMD",
+      "mentions": 27,
+      "pos_score": 9,
+      "neg_score": 10,
+      "net_sentiment": -1,
+      "host_intent": "NEUTRAL_WATCH",
+      "intent_desc": "진행자 단순 언급 / 수급 관망",
       "positive_reasons": [
-        "긍정"
+        "매수",
+        "반등"
       ],
       "caution_reasons": [
-        "조심",
-        "떨어",
+        "빠지",
         "조정"
       ],
-      "sample_context": "호 요즘에 핀테크도 좀 올라가고 암호 앞에도 좀 올라가고 그죠 앞에도 좀 올라가고 그죠 앞에도 좀 올라가고 그죠 미리 뭔가 있으려나 미리 뭔가 있으려나 미리 뭔가 있으려나 비자 마스터카드에 비자 마스터카드에 비자 마스터카드에 뭐가 있을래나 어 핀테크 암호화폐 어 뭐가 있을래나 어 핀테크 암호화폐 어 뭐가 있을래나 어 핀테크 암호화폐 어 클리티 법안에 대해서 일부 SC가 클리티 법안에 대해서 일부 SC가 클리티 법안에 대해서 일부 SC가 조금은 긍정적인 분위기가 좀 조금은 긍정적인 분위기가 좀 조금은"
+      "sample_context": "2.19% 상승했고 어, 최근에 좀 2.19% 상승했고 어, 최근에 좀 2.19% 상승했고 어, 최근에 좀 빠졌어. 7거래일 동안 빠지다가 오늘 빠졌어. 7거래일 동안 빠지다가 오늘 빠졌어. 7거래일 동안 빠지다가 오늘 반등 준 겁니다. 아, 그리고 AMD 반등 준 겁니다. 아, 그리고 AMD 반등 준 겁니다. 아, 그리고 AMD 4.9%, 마벨 4% 꼭 내가 집은 4.9%, 마벨 4% 꼭 내가 집은 4.9%, 마벨 4% 꼭 내가 집은 것들만 잘 가는 아, 희한한 상황이 것들만 잘 가는 아, 희한한 상"
+    },
+    {
+      "ticker": "MSFT",
+      "mentions": 3,
+      "pos_score": 0,
+      "neg_score": 1,
+      "net_sentiment": -1,
+      "host_intent": "NEUTRAL_WATCH",
+      "intent_desc": "진행자 단순 언급 / 수급 관망",
+      "positive_reasons": [],
+      "caution_reasons": [
+        "힘들"
+      ],
+      "sample_context": "얘기를 하고 있는 같은 방향을 지금 얘기를 하고 있는 같은 방향을 지금 얘기를 하고 있는 거예요. 거예요. 거예요. &gt;&gt; 뭐 제가 이제 마이크로소프트 사회를 &gt;&gt; 뭐 제가 이제 마이크로소프트 사회를 &gt;&gt; 뭐 제가 이제 마이크로소프트 사회를 가져오긴 했지만은 결론적으로 비용이 가져오긴 했지만은 결론적으로 비용이 가져오긴 했지만은 결론적으로 비용이 높아지면은 자기 자본으로 하기 높아지면은 자기 자본으로 하기 높아지면은 자기 자본으로 하기 힘들어진 상이 발생한다는 거죠. 힘들어진 상"
+    },
+    {
+      "ticker": "AAPL",
+      "mentions": 18,
+      "pos_score": 0,
+      "neg_score": 3,
+      "net_sentiment": -3,
+      "host_intent": "BEARISH_CAUTION",
+      "intent_desc": "진행자 주의 / 하락 우려 (리스크 경고)",
+      "positive_reasons": [],
+      "caution_reasons": [
+        "우려"
+      ],
+      "sample_context": "있을 어, 여러 가지 시장에서 우려도 있을 어, 여러 가지 시장에서 우려도 있을 것이고 예. 보시면 것이고 예. 보시면 것이고 예. 보시면 하여튼 뭐 그런 부분이 있겠죠, 하여튼 뭐 그런 부분이 있겠죠, 하여튼 뭐 그런 부분이 있겠죠, 결국에. 자, 애플입니다. 자, 결국에. 자, 애플입니다. 자, 결국에. 자, 애플입니다. 자, 저는요. 저 애플이 예전에 한번 그 저는요. 저 애플이 예전에 한번 그 저는요. 저 애플이 예전에 한번 그 오픈 클로우가 나오게 되면서 오픈 클로우가 나오게 되면서 오픈 클"
+    },
+    {
+      "ticker": "000660.KS",
+      "mentions": 6,
+      "pos_score": 0,
+      "neg_score": 3,
+      "net_sentiment": -3,
+      "host_intent": "BEARISH_CAUTION",
+      "intent_desc": "진행자 주의 / 하락 우려 (리스크 경고)",
+      "positive_reasons": [],
+      "caution_reasons": [
+        "떨어"
+      ],
+      "sample_context": "쉽진 않아요. 가격이 떨어지는 건 쉽진 않아요. 사실 비디아 가격 떨어진다는 얘기는 사실 비디아 가격 떨어진다는 얘기는 사실 비디아 가격 떨어진다는 얘기는 &gt;&gt; 예 &gt;&gt; 예 &gt;&gt; 예 &gt;&gt; 어 우리는 삼성주자 하이닉스 하면 안 &gt;&gt; 어 우리는 삼성주자 하이닉스 하면 안 &gt;&gt; 어 우리는 삼성주자 하이닉스 하면 안 된다는 얘기죠. 된다는 얘기죠. 된다는 얘기죠. &gt;&gt; 어 &gt;&gt; 어 &gt;&gt; 어 &gt;&gt; 그죠. ["
     }
   ],
   "bullish_stream_tickers": [
     "NVDA",
-    "PLTR",
     "AMZN",
-    "005930.KS",
-    "000660.KS",
-    "TSLA"
+    "GOOGL",
+    "005930.KS"
   ],
   "neutral_stream_tickers": [
-    "GOOGL",
-    "MSFT",
-    "AMD"
+    "META",
+    "MU",
+    "AMD",
+    "MSFT"
   ],
   "bearish_stream_tickers": [
-    "MU",
-    "META",
-    "ARM"
+    "AAPL",
+    "000660.KS"
   ],
   "live_stream_tickers": [
     "NVDA",
-    "PLTR",
     "AMZN",
-    "005930.KS",
-    "000660.KS",
-    "TSLA",
     "GOOGL",
-    "MSFT",
-    "AMD",
-    "MU",
+    "005930.KS",
     "META",
-    "ARM"
+    "MU",
+    "AMD",
+    "MSFT",
+    "AAPL",
+    "000660.KS"
   ],
-  "transcript_char_count": 141883,
-  "fetched_at": "2026-08-24 12:30:19"
+  "transcript_char_count": 166512,
+  "fetched_at": "2026-08-26 15:48:22"
 }

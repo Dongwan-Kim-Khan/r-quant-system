@@ -1,4 +1,4 @@
-﻿"""
+"""
 Atomic File I/O Engine with Cross-Platform Replace & Windows Sharing Retry.
 """
 import os
@@ -7,8 +7,16 @@ import time
 import json
 import tempfile
 from pathlib import Path
+from datetime import datetime
 
-def atomic_save_json(file_path, data, indent=2, max_retries=10):
+def safe_json_default(o):
+    if hasattr(o, 'item'):
+        return o.item()
+    if isinstance(o, datetime):
+        return o.strftime("%Y-%m-%d")
+    return str(o)
+
+def atomic_save_json(file_path, data, indent=2, max_retries=10, default=safe_json_default):
     """
     Atomically writes JSON by writing to a temporary file on the same volume,
     flushing, and executing an atomic os.replace swap with exponential retry backoff.
@@ -20,7 +28,7 @@ def atomic_save_json(file_path, data, indent=2, max_retries=10):
     
     with tempfile.NamedTemporaryFile("w", dir=dir_name, delete=False, encoding="utf-8") as tf:
         temp_name = tf.name
-        json.dump(data, tf, ensure_ascii=False, indent=indent)
+        json.dump(data, tf, ensure_ascii=False, indent=indent, default=default)
         tf.flush()
         os.fsync(tf.fileno())
         

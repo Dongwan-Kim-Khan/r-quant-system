@@ -1075,6 +1075,7 @@ class TestTier6PlatformRegressionRunner(unittest.TestCase):
             sub_env = dict(os.environ)
             sub_env.pop("AL_SANGMOO_DB_PATH", None)
             sub_env["PYTHONIOENCODING"] = "utf-8"
+            sub_env["PYTHONUTF8"] = "1"
             proc = subprocess.run(
                 [sys.executable, script_path],
                 cwd=PROJECT_ROOT,

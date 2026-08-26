@@ -53,6 +53,7 @@ class WebSocketBroadcastHub:
         """
         message = {
             "event": event_type,
+            "type": event_type,
             "data": data or {},
             "timestamp": time.time()
         }

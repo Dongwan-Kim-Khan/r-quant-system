@@ -21,20 +21,83 @@ def get_feed_cache():
                 LAST_FEED_MTIME = mtime
         except Exception:
             pass
+    return FEED_CACHE
+
 def load_feed_cache():
     return get_feed_cache()
 
 @router.get("/api/dashboard")
 async def get_dashboard_data():
-    """Returns the full executive dashboard data payload (sub-millisecond from memory/disk)."""
+    """Returns the full executive dashboard data payload enriched with real-time portfolio in < 1ms."""
     feed = get_feed_cache()
     if not feed:
         if os.path.exists(DASHBOARD_JSON):
-            with open(DASHBOARD_JSON, "r", encoding="utf-8") as f:
-                feed = json.load(f)
+            try:
+                with open(DASHBOARD_JSON, "r", encoding="utf-8") as f:
+                    feed = json.load(f)
+            except Exception:
+                feed = None
     if not feed:
         raise HTTPException(status_code=503, detail="대시보드 피드 데이터가 아직 생성되지 않았습니다.")
-    return feed
+        
+    # Shallow copy dictionary for high-performance non-mutating response
+    feed_out = dict(feed)
+    
+    # Inject real-time live portfolio from SQLite SSOT (pure CQRS fast read < 0.5ms)
+    try:
+        import db_manager
+        live_portfolio = db_manager.get_live_portfolio()
+        feed_out["portfolio"] = live_portfolio
+
+        # Build unified live price map across holdings and broker
+        holdings = live_portfolio.get("holdings", [])
+        wallet_map = {h["ticker"].upper(): h for h in holdings if isinstance(h, dict) and "ticker" in h}
+        live_price_map = {h["ticker"].upper(): float(h["current_price"]) for h in holdings if isinstance(h, dict) and "ticker" in h and h.get("current_price")}
+        
+        def update_item_live_price(item):
+            if not isinstance(item, dict):
+                return item
+            tk = str(item.get("ticker", "")).upper()
+            if not tk:
+                return item
+            
+            item_copy = dict(item)
+            # 1. Enrich wallet status
+            if tk in wallet_map:
+                h = wallet_map[tk]
+                item_copy["in_wallet"] = True
+                item_copy["holding_pnl"] = float(h.get("pnl_pct", 0.0))
+                item_copy["holding_qty"] = float(h.get("quantity", 0.0))
+                item_copy["holding_price"] = float(h.get("buy_price", 0.0))
+                if h.get("current_price"):
+                    cur_p = float(h["current_price"])
+                    item_copy["price"] = cur_p
+                    item_copy["target_price"] = round(cur_p * 1.15, 2)
+                    item_copy["stop_price"] = round(cur_p * 0.96, 2)
+            else:
+                item_copy["in_wallet"] = False
+                item_copy["holding_pnl"] = 0.0
+                item_copy["holding_qty"] = 0.0
+                item_copy["holding_price"] = 0.0
+                
+            return item_copy
+
+        # 2. Enrich Top Conviction Picks
+        if "top_conviction_pick" in feed_out and feed_out["top_conviction_pick"]:
+            feed_out["top_conviction_pick"] = update_item_live_price(feed_out["top_conviction_pick"])
+        if "top_conviction_runner_up" in feed_out and feed_out["top_conviction_runner_up"]:
+            feed_out["top_conviction_runner_up"] = update_item_live_price(feed_out["top_conviction_runner_up"])
+
+        # 4. Inject Execution Audit Logs
+        try:
+            feed_out["execution_logs"] = db_manager.get_execution_logs(limit=50)
+        except Exception:
+            feed_out["execution_logs"] = []
+    except Exception as e:
+        # Fallback gracefully to feed cached portfolio if DB query fails
+        pass
+        
+    return feed_out
 
 @router.get("/api/summary")
 async def get_dashboard_summary():

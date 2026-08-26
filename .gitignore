@@ -16,9 +16,11 @@ test_*.db*
 backups/*.db
 *.vtt
 .pytest_cache/
-data/charts/PRN.json
-data/charts/NUL.json
-data/charts/CON.json
-data/charts/AUX.json
+# KIS OAuth Tokens & Data Caches
+.kis_token_*.json
+data/.kis_token_*.json
+data/charts/*.json
+data/charts/
+*.log
 
 

@@ -1,4 +1,4 @@
-﻿"""
+"""
 High-Fidelity Paper Trading Broker Adapter.
 Synchronizes with SQLite portfolio persistence.
 """
@@ -33,7 +33,7 @@ class PaperTradingBroker(IExecutionGateway):
             "quantity": quantity,
             "total_cost": total_cost,
             "target_price": target_price or round(fill_price * 1.15, 2),
-            "stop_loss_price": stop_loss or round(fill_price * 0.97, 2),
+            "stop_loss_price": stop_loss or round(fill_price * 0.96, 2),
             "execution_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
 

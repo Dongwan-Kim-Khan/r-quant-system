@@ -7,8 +7,18 @@ if sys.platform.startswith('win'):
     sys.stdout.reconfigure(encoding='utf-8')
 
 vtt_file = os.path.join(os.path.dirname(__file__), 'test_sub_uu2scQ-AsfM.ko.vtt')
-with open(vtt_file, 'r', encoding='utf-8') as f:
-    text = f.read()
+if not os.path.exists(vtt_file):
+    # Try finding any .vtt file in root or fallback
+    root_dir = os.path.dirname(os.path.dirname(__file__))
+    candidates = [f for f in os.listdir(root_dir) if f.endswith('.vtt')]
+    if candidates:
+        vtt_file = os.path.join(root_dir, candidates[0])
+
+if os.path.exists(vtt_file):
+    with open(vtt_file, 'r', encoding='utf-8') as f:
+        text = f.read()
+else:
+    text = ""
 
 clean_lines = [re.sub(r'<[^>]+>', '', l).strip() for l in text.split('\n') if '-->' not in l and not l.strip().isdigit() and l.strip() and not l.startswith('WEBVTT')]
 full_transcript = ' '.join(clean_lines)

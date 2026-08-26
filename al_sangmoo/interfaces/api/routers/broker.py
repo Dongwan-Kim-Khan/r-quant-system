@@ -1,20 +1,46 @@
-from typing import Optional
+import re
+import asyncio
+from typing import Optional, Literal
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+import db_manager
 from al_sangmoo.infrastructure.brokers.kis_broker import default_kis_broker
-from al_sangmoo.domain.risk.order_guardrail import validate_pre_trade_guardrail
+from al_sangmoo.domain.risk.order_guardrail import validate_pre_trade_guardrail, ORDER_MUTEX
+from al_sangmoo.domain.reconciliation import check_sync
+from al_sangmoo.infrastructure.persistence import add_portfolio_buy, record_portfolio_sell, get_live_portfolio
 
 router = APIRouter(prefix="/api/broker", tags=["Broker Execution"])
 
+TICKER_REGEX = re.compile(r'^[A-Za-z0-9.\^=-]{1,15}$')
+
 class BrokerOrderRequest(BaseModel):
     ticker: str = Field(..., min_length=1, max_length=15)
-    side: Optional[str] = Field(default="BUY", description="'BUY' or 'SELL'")
+    side: Optional[Literal["BUY", "SELL", "buy", "sell"]] = Field(default="BUY", description="'BUY' or 'SELL'")
     qty: Optional[int] = Field(default=None, gt=0, le=100_000)
     quantity: Optional[float] = Field(default=None, gt=0, le=100_000.0)
     price: Optional[float] = Field(default=0.0, ge=0.0)
     buy_price: Optional[float] = Field(default=None, ge=0.0)
     buy_date: Optional[str] = Field(default=None)
-    order_type: str = Field(default="01", description="'01': Market, '00': Limit")
+    order_type: Optional[str] = Field(default="00", description="'00': Limit (지정가), '01': Market")
+    exchange: Optional[str] = Field(default="NASD", description="'NASD', 'NYSE', 'AMEX'")
+
+    @field_validator("ticker")
+    @classmethod
+    def validate_ticker(cls, v: str) -> str:
+        clean = v.strip().upper()
+        if not TICKER_REGEX.match(clean):
+            raise ValueError(f"유효하지 않은 티커 심볼 형식입니다: '{v}'")
+        return clean
+
+    @field_validator("side")
+    @classmethod
+    def validate_side(cls, v: Optional[str]) -> str:
+        if not v:
+            return "BUY"
+        clean = v.strip().upper()
+        if clean not in ("BUY", "SELL"):
+            raise ValueError("주문 방향은 'BUY' 또는 'SELL' 이어야 합니다.")
+        return clean
 
 @router.get("/status")
 def get_broker_status():
@@ -23,42 +49,101 @@ def get_broker_status():
 
 @router.get("/balance")
 def get_broker_balance():
-    """Queries live or simulated cash balance and portfolio equity from KIS."""
+    """Queries live US equity cash balance and portfolio equity from KIS."""
     return default_kis_broker.get_account_balance()
 
+
+@router.post("/reconcile")
+def run_reconciliation(auto_calibrate: bool = True):
+    """
+    Executes a 1-time daily reconciliation audit between KIS Broker and local SQLite DB.
+    Calibrates corporate actions (splits, dividend shares) and manual trades.
+    """
+    return check_sync(auto_calibrate=auto_calibrate)
+
 @router.post("/order")
-def execute_broker_order(order: BrokerOrderRequest):
+async def execute_broker_order(order: BrokerOrderRequest):
     """
-    Submits a live or simulated order to Korea Investment & Securities.
-    Enforces pre-trade risk guardrails before sending to the exchange.
+    Submits a live/virtual order to Korea Investment & Securities (KIS).
+    Enforces pre-trade risk guardrails before sending to the exchange and
+    records the trade to local SQLite immediately upon execution.
+    Guaranteed atomic via ORDER_MUTEX.
     """
-    final_qty = int(order.qty if order.qty is not None else (order.quantity or 1))
-    final_price = float(order.price if order.price > 0 else (order.buy_price or 0.0))
-    final_side = (order.side or "BUY").upper()
+    async with ORDER_MUTEX:
+        final_qty = int(order.qty if order.qty is not None else (order.quantity or 1))
+        final_price = float(order.price if order.price > 0 else (order.buy_price or 0.0))
+        final_side = (order.side or "BUY").upper()
 
-    # 1. Pre-Trade Guardrail Validation
-    balance_info = default_kis_broker.get_account_balance()
-    total_equity = float(balance_info.get("total_equity", 100_000.0))
-    active_holdings = balance_info.get("holdings", [])
-    
-    order_price = final_price if final_price > 0 else 100.0
-    eval_res = validate_pre_trade_guardrail(
-        ticker=order.ticker,
-        price=order_price,
-        quantity=float(final_qty),
-        total_equity=total_equity,
-        active_holdings=active_holdings,
-        max_single_asset_pct=0.25
-    )
-    if not eval_res["allowed"] and final_side == "BUY":
-        raise HTTPException(status_code=400, detail=f"Pre-Trade Risk Violation: {eval_res['reason']}")
+        # 1. Pre-Trade Guardrail Validation
+        balance_info = await asyncio.to_thread(default_kis_broker.get_overseas_balance)
+        total_equity = float(balance_info.get("total_equity_usd", 100_000.0))
+        active_holdings = balance_info.get("holdings", [])
+        
+        order_price = final_price if final_price > 0 else 100.0
+        eval_res = validate_pre_trade_guardrail(
+            ticker=order.ticker,
+            price=order_price,
+            quantity=float(final_qty),
+            total_equity=total_equity if total_equity > 0 else 100_000.0,
+            active_holdings=active_holdings,
+            max_single_asset_pct=0.25
+        )
+        if not eval_res["allowed"] and final_side == "BUY":
+            raise HTTPException(status_code=400, detail=f"Pre-Trade Risk Violation: {eval_res['reason']}")
 
-    # 2. Execute Order via Broker Adapter
-    result = default_kis_broker.place_order(
-        ticker=order.ticker,
-        side=final_side,
-        qty=final_qty,
-        price=final_price,
-        order_type=order.order_type
-    )
-    return result
+        # 2. Execute Order via KIS Broker Gateway
+        result = await asyncio.to_thread(
+            default_kis_broker.place_order,
+            ticker=order.ticker,
+            side=final_side,
+            qty=final_qty,
+            price=final_price,
+            order_type=order.order_type,
+            exchange=order.exchange
+        )
+
+        # 3. If Order Submitted / Filled, sync to SQLite
+        if result.get("status") in ("submitted", "filled"):
+            if final_side == "BUY":
+                add_portfolio_buy(
+                    ticker=order.ticker.upper(),
+                    buy_price=final_price if final_price > 0 else 100.0,
+                    quantity=float(final_qty),
+                    buy_date=order.buy_date
+                )
+            elif final_side == "SELL":
+                # Find active holding ID in SQLite
+                live_port = get_live_portfolio()
+                for h in live_port.get("holdings", []):
+                    if h["ticker"].upper() == order.ticker.upper():
+                        record_portfolio_sell(
+                            holding_id=h["id"],
+                            sell_price=final_price if final_price > 0 else h["current_price"],
+                            reason="BROKER_LIVE_SELL"
+                        )
+                        break
+            
+            # Record execution log for real-time audit log parity
+            try:
+                db_manager.record_execution_log(
+                    ticker=order.ticker.upper(),
+                    side=final_side,
+                    quantity=float(final_qty),
+                    price=final_price if final_price > 0 else 100.0,
+                    order_type="MARKETABLE_LIMIT" if order.order_type == "00" else "MARKET",
+                    status="FILLED",
+                    message=f"Broker {final_side} order executed",
+                    order_id=str(result.get("order_id", ""))
+                )
+            except Exception:
+                pass
+
+            # Broadcast updated portfolio to all connected WebSocket clients
+            try:
+                from al_sangmoo.api.hub import hub
+                await hub.broadcast("portfolio_update", get_live_portfolio())
+            except Exception:
+                pass
+
+        return result
+
