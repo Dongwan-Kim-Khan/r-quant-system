@@ -254,7 +254,7 @@ export const WebSocketClient = {
                 const freshPort = await ApiClient.getPortfolioData();
                 if (freshPort) UI.renderPortfolio(freshPort);
             } catch (e) {}
-        }, 10000);
+        }, 5000);
     },
 
     _stopHttpPolling() {

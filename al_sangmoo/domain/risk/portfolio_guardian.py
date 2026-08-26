@@ -28,7 +28,7 @@ class PortfolioGuardian:
       2. +15% Take Profit: 50% partial profit locking (letting remaining 50% run for top gains).
     """
 
-    def __init__(self, check_interval_seconds: int = 30):
+    def __init__(self, check_interval_seconds: int = 3):
         self.interval = check_interval_seconds
         self.is_running = False
         self.is_enabled = True  # Auto-execution enabled by default
@@ -74,12 +74,12 @@ class PortfolioGuardian:
     def _get_adaptive_interval(self, holdings_count: int) -> float:
         """
         Adaptive polling interval:
-        - 10s if active holdings exist.
-        - 30s if portfolio is empty to conserve KIS OpenAPI rate limits.
+        - 3s if active holdings exist (ultra-snappy real-time price & PnL sync).
+        - 15s if portfolio is empty to conserve KIS OpenAPI rate limits.
         """
         if holdings_count > 0:
             return float(self.interval)
-        return max(30.0, float(self.interval) * 3)
+        return 15.0
 
     async def _monitor_loop(self):
         """Main async daemon polling loop with adaptive interval."""
