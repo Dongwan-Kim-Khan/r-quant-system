@@ -294,24 +294,24 @@ def evaluate_quant_score(
 
     if is_strat1_active and is_sniper_active:
         quant_type = "BULL"
-        quant_verdict = "Dual 5-Star (양대 전략 동시 충족 특급 매수)"
-        quant_score_text = "100 / 100 pt (DUAL_5_STAR)"
-        action_directive = f"[황금 교집합] 주봉 정배열 + 구름대 도약({days_ago}일 전) + 26일 기준선({ind.kijun_gap_pct:+.1f}%) 안착."
+        quant_verdict = "3-Gate Triple Alpha (3-Gate 만점 특급 주도주)"
+        quant_score_text = "100 / 100 pt (TRIPLE_ALPHA)"
+        action_directive = f"[3-Gate 만점] 주봉 정배열 + 구름대 도약({days_ago}일 전) + 26일 기준선({ind.kijun_gap_pct:+.1f}%) 안착."
     elif is_sniper_active:
         quant_type = "BULL"
-        quant_verdict = "Sniper Alert (구름대 도약 2단계 특급 매수)"
-        quant_score_text = f"{sniper_score} / 100 pt (SNIPER_BUY)"
-        action_directive = f"[전략 2 스나이퍼] 주봉 상승장 + {days_ago}일 전 구름대 지지 도약 후 상방 시세 분출(기준선 대비 {ind.kijun_gap_pct:+.1f}%). 목표 +15% / 손절 -4%."
+        quant_verdict = "Cloud Trampoline (구름대 지지 도약 진입)"
+        quant_score_text = f"{sniper_score} / 100 pt (TRAMPOLINE_BUY)"
+        action_directive = f"[트램펄린 반등] 주봉 상승장 + {days_ago}일 전 구름대 지지 도약 후 상방 시세 분출(기준선 대비 {ind.kijun_gap_pct:+.1f}%). 목표 +15% / 손절 -4%."
     elif is_strat1_active:
         quant_type = "BULL"
-        quant_verdict = "Bull Accumulation (1차 분할 매수 적합)"
+        quant_verdict = "3-Gate Trend Leader (추세 주도주 집중 진입)"
         quant_score_text = f"{bull_score} / 100 pt (BULL_BUY)"
-        action_directive = "주봉 상승장 + 26일 기준선 및 일목 구름대 상단 안착 확인. 1차 분할 매수 적합."
+        action_directive = "주봉 상승장 + 26일 기준선 및 일목 구름대 상단 안착 확인. 3-Slot 균등 진입 적합."
     elif bull_score >= 70:
         quant_type = "BULL"
-        quant_verdict = "Bull Accumulation (1차 분할 매수 적합)"
+        quant_verdict = "3-Gate Sweet Spot (기준선 눌림목 진입)"
         quant_score_text = f"{bull_score} / 100 pt (BULL_BUY)"
-        action_directive = "26일 기준선 및 일목 구름대 상단 안착 확인. 거시 변동성 진정 시 1차 분할 매수 적합."
+        action_directive = "26일 기준선 및 일목 구름대 상단 안착 확인. 3-Slot 분할 진입 적합."
     elif bear_score >= 50:
         quant_type = "BEAR"
         quant_verdict = "Risk Breakdown (생명선 붕괴 / 매수 금지)"
