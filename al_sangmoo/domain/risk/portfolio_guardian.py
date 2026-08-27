@@ -123,19 +123,23 @@ class PortfolioGuardian:
         return res
 
     def _sync_check_and_execute_guardian_rules(self) -> Dict[str, Any]:
-        """Synchronous worker executing broker TRs, price lookups, and DB state changes."""
-        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        # Auto-Reconcile against KIS Broker SSOT periodically (every 5 minutes, non-blocking for 3s loop)
-        import time as _time
-        now_ts = _time.time()
-        if default_kis_broker.is_configured() and (now_ts - getattr(self, "_last_reconcile_time", 0.0) > 300.0):
+        """
+        1. Queries DB for active portfolio holdings.
+        2. Syncs latest real-time quote via primary KIS Broker TR (HHDFS00000300) / fast cache.
+        3. Enforces strict Al-Sangmoo Institutional Quant Rules:
+           - -4.0% Strict Hard Stop (Full Exit)
+           - +15.0% Uncapped Trailing TP
+           - 26D Kijun Support Breakdown
+        """
+        now_ts = time.time()
+        self.last_check_time = now_ts
+        
+        if default_kis_broker.is_configured() and (now_ts - self.last_sync_time > 300.0):
             try:
-                from al_sangmoo.domain.reconciliation import check_sync
-                check_sync(auto_calibrate=True)
-                self._last_reconcile_time = now_ts
-            except Exception as sync_exc:
-                logger.debug(f"[Guardian Auto-Sync] {sync_exc}")
+                default_kis_broker.check_sync()
+                self.last_sync_time = now_ts
+            except Exception as sync_err:
+                logger.debug(f"[Portfolio Guardian] Background check_sync skipped: {sync_err}")
 
         portfolio = db_manager.get_live_portfolio()
         holdings = portfolio.get("holdings", [])
@@ -152,7 +156,6 @@ class PortfolioGuardian:
             if buy_price <= 0 or total_qty <= 0:
                 continue
 
-            # 1. Fetch real-time price (Primary: KIS OpenAPI TR HHDFS00000300, Fallback: yfinance fast_info/history)
             cur_price = None
             kijun_line = float(h.get("stop_loss_price", buy_price * 0.96))
 
@@ -164,7 +167,6 @@ class PortfolioGuardian:
                     import logging as _logging
                     _logging.getLogger("yfinance").setLevel(_logging.CRITICAL)
                     ticker_obj = yf.Ticker(ticker)
-                    # Safe fast_info lookup (resilient to yfinance 'currentTradingPeriod' KeyError)
                     try:
                         fast_info = getattr(ticker_obj, "fast_info", None)
                         if fast_info:
@@ -173,63 +175,45 @@ class PortfolioGuardian:
                                 cur_price = float(p)
                     except Exception:
                         pass
-
-                    # Resilient 5-day history fallback
-                    if cur_price is None or cur_price <= 0:
-                        try:
-                            hist = ticker_obj.history(period="5d", raise_errors=False)
-                            if not hist.empty and "Close" in hist.columns:
-                                close_series = hist["Close"].dropna()
-                                if not close_series.empty:
-                                    cur_price = float(close_series.iloc[-1])
-                        except Exception:
-                            pass
             except Exception as exc:
                 logger.warning(f"[Portfolio Guardian] Live price fetch failed for {ticker}: {exc}")
 
             if cur_price is None or cur_price <= 0:
                 cur_price = float(h.get("current_price") or buy_price)
 
-
             if cur_price is None or cur_price <= 0:
                 continue
 
-            # 2. Compute PnL % & update live price in DB
             pnl_pct = ((cur_price - buy_price) / buy_price) * 100.0
             cur_val = cur_price * total_qty
             total_cost = buy_price * total_qty
             pnl_amt = cur_val - total_cost
-            stop_price = float(h.get("stop_loss_price") or (buy_price * 0.96))
-            target_price = float(h.get("target_price") or (buy_price * 1.15))
-
+            
+            hard_stop_price = round(buy_price * 0.96, 2)
+            
             try:
                 with db_manager.get_connection() as conn:
                     conn.cursor().execute("""
                     UPDATE my_portfolio
-                    SET current_price = ?, current_value = ?, pnl_pct = ?, pnl_amount = ?
+                    SET current_price = ?, current_value = ?, pnl_pct = ?, pnl_amount = ?, stop_loss_price = ?
                     WHERE id = ?
-                    """, (cur_price, cur_val, pnl_pct, pnl_amt, holding_id))
+                    """, (cur_price, cur_val, pnl_pct, pnl_amt, hard_stop_price, holding_id))
                     conn.commit()
             except Exception as e:
                 logger.debug(f"[Guardian DB Update Error] {e}")
-
 
             action_type = None
             action_reason = None
             sell_qty = 0.0
             is_full_exit = True
 
-            # 1. Condition 1: Strict -4% Hard Stop-Loss (100% Full Exit)
-            if pnl_pct <= -4.0 or cur_price <= stop_price:
+            if pnl_pct <= -4.0 or cur_price <= hard_stop_price:
                 action_type = "AUTO_STOP_LOSS"
-                action_reason = f"[가디언 칼손절] {ticker} 손절선(-4%) 도달 전량 매도 (수익률: {pnl_pct:+.2f}%, 현재가: ${cur_price:,.2f})"
+                action_reason = f"[가디언 칼손절] {ticker} 손절선(-4.0% / ${hard_stop_price:,.2f}) 도달 전량 매도 (수익률: {pnl_pct:+.2f}%, 현재가: ${cur_price:,.2f})"
                 sell_qty = total_qty
                 is_full_exit = True
 
-            # 2. Condition 2: Uncapped Trailing Profit Exit (Let Winners Run - v2 Engine)
-            # If position gained >= +15%, dynamically trail with max(Kijun, Peak - 2.5*ATR)
             elif pnl_pct >= 15.0:
-                # Calculate trailing floor: Kijun line or ATR floor
                 trailing_floor = max(kijun_line, buy_price * 1.10)
                 if cur_price < trailing_floor:
                     action_type = "AUTO_TRAILING_TP"
@@ -237,22 +221,20 @@ class PortfolioGuardian:
                     sell_qty = total_qty
                     is_full_exit = True
 
-            # 3. Condition 3: Normal Kijun Line Breakdown (if position below Kijun and in profit/neutral)
             elif kijun_line > 0 and cur_price < kijun_line and pnl_pct > 0:
                 action_type = "AUTO_KIJUN_EXIT"
                 action_reason = f"[가디언 기준선 이탈] {ticker} 26일 기준선(${kijun_line:,.2f}) 하회 추세 청산 (수익률: {pnl_pct:+.2f}%)"
                 sell_qty = total_qty
                 is_full_exit = True
 
-            # 3. Execute Automated Exit if triggered & enabled
             if action_type and self.is_enabled and sell_qty > 0:
-                logger.warning(f"[Portfolio Guardian Triggered] {action_reason}")
+                market_open = is_market_open_for_orders(ticker)
 
-                order_id = None
-                broker_status = "SKIPPED_UNCONFIGURED"
-
-                # Execute order via KIS Broker
                 if default_kis_broker.is_configured():
+                    if not market_open:
+                        logger.info(f"[Portfolio Guardian] {ticker} {action_type} signal detected, but regular market is currently closed. Auto-order skipped until market open.")
+                        continue
+
                     try:
                         marketable_sell_price = round(cur_price * 0.995, 2)
                         ex_cd = "NYSE" if ticker in ["CVX", "JNJ", "XOM", "UNH", "PG", "JPM", "V", "MA", "LLY"] else "NASD"
@@ -264,21 +246,23 @@ class PortfolioGuardian:
                             order_type="00",
                             exchange=ex_cd
                         )
-                        order_id = broker_res.get("order_id")
                         broker_status = broker_res.get("status", "error")
+                        if broker_status != "success":
+                            logger.error(f"[Portfolio Guardian] Broker sell order rejected for {ticker}: {broker_res.get('message')}. Local DB holding retained.")
+                            continue
                     except Exception as e:
                         logger.error(f"[Portfolio Guardian Broker Error] {e}")
-                        broker_status = "FAILED"
+                        continue
+
+                logger.warning(f"[Portfolio Guardian Triggered] {action_reason}")
 
                 if is_full_exit:
-                    # Full close in SQLite
                     db_manager.record_portfolio_sell(
                         holding_id=holding_id,
                         sell_price=cur_price,
                         reason=f"{action_type} ({pnl_pct:+.2f}%)"
                     )
                 else:
-                    # Partial close: reduce SQLite holding quantity
                     remaining_qty = total_qty - sell_qty
                     with db_manager.get_connection() as conn:
                         cursor = conn.cursor()
