@@ -126,15 +126,50 @@ def get_recommended_position_size(ticker: str = "SPY", equity: float = 100000.0,
     res["ticker"] = ticker
     return res
 
-# Windows UTF-8 encoding fix
+# Windows UTF-8 encoding fix & Proactor Socket Reset suppression
 if sys.platform.startswith('win'):
     try:
         sys.stdout.reconfigure(encoding='utf-8')
     except Exception:
         pass
 
+    try:
+        from asyncio.proactor_events import _ProactorBasePipeTransport
+        _orig_call_connection_lost = _ProactorBasePipeTransport._call_connection_lost
+
+        def _safe_call_connection_lost(self, exc=None):
+            try:
+                _orig_call_connection_lost(self, exc)
+            except (ConnectionResetError, BrokenPipeError, OSError):
+                pass
+
+        _ProactorBasePipeTransport._call_connection_lost = _safe_call_connection_lost
+    except Exception:
+        pass
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Set custom loop exception handler to silence harmless client disconnections
+    try:
+        loop = asyncio.get_running_loop()
+        orig_handler = loop.get_exception_handler()
+
+        def custom_loop_exception_handler(l, context):
+            exc = context.get("exception")
+            if isinstance(exc, (ConnectionResetError, BrokenPipeError, ConnectionAbortedError)):
+                return
+            msg = str(context.get("message", ""))
+            if "WinError 10054" in msg or (exc and "WinError 10054" in str(exc)):
+                return
+            if orig_handler:
+                orig_handler(l, context)
+            else:
+                l.default_exception_handler(context)
+
+        loop.set_exception_handler(custom_loop_exception_handler)
+    except Exception:
+        pass
+
     db_manager.init_database()
     default_guardian.start()
     default_autopilot.start()
