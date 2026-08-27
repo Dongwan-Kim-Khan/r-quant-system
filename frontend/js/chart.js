@@ -39,7 +39,11 @@ export const ChartEngine = {
         chartDiv.innerHTML = "";
         volDiv.innerHTML = "";
 
+        const initialWidth = chartDiv.clientWidth || 800;
+
         this.mainChart = LightweightCharts.createChart(chartDiv, {
+            width: initialWidth,
+            height: 360,
             layout: { background: { color: '#16181a' }, textColor: '#8d969e' },
             grid: { vertLines: { color: 'rgba(255, 255, 255, 0.04)' }, horzLines: { color: 'rgba(255, 255, 255, 0.04)' } },
             timeScale: {
@@ -69,6 +73,8 @@ export const ChartEngine = {
         this.sma60Series = this.mainChart.addLineSeries({ color: '#a855f7', lineWidth: 1, title: 'SMA 60' });
 
         this.volumeChart = LightweightCharts.createChart(volDiv, {
+            width: initialWidth,
+            height: 90,
             layout: { background: { color: '#16181a' }, textColor: '#8d969e' },
             grid: { vertLines: { color: 'rgba(255, 255, 255, 0.04)' }, horzLines: { color: 'rgba(255, 255, 255, 0.04)' } },
             timeScale: {
@@ -82,7 +88,10 @@ export const ChartEngine = {
             },
             rightPriceScale: { borderColor: 'rgba(255, 255, 255, 0.10)', autoScale: true }
         });
-        this.volumeSeries = this.volumeChart.addHistogramSeries({ priceFormat: { type: 'volume' } });
+        this.volumeSeries = this.volumeChart.addHistogramSeries({
+            priceFormat: { type: 'volume' },
+            priceScaleId: ''
+        });
 
         // Synchronize timescale between price chart and volume chart
         this.mainChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
@@ -96,8 +105,9 @@ export const ChartEngine = {
 
         // Window resize observer
         window.addEventListener('resize', () => {
-            if (chartDiv && this.mainChart) this.mainChart.applyOptions({ width: chartDiv.clientWidth });
-            if (volDiv && this.volumeChart) this.volumeChart.applyOptions({ width: volDiv.clientWidth });
+            const w = chartDiv.clientWidth || 800;
+            if (this.mainChart) this.mainChart.applyOptions({ width: w });
+            if (this.volumeChart) this.volumeChart.applyOptions({ width: w, height: 90 });
         });
 
         // If data was loaded before chart initialization finished, render now
@@ -238,7 +248,10 @@ export const ChartEngine = {
         this.spanBSeries.setData(tfData.span_b_line || []);
         this.sma20Series.setData(tfData.sma20 || []);
         this.sma60Series.setData(tfData.sma60 || []);
-        this.volumeSeries.setData(tfData.volume || []);
+        const volData = (tfData && tfData.volume && tfData.volume.length > 0)
+            ? tfData.volume
+            : (chartObj.volume || []);
+        this.volumeSeries.setData(volData);
 
         // Dynamic timescale framing
         requestAnimationFrame(() => {
@@ -276,10 +289,10 @@ export const ChartEngine = {
             this.currentLoadedChartObj.latest_close = p;
         }
 
-        if (this.candleSeries && this.currentLoadedChartObj) {
+        if (this.currentLoadedChartObj) {
             const tfData = (this.currentLoadedChartObj.timeframes && this.currentLoadedChartObj.timeframes[this.currentTimeframe]) || this.currentLoadedChartObj;
             const candles = tfData.candles || [];
-            if (candles.length > 0) {
+            if (candles.length > 0 && this.candleSeries) {
                 const last = candles[candles.length - 1];
                 const updated = {
                     time: last.time,
@@ -289,6 +302,17 @@ export const ChartEngine = {
                     close: p
                 };
                 this.candleSeries.update(updated);
+
+                if (this.volumeSeries && tfData.volume && tfData.volume.length > 0) {
+                    const lastV = tfData.volume[tfData.volume.length - 1];
+                    if (lastV) {
+                        this.volumeSeries.update({
+                            time: lastV.time,
+                            value: lastV.value,
+                            color: p >= (last.open || p) ? '#059669' : '#dc2626'
+                        });
+                    }
+                }
             }
         }
 
