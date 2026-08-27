@@ -7,7 +7,8 @@ Directly executes broker sell orders via KIS OpenAPI and logs to SSOT SQLite.
 import asyncio
 import logging
 import math
-from datetime import datetime
+import time
+from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Optional
 import pandas as pd
 import yfinance as yf
@@ -18,6 +19,26 @@ from al_sangmoo.domain.quant.ichimoku import calculate_ichimoku_indicators
 from al_sangmoo.api.hub import hub
 
 logger = logging.getLogger(__name__)
+
+
+def is_market_open_for_orders(ticker_sym: str) -> bool:
+    """
+    Checks if regular financial market is currently OPEN to accept automated orders.
+    - US Market: 09:30 - 16:00 EDT (Monday to Friday)
+    - KR Market: 09:00 - 15:30 KST (Monday to Friday)
+    """
+    if ticker_sym.endswith(".KS") or ticker_sym.endswith(".KQ"):
+        now_kr = datetime.now(timezone(timedelta(hours=9)))
+        if now_kr.weekday() >= 5:
+            return False
+        mins = now_kr.hour * 60 + now_kr.minute
+        return (9 * 60 <= mins <= 15 * 60 + 30)
+    else:
+        now_ny = datetime.now(timezone(timedelta(hours=-4)))  # EDT
+        if now_ny.weekday() >= 5:
+            return False
+        mins = now_ny.hour * 60 + now_ny.minute
+        return (9 * 60 + 30 <= mins <= 16 * 60)
 
 
 class PortfolioGuardian:
@@ -34,6 +55,7 @@ class PortfolioGuardian:
         self.is_enabled = True  # Auto-execution enabled by default
         self._task: Optional[asyncio.Task] = None
         self.last_check_time: Optional[str] = None
+        self.last_sync_time: float = 0.0
         self.last_actions: List[Dict[str, Any]] = []
 
     def start(self):
@@ -132,7 +154,8 @@ class PortfolioGuardian:
            - 26D Kijun Support Breakdown
         """
         now_ts = time.time()
-        self.last_check_time = now_ts
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.last_check_time = now_str
         
         if default_kis_broker.is_configured() and (now_ts - self.last_sync_time > 300.0):
             try:
