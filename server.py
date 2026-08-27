@@ -173,6 +173,16 @@ async def lifespan(app: FastAPI):
     db_manager.init_database()
     default_guardian.start()
     default_autopilot.start()
+
+    # Auto-refresh stale dashboard feed in background if older than 6 hours
+    try:
+        dash_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dashboard_data.json")
+        if not os.path.exists(dash_path) or (time.time() - os.path.getmtime(dash_path) > 21600):
+            from al_sangmoo.interfaces.api.routers.scanner import _run_background_scan_pipeline
+            asyncio.create_task(_run_background_scan_pipeline())
+    except Exception as exc:
+        pass
+
     yield
     default_guardian.stop()
     default_autopilot.stop()

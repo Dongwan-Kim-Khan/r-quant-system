@@ -240,9 +240,27 @@ async def get_chart_data(ticker: str):
     if os.path.exists(chart_file):
         try:
             with open(chart_file, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                if data and data.get("ticker", "").upper() != ticker_clean:
-                    data = None
+                cached_data = json.load(f)
+                if cached_data and cached_data.get("ticker", "").upper() == ticker_clean:
+                    # Check for historical date gap (ensure previous completed market day exists)
+                    candles = cached_data.get("candles", [])
+                    if candles:
+                        last_c_date = str(candles[-1].get("time", ""))
+                        session_date = get_market_session_date(ticker_clean)
+                        # If active session is today (e.g. 2026-08-27), last completed candle should be at least 2026-08-26
+                        # If last candle is 2026-08-25 or older, there is a missing completed day gap -> recompute
+                        from datetime import datetime, timedelta
+                        try:
+                            s_dt = datetime.strptime(session_date, "%Y-%m-%d")
+                            prev_s_dt = s_dt - timedelta(days=1)
+                            while prev_s_dt.weekday() >= 5:
+                                prev_s_dt -= timedelta(days=1)
+                            prev_session_str = prev_s_dt.strftime("%Y-%m-%d")
+                            if last_c_date < prev_session_str:
+                                cached_data = None  # Cache has missing completed day, trigger fresh compute
+                        except Exception:
+                            pass
+                    data = cached_data
         except Exception:
             data = None
 

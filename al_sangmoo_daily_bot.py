@@ -72,14 +72,10 @@ def send_email_report(subject, html_body, receiver=None):
         print(f"[Email Dispatch Error] {e}")
         return False
 
-# Base Universe fallback
-UNIVERSE = [
-    "NVDA", "MSFT", "AMZN", "GOOGL", "META", "TSLA", "AAPL", "AVGO", "COST", "LLY",
-    "AMD", "QCOM", "PLTR", "SMCI", "MU", "ARM", "VST", "CEG", "GEV", "ETN",
-    "005930.KS", "000660.KS", "012450.KS"
-]
-
 from al_sangmoo.core.constants import WATCHLIST, STOCK_DICT, TICKER_SECTORS, get_macro_tailwind_sectors
+
+# Global 60 Universe SSOT
+UNIVERSE = list(WATCHLIST)
 from al_sangmoo.domain.quant.ichimoku import (
     calculate_ichimoku_indicators,
     detect_cloud_trampoline_bounce,
