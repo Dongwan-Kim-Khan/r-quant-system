@@ -21,6 +21,17 @@ WATCHLIST = [
     "LLY", "UNH", "JNJ", "ISRG", "COST", "WMT", "NFLX", "DIS"
 ]
 
+def get_active_watchlist() -> list:
+    """Returns dynamic 60 universe if available, falling back to static WATCHLIST."""
+    try:
+        from al_sangmoo.domain.quant.dynamic_universe import get_dynamic_watchlist
+        w = get_dynamic_watchlist()
+        if w and len(w) == 60:
+            return w
+    except Exception:
+        pass
+    return list(WATCHLIST)
+
 STOCK_DICT = {
     # Mega Tech & AI
     "NVDA": ["엔비디아", "엔비디", "NVIDIA", "NVDA"],

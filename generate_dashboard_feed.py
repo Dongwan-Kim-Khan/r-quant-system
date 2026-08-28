@@ -23,7 +23,7 @@ STREAM_CACHE = os.path.join(BASE_DIR, "wepoll_latest_stream.json")
 CHARTS_DIR = os.path.join(BASE_DIR, "data", "charts")
 
 from concurrent.futures import ThreadPoolExecutor
-from al_sangmoo.core.constants import WATCHLIST, STOCK_DICT, TICKER_SECTORS, get_macro_tailwind_sectors
+from al_sangmoo.core.constants import WATCHLIST, STOCK_DICT, TICKER_SECTORS, get_active_watchlist, get_macro_tailwind_sectors
 from al_sangmoo.domain.quant.ichimoku import (
     calculate_ichimoku_indicators,
     detect_cloud_trampoline_bounce,
@@ -212,7 +212,8 @@ def compute_all_indicators(ticker):
 def build_dashboard_data(output_file=None, charts_dir=None):
     target_charts_dir = charts_dir or CHARTS_DIR
     target_out_path = output_file or OUTPUT_JSON
-    print(f"Building full dashboard data feed for {len(WATCHLIST)} universe tickers...")
+    active_watchlist = get_active_watchlist()
+    print(f"Building full dashboard data feed for {len(active_watchlist)} universe tickers...")
     
     trades = []
     if os.path.exists(HISTORY_CSV):
@@ -240,7 +241,7 @@ def build_dashboard_data(output_file=None, charts_dir=None):
     
     # Parallel Batch Computation for 60 tickers (throttled to 6 workers to avoid HTTP 429)
     with ThreadPoolExecutor(max_workers=6) as executor:
-        results = list(executor.map(compute_all_indicators, WATCHLIST))
+        results = list(executor.map(compute_all_indicators, active_watchlist))
         
     for res in results:
         if res:

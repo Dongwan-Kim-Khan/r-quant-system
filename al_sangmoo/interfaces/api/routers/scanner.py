@@ -98,3 +98,14 @@ def get_recommendation_matrix():
     if not isinstance(matrix, list):
         matrix = [matrix] if matrix else []
     return matrix
+
+
+@router.get("/api/universe/dynamic")
+def get_dynamic_universe_status():
+    """Returns the current dynamic sector-weighted universe snapshot and sector momentum."""
+    try:
+        from al_sangmoo.domain.quant.dynamic_universe import build_dynamic_60_watchlist
+        snapshot = build_dynamic_60_watchlist(force_refresh=False)
+        return {"status": "success", "data": snapshot}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"동적 유니버스 조회 실패: {exc}")

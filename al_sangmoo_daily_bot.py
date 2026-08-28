@@ -72,10 +72,10 @@ def send_email_report(subject, html_body, receiver=None):
         print(f"[Email Dispatch Error] {e}")
         return False
 
-from al_sangmoo.core.constants import WATCHLIST, STOCK_DICT, TICKER_SECTORS, get_macro_tailwind_sectors
+from al_sangmoo.core.constants import WATCHLIST, STOCK_DICT, TICKER_SECTORS, get_active_watchlist, get_macro_tailwind_sectors
 
-# Global 60 Universe SSOT
-UNIVERSE = list(WATCHLIST)
+# Global 60 Universe SSOT (Dynamic Sector-Weighted)
+UNIVERSE = get_active_watchlist()
 from al_sangmoo.domain.quant.ichimoku import (
     calculate_ichimoku_indicators,
     detect_cloud_trampoline_bounce,
