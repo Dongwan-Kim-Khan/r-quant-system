@@ -7,7 +7,7 @@
   "flow_label": "0.6x",
   "flow_score": 30,
   "is_stealth_accum": false,
-  "latest_close": 476.27,
+  "latest_close": 477.28,
   "kijun": 490.26,
   "tenkan": 484.17,
   "span_a": 519.84,
@@ -16,8 +16,8 @@
   "future_span_b_latest": 504.38,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 17.16,
-  "kijun_gap_pct": -2.85,
-  "vol_ratio": 0.23,
+  "kijun_gap_pct": -2.65,
+  "vol_ratio": 0.24,
   "bull_score": 20,
   "bear_score": 90,
   "sniper_score": 0,
@@ -27,8 +27,8 @@
   "trampoline_days_ago": 0,
   "touch_gap_pct": 0.0,
   "close_gap_pct": 0.0,
-  "rs_3m": -12.21,
-  "momentum_3m": -12.21,
+  "rs_3m": -12.03,
+  "momentum_3m": -12.03,
   "is_breakout": false,
   "intelligence": {
     "verdict": "Risk Breakdown (생명선 붕괴 / 매수 금지)",
@@ -38,10 +38,10 @@
     "bear_score": 90,
     "type": "BEAR",
     "kijun": {
-      "val": "$490.26 (-2.9%)",
+      "val": "$490.26 (-2.6%)",
       "status": "status-bear",
       "badge": "BREAKDOWN",
-      "desc": "현재가 $476.27 / 26일선 $490.26 (이격 -2.9%)"
+      "desc": "현재가 $477.28 / 26일선 $490.26 (이격 -2.6%)"
     },
     "tenkan": {
       "val": "$484.17",
@@ -56,10 +56,10 @@
       "desc": "일목 구름대(489.0~519.8) 하단 붕괴"
     },
     "vol": {
-      "val": "23% (20D)",
+      "val": "24% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 23% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 24% (매도세 고갈 완벽)"
     },
     "action": "26일 기준선(생명선) 및 구름대 붕괴. 물타기 금지 및 숏 헤지 우위 구간.",
     "is_sniper": false,
@@ -72,8 +72,8 @@
     "flow_label": "0.6x",
     "flow_score": 30,
     "is_stealth_accum": false,
-    "rs_3m": -12.21,
-    "momentum_3m": -12.21,
+    "rs_3m": -12.03,
+    "momentum_3m": -12.03,
     "is_breakout": false
   },
   "status_tag": "BEAR",
@@ -3579,7 +3579,7 @@
           "open": 482.0,
           "high": 483.0,
           "low": 472.22,
-          "close": 476.27
+          "close": 477.28
         }
       ],
       "kijun_line": [
@@ -13797,7 +13797,7 @@
         },
         {
           "time": "2026-08-27",
-          "value": 482.55
+          "value": 482.6
         }
       ],
       "sma50": [
@@ -15799,7 +15799,7 @@
         },
         {
           "time": "2026-08-27",
-          "value": 507.01
+          "value": 507.03
         }
       ],
       "sma60": [
@@ -17801,7 +17801,7 @@
         },
         {
           "time": "2026-08-27",
-          "value": 505.92
+          "value": 505.94
         }
       ],
       "sma200": [
@@ -19803,7 +19803,7 @@
         },
         {
           "time": "2026-08-27",
-          "value": 334.44
+          "value": 334.45
         }
       ],
       "volume": [
@@ -22304,7 +22304,7 @@
         },
         {
           "time": "2026-08-27",
-          "value": 5069113.0,
+          "value": 5449672.0,
           "color": "#dc2626"
         }
       ],
@@ -23401,7 +23401,7 @@
           "open": 468.54,
           "high": 491.12,
           "low": 451.0,
-          "close": 476.27
+          "close": 477.28
         }
       ],
       "kijun_line": [
@@ -26331,7 +26331,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 470.17
+          "value": 470.22
         }
       ],
       "sma50": [
@@ -26905,7 +26905,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 316.47
+          "value": 316.49
         }
       ],
       "sma60": [
@@ -27459,7 +27459,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 290.92
+          "value": 290.94
         }
       ],
       "sma200": [
@@ -27973,7 +27973,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 195.8
+          "value": 195.81
         }
       ],
       "volume": [
@@ -28714,7 +28714,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 54866013.0,
+          "value": 55246572.0,
           "color": "#059669"
         }
       ],
@@ -32275,7 +32275,7 @@
       "open": 482.0,
       "high": 483.0,
       "low": 472.22,
-      "close": 476.27
+      "close": 477.28
     }
   ],
   "kijun_line": [
@@ -42493,7 +42493,7 @@
     },
     {
       "time": "2026-08-27",
-      "value": 482.55
+      "value": 482.6
     }
   ],
   "sma60": [
@@ -44495,7 +44495,7 @@
     },
     {
       "time": "2026-08-27",
-      "value": 505.92
+      "value": 505.94
     }
   ],
   "volume": [
@@ -46996,7 +46996,7 @@
     },
     {
       "time": "2026-08-27",
-      "value": 5069113.0,
+      "value": 5449672.0,
       "color": "#dc2626"
     }
   ]

@@ -3,11 +3,11 @@
   "sector": "CYBER/SAAS",
   "obv_status": "NEUTRAL",
   "obv_label": "[NEUTRAL]",
-  "flow_ratio": 0.92,
-  "flow_label": "0.9x",
-  "flow_score": 0,
+  "flow_ratio": 1.04,
+  "flow_label": "1.0x",
+  "flow_score": 20,
   "is_stealth_accum": false,
-  "latest_close": 304.58,
+  "latest_close": 308.23,
   "kijun": 291.46,
   "tenkan": 293.82,
   "span_a": 264.01,
@@ -16,9 +16,9 @@
   "future_span_b_latest": 272.27,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 20.37,
-  "kijun_gap_pct": 4.5,
-  "vol_ratio": 0.25,
-  "bull_score": 90,
+  "kijun_gap_pct": 5.76,
+  "vol_ratio": 1.03,
+  "bull_score": 70,
   "bear_score": 0,
   "sniper_score": 100,
   "is_sniper": true,
@@ -27,21 +27,21 @@
   "trampoline_days_ago": 1,
   "touch_gap_pct": 3.14,
   "close_gap_pct": 7.91,
-  "rs_3m": 14.79,
-  "momentum_3m": 14.79,
+  "rs_3m": 16.17,
+  "momentum_3m": 16.17,
   "is_breakout": false,
   "intelligence": {
-    "verdict": "Dual 5-Star (양대 전략 동시 충족 특급 매수)",
-    "score": "100 / 100 pt (DUAL_5_STAR)",
-    "bull_score": 90,
+    "verdict": "Cloud Trampoline (구름대 지지 도약 진입)",
+    "score": "100 / 100 pt (TRAMPOLINE_BUY)",
+    "bull_score": 70,
     "sniper_score": 100,
     "bear_score": 0,
     "type": "BULL",
     "kijun": {
-      "val": "$291.46 (+4.5%)",
+      "val": "$291.46 (+5.8%)",
       "status": "status-neutral",
       "badge": "OVERHEATED",
-      "desc": "현재가 $304.58 / 26일선 $291.46 (이격 +4.5%)"
+      "desc": "현재가 $308.23 / 26일선 $291.46 (이격 +5.8%)"
     },
     "tenkan": {
       "val": "$293.82",
@@ -56,28 +56,28 @@
       "desc": "일목 구름대(238.4~264.0) 상단 안착"
     },
     "vol": {
-      "val": "25% (20D)",
-      "status": "status-bull",
-      "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 25% (매도세 고갈 완벽)"
+      "val": "103% (20D)",
+      "status": "status-neutral",
+      "badge": "NORMAL VOL",
+      "desc": "20일 평균 거래량 대비 103% (통상 거래량)"
     },
-    "action": "[황금 교집합] 주봉 정배열 + 구름대 도약(1일 전) + 26일 기준선(+4.5%) 안착.",
+    "action": "[트램펄린 반등] 주봉 상승장 + 1일 전 구름대 지지 도약 후 상방 시세 분출(기준선 대비 +5.8%). 목표 +15% / 손절 -4%.",
     "is_sniper": true,
     "is_weekly_bull": true,
     "trampoline_detected": true,
     "sector": "CYBER/SAAS",
     "obv_status": "NEUTRAL",
     "obv_label": "[NEUTRAL]",
-    "flow_ratio": 0.92,
-    "flow_label": "0.9x",
-    "flow_score": 0,
+    "flow_ratio": 1.04,
+    "flow_label": "1.0x",
+    "flow_score": 20,
     "is_stealth_accum": false,
-    "rs_3m": 14.79,
-    "momentum_3m": 14.79,
+    "rs_3m": 16.17,
+    "momentum_3m": 16.17,
     "is_breakout": false
   },
   "status_tag": "BULL",
-  "status_text": "Dual 5-Star (양대 전략 동시 충족 특급 매수)",
+  "status_text": "Cloud Trampoline (구름대 지지 도약 진입)",
   "timeframes": {
     "daily": {
       "candles": [
@@ -3577,9 +3577,9 @@
         {
           "time": "2026-08-27",
           "open": 290.29,
-          "high": 305.68,
+          "high": 309.49,
           "low": 291.0,
-          "close": 304.58
+          "close": 308.23
         }
       ],
       "kijun_line": [
@@ -13797,7 +13797,7 @@
         },
         {
           "time": "2026-08-27",
-          "value": 296.8
+          "value": 296.98
         }
       ],
       "sma50": [
@@ -15799,7 +15799,7 @@
         },
         {
           "time": "2026-08-27",
-          "value": 272.51
+          "value": 272.58
         }
       ],
       "sma60": [
@@ -17801,7 +17801,7 @@
         },
         {
           "time": "2026-08-27",
-          "value": 267.26
+          "value": 267.32
         }
       ],
       "sma200": [
@@ -19803,7 +19803,7 @@
         },
         {
           "time": "2026-08-27",
-          "value": 220.33
+          "value": 220.35
         }
       ],
       "volume": [
@@ -22304,7 +22304,7 @@
         },
         {
           "time": "2026-08-27",
-          "value": 1008378.0,
+          "value": 4249698.0,
           "color": "#059669"
         }
       ],
@@ -23399,9 +23399,9 @@
         {
           "time": "2026-08-28",
           "open": 288.7,
-          "high": 305.68,
+          "high": 309.49,
           "low": 272.29,
-          "close": 304.58
+          "close": 308.23
         }
       ],
       "kijun_line": [
@@ -26331,7 +26331,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 248.02
+          "value": 248.21
         }
       ],
       "sma50": [
@@ -26905,7 +26905,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 219.66
+          "value": 219.73
         }
       ],
       "sma60": [
@@ -27459,7 +27459,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 216.77
+          "value": 216.83
         }
       ],
       "sma200": [
@@ -27973,7 +27973,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 143.89
+          "value": 143.92
         }
       ],
       "volume": [
@@ -28714,7 +28714,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 8628978.0,
+          "value": 11870298.0,
           "color": "#059669"
         }
       ],
@@ -32273,9 +32273,9 @@
     {
       "time": "2026-08-27",
       "open": 290.29,
-      "high": 305.68,
+      "high": 309.49,
       "low": 291.0,
-      "close": 304.58
+      "close": 308.23
     }
   ],
   "kijun_line": [
@@ -42493,7 +42493,7 @@
     },
     {
       "time": "2026-08-27",
-      "value": 296.8
+      "value": 296.98
     }
   ],
   "sma60": [
@@ -44495,7 +44495,7 @@
     },
     {
       "time": "2026-08-27",
-      "value": 267.26
+      "value": 267.32
     }
   ],
   "volume": [
@@ -46996,7 +46996,7 @@
     },
     {
       "time": "2026-08-27",
-      "value": 1008378.0,
+      "value": 4249698.0,
       "color": "#059669"
     }
   ]

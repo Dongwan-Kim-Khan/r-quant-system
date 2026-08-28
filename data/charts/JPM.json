@@ -3,11 +3,11 @@
   "sector": "FINANCE",
   "obv_status": "NEUTRAL",
   "obv_label": "[NEUTRAL]",
-  "flow_ratio": 0.71,
-  "flow_label": "0.7x",
+  "flow_ratio": 0.64,
+  "flow_label": "0.6x",
   "flow_score": 0,
   "is_stealth_accum": false,
-  "latest_close": 352.59,
+  "latest_close": 354.22,
   "kijun": 355.14,
   "tenkan": 358.06,
   "span_a": 336.41,
@@ -16,8 +16,8 @@
   "future_span_b_latest": 341.96,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 14.64,
-  "kijun_gap_pct": -0.72,
-  "vol_ratio": 0.14,
+  "kijun_gap_pct": -0.26,
+  "vol_ratio": 0.92,
   "bull_score": 90,
   "bear_score": 40,
   "sniper_score": 95,
@@ -26,22 +26,22 @@
   "trampoline_detected": true,
   "trampoline_days_ago": 0,
   "touch_gap_pct": 4.7,
-  "close_gap_pct": 4.81,
-  "rs_3m": 17.73,
-  "momentum_3m": 17.73,
+  "close_gap_pct": 5.29,
+  "rs_3m": 18.27,
+  "momentum_3m": 18.27,
   "is_breakout": false,
   "intelligence": {
-    "verdict": "Dual 5-Star (양대 전략 동시 충족 특급 매수)",
-    "score": "100 / 100 pt (DUAL_5_STAR)",
+    "verdict": "3-Gate Triple Alpha (3-Gate 만점 특급 주도주)",
+    "score": "100 / 100 pt (TRIPLE_ALPHA)",
     "bull_score": 90,
     "sniper_score": 95,
     "bear_score": 40,
     "type": "BULL",
     "kijun": {
-      "val": "$355.14 (-0.7%)",
-      "status": "status-bear",
-      "badge": "BREAKDOWN",
-      "desc": "현재가 $352.59 / 26일선 $355.14 (이격 -0.7%)"
+      "val": "$355.14 (-0.3%)",
+      "status": "status-bull",
+      "badge": "SUPPORTED",
+      "desc": "현재가 $354.22 / 26일선 $355.14 (이격 -0.3%)"
     },
     "tenkan": {
       "val": "$358.06",
@@ -56,28 +56,28 @@
       "desc": "일목 구름대(321.8~336.4) 상단 안착"
     },
     "vol": {
-      "val": "14% (20D)",
-      "status": "status-bull",
-      "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 14% (매도세 고갈 완벽)"
+      "val": "92% (20D)",
+      "status": "status-neutral",
+      "badge": "NORMAL VOL",
+      "desc": "20일 평균 거래량 대비 92% (통상 거래량)"
     },
-    "action": "[황금 교집합] 주봉 정배열 + 구름대 도약(0일 전) + 26일 기준선(-0.7%) 안착.",
+    "action": "[3-Gate 만점] 주봉 정배열 + 구름대 도약(0일 전) + 26일 기준선(-0.3%) 안착.",
     "is_sniper": true,
     "is_weekly_bull": true,
     "trampoline_detected": true,
     "sector": "FINANCE",
     "obv_status": "NEUTRAL",
     "obv_label": "[NEUTRAL]",
-    "flow_ratio": 0.71,
-    "flow_label": "0.7x",
+    "flow_ratio": 0.64,
+    "flow_label": "0.6x",
     "flow_score": 0,
     "is_stealth_accum": false,
-    "rs_3m": 17.73,
-    "momentum_3m": 17.73,
+    "rs_3m": 18.27,
+    "momentum_3m": 18.27,
     "is_breakout": false
   },
   "status_tag": "BULL",
-  "status_text": "Dual 5-Star (양대 전략 동시 충족 특급 매수)",
+  "status_text": "3-Gate Triple Alpha (3-Gate 만점 특급 주도주)",
   "timeframes": {
     "daily": {
       "candles": [
@@ -1941,7 +1941,7 @@
           "open": 303.98,
           "high": 307.81,
           "low": 303.75,
-          "close": 306.58
+          "close": 306.57
         },
         {
           "time": "2025-09-23",
@@ -3579,7 +3579,7 @@
           "open": 354.68,
           "high": 357.57,
           "low": 352.23,
-          "close": 352.59
+          "close": 354.22
         }
       ],
       "kijun_line": [
@@ -13797,7 +13797,7 @@
         },
         {
           "time": "2026-08-27",
-          "value": 357.74
+          "value": 357.82
         }
       ],
       "sma50": [
@@ -15799,7 +15799,7 @@
         },
         {
           "time": "2026-08-27",
-          "value": 346.36
+          "value": 346.4
         }
       ],
       "sma60": [
@@ -17801,7 +17801,7 @@
         },
         {
           "time": "2026-08-27",
-          "value": 340.76
+          "value": 340.79
         }
       ],
       "sma200": [
@@ -19803,7 +19803,7 @@
         },
         {
           "time": "2026-08-27",
-          "value": 314.79
+          "value": 314.8
         }
       ],
       "volume": [
@@ -22304,7 +22304,7 @@
         },
         {
           "time": "2026-08-27",
-          "value": 771201.0,
+          "value": 5206418.0,
           "color": "#dc2626"
         }
       ],
@@ -23401,7 +23401,7 @@
           "open": 353.3,
           "high": 358.35,
           "low": 352.23,
-          "close": 352.59
+          "close": 354.22
         }
       ],
       "kijun_line": [
@@ -26331,7 +26331,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 327.44
+          "value": 327.52
         }
       ],
       "sma50": [
@@ -26905,7 +26905,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 312.95
+          "value": 312.99
         }
       ],
       "sma60": [
@@ -27459,7 +27459,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 308.95
+          "value": 308.97
         }
       ],
       "sma200": [
@@ -27973,7 +27973,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 242.49
+          "value": 242.51
         }
       ],
       "volume": [
@@ -28714,8 +28714,8 @@
         },
         {
           "time": "2026-08-28",
-          "value": 15260101.0,
-          "color": "#dc2626"
+          "value": 19695318.0,
+          "color": "#059669"
         }
       ],
       "future_span_a": [
@@ -28752,17 +28752,17 @@
         265.0376532554256,
         265.0376532554256,
         265.0376532554256,
-        276.84382046151643,
-        276.84382046151643,
+        276.84382800261903,
+        276.84382800261903,
         282.74690727208457,
-        287.8248342940763,
-        291.32566529841284,
-        291.32566529841284,
+        287.82482668181336,
+        291.32568028153634,
+        291.32568028153634,
         293.4300714862958,
         293.4300714862958,
         294.6019092429478,
-        296.6233314617609,
-        301.1478025765593,
+        296.62331640107084,
+        301.14781749756776,
         308.47893015736054,
         308.47893015736054,
         309.1716662187547,
@@ -30637,7 +30637,7 @@
       "open": 303.98,
       "high": 307.81,
       "low": 303.75,
-      "close": 306.58
+      "close": 306.57
     },
     {
       "time": "2025-09-23",
@@ -32275,7 +32275,7 @@
       "open": 354.68,
       "high": 357.57,
       "low": 352.23,
-      "close": 352.59
+      "close": 354.22
     }
   ],
   "kijun_line": [
@@ -42493,7 +42493,7 @@
     },
     {
       "time": "2026-08-27",
-      "value": 357.74
+      "value": 357.82
     }
   ],
   "sma60": [
@@ -44495,7 +44495,7 @@
     },
     {
       "time": "2026-08-27",
-      "value": 340.76
+      "value": 340.79
     }
   ],
   "volume": [
@@ -46996,7 +46996,7 @@
     },
     {
       "time": "2026-08-27",
-      "value": 771201.0,
+      "value": 5206418.0,
       "color": "#dc2626"
     }
   ]

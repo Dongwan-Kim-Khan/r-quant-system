@@ -122,8 +122,8 @@ def _enrich_chart_with_realtime_price(data: dict, ticker: str) -> dict:
                         "color": "#059669" if live_price >= prev_open else "#dc2626"
                     })
 
-        # Update indicator lines to extend to session date
-        for line_key in ["kijun_line", "tenkan_line", "span_a_line", "span_b_line", "sma20", "sma60"]:
+        # Update indicator lines to extend to session date (exclude forward cloud spans)
+        for line_key in ["kijun_line", "tenkan_line", "sma20", "sma60"]:
             if line_key in data and isinstance(data[line_key], list) and len(data[line_key]) > 0:
                 data[line_key] = [pt for pt in data[line_key] if str(pt.get("time", "")) <= session_date_str]
                 if data[line_key]:

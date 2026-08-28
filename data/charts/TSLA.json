@@ -3,11 +3,11 @@
   "sector": "AI/TECH",
   "obv_status": "BULL_FLOW",
   "obv_label": "[BULL FLOW]",
-  "flow_ratio": 1.6,
-  "flow_label": "1.6x",
+  "flow_ratio": 1.74,
+  "flow_label": "1.7x",
   "flow_score": 65,
   "is_stealth_accum": false,
-  "latest_close": 350.87,
+  "latest_close": 354.81,
   "kijun": 331.94,
   "tenkan": 348.81,
   "span_a": 396.01,
@@ -16,9 +16,9 @@
   "future_span_b_latest": 365.12,
   "future_cloud_type": "음운 (하락 저항 구름대)",
   "future_cloud_gap": 24.74,
-  "kijun_gap_pct": 5.7,
-  "vol_ratio": 0.23,
-  "bull_score": 45,
+  "kijun_gap_pct": 6.89,
+  "vol_ratio": 0.9,
+  "bull_score": 35,
   "bear_score": 35,
   "sniper_score": 30,
   "is_sniper": false,
@@ -27,21 +27,21 @@
   "trampoline_days_ago": 0,
   "touch_gap_pct": 0.0,
   "close_gap_pct": 0.0,
-  "rs_3m": -17.19,
-  "momentum_3m": -17.19,
+  "rs_3m": -16.26,
+  "momentum_3m": -16.26,
   "is_breakout": false,
   "intelligence": {
     "verdict": "Neutral Consolidation (박스권 수렴)",
-    "score": "45 / 100 pt (HOLD)",
-    "bull_score": 45,
+    "score": "35 / 100 pt (HOLD)",
+    "bull_score": 35,
     "sniper_score": 30,
     "bear_score": 35,
     "type": "NEUTRAL",
     "kijun": {
-      "val": "$331.94 (+5.7%)",
+      "val": "$331.94 (+6.9%)",
       "status": "status-neutral",
       "badge": "OVERHEATED",
-      "desc": "현재가 $350.87 / 26일선 $331.94 (이격 +5.7%)"
+      "desc": "현재가 $354.81 / 26일선 $331.94 (이격 +6.9%)"
     },
     "tenkan": {
       "val": "$348.81",
@@ -56,10 +56,10 @@
       "desc": "일목 구름대(396.0~411.0) 하단 붕괴"
     },
     "vol": {
-      "val": "23% (20D)",
-      "status": "status-bull",
-      "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 23% (매도세 고갈 완벽)"
+      "val": "90% (20D)",
+      "status": "status-neutral",
+      "badge": "NORMAL VOL",
+      "desc": "20일 평균 거래량 대비 90% (통상 거래량)"
     },
     "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지.",
     "is_sniper": false,
@@ -68,12 +68,12 @@
     "sector": "AI/TECH",
     "obv_status": "BULL_FLOW",
     "obv_label": "[BULL FLOW]",
-    "flow_ratio": 1.6,
-    "flow_label": "1.6x",
+    "flow_ratio": 1.74,
+    "flow_label": "1.7x",
     "flow_score": 65,
     "is_stealth_accum": false,
-    "rs_3m": -17.19,
-    "momentum_3m": -17.19,
+    "rs_3m": -16.26,
+    "momentum_3m": -16.26,
     "is_breakout": false
   },
   "status_tag": "NEUTRAL",
@@ -3577,9 +3577,9 @@
         {
           "time": "2026-08-27",
           "open": 346.3,
-          "high": 352.61,
+          "high": 355.74,
           "low": 345.45,
-          "close": 350.87
+          "close": 354.81
         }
       ],
       "kijun_line": [
@@ -13797,7 +13797,7 @@
         },
         {
           "time": "2026-08-27",
-          "value": 336.74
+          "value": 336.94
         }
       ],
       "sma50": [
@@ -15799,7 +15799,7 @@
         },
         {
           "time": "2026-08-27",
-          "value": 361.35
+          "value": 361.43
         }
       ],
       "sma60": [
@@ -17801,7 +17801,7 @@
         },
         {
           "time": "2026-08-27",
-          "value": 368.49
+          "value": 368.55
         }
       ],
       "sma200": [
@@ -19803,7 +19803,7 @@
         },
         {
           "time": "2026-08-27",
-          "value": 401.39
+          "value": 401.41
         }
       ],
       "volume": [
@@ -22299,12 +22299,12 @@
         },
         {
           "time": "2026-08-26",
-          "value": 28479700.0,
+          "value": 28573000.0,
           "color": "#059669"
         },
         {
           "time": "2026-08-27",
-          "value": 7441193.0,
+          "value": 29998173.0,
           "color": "#059669"
         }
       ],
@@ -23401,7 +23401,7 @@
           "open": 361.41,
           "high": 363.24,
           "low": 342.53,
-          "close": 350.87
+          "close": 354.81
         }
       ],
       "kijun_line": [
@@ -26331,7 +26331,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 382.43
+          "value": 382.63
         }
       ],
       "sma50": [
@@ -26905,7 +26905,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 405.67
+          "value": 405.75
         }
       ],
       "sma60": [
@@ -27459,7 +27459,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 393.77
+          "value": 393.84
         }
       ],
       "sma200": [
@@ -27973,7 +27973,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 309.33
+          "value": 309.36
         }
       ],
       "volume": [
@@ -28714,7 +28714,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 104928093.0,
+          "value": 127578373.0,
           "color": "#dc2626"
         }
       ],
@@ -32273,9 +32273,9 @@
     {
       "time": "2026-08-27",
       "open": 346.3,
-      "high": 352.61,
+      "high": 355.74,
       "low": 345.45,
-      "close": 350.87
+      "close": 354.81
     }
   ],
   "kijun_line": [
@@ -42493,7 +42493,7 @@
     },
     {
       "time": "2026-08-27",
-      "value": 336.74
+      "value": 336.94
     }
   ],
   "sma60": [
@@ -44495,7 +44495,7 @@
     },
     {
       "time": "2026-08-27",
-      "value": 368.49
+      "value": 368.55
     }
   ],
   "volume": [
@@ -46991,12 +46991,12 @@
     },
     {
       "time": "2026-08-26",
-      "value": 28479700.0,
+      "value": 28573000.0,
       "color": "#059669"
     },
     {
       "time": "2026-08-27",
-      "value": 7441193.0,
+      "value": 29998173.0,
       "color": "#059669"
     }
   ]

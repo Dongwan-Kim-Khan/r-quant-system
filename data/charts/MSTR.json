@@ -7,7 +7,7 @@
   "flow_label": "0.9x",
   "flow_score": 30,
   "is_stealth_accum": false,
-  "latest_close": 132.74,
+  "latest_close": 133.29,
   "kijun": 111.47,
   "tenkan": 113.09,
   "span_a": 103.17,
@@ -16,8 +16,8 @@
   "future_span_b_latest": 109.03,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 3.25,
-  "kijun_gap_pct": 19.08,
-  "vol_ratio": 0.47,
+  "kijun_gap_pct": 19.57,
+  "vol_ratio": 0.5,
   "bull_score": 45,
   "bear_score": 0,
   "sniper_score": 30,
@@ -27,8 +27,8 @@
   "trampoline_days_ago": 0,
   "touch_gap_pct": 0.0,
   "close_gap_pct": 0.0,
-  "rs_3m": 4.89,
-  "momentum_3m": 4.89,
+  "rs_3m": 5.32,
+  "momentum_3m": 5.32,
   "is_breakout": true,
   "intelligence": {
     "verdict": "Neutral Consolidation (박스권 수렴)",
@@ -38,10 +38,10 @@
     "bear_score": 0,
     "type": "NEUTRAL",
     "kijun": {
-      "val": "$111.47 (+19.1%)",
+      "val": "$111.47 (+19.6%)",
       "status": "status-neutral",
       "badge": "OVERHEATED",
-      "desc": "현재가 $132.74 / 26일선 $111.47 (이격 +19.1%)"
+      "desc": "현재가 $133.29 / 26일선 $111.47 (이격 +19.6%)"
     },
     "tenkan": {
       "val": "$113.09",
@@ -56,10 +56,10 @@
       "desc": "일목 구름대(103.2~139.4) 내부 횡보"
     },
     "vol": {
-      "val": "47% (20D)",
+      "val": "50% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 47% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 50% (매도세 고갈 완벽)"
     },
     "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지.",
     "is_sniper": false,
@@ -72,8 +72,8 @@
     "flow_label": "0.9x",
     "flow_score": 30,
     "is_stealth_accum": false,
-    "rs_3m": 4.89,
-    "momentum_3m": 4.89,
+    "rs_3m": 5.32,
+    "momentum_3m": 5.32,
     "is_breakout": true
   },
   "status_tag": "NEUTRAL",
@@ -3579,7 +3579,7 @@
           "open": 126.7,
           "high": 133.73,
           "low": 124.46,
-          "close": 132.74
+          "close": 133.29
         }
       ],
       "kijun_line": [
@@ -13797,7 +13797,7 @@
         },
         {
           "time": "2026-08-27",
-          "value": 104.54
+          "value": 104.57
         }
       ],
       "sma50": [
@@ -15799,7 +15799,7 @@
         },
         {
           "time": "2026-08-27",
-          "value": 99.93
+          "value": 99.94
         }
       ],
       "sma60": [
@@ -17801,7 +17801,7 @@
         },
         {
           "time": "2026-08-27",
-          "value": 103.84
+          "value": 103.85
         }
       ],
       "sma200": [
@@ -22304,7 +22304,7 @@
         },
         {
           "time": "2026-08-27",
-          "value": 10830697.0,
+          "value": 11580698.0,
           "color": "#059669"
         }
       ],
@@ -23401,7 +23401,7 @@
           "open": 121.84,
           "high": 133.73,
           "low": 118.45,
-          "close": 132.74
+          "close": 133.29
         }
       ],
       "kijun_line": [
@@ -26331,7 +26331,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 127.91
+          "value": 127.94
         }
       ],
       "sma50": [
@@ -26905,7 +26905,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 165.98
+          "value": 165.99
         }
       ],
       "sma60": [
@@ -27459,7 +27459,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 200.84
+          "value": 200.85
         }
       ],
       "sma200": [
@@ -28714,7 +28714,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 100663597.0,
+          "value": 101413598.0,
           "color": "#059669"
         }
       ],
@@ -32275,7 +32275,7 @@
       "open": 126.7,
       "high": 133.73,
       "low": 124.46,
-      "close": 132.74
+      "close": 133.29
     }
   ],
   "kijun_line": [
@@ -42493,7 +42493,7 @@
     },
     {
       "time": "2026-08-27",
-      "value": 104.54
+      "value": 104.57
     }
   ],
   "sma60": [
@@ -44495,7 +44495,7 @@
     },
     {
       "time": "2026-08-27",
-      "value": 103.84
+      "value": 103.85
     }
   ],
   "volume": [
@@ -46996,7 +46996,7 @@
     },
     {
       "time": "2026-08-27",
-      "value": 10830697.0,
+      "value": 11580698.0,
       "color": "#059669"
     }
   ]

@@ -7,7 +7,7 @@
   "flow_label": "1.1x",
   "flow_score": 50,
   "is_stealth_accum": false,
-  "latest_close": 187.99,
+  "latest_close": 188.27,
   "kijun": 165.47,
   "tenkan": 168.93,
   "span_a": 163.69,
@@ -16,8 +16,8 @@
   "future_span_b_latest": 165.47,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 1.73,
-  "kijun_gap_pct": 13.61,
-  "vol_ratio": 0.24,
+  "kijun_gap_pct": 13.78,
+  "vol_ratio": 0.25,
   "bull_score": 65,
   "bear_score": 0,
   "sniper_score": 100,
@@ -26,9 +26,9 @@
   "trampoline_detected": true,
   "trampoline_days_ago": 0,
   "touch_gap_pct": -0.36,
-  "close_gap_pct": 4.0,
-  "rs_3m": 15.18,
-  "momentum_3m": 15.18,
+  "close_gap_pct": 4.15,
+  "rs_3m": 15.35,
+  "momentum_3m": 15.35,
   "is_breakout": false,
   "intelligence": {
     "verdict": "Neutral Consolidation (박스권 수렴)",
@@ -38,10 +38,10 @@
     "bear_score": 0,
     "type": "NEUTRAL",
     "kijun": {
-      "val": "$165.47 (+13.6%)",
+      "val": "$165.47 (+13.8%)",
       "status": "status-neutral",
       "badge": "OVERHEATED",
-      "desc": "현재가 $187.99 / 26일선 $165.47 (이격 +13.6%)"
+      "desc": "현재가 $188.27 / 26일선 $165.47 (이격 +13.8%)"
     },
     "tenkan": {
       "val": "$168.93",
@@ -56,10 +56,10 @@
       "desc": "일목 구름대(163.7~180.8) 상단 안착"
     },
     "vol": {
-      "val": "24% (20D)",
+      "val": "25% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 24% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 25% (매도세 고갈 완벽)"
     },
     "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지.",
     "is_sniper": false,
@@ -72,8 +72,8 @@
     "flow_label": "1.1x",
     "flow_score": 50,
     "is_stealth_accum": false,
-    "rs_3m": 15.18,
-    "momentum_3m": 15.18,
+    "rs_3m": 15.35,
+    "momentum_3m": 15.35,
     "is_breakout": false
   },
   "status_tag": "NEUTRAL",
@@ -3579,7 +3579,7 @@
           "open": 186.27,
           "high": 189.85,
           "low": 180.11,
-          "close": 187.99
+          "close": 188.27
         }
       ],
       "kijun_line": [
@@ -13797,7 +13797,7 @@
         },
         {
           "time": "2026-08-27",
-          "value": 159.66
+          "value": 159.68
         }
       ],
       "sma50": [
@@ -15799,7 +15799,7 @@
         },
         {
           "time": "2026-08-27",
-          "value": 160.05
+          "value": 160.06
         }
       ],
       "sma60": [
@@ -22304,7 +22304,7 @@
         },
         {
           "time": "2026-08-27",
-          "value": 2327179.0,
+          "value": 2401987.0,
           "color": "#059669"
         }
       ],
@@ -23401,7 +23401,7 @@
           "open": 188.75,
           "high": 191.84,
           "low": 174.73,
-          "close": 187.99
+          "close": 188.27
         }
       ],
       "kijun_line": [
@@ -26331,7 +26331,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 172.76
+          "value": 172.78
         }
       ],
       "sma50": [
@@ -26905,7 +26905,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 218.09
+          "value": 218.1
         }
       ],
       "sma60": [
@@ -27973,7 +27973,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 216.75
+          "value": 216.76
         }
       ],
       "volume": [
@@ -28714,7 +28714,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 32333379.0,
+          "value": 32408187.0,
           "color": "#dc2626"
         }
       ],
@@ -32275,7 +32275,7 @@
       "open": 186.27,
       "high": 189.85,
       "low": 180.11,
-      "close": 187.99
+      "close": 188.27
     }
   ],
   "kijun_line": [
@@ -42493,7 +42493,7 @@
     },
     {
       "time": "2026-08-27",
-      "value": 159.66
+      "value": 159.68
     }
   ],
   "sma60": [
@@ -46996,7 +46996,7 @@
     },
     {
       "time": "2026-08-27",
-      "value": 2327179.0,
+      "value": 2401987.0,
       "color": "#059669"
     }
   ]

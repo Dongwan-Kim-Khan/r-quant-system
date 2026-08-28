@@ -3,11 +3,11 @@
   "sector": "POWER/INFRA",
   "obv_status": "BULL_FLOW",
   "obv_label": "[BULL FLOW]",
-  "flow_ratio": 1.84,
+  "flow_ratio": 1.83,
   "flow_label": "1.8x",
   "flow_score": 80,
   "is_stealth_accum": false,
-  "latest_close": 106.23,
+  "latest_close": 106.54,
   "kijun": 97.52,
   "tenkan": 102.73,
   "span_a": 93.88,
@@ -16,32 +16,32 @@
   "future_span_b_latest": 97.35,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 2.78,
-  "kijun_gap_pct": 8.93,
-  "vol_ratio": 0.16,
+  "kijun_gap_pct": 9.24,
+  "vol_ratio": 0.18,
   "bull_score": 65,
   "bear_score": 0,
   "sniper_score": 100,
-  "is_sniper": false,
-  "is_weekly_bull": false,
+  "is_sniper": true,
+  "is_weekly_bull": true,
   "trampoline_detected": true,
   "trampoline_days_ago": 0,
-  "touch_gap_pct": 2.52,
-  "close_gap_pct": 2.56,
-  "rs_3m": -7.27,
-  "momentum_3m": -7.27,
+  "touch_gap_pct": 2.5,
+  "close_gap_pct": 2.86,
+  "rs_3m": -7.01,
+  "momentum_3m": -7.01,
   "is_breakout": false,
   "intelligence": {
-    "verdict": "Neutral Consolidation (박스권 수렴)",
-    "score": "65 / 100 pt (HOLD)",
+    "verdict": "Cloud Trampoline (구름대 지지 도약 진입)",
+    "score": "100 / 100 pt (TRAMPOLINE_BUY)",
     "bull_score": 65,
     "sniper_score": 100,
     "bear_score": 0,
-    "type": "NEUTRAL",
+    "type": "BULL",
     "kijun": {
-      "val": "$97.52 (+8.9%)",
+      "val": "$97.52 (+9.2%)",
       "status": "status-neutral",
       "badge": "OVERHEATED",
-      "desc": "현재가 $106.23 / 26일선 $97.52 (이격 +8.9%)"
+      "desc": "현재가 $106.54 / 26일선 $97.52 (이격 +9.2%)"
     },
     "tenkan": {
       "val": "$102.73",
@@ -56,28 +56,28 @@
       "desc": "일목 구름대(93.9~103.6) 상단 안착"
     },
     "vol": {
-      "val": "16% (20D)",
+      "val": "18% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 16% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 18% (매도세 고갈 완벽)"
     },
-    "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지.",
-    "is_sniper": false,
-    "is_weekly_bull": false,
+    "action": "[트램펄린 반등] 주봉 상승장 + 0일 전 구름대 지지 도약 후 상방 시세 분출(기준선 대비 +9.2%). 목표 +15% / 손절 -4%.",
+    "is_sniper": true,
+    "is_weekly_bull": true,
     "trampoline_detected": true,
     "sector": "POWER/INFRA",
     "obv_status": "BULL_FLOW",
     "obv_label": "[BULL FLOW]",
-    "flow_ratio": 1.84,
+    "flow_ratio": 1.83,
     "flow_label": "1.8x",
     "flow_score": 80,
     "is_stealth_accum": false,
-    "rs_3m": -7.27,
-    "momentum_3m": -7.27,
+    "rs_3m": -7.01,
+    "momentum_3m": -7.01,
     "is_breakout": false
   },
-  "status_tag": "NEUTRAL",
-  "status_text": "Neutral Consolidation (박스권 수렴)",
+  "status_tag": "BULL",
+  "status_text": "Cloud Trampoline (구름대 지지 도약 진입)",
   "timeframes": {
     "daily": {
       "candles": [
@@ -3578,8 +3578,8 @@
           "time": "2026-08-27",
           "open": 108.13,
           "high": 108.83,
-          "low": 106.19,
-          "close": 106.23
+          "low": 106.16,
+          "close": 106.54
         }
       ],
       "kijun_line": [
@@ -13797,7 +13797,7 @@
         },
         {
           "time": "2026-08-27",
-          "value": 97.93
+          "value": 97.94
         }
       ],
       "sma50": [
@@ -15799,7 +15799,7 @@
         },
         {
           "time": "2026-08-27",
-          "value": 96.3
+          "value": 96.31
         }
       ],
       "sma60": [
@@ -22304,7 +22304,7 @@
         },
         {
           "time": "2026-08-27",
-          "value": 450266.0,
+          "value": 510442.0,
           "color": "#dc2626"
         }
       ],
@@ -23401,7 +23401,7 @@
           "open": 102.27,
           "high": 111.54,
           "low": 100.29,
-          "close": 106.23
+          "close": 106.54
         }
       ],
       "kijun_line": [
@@ -26331,7 +26331,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 103.84
+          "value": 103.85
         }
       ],
       "sma50": [
@@ -27459,7 +27459,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 97.57
+          "value": 97.58
         }
       ],
       "sma200": [
@@ -27973,7 +27973,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 66.75
+          "value": 66.76
         }
       ],
       "volume": [
@@ -28714,7 +28714,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 10241666.0,
+          "value": 10301842.0,
           "color": "#059669"
         }
       ],
@@ -32274,8 +32274,8 @@
       "time": "2026-08-27",
       "open": 108.13,
       "high": 108.83,
-      "low": 106.19,
-      "close": 106.23
+      "low": 106.16,
+      "close": 106.54
     }
   ],
   "kijun_line": [
@@ -42493,7 +42493,7 @@
     },
     {
       "time": "2026-08-27",
-      "value": 97.93
+      "value": 97.94
     }
   ],
   "sma60": [
@@ -46996,7 +46996,7 @@
     },
     {
       "time": "2026-08-27",
-      "value": 450266.0,
+      "value": 510442.0,
       "color": "#dc2626"
     }
   ]

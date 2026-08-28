@@ -3,11 +3,11 @@
   "sector": "CYBER/SAAS",
   "obv_status": "NEUTRAL",
   "obv_label": "[NEUTRAL]",
-  "flow_ratio": 1.2,
+  "flow_ratio": 1.21,
   "flow_label": "1.2x",
   "flow_score": 20,
   "is_stealth_accum": false,
-  "latest_close": 332.07,
+  "latest_close": 332.42,
   "kijun": 297.77,
   "tenkan": 320.86,
   "span_a": 258.7,
@@ -16,8 +16,8 @@
   "future_span_b_latest": 279.72,
   "future_cloud_type": "양운 (상승 지지 구름대)",
   "future_cloud_gap": 29.6,
-  "kijun_gap_pct": 11.52,
-  "vol_ratio": 0.23,
+  "kijun_gap_pct": 11.64,
+  "vol_ratio": 0.24,
   "bull_score": 65,
   "bear_score": 0,
   "sniper_score": 60,
@@ -27,8 +27,8 @@
   "trampoline_days_ago": 0,
   "touch_gap_pct": 0.0,
   "close_gap_pct": 0.0,
-  "rs_3m": 37.63,
-  "momentum_3m": 37.63,
+  "rs_3m": 37.77,
+  "momentum_3m": 37.77,
   "is_breakout": false,
   "intelligence": {
     "verdict": "Neutral Consolidation (박스권 수렴)",
@@ -38,10 +38,10 @@
     "bear_score": 0,
     "type": "NEUTRAL",
     "kijun": {
-      "val": "$297.77 (+11.5%)",
+      "val": "$297.77 (+11.6%)",
       "status": "status-neutral",
       "badge": "OVERHEATED",
-      "desc": "현재가 $332.07 / 26일선 $297.77 (이격 +11.5%)"
+      "desc": "현재가 $332.42 / 26일선 $297.77 (이격 +11.6%)"
     },
     "tenkan": {
       "val": "$320.86",
@@ -56,10 +56,10 @@
       "desc": "일목 구름대(214.7~258.7) 상단 안착"
     },
     "vol": {
-      "val": "23% (20D)",
+      "val": "24% (20D)",
       "status": "status-bull",
       "badge": "VOLUME DRY",
-      "desc": "20일 평균 거래량 대비 23% (매도세 고갈 완벽)"
+      "desc": "20일 평균 거래량 대비 24% (매도세 고갈 완벽)"
     },
     "action": "구름대 내부 또는 기준선 수렴 구간. 방향성 돌파 확인 전까지 관망 유지.",
     "is_sniper": false,
@@ -68,12 +68,12 @@
     "sector": "CYBER/SAAS",
     "obv_status": "NEUTRAL",
     "obv_label": "[NEUTRAL]",
-    "flow_ratio": 1.2,
+    "flow_ratio": 1.21,
     "flow_label": "1.2x",
     "flow_score": 20,
     "is_stealth_accum": false,
-    "rs_3m": 37.63,
-    "momentum_3m": 37.63,
+    "rs_3m": 37.77,
+    "momentum_3m": 37.77,
     "is_breakout": false
   },
   "status_tag": "NEUTRAL",
@@ -3579,7 +3579,7 @@
           "open": 322.5,
           "high": 333.5,
           "low": 320.8,
-          "close": 332.07
+          "close": 332.42
         }
       ],
       "kijun_line": [
@@ -13797,7 +13797,7 @@
         },
         {
           "time": "2026-08-27",
-          "value": 323.6
+          "value": 323.62
         }
       ],
       "sma50": [
@@ -15799,7 +15799,7 @@
         },
         {
           "time": "2026-08-27",
-          "value": 285.34
+          "value": 285.35
         }
       ],
       "sma60": [
@@ -22304,7 +22304,7 @@
         },
         {
           "time": "2026-08-27",
-          "value": 997754.0,
+          "value": 1049373.0,
           "color": "#059669"
         }
       ],
@@ -23401,7 +23401,7 @@
           "open": 332.15,
           "high": 333.5,
           "low": 307.27,
-          "close": 332.07
+          "close": 332.42
         }
       ],
       "kijun_line": [
@@ -26331,7 +26331,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 239.57
+          "value": 239.59
         }
       ],
       "sma50": [
@@ -26905,7 +26905,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 221.77
+          "value": 221.78
         }
       ],
       "sma60": [
@@ -27459,7 +27459,7 @@
         },
         {
           "time": "2026-08-28",
-          "value": 220.23
+          "value": 220.24
         }
       ],
       "sma200": [
@@ -28714,8 +28714,8 @@
         },
         {
           "time": "2026-08-28",
-          "value": 12240754.0,
-          "color": "#dc2626"
+          "value": 12292373.0,
+          "color": "#059669"
         }
       ],
       "future_span_a": [
@@ -32275,7 +32275,7 @@
       "open": 322.5,
       "high": 333.5,
       "low": 320.8,
-      "close": 332.07
+      "close": 332.42
     }
   ],
   "kijun_line": [
@@ -42493,7 +42493,7 @@
     },
     {
       "time": "2026-08-27",
-      "value": 323.6
+      "value": 323.62
     }
   ],
   "sma60": [
@@ -46996,7 +46996,7 @@
     },
     {
       "time": "2026-08-27",
-      "value": 997754.0,
+      "value": 1049373.0,
       "color": "#059669"
     }
   ]
