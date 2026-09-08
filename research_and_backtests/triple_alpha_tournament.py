@@ -86,7 +86,7 @@ REPORT_PATH = os.path.join(PROJECT_ROOT, "research_and_backtests", "triple_alpha
 MACRO_CACHE = os.path.join(PROJECT_ROOT, "data", "backtest_cache", "macro_msi_ohlcv.pkl")
 EARNINGS_CACHE = os.path.join(PROJECT_ROOT, "data", "backtest_cache", "pead_earnings.pkl")
 
-MACRO_TICKERS = ["^TNX", "CL=F", "DX-Y.NYB", "DX=F", "HYG", "IEF"]
+MACRO_TICKERS = ["^TNX", "CL=F", "DX-Y.NYB", "HYG", "IEF"]
 WEEKLY_SLOTS = 5
 WEEKLY_SLOT_W = 0.20
 WEEKLY_TP = 0.04
@@ -405,7 +405,9 @@ def build_pead_entries(
         for si, surprise, yoy in sessions:
             if surprise < PEAD_SURPRISE:
                 continue
-            if yoy is None or not np.isfinite(yoy) or yoy <= 0:
+            # Yahoo quarterly income is ~5 prints deep. Missing YoY is not a fail;
+            # a known negative YoY still disqualifies the print.
+            if yoy is not None and np.isfinite(yoy) and yoy <= 0:
                 continue
             if si < 2 or si >= len(calendar) - 6:
                 continue
@@ -1202,7 +1204,9 @@ def diagnose(payload: dict) -> List[str]:
         f"연 {a1.get('trades', {}).get('trades_per_year')}회 / 평균보유 {a1.get('trades', {}).get('avg_bars')}일. "
         "현금 유휴(QQQ 파킹 없음)가 회전율 전략의 본전이다. 승률 55–65%와 연 80–120회가 동시에 안 나오면 단기 스윙 허들은 미달.",
         f"- **A2 PEAD** 8년 {a2['cagr_pct']:.2f}% / MDD {a2['mdd_pct']:.2f}% / 거래 {a2.get('trades', {}).get('n')}건. "
-        "유휴는 QQQ 파킹. +15% 서프라이즈는 메가캡을 자주 걸러 슬롯이 비면 QQQ B&H에 수렴한다.",
+        "유휴는 QQQ 파킹. Yahoo 분기 손익은 ~5분기만 제공되어 2018–22는 surprise+갭만 적용. "
+        f"SMA20이 거래의 {((a2.get('trades') or {}).get('reasons') or {}).get('SMA20', {}).get('share_pct', '?')}%를 평균 {((a2.get('trades') or {}).get('reasons') or {}).get('SMA20', {}).get('avg_pnl', '?')}%에 절단; "
+        f"다음 실적 직전 청산은 {((a2.get('trades') or {}).get('reasons') or {}).get('PRE_EARNINGS', {}).get('n', 0)}건에 평균 {((a2.get('trades') or {}).get('reasons') or {}).get('PRE_EARNINGS', {}).get('avg_pnl', '?')}% — 60일 드리프트는 SMA20이 막는다.",
         f"- **A3 MSI 게이트** 8년 {a3['cagr_pct']:.2f}% / MDD {a3['mdd_pct']:.2f}% "
         f"(목표 MDD −15% {'달성' if a3['mdd_pct'] >= -15.0 else '미달'}). "
         f"국면 {a3.get('sleeve', {}).get('regime_days')}. "
@@ -1222,7 +1226,7 @@ def write_report(payload: dict) -> None:
         f"- 생성: {meta.get('generated')}",
         f"- 마찰: slippage {meta['friction']['slippage_bps']:.0f}bps / fee {meta['friction']['fee_bps']:.0f}bps / 익일 시가 체결",
         f"- PIT 유니버스: composite RS Dynamic 60. QLD={'yes' if meta.get('qld_available') else 'no'}",
-        f"- PEAD 이벤트: surprise>+{PEAD_SURPRISE:.0f}% & rev YoY>0, settled {meta.get('pead_fill_days')} fill-days",
+        f"- PEAD 이벤트: surprise>+{PEAD_SURPRISE:.0f}% & (rev YoY>0 when Yahoo has the quarter; older prints are surprise+gap only), settled {meta.get('pead_fill_days')} fill-days",
         f"- MSI 8y 국면: {meta.get('msi_counts')}",
         "- NLP: 8년 YouTube PIT 아카이브 없음 → HYG−IEF 20d 크레딧을 `evaluate_macro_stance` defense/buy 토큰으로 투입",
         "",
@@ -1264,7 +1268,7 @@ def write_report(payload: dict) -> None:
             f"lev {block['alpha3'].get('sleeve', {}).get('avg_gross_leverage')}",
             "",
         ]
-    lines = [ln for ln in lines if ln]
+    lines = [ln for ln in lines if ln is not None]
     lines += diagnose(payload)
     os.makedirs(os.path.dirname(REPORT_PATH), exist_ok=True)
     with open(REPORT_PATH, "w", encoding="utf-8") as f:
@@ -1324,7 +1328,7 @@ def main() -> None:
         "meta": {
             "method": (
                 "A1 weekly 2-red+SMA5+RSI40-55, +4/-2.5, 3d or Friday, cash idle. "
-                "A2 PEAD surprise>15 & revYoY>0, 3-5d gap settle, 60d/SMA20/pre-print, idle QQQ. "
+                "A2 PEAD surprise>15, revYoY>0 when available else surprise+gap, 3-5d settle, 60d/SMA20/pre-print, idle QQQ. "
                 "A3 C1 gated by MSI2.0 <35 full / <65 QQQ100 / else 50% cash."
             ),
             "initial": INITIAL,
