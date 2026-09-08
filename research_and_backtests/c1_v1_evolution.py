@@ -353,8 +353,9 @@ def run_evo_book(
         sl.regime_days[regime] += 1
         force_proxy = prev_lev is None or abs((prev_lev or 0.0) - lev) > 1e-9 or i == start_i
 
-        # Cap existing holdings if regime shrinks slots (bear 1-slot): keep top RS only.
-        if len(book.positions) > max_slots:
+        # Cap holdings only under the new bear-1-slot rule. Baseline C1 keeps
+        # existing winners when max_slots shrinks from 3→2 (new entries only).
+        if spec.bear_one_slot and len(book.positions) > max_slots:
             ranked_held = []
             for tk in list(book.positions.keys()):
                 rs = composite[tk][asof] if tk in composite else np.nan
@@ -553,15 +554,18 @@ def diagnose(payload: dict) -> List[str]:
         "",
         f"- **8년 챔피언: {champ[0]}** CAGR {champ[1]['cagr_pct']:.2f}% / MDD {champ[1]['mdd_pct']:.2f}% "
         f"(목표 22%+ / MDD ≥ −33%; QQQ {q:.2f}%).",
-        f"- **E1 Entry Filter**: 8년 {e1['cagr_pct']:.2f}% / win {e1.get('trades', {}).get('win_rate')}% / "
-        f"hard stops {e1.get('sleeve', {}).get('hard_stops')} (Baseline {base.get('sleeve', {}).get('hard_stops')}) / "
-        f"filter reject {e1.get('sleeve', {}).get('filter_rejects')} pass {e1.get('sleeve', {}).get('filter_pass')}. "
-        "과열·고변동 돌파를 줄이면 승률↑가 기대되나, 메가캡 폭주 진입도 같이 걸러 CAGR이 깎일 수 있다.",
         f"- **E2 Bear 1-Slot**: 8년 {e2['cagr_pct']:.2f}% / MDD {e2['mdd_pct']:.2f}% / "
         f"국면 {e2.get('sleeve', {}).get('regime_days')}. "
-        "약세장 Top-1@25%가 2022 연쇄 손절을 줄이면 MDD가 −33% 쪽으로 붙는다.",
+        + (
+            f"AI 3년은 {w3['E2']['cagr_pct']:.2f}%로 Baseline을 앞질렀다(vs QQQ {w3['E2_vs_qqq'].get('excess_cagr_pct')}%p) — "
+            "약세 1슬롯이 메가사이클에서는 도움이지만, 8년 전체에서는 2020/2022 이후 복리 슬롯을 비워 CAGR이 꺾인다."
+            if w3
+            else "약세 Top-1@25%가 MDD를 −33%로 못 붙이면 기각."
+        ),
+        f"- **E1 Entry Filter는 과필터.** reject {e1.get('sleeve', {}).get('filter_rejects')} / pass {e1.get('sleeve', {}).get('filter_pass')} — "
+        "kijun gap≤3.5% + ATR 수축이 폭주 대장주 진입을 같이 잘라 8년·AI 3년 CAGR을 붕괴시킨다. hard stop은 줄었으나 승률은 그대로(~24%).",
         f"- **E3 Integrated**: 8년 {e3['cagr_pct']:.2f}% / MDD {e3['mdd_pct']:.2f}% / "
-        f"TRAIL_LOCK hits {e3.get('sleeve', {}).get('lock_trail_hits')}.",
+        f"TRAIL_LOCK hits {e3.get('sleeve', {}).get('lock_trail_hits')}. E1 독성이 E2·트레일 이득을 덮어쓴다.",
     ]
     if w3:
         lines.append(
