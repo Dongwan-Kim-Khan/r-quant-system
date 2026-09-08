@@ -3,11 +3,23 @@ Canonical 17-Year Proprietary Quant Scoring and 3-Tier Classification Engine.
 Single Source of Truth (SSOT) for Bull Score, Sniper Score, Bear Score, and Tier 1/2/3 Portfolios.
 """
 from dataclasses import dataclass
-from typing import Dict, Any, List, Tuple, Optional, Set, Literal
+from typing import Dict, Any, List, Tuple, Optional, Set, Literal, Sequence
 import pandas as pd
 import numpy as np
 
-from al_sangmoo.core.constants import STOCK_DICT, TICKER_SECTORS, derive_partial_tp_price, derive_stop_price, derive_target_price
+from al_sangmoo.core.constants import (
+    COMPOSITE_RS_LOOKBACKS,
+    COMPOSITE_RS_W_21,
+    COMPOSITE_RS_W_63,
+    COMPOSITE_RS_W_126,
+    HARD_STOP_PCT,
+    STOCK_DICT,
+    TICKER_SECTORS,
+    TRAILING_ACTIVATE_PCT,
+    derive_partial_tp_price,
+    derive_stop_price,
+    derive_target_price,
+)
 
 
 @dataclass(frozen=True)
@@ -136,12 +148,58 @@ class TierClassification:
     composite_score: float
     entry_price: float
     target_price: float         # +15.0%
-    stop_price: float           # -4.0% Hard Stop
+    stop_price: float           # -5.0% Hard Stop (C1-M2)
     partial_tp_price: float     # +8.0% (50% Take Profit)
     is_tier1_qualified: bool
     is_tier2_qualified: bool
     is_tier3_qualified: bool
     rationale: str
+
+
+def relative_strength(close: np.ndarray, lookback: int) -> np.ndarray:
+    """Simple lookback relative strength: close[t] / close[t-lb] - 1."""
+    n = len(close)
+    out = np.full(n, np.nan, dtype=float)
+    if lookback <= 0 or n <= lookback:
+        return out
+    prev = close[:-lookback]
+    cur = close[lookback:]
+    with np.errstate(divide="ignore", invalid="ignore"):
+        rs = (cur / prev) - 1.0
+    out[lookback:] = rs
+    return out
+
+
+def composite_relative_strength(close: Sequence[float] | np.ndarray) -> np.ndarray:
+    """
+    C1-M2 Composite RS:
+      0.40 * RS_21 + 0.35 * RS_63 + 0.25 * RS_126
+    """
+    c = np.asarray(close, dtype=float)
+    r21 = relative_strength(c, COMPOSITE_RS_LOOKBACKS[0])
+    r63 = relative_strength(c, COMPOSITE_RS_LOOKBACKS[1])
+    r126 = relative_strength(c, COMPOSITE_RS_LOOKBACKS[2])
+    return COMPOSITE_RS_W_21 * r21 + COMPOSITE_RS_W_63 * r63 + COMPOSITE_RS_W_126 * r126
+
+
+def latest_composite_rs(close: Sequence[float] | np.ndarray) -> float:
+    """Latest finite Composite RS value, or 0.0 if unavailable."""
+    series = composite_relative_strength(close)
+    finite = series[np.isfinite(series)]
+    if len(finite) == 0:
+        return 0.0
+    return float(finite[-1])
+
+
+def beats_benchmark_composite_rs(
+    ticker_crs: float,
+    benchmark_crs: float,
+    require_finite: bool = True,
+) -> bool:
+    """Dual-momentum gate: satellite only if ticker Composite RS > QQQ Composite RS."""
+    if require_finite and (not np.isfinite(ticker_crs) or not np.isfinite(benchmark_crs)):
+        return False
+    return float(ticker_crs) > float(benchmark_crs)
 
 
 def calculate_canonical_bull_score(ind: QuantIndicators) -> Tuple[int, Dict[str, int]]:
@@ -301,7 +359,7 @@ def evaluate_quant_score(
         quant_type = "BULL"
         quant_verdict = "Cloud Trampoline (구름대 지지 도약 진입)"
         quant_score_text = f"{sniper_score} / 100 pt (TRAMPOLINE_BUY)"
-        action_directive = f"[트램펄린 반등] 주봉 상승장 + {days_ago}일 전 구름대 지지 도약 후 상방 시세 분출(기준선 대비 {ind.kijun_gap_pct:+.1f}%). 목표 +15% / 손절 -4%."
+        action_directive = f"[트램펄린 반등] 주봉 상승장 + {days_ago}일 전 구름대 지지 도약 후 상방 시세 분출(기준선 대비 {ind.kijun_gap_pct:+.1f}%). 목표 +{TRAILING_ACTIVATE_PCT:.0f}% / 손절 -{HARD_STOP_PCT:.1f}%."
     elif is_strat1_active:
         quant_type = "BULL"
         quant_verdict = "3-Gate Trend Leader (추세 주도주 집중 진입)"

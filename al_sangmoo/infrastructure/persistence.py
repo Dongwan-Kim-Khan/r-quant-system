@@ -350,7 +350,7 @@ def get_live_portfolio() -> dict:
         h['quantity'] = quantity
         h['total_cost'] = total_cost
         h['current_price'] = cur_price
-        # v2 Hard Stop (-4%) and uncapped trailing floor (SSOT)
+        # C1-M2 Hard Stop (-5%) and uncapped trailing floor (SSOT)
         stop_p = float(h.get('stop_loss_price') or derive_stop_price(buy_price))
         h['stop_loss_price'] = stop_p
 

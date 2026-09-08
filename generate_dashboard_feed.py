@@ -28,7 +28,20 @@ STREAM_CACHE = os.path.join(BASE_DIR, "wepoll_latest_stream.json")
 CHARTS_DIR = os.path.join(BASE_DIR, "data", "charts")
 
 from concurrent.futures import ThreadPoolExecutor
-from al_sangmoo.core.constants import WATCHLIST, STOCK_DICT, TICKER_SECTORS, get_active_watchlist, get_macro_tailwind_sectors
+from al_sangmoo.core.constants import (
+    CASH_PROXY_TICKER,
+    HARD_STOP_PCT,
+    SLOT_WEIGHTS_BEAR,
+    SLOT_WEIGHTS_BULL,
+    STOP_LOSS_PCT,
+    TAKE_PROFIT_PCT,
+    TRAILING_ACTIVATE_PCT,
+    WATCHLIST,
+    STOCK_DICT,
+    TICKER_SECTORS,
+    get_active_watchlist,
+    get_macro_tailwind_sectors,
+)
 from al_sangmoo.domain.quant.ichimoku import (
     calculate_ichimoku_indicators,
     detect_cloud_trampoline_bounce,
@@ -37,11 +50,14 @@ from al_sangmoo.domain.quant.ichimoku import (
 )
 from al_sangmoo.domain.quant.scoring import (
     evaluate_quant_score,
-    classify_3tier_candidates
+    classify_3tier_candidates,
+    latest_composite_rs,
 )
 from al_sangmoo.domain.quant.conviction_engine import rank_and_select_top_picks
-from al_sangmoo.domain.quant.macro import extract_msi_score, resolve_capital_regime
+from al_sangmoo.domain.quant.macro import extract_msi_score, resolve_capital_regime, fetch_spy_trend_regime
 from al_sangmoo.domain.quant.dynamic_universe import load_universe_sectors
+from al_sangmoo.domain.risk.cash_proxy import proxy_holdings, satellite_holdings
+from al_sangmoo.domain.risk.macro_guardrail import evaluate_dynamic_leverage
 
 
 def compute_all_indicators(ticker, df=None):
@@ -462,7 +478,7 @@ def build_dashboard_data(output_file=None, charts_dir=None):
     # 2. Build lightweight executive summary payload (under 50KB)
     daily_history = get_daily_recommendation_history()
     
-    # Goldman Sachs-Style Conviction Alpha Ranking & Dynamic Regime Slot Allocator (v2)
+    # Goldman Sachs-Style Conviction Alpha Ranking & C1-M2 Slot Allocator (50/30/20)
     all_candidates = dual_consensus_picks + strat1_exclusive + strat2_exclusive
     msi_val = extract_msi_score(macro_info, default=50.0)
     capital = resolve_capital_regime(msi_score=msi_val, fetch_spy=True)
@@ -471,15 +487,72 @@ def build_dashboard_data(output_file=None, charts_dir=None):
     macro_info["msi_stance"] = capital["msi_stance"]
     macro_info["is_bull_regime"] = is_bull_regime
     macro_info["capital_regime_source"] = capital["regime_source"]
-    
+    macro_info["slot_weights"] = list(
+        capital.get("slot_weights") or (SLOT_WEIGHTS_BULL if is_bull_regime else SLOT_WEIGHTS_BEAR)
+    )
+
+    # Dynamic leverage overlay (SPY>=SMA200 & VIX<20 → 1.5x)
+    spy_snap = fetch_spy_trend_regime()
+    vix_val = None
+    try:
+        vix_raw = (macro_info.get("gauges") or {}).get("vix", {})
+        if isinstance(vix_raw, dict):
+            vix_val = float(vix_raw.get("val") or 0) or None
+    except Exception:
+        vix_val = None
+    if vix_val is None:
+        try:
+            hist = yf.Ticker("^VIX").history(period="5d")
+            if hist is not None and not hist.empty:
+                vix_val = float(hist["Close"].iloc[-1])
+        except Exception:
+            vix_val = None
+    leverage = evaluate_dynamic_leverage(
+        spy_close=spy_snap.get("spy_close") or capital.get("spy_close"),
+        spy_sma200=spy_snap.get("spy_sma200") or capital.get("spy_sma200"),
+        vix=vix_val,
+    )
+    macro_info["leverage"] = leverage
+
+    # QQQ Composite RS dual-momentum benchmark
+    qqq_crs = None
+    try:
+        qqq_df = yf.download("QQQ", period="1y", interval="1d", progress=False)
+        if qqq_df is not None and not qqq_df.empty:
+            if isinstance(qqq_df.columns, pd.MultiIndex):
+                qqq_df.columns = qqq_df.columns.get_level_values(0)
+            qqq_crs = latest_composite_rs(qqq_df["Close"].values)
+    except Exception:
+        qqq_crs = None
+
     conviction_res = rank_and_select_top_picks(
         candidates=all_candidates,
         portfolio_equity_usd=float(portfolio.get("total_equity_usd", 7500.0)),
         msi_score=msi_val,
-        is_bull_regime=is_bull_regime
+        is_bull_regime=is_bull_regime,
+        qqq_composite_rs=qqq_crs,
     )
+    slot_summary = conviction_res.get("slot_summary", {})
+    slot_summary["qqq_composite_rs"] = qqq_crs
+    slot_summary["leverage"] = leverage
+    slot_summary["cash_proxy_ticker"] = CASH_PROXY_TICKER
+    slot_summary["satellite_count"] = len(satellite_holdings(portfolio.get("holdings") or []))
+    slot_summary["proxy_holdings"] = [
+        {"ticker": h.get("ticker"), "quantity": h.get("quantity"), "current_price": h.get("current_price")}
+        for h in proxy_holdings(portfolio.get("holdings") or [])
+    ]
 
     payload = {
+        "engine": "C1-M2",
+        "risk_constitution": {
+            "stop_loss_pct": STOP_LOSS_PCT,
+            "hard_stop_pct": -HARD_STOP_PCT,
+            "take_profit_activate_pct": TRAILING_ACTIVATE_PCT,
+            "take_profit_pct": TAKE_PROFIT_PCT,
+            "slot_weights_bull": list(SLOT_WEIGHTS_BULL),
+            "slot_weights_bear": list(SLOT_WEIGHTS_BEAR),
+            "cash_proxy": CASH_PROXY_TICKER,
+        },
         "macro": macro_info,
         "kpis": kpis,
         "trades": trades,
@@ -489,7 +562,7 @@ def build_dashboard_data(output_file=None, charts_dir=None):
         "top_conviction_pick": conviction_res.get("top_pick"),
         "top_conviction_runner_up": conviction_res.get("runner_up"),
         "ranked_conviction_list": conviction_res.get("ranked_candidates", []),
-        "slot_allocation_summary": conviction_res.get("slot_summary", {}),
+        "slot_allocation_summary": slot_summary,
         "tier1": dual_consensus_picks,
         "tier2": strat1_exclusive,
         "tier3": strat2_exclusive,

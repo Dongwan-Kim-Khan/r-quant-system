@@ -39,10 +39,10 @@ class TestTrailingFloorMath(unittest.TestCase):
 
 
 class TestLatchAndEvaluate(unittest.TestCase):
-    def test_hard_stop_at_minus_four(self):
-        res = evaluate_guardian_exit(buy_price=100.0, current_price=96.0)
+    def test_hard_stop_at_minus_five(self):
+        res = evaluate_guardian_exit(buy_price=100.0, current_price=95.0)
         self.assertEqual(res["action"], "AUTO_STOP_LOSS")
-        self.assertEqual(res["hard_stop_price"], 96.0)
+        self.assertEqual(res["hard_stop_price"], 95.0)
         self.assertTrue(res["is_full_exit"])
 
     def test_hard_stop_beats_kijun(self):

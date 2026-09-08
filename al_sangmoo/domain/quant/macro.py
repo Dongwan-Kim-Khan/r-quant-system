@@ -133,11 +133,20 @@ def resolve_capital_regime(
         is_bull = not is_defense_or_worse(score)
         source = "msi_fallback_lt_50"
 
+    from al_sangmoo.core.constants import (
+        MAX_SLOTS_BEAR,
+        MAX_SLOTS_BULL,
+        SLOT_WEIGHTS_BEAR,
+        SLOT_WEIGHTS_BULL,
+    )
+
+    weights = list(SLOT_WEIGHTS_BULL if is_bull else SLOT_WEIGHTS_BEAR)
     return {
         "is_bull_regime": bool(is_bull),
-        "max_slots": 3 if is_bull else 2,
-        "slot_fraction": 0.333 if is_bull else 0.250,
-        "cash_reserve_fraction": 0.01 if is_bull else 0.50,
+        "max_slots": MAX_SLOTS_BULL if is_bull else MAX_SLOTS_BEAR,
+        "slot_weights": weights,
+        "slot_fraction": weights[0] if weights else (0.50 if is_bull else 0.25),
+        "cash_reserve_fraction": 0.0 if is_bull else 0.50,  # idle → QQQ proxy in bull
         "msi_score": score,
         "msi_stance": classify_msi_stance(score),
         "spy_close": float(spy_close) if has_spy else None,

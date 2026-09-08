@@ -18,7 +18,7 @@ def run_backtest_simulation(
     initial_capital: float = 100000.0,
     slippage_bps: float = 0.0010,       # 10 bps (0.10%) bid-ask spread
     fee_rate: float = 0.0008,           # 8 bps (0.08%) commission + regulatory fees
-    stop_loss_pct: float = STOP_LOSS_PCT,     # -4.0% constitution hard stop
+    stop_loss_pct: float = STOP_LOSS_PCT,     # -5.0% C1-M2 hard stop
     take_profit_pct: float = TAKE_PROFIT_PCT,  # +15.0% trailing latch / primary target
     timeout_bars: int = 60              # 60-bar max swing horizon
 ) -> Dict[str, Any]:

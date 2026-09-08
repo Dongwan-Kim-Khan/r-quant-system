@@ -1,8 +1,11 @@
-/** Al-Sangmoo v2 risk constitution. Keep in lockstep with al_sangmoo/core/constants.py */
-export const STOP_LOSS_PCT = -0.04;
+/** Al-Sangmoo C1-M2 risk constitution. Keep in lockstep with al_sangmoo/core/constants.py */
+export const STOP_LOSS_PCT = -0.05;
 export const TAKE_PROFIT_PCT = 0.15;
 export const STOP_LOSS_MULT = 1 + STOP_LOSS_PCT;
 export const TAKE_PROFIT_MULT = 1 + TAKE_PROFIT_PCT;
+export const ATR_MULTIPLIER = 2.5;
+export const SLOT_WEIGHTS_BULL = [0.50, 0.30, 0.20];
+export const SLOT_WEIGHTS_BEAR = [0.25, 0.25];
 
 export function deriveStopPrice(entry) {
     return Number((Number(entry) * STOP_LOSS_MULT).toFixed(2));

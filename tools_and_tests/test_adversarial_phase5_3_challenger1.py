@@ -18,7 +18,7 @@ Adversarial Stress Test Categories:
    - Extreme Kijun gaps (-99.9%, -50%, -2.01% vs -1.99%, +100%, +1000%, Kijun=0, Kijun<0)
    - Extreme volume spikes (100x MA) and Volume Dry-Up (0.60, 0.85, 1.10 boundaries)
    - Edge-of-cloud touches (cloud_top, cloud_top*0.97, cloud_bottom boundaries)
-   - 3-Tier Classification determinism, mutual exclusivity, -4% hard stop, +15% target
+   - 3-Tier Classification determinism, mutual exclusivity, -5% hard stop, +15% target
 3. MSI 2.0 evaluation (evaluate_macro_stance):
    - Yields boundary limits (<0%, 0%, 3.90%, 4.10%, 4.30%, 4.50%, >10%)
    - VIX boundary limits (0, 16.0, 20.0, 25.0, 100.0, 500.0)
@@ -491,10 +491,10 @@ class TestAdversarialQuantScoringAndClassification(unittest.TestCase):
             self.assertTrue(set(t1_tickers).isdisjoint(set(t2_tickers)))
             self.assertTrue(set(t1_tickers).isdisjoint(set(t3_tickers)))
 
-            # Assert strict -4% stop and +15% target invariants on all picks
+            # Assert strict -5% stop and +15% target invariants on all picks
             for pick in t1 + t2 + t3:
                 price = pick["price"]
-                self.assertAlmostEqual(pick["stop_price"], round(price * 0.96, 2), places=2)
+                self.assertAlmostEqual(pick["stop_price"], round(price * 0.95, 2), places=2)
                 self.assertAlmostEqual(pick["target_price"], round(price * 1.15, 2), places=2)
 
         print("  -> PASSED: 50 iterations verified 100% deterministic, disjoint 3-Tier partitions.")

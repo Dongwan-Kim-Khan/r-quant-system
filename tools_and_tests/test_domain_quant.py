@@ -227,10 +227,10 @@ def test_m2_tier_classification_and_stops():
     assert tier_res.tier == "TIER_1", f"Expected TIER_1, got {tier_res.tier}"
     assert tier_res.entry_price == 100.0
     assert tier_res.target_price == 115.0, f"Expected 115.0 (+15%), got {tier_res.target_price}"
-    assert tier_res.stop_price == 96.0, f"Expected 96.0 (-4%), got {tier_res.stop_price}"
+    assert tier_res.stop_price == 95.0, f"Expected 95.0 (-5%), got {tier_res.stop_price}"
     assert tier_res.partial_tp_price == 108.0, f"Expected 108.0 (+8%), got {tier_res.partial_tp_price}"
     print(f"  - Classified: {tier_res.tier} ({tier_res.tier_name_kr})")
-    print(f"  - Target: ${tier_res.target_price} (+15%), Stop: ${tier_res.stop_price} (-4%), Partial TP: ${tier_res.partial_tp_price} (+8%)")
+    print(f"  - Target: ${tier_res.target_price} (+15%), Stop: ${tier_res.stop_price} (-5%), Partial TP: ${tier_res.partial_tp_price} (+8%)")
     print("  -> PASSED: Standardized stops and Tier 1 classification verified.")
 
 

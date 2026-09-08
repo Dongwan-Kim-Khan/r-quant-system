@@ -1,8 +1,7 @@
 """
 AL-SANGMOO QUANT TERMINAL: AUTOPILOT TRADER ENGINE
-Autonomous background engine that performs unattended quant scanning,
-Goldman Sachs-style Rank #1 conviction evaluation, 3-slot capital allocation ($7,500 / 10M KRW),
-and automated KIS OpenAPI broker order execution upon market open.
+C1-M2 autonomous scanner + Rank#1 conviction entry with 50/30/20 NAV sizing,
+QQQ cash-proxy funding, and KIS OpenAPI execution.
 """
 
 import asyncio
@@ -16,16 +15,29 @@ from typing import Dict, Any, List, Optional
 from al_sangmoo.infrastructure.persistence import (
     add_portfolio_buy,
     get_live_portfolio,
+    record_portfolio_sell,
     sync_portfolio_prices,
 )
 from al_sangmoo.infrastructure.brokers.kis_broker import default_kis_broker
 from al_sangmoo.infrastructure.idempotent_order import is_broker_order_ack
 from al_sangmoo.core.constants import (
+    CASH_PROXY_TICKER,
+    HARD_STOP_PCT,
+    MAX_SLOTS_BEAR,
+    MAX_SLOTS_BULL,
     derive_partial_tp_price,
     derive_stop_price,
     derive_target_price,
 )
 from al_sangmoo.api.hub import hub, EventType
+from al_sangmoo.domain.risk.cash_proxy import (
+    build_cash_proxy_plan,
+    is_proxy_ticker,
+    raise_cash_from_proxy,
+    satellite_holdings,
+)
+from al_sangmoo.domain.risk.macro_guardrail import evaluate_dynamic_leverage
+from al_sangmoo.domain.quant.macro import fetch_spy_trend_regime
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +47,9 @@ DASHBOARD_JSON = os.path.join(BASE_DIR, "dashboard_data.json")
 
 class AutoPilotTrader:
     """
-    100% Unattended Full-Auto Trading Engine.
-    Executes market-open quant scan, selects #1 conviction pick,
-    and places real KIS orders into empty slots (Max 2 stock positions + 30% cash buffer).
+    100% Unattended Full-Auto Trading Engine (C1-M2).
+    Executes market-open quant scan, selects #1 conviction pick (50% NAV),
+    frees cash from QQQ proxy when needed, and places KIS orders into empty slots.
     """
 
     def __init__(self, check_interval_seconds: int = 60):
@@ -95,10 +107,10 @@ class AutoPilotTrader:
                 
                 # Check if we should execute a scheduled cycle
                 if self.is_enabled and is_market_hours:
-                    # Run cycle if slot available
+                    # Count satellite slots only (QQQ/QLD cash-proxy excluded)
                     port = get_live_portfolio()
-                    holdings = port.get("holdings", [])
-                    if len(holdings) < 2:
+                    sats = satellite_holdings(port.get("holdings", []))
+                    if len(sats) < MAX_SLOTS_BULL:
                         await self.run_autopilot_cycle(force_scan=False)
             except asyncio.CancelledError:
                 break
@@ -145,9 +157,17 @@ class AutoPilotTrader:
 
         top_pick = feed.get("top_conviction_pick")
         if not top_pick:
-            res = {"status": "skipped", "reason": "NO_QUALIFIED_TOP_PICK", "message": "현재 기준을 충족하는 1위 확신도 종목이 없습니다.", "timestamp": now_str}
+            # No leadership signal → ensure idle capital stays parked in QQQ
+            proxy_note = self._ensure_cash_proxy_parked(feed)
+            res = {
+                "status": "skipped",
+                "reason": "NO_QUALIFIED_TOP_PICK",
+                "message": "현재 기준을 충족하는 1위 확신도 종목이 없습니다. 유휴 자본은 QQQ Cash Proxy에 파킹합니다.",
+                "cash_proxy": proxy_note,
+                "timestamp": now_str,
+            }
             self.last_run_result = res
-            self.last_action = "NO_TOP_PICK"
+            self.last_action = "NO_TOP_PICK_QQQ_PARK"
             return res
 
         ticker = str(top_pick.get("ticker", "")).upper()
@@ -162,9 +182,10 @@ class AutoPilotTrader:
             self.last_action = f"SIZING_INELIGIBLE_{ticker}"
             return res
 
-        # Step 3: Inspect active portfolio holdings & Slot capacity
+        # Step 3: Inspect satellite holdings & Slot capacity (exclude QQQ/QLD proxy)
         port = get_live_portfolio()
         holdings = port.get("holdings", [])
+        sats = satellite_holdings(holdings)
         active_tickers = [str(h["ticker"]).upper() for h in holdings]
 
         # Guardrail 1: Deduplication (Do not buy if already holding)
@@ -181,17 +202,23 @@ class AutoPilotTrader:
             return res
 
         # Guardrail 2: Dynamic Regime Sizing (Max 3 slots in Bull, Max 2 in Bear)
-        is_bull_regime = bool(sizing.get("is_bull_regime", True))
-        max_allowed_slots = 3 if is_bull_regime else 2
+        is_bull_regime = bool(sizing.get("is_bull_regime", feed.get("macro", {}).get("is_bull_regime", True)))
+        max_allowed_slots = MAX_SLOTS_BULL if is_bull_regime else MAX_SLOTS_BEAR
 
-        if len(holdings) >= max_allowed_slots:
+        if len(sats) >= max_allowed_slots:
+            proxy_note = self._ensure_cash_proxy_parked(feed)
             res = {
                 "status": "skipped",
                 "reason": "SLOTS_FULL",
-                "message": f"1,000만원 국면 한도 도달 (현재 {len(holdings)}개 종목 만석 보유 중 / {'상승장 3-Slot 100% 풀가동' if is_bull_regime else '하락장 2-Slot 50% 현금 대피'})",
-                "holdings_count": len(holdings),
+                "message": (
+                    f"C1-M2 슬롯 한도 도달 (위성 {len(sats)}/{max_allowed_slots} / "
+                    f"{'상승장 50/30/20' if is_bull_regime else '하락장 25/25'}). "
+                    "유휴분은 QQQ Cash Proxy 유지."
+                ),
+                "holdings_count": len(sats),
                 "max_slots": max_allowed_slots,
                 "is_bull_regime": is_bull_regime,
+                "cash_proxy": proxy_note,
                 "timestamp": now_str
             }
             self.last_run_result = res
@@ -203,6 +230,7 @@ class AutoPilotTrader:
             try:
                 broker_bal = default_kis_broker.get_overseas_balance()
                 broker_holdings = broker_bal.get("holdings", [])
+                broker_sats = [bh for bh in broker_holdings if not is_proxy_ticker(str(bh.get("ticker", "")))]
                 broker_tickers = [str(bh.get("ticker", "")).upper() for bh in broker_holdings]
                 if ticker in broker_tickers:
                     res = {
@@ -215,15 +243,15 @@ class AutoPilotTrader:
                     self.last_run_result = res
                     self.last_action = f"ALREADY_IN_BROKER_{ticker}"
                     return res
-                if len(broker_holdings) >= max_allowed_slots:
+                if len(broker_sats) >= max_allowed_slots:
                     res = {
                         "status": "skipped",
                         "reason": "BROKER_SLOTS_FULL",
-                        "message": f"증권사 실계좌 슬롯 만석 도달 (실보유: {len(broker_holdings)}개)",
+                        "message": f"증권사 실계좌 위성 슬롯 만석 도달 (실보유 위성: {len(broker_sats)}개)",
                         "timestamp": now_str
                     }
                     self.last_run_result = res
-                    self.last_action = f"BROKER_SLOTS_FULL_{len(broker_holdings)}"
+                    self.last_action = f"BROKER_SLOTS_FULL_{len(broker_sats)}"
                     return res
             except Exception as b_err:
                 logger.warning(f"[AutoPilot Broker Guardrail Error] {b_err}")
@@ -249,6 +277,10 @@ class AutoPilotTrader:
             except Exception:
                 pass
         exec_price = live_price if live_price and live_price > 0 else cur_price
+        needed_usd = float(shares) * float(exec_price)
+
+        # C1-M2: free cash from QQQ/QLD proxy before leadership entry
+        proxy_sells = self._free_proxy_cash_for_entry(needed_usd, holdings)
 
         # Institutional Marketable Limit: Add 0.5% slippage buffer to cross the spread and guarantee instant fill
         marketable_exec_price = round(exec_price * 1.005, 2)
@@ -279,6 +311,7 @@ class AutoPilotTrader:
                         "ticker": ticker,
                         "message": broker_msg or "증권사 주문 확인 실패. 로컬 원장에 매수를 기록하지 않았습니다.",
                         "client_order_id": broker_res.get("client_order_id"),
+                        "cash_proxy_sells": proxy_sells,
                         "timestamp": now_str,
                     }
                     self.last_run_result = res
@@ -289,7 +322,7 @@ class AutoPilotTrader:
                 broker_status = "FAILED"
                 broker_msg = str(ex_err)
 
-        # Step 5: Save to SQLite SSOT
+        # Step 5: Save to SQLite SSOT (stop = entry * 0.95 / C1-M2 -5%)
         target_price = derive_target_price(exec_price)
         stop_loss_price = derive_stop_price(exec_price)
         partial_tp_price = derive_partial_tp_price(exec_price)
@@ -311,11 +344,15 @@ class AutoPilotTrader:
             "name": ticker_name,
             "shares": shares,
             "buy_price": exec_price,
+            "stop_loss_price": stop_loss_price,
+            "stop_loss_pct": -HARD_STOP_PCT,
+            "slot_weight": sizing.get("slot_weight"),
             "total_usd": round(exec_price * shares, 2),
             "order_id": order_id,
             "broker_status": broker_status,
             "broker_message": broker_msg,
-            "strategy": "Full-Auto Rank #1 Conviction Entry (10M KRW Slot)"
+            "cash_proxy_sells": proxy_sells,
+            "strategy": "C1-M2 Rank Conviction Entry (50/30/20 + QQQ Proxy)"
         }
         self.trade_logs.append(trade_record)
         self.last_action = f"BOUGHT_{ticker}_{shares}SHARES"
@@ -342,6 +379,147 @@ class AutoPilotTrader:
         self.last_run_result = res
         logger.info(f"[AutoPilot Cycle Complete] Successfully executed autonomous buy: {ticker} {shares} shares @ ${exec_price}")
         return res
+
+    def _leverage_mode_now(self) -> bool:
+        try:
+            spy = fetch_spy_trend_regime()
+            vix = None
+            try:
+                import yfinance as yf
+                hist = yf.Ticker("^VIX").history(period="5d")
+                if hist is not None and not hist.empty:
+                    vix = float(hist["Close"].iloc[-1])
+            except Exception:
+                vix = None
+            return bool(
+                evaluate_dynamic_leverage(
+                    spy_close=spy.get("spy_close"),
+                    spy_sma200=spy.get("spy_sma200"),
+                    vix=vix,
+                ).get("leverage_mode")
+            )
+        except Exception:
+            return False
+
+    def _etf_price(self, ticker: str) -> float:
+        try:
+            if default_kis_broker.is_configured():
+                px = default_kis_broker.get_live_price(ticker)
+                if px and float(px) > 0:
+                    return float(px)
+        except Exception:
+            pass
+        try:
+            import yfinance as yf
+            t = yf.Ticker(ticker)
+            fi = getattr(t, "fast_info", None)
+            if fi:
+                p = getattr(fi, "last_price", None) or getattr(fi, "previous_close", None)
+                if p and float(p) > 0:
+                    return float(p)
+        except Exception:
+            pass
+        return 0.0
+
+    def _ensure_cash_proxy_parked(self, feed: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Park idle NAV into QQQ (+ QLD if leverage regime). Planning-only unless auto-buy enabled."""
+        port = get_live_portfolio()
+        holdings = port.get("holdings", [])
+        equity = float(port.get("total_equity_usd") or port.get("total_value") or 7500.0)
+        cash = float(port.get("cash_usd") or port.get("cash") or 0.0)
+        leverage_on = self._leverage_mode_now()
+        qqq_px = self._etf_price(CASH_PROXY_TICKER)
+        qld_px = self._etf_price("QLD") if leverage_on else 0.0
+        plan = build_cash_proxy_plan(
+            total_equity_usd=equity,
+            holdings=holdings,
+            cash_usd=cash,
+            leverage_mode=leverage_on,
+            qqq_price=qqq_px,
+            qld_price=qld_px,
+        )
+        executed = []
+        if self.is_enabled:
+            for act in plan.get("actions") or []:
+                if act.get("side") != "BUY":
+                    continue
+                ticker = act["ticker"]
+                qty = int(act["qty"])
+                px = qqq_px if ticker == CASH_PROXY_TICKER else qld_px
+                if qty <= 0 or px <= 0:
+                    continue
+                if default_kis_broker.is_configured():
+                    try:
+                        broker_res = default_kis_broker.place_order(
+                            ticker=ticker, side="BUY", qty=qty,
+                            price=round(px * 1.005, 2), order_type="00", exchange="NASD",
+                        )
+                        if not is_broker_order_ack(broker_res.get("status", "error")):
+                            continue
+                    except Exception as e:
+                        logger.error(f"[AutoPilot CashProxy Buy Error] {e}")
+                        continue
+                add_portfolio_buy(
+                    ticker=ticker,
+                    buy_price=px,
+                    quantity=float(qty),
+                    buy_date=datetime.now().strftime("%Y-%m-%d"),
+                    target_price=derive_target_price(px),
+                    stop_loss_price=derive_stop_price(px),
+                    partial_tp_price=derive_partial_tp_price(px),
+                )
+                executed.append(act)
+        plan["executed"] = executed
+        return plan
+
+    def _free_proxy_cash_for_entry(
+        self, needed_usd: float, holdings: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """Sell QLD then QQQ to raise cash for a satellite buy."""
+        qqq_px = self._etf_price(CASH_PROXY_TICKER)
+        qld_px = self._etf_price("QLD")
+        plan = raise_cash_from_proxy(
+            needed_usd=needed_usd,
+            holdings=holdings,
+            qqq_price=qqq_px,
+            qld_price=qld_px,
+        )
+        executed: List[Dict[str, Any]] = []
+        for act in plan:
+            ticker = act["ticker"]
+            qty = int(act["qty"])
+            px = qqq_px if ticker == CASH_PROXY_TICKER else qld_px
+            if qty <= 0 or px <= 0:
+                continue
+            if default_kis_broker.is_configured():
+                try:
+                    broker_res = default_kis_broker.place_order(
+                        ticker=ticker, side="SELL", qty=qty,
+                        price=round(px * 0.995, 2), order_type="00", exchange="NASD",
+                    )
+                    if not is_broker_order_ack(broker_res.get("status", "error")):
+                        continue
+                except Exception as e:
+                    logger.error(f"[AutoPilot CashProxy Sell Error] {e}")
+                    continue
+            # Mark local proxy lots sold (best-effort match by ticker)
+            for h in list(holdings):
+                if str(h.get("ticker", "")).upper() != ticker:
+                    continue
+                hid = h.get("id")
+                if hid is not None:
+                    try:
+                        record_portfolio_sell(
+                            holding_id=int(hid),
+                            sell_price=px,
+                            reason=f"FREE_CASH_FOR_LEADERSHIP ({act.get('reason')})",
+                        )
+                    except Exception:
+                        pass
+                break
+            executed.append({**act, "fill_price": px})
+            logger.info(f"[AutoPilot] Freed proxy cash: SELL {ticker} x{qty} @ ${px:.2f}")
+        return executed
 
 
 # Global singleton instance

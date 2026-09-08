@@ -1,9 +1,10 @@
 """
 AL-SANGMOO QUANT TERMINAL: PORTFOLIO GUARDIAN DAEMON
-Background auto-execution of v2 exits:
-  1. -4.0% hard stop (full exit)
+Background auto-execution of C1-M2 exits:
+  1. -5.0% hard stop (full exit)
   2. 26-day kijun close breakdown (full exit)
   3. Uncapped trailing after +15% peak gain: max(Kijun-26, peak - 2.5*ATR(14))
+  4. On satellite exit: redeploy proceeds into QQQ cash-proxy (+ QLD if 1.5x regime)
 No 50% partial take-profit.
 """
 
@@ -18,11 +19,17 @@ from al_sangmoo.infrastructure.persistence import (
     get_connection,
     get_live_portfolio,
     record_portfolio_sell,
+    add_portfolio_buy,
 )
 from al_sangmoo.infrastructure.brokers.kis_broker import default_kis_broker
 from al_sangmoo.api.hub import hub, EventType
 from al_sangmoo.infrastructure.idempotent_order import is_broker_order_ack
-from al_sangmoo.core.constants import derive_stop_price
+from al_sangmoo.core.constants import (
+    CASH_PROXY_TICKER,
+    derive_stop_price,
+    derive_target_price,
+    derive_partial_tp_price,
+)
 from al_sangmoo.domain.risk.trailing_stop import (
     ATR_TRAIL_MULT,
     HARD_STOP_PCT,
@@ -31,6 +38,12 @@ from al_sangmoo.domain.risk.trailing_stop import (
     fetch_trailing_snapshot,
     format_holding_advice,
 )
+from al_sangmoo.domain.risk.cash_proxy import (
+    is_proxy_ticker,
+    park_proceeds_after_exit,
+)
+from al_sangmoo.domain.quant.macro import fetch_spy_trend_regime
+from al_sangmoo.domain.risk.macro_guardrail import evaluate_dynamic_leverage
 
 logger = logging.getLogger(__name__)
 
@@ -47,9 +60,10 @@ def is_market_open_for_orders(ticker_sym: str) -> bool:
 class PortfolioGuardian:
     """
     Autonomous background guardian monitoring active positions.
-    Enforces Al-Sangmoo v2 exits without user intervention:
-      1. -4% hard stop or 26D kijun close breakdown: 100% exit.
+    Enforces C1-M2 exits without user intervention:
+      1. -5% hard stop or 26D kijun close breakdown: 100% exit.
       2. After +15% peak gain: uncapped trailing floor max(kijun, peak - 2.5*ATR).
+      3. Satellite exit proceeds immediately repark into QQQ cash proxy.
     """
 
     def __init__(self, check_interval_seconds: int = 10):
@@ -95,6 +109,8 @@ class PortfolioGuardian:
                 "partial_tp_ratio": 0.0,
                 "uncapped_trailing": True,
                 "kijun_break_check": True,
+                "cash_proxy": CASH_PROXY_TICKER,
+                "engine": "C1-M2",
             }
         }
 
@@ -338,6 +354,15 @@ class PortfolioGuardian:
             triggered_actions.append(action_record)
             self.last_actions.append(action_record)
 
+            # C1-M2: satellite exits repark into QQQ cash proxy (skip if exiting QQQ/QLD itself)
+            if not is_proxy_ticker(ticker):
+                try:
+                    proxy_actions = self._repark_exit_proceeds(sell_qty * cur_price)
+                    if proxy_actions:
+                        action_record["cash_proxy_actions"] = proxy_actions
+                except Exception as proxy_err:
+                    logger.warning(f"[Portfolio Guardian] Cash-proxy repark failed: {proxy_err}")
+
         return {
             "status": "success",
             "timestamp": now_str,
@@ -345,6 +370,92 @@ class PortfolioGuardian:
             "actions_count": len(triggered_actions),
             "actions": triggered_actions
         }
+
+    def _current_leverage_mode(self) -> bool:
+        try:
+            spy = fetch_spy_trend_regime()
+            vix = None
+            try:
+                import yfinance as yf
+                hist = yf.Ticker("^VIX").history(period="5d")
+                if hist is not None and not hist.empty:
+                    vix = float(hist["Close"].iloc[-1])
+            except Exception:
+                vix = None
+            lev = evaluate_dynamic_leverage(
+                spy_close=spy.get("spy_close"),
+                spy_sma200=spy.get("spy_sma200"),
+                vix=vix,
+            )
+            return bool(lev.get("leverage_mode"))
+        except Exception:
+            return False
+
+    def _fetch_etf_price(self, ticker: str) -> float:
+        try:
+            if default_kis_broker.is_configured():
+                px = default_kis_broker.get_live_price(ticker)
+                if px and float(px) > 0:
+                    return float(px)
+        except Exception:
+            pass
+        return self._fetch_live_price(ticker, 0.0)
+
+    def _repark_exit_proceeds(self, proceeds_usd: float) -> List[Dict[str, Any]]:
+        """Buy QQQ (+ QLD if 1.5x) with satellite exit proceeds."""
+        if proceeds_usd <= 0 or not self.is_enabled:
+            return []
+        leverage_on = self._current_leverage_mode()
+        qqq_px = self._fetch_etf_price(CASH_PROXY_TICKER)
+        qld_px = self._fetch_etf_price("QLD") if leverage_on else 0.0
+        plan = park_proceeds_after_exit(
+            proceeds_usd=proceeds_usd,
+            leverage_mode=leverage_on,
+            qqq_price=qqq_px,
+            qld_price=qld_px,
+        )
+        executed: List[Dict[str, Any]] = []
+        for act in plan:
+            ticker = act["ticker"]
+            qty = int(act["qty"])
+            if qty <= 0:
+                continue
+            px = qqq_px if ticker == CASH_PROXY_TICKER else qld_px
+            if px <= 0:
+                continue
+            broker_status = "SIMULATED"
+            if default_kis_broker.is_configured():
+                if not is_market_open_for_orders(ticker):
+                    continue
+                try:
+                    broker_res = default_kis_broker.place_order(
+                        ticker=ticker,
+                        side="BUY",
+                        qty=qty,
+                        price=round(px * 1.005, 2),
+                        order_type="00",
+                        exchange="NASD",
+                    )
+                    broker_status = broker_res.get("status", "error")
+                    if not is_broker_order_ack(broker_status):
+                        continue
+                except Exception as e:
+                    logger.error(f"[Guardian CashProxy Buy Error] {e}")
+                    continue
+            add_portfolio_buy(
+                ticker=ticker,
+                buy_price=px,
+                quantity=float(qty),
+                buy_date=datetime.now().strftime("%Y-%m-%d"),
+                target_price=derive_target_price(px),
+                stop_loss_price=derive_stop_price(px),
+                partial_tp_price=derive_partial_tp_price(px),
+            )
+            executed.append({**act, "broker_status": broker_status, "fill_price": px})
+            logger.info(
+                f"[Portfolio Guardian] Cash-proxy repark: BUY {ticker} x{qty} @ ${px:.2f} ({act.get('reason')})"
+            )
+        return executed
 
 
 # Global singleton daemon instance (10s real-time sync)
