@@ -1,16 +1,15 @@
 """
 AL-SANGMOO QUANT TERMINAL: AUTOPILOT TRADER ENGINE
-C1-M2 autonomous scanner + Rank#1 conviction entry with 50/30/20 NAV sizing,
-QQQ cash-proxy funding, and KIS OpenAPI execution.
+C1-M2 multi-slot conviction entries (50/30/20 bull · 25/25 bear),
+residual idle-NAV QQQ(+QLD) cash-proxy parking, and KIS OpenAPI execution.
 """
 
 import asyncio
 import logging
-import math
 import os
 import json
-from datetime import datetime, time as dtime
-from typing import Dict, Any, List, Optional
+from datetime import datetime
+from typing import Dict, Any, List, Optional, Set
 
 from al_sangmoo.infrastructure.persistence import (
     add_portfolio_buy,
@@ -25,6 +24,8 @@ from al_sangmoo.core.constants import (
     HARD_STOP_PCT,
     MAX_SLOTS_BEAR,
     MAX_SLOTS_BULL,
+    SLOT_WEIGHTS_BEAR,
+    SLOT_WEIGHTS_BULL,
     derive_partial_tp_price,
     derive_stop_price,
     derive_target_price,
@@ -38,6 +39,7 @@ from al_sangmoo.domain.risk.cash_proxy import (
 )
 from al_sangmoo.domain.risk.macro_guardrail import evaluate_dynamic_leverage
 from al_sangmoo.domain.quant.macro import fetch_spy_trend_regime
+from al_sangmoo.domain.risk.position_sizer import calculate_target_shares
 
 logger = logging.getLogger(__name__)
 
@@ -48,8 +50,9 @@ DASHBOARD_JSON = os.path.join(BASE_DIR, "dashboard_data.json")
 class AutoPilotTrader:
     """
     100% Unattended Full-Auto Trading Engine (C1-M2).
-    Executes market-open quant scan, selects #1 conviction pick (50% NAV),
-    frees cash from QQQ proxy when needed, and places KIS orders into empty slots.
+    Fills empty satellite slots sequentially from ranked_conviction_list
+    (50/30/20 or 25/25), frees cash from QQQ/QLD when needed, then parks
+    any residual idle NAV back into the cash-proxy sleeve.
     """
 
     def __init__(self, check_interval_seconds: int = 60):
@@ -121,18 +124,19 @@ class AutoPilotTrader:
 
     async def run_autopilot_cycle(self, force_scan: bool = True) -> Dict[str, Any]:
         """
-        Executes a complete 100% full-auto cycle:
-          1. Scans 60 universe tickers via generate_dashboard_feed.py
-          2. Extracts #1 Top Conviction Pick & 3-Slot Integer share allocation
-          3. Inspects current portfolio slot occupancy (Max 2 stock slots)
-          4. Verifies deduplication (Not already in portfolio)
-          5. Executes real KIS Buy order and logs to SQLite SSOT
+        C1-M2 multi-slot cycle:
+          1. Fresh scan (optional) → load dashboard feed
+          2. Walk ranked_conviction_list; skip held tickers; fill empty slots
+             with next-slot weights (bull 50/30/20, bear 25/25)
+          3. Free QQQ/QLD proxy cash when entry cash is short
+          4. Always park residual idle NAV into QQQ(+QLD) before return
         """
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.last_run_time = now_str
-        logger.info(f"[AutoPilot Cycle] Initiating full-auto trade cycle at {now_str} (Force Scan: {force_scan})")
+        logger.info(
+            f"[AutoPilot Cycle] Multi-slot C1-M2 cycle at {now_str} (Force Scan: {force_scan})"
+        )
 
-        # Step 1: Run fresh scan if requested or if cache is missing
         if force_scan or not os.path.exists(DASHBOARD_JSON):
             try:
                 from generate_dashboard_feed import build_dashboard_data
@@ -141,7 +145,6 @@ class AutoPilotTrader:
             except Exception as scan_err:
                 logger.error(f"[AutoPilot Scan Error] {scan_err}")
 
-        # Step 2: Load dashboard feed & #1 Top Pick
         if not os.path.exists(DASHBOARD_JSON):
             res = {"status": "error", "message": "Dashboard feed not available", "timestamp": now_str}
             self.last_run_result = res
@@ -155,121 +158,277 @@ class AutoPilotTrader:
             self.last_run_result = res
             return res
 
-        top_pick = feed.get("top_conviction_pick")
-        if not top_pick:
-            # No leadership signal → ensure idle capital stays parked in QQQ
+        candidates = self._collect_ranked_candidates(feed)
+        is_bull_regime = self._resolve_bull_regime(feed, candidates)
+        max_allowed_slots = MAX_SLOTS_BULL if is_bull_regime else MAX_SLOTS_BEAR
+        weights = list(SLOT_WEIGHTS_BULL if is_bull_regime else SLOT_WEIGHTS_BEAR)
+
+        entries: List[Dict[str, Any]] = []
+        skipped: List[Dict[str, Any]] = []
+        considered: Set[str] = set()
+        # Virtual slot cursor for Auto-Buy OFF planning logs (ledger unchanged)
+        planning_slot_rank: Optional[int] = None
+
+        if not candidates:
             proxy_note = self._ensure_cash_proxy_parked(feed)
             res = {
                 "status": "skipped",
                 "reason": "NO_QUALIFIED_TOP_PICK",
-                "message": "현재 기준을 충족하는 1위 확신도 종목이 없습니다. 유휴 자본은 QQQ Cash Proxy에 파킹합니다.",
+                "message": "적격 주도주 후보가 없습니다. 유휴 자본은 QQQ Cash Proxy에 파킹합니다.",
                 "cash_proxy": proxy_note,
+                "is_bull_regime": is_bull_regime,
+                "max_slots": max_allowed_slots,
+                "entries": entries,
+                "skipped": skipped,
                 "timestamp": now_str,
             }
             self.last_run_result = res
             self.last_action = "NO_TOP_PICK_QQQ_PARK"
             return res
 
-        ticker = str(top_pick.get("ticker", "")).upper()
-        ticker_name = top_pick.get("name", ticker)
-        sizing = top_pick.get("sizing", {})
-        shares = int(sizing.get("shares", 0))
-        cur_price = float(top_pick.get("price", 0.0))
+        # Multi-slot fill: keep buying next unheld ranked name until slots full
+        while True:
+            port = get_live_portfolio()
+            holdings = port.get("holdings", [])
+            sats = satellite_holdings(holdings)
+            held = {str(h.get("ticker", "")).upper() for h in holdings}
 
-        if not sizing.get("eligible", False) or shares <= 0 or cur_price <= 0:
-            res = {"status": "skipped", "reason": "SIZING_NOT_ELIGIBLE", "message": f"{ticker} 슬롯 자본금 부족 또는 유효하지 않은 수량", "timestamp": now_str}
-            self.last_run_result = res
-            self.last_action = f"SIZING_INELIGIBLE_{ticker}"
-            return res
+            if len(sats) >= max_allowed_slots:
+                skipped.append({
+                    "reason": "SLOTS_FULL",
+                    "message": (
+                        f"위성 슬롯 만석 ({len(sats)}/{max_allowed_slots} / "
+                        f"{'상승장 50/30/20' if is_bull_regime else '하락장 25/25'})"
+                    ),
+                    "holdings_count": len(sats),
+                    "max_slots": max_allowed_slots,
+                })
+                break
 
-        # Step 3: Inspect satellite holdings & Slot capacity (exclude QQQ/QLD proxy)
-        port = get_live_portfolio()
-        holdings = port.get("holdings", [])
-        sats = satellite_holdings(holdings)
-        active_tickers = [str(h["ticker"]).upper() for h in holdings]
+            live_slot_rank = len(sats) + 1
+            if planning_slot_rank is None:
+                planning_slot_rank = live_slot_rank
+            next_slot_rank = live_slot_rank if self.is_enabled else int(planning_slot_rank)
 
-        # Guardrail 1: Deduplication (Do not buy if already holding)
-        if ticker in active_tickers:
-            res = {
-                "status": "skipped",
-                "reason": "ALREADY_IN_WALLET",
-                "ticker": ticker,
-                "message": f"{ticker_name} ({ticker}) 종목을 이미 포트폴리오에 보유 중입니다.",
-                "timestamp": now_str
-            }
-            self.last_run_result = res
-            self.last_action = f"ALREADY_HOLDING_{ticker}"
-            return res
+            if next_slot_rank > max_allowed_slots:
+                skipped.append({
+                    "reason": "SLOTS_FULL",
+                    "message": f"계획 슬롯 한도 도달 ({max_allowed_slots})",
+                    "max_slots": max_allowed_slots,
+                })
+                break
 
-        # Guardrail 2: Dynamic Regime Sizing (Max 3 slots in Bull, Max 2 in Bear)
-        is_bull_regime = bool(sizing.get("is_bull_regime", feed.get("macro", {}).get("is_bull_regime", True)))
-        max_allowed_slots = MAX_SLOTS_BULL if is_bull_regime else MAX_SLOTS_BEAR
+            pick = self._next_unheld_candidate(candidates, held, considered)
+            if pick is None:
+                skipped.append({
+                    "reason": "NO_MORE_UNHELD_CANDIDATES",
+                    "message": (
+                        f"빈 슬롯 #{next_slot_rank} 남음 — 미보유 적격 주도주 소진. "
+                        "잔여 유휴 NAV는 Cash Proxy로 파킹합니다."
+                    ),
+                    "empty_slots": max_allowed_slots - len(sats),
+                    "slot_weight": weights[next_slot_rank - 1] if next_slot_rank <= len(weights) else None,
+                })
+                break
 
-        if len(sats) >= max_allowed_slots:
-            proxy_note = self._ensure_cash_proxy_parked(feed)
-            res = {
-                "status": "skipped",
-                "reason": "SLOTS_FULL",
-                "message": (
-                    f"C1-M2 슬롯 한도 도달 (위성 {len(sats)}/{max_allowed_slots} / "
-                    f"{'상승장 50/30/20' if is_bull_regime else '하락장 25/25'}). "
-                    "유휴분은 QQQ Cash Proxy 유지."
-                ),
-                "holdings_count": len(sats),
-                "max_slots": max_allowed_slots,
-                "is_bull_regime": is_bull_regime,
-                "cash_proxy": proxy_note,
-                "timestamp": now_str
-            }
-            self.last_run_result = res
-            self.last_action = f"SLOTS_FULL_MAX_{max_allowed_slots}"
-            return res
+            ticker = str(pick.get("ticker", "")).upper()
+            considered.add(ticker)
 
-        # Guardrail 3: Direct Broker SSOT Verification (Physical protection against duplicate buys)
-        if default_kis_broker.is_configured():
-            try:
-                broker_bal = default_kis_broker.get_overseas_balance()
-                broker_holdings = broker_bal.get("holdings", [])
-                broker_sats = [bh for bh in broker_holdings if not is_proxy_ticker(str(bh.get("ticker", "")))]
-                broker_tickers = [str(bh.get("ticker", "")).upper() for bh in broker_holdings]
-                if ticker in broker_tickers:
-                    res = {
-                        "status": "skipped",
-                        "reason": "ALREADY_IN_BROKER_HOLDINGS",
-                        "ticker": ticker,
-                        "message": f"증권사 실계좌에 {ticker} 종목이 이미 체결되어 보유 중입니다.",
-                        "timestamp": now_str
-                    }
-                    self.last_run_result = res
-                    self.last_action = f"ALREADY_IN_BROKER_{ticker}"
-                    return res
-                if len(broker_sats) >= max_allowed_slots:
-                    res = {
-                        "status": "skipped",
-                        "reason": "BROKER_SLOTS_FULL",
-                        "message": f"증권사 실계좌 위성 슬롯 만석 도달 (실보유 위성: {len(broker_sats)}개)",
-                        "timestamp": now_str
-                    }
-                    self.last_run_result = res
-                    self.last_action = f"BROKER_SLOTS_FULL_{len(broker_sats)}"
-                    return res
-            except Exception as b_err:
-                logger.warning(f"[AutoPilot Broker Guardrail Error] {b_err}")
+            # Broker SSOT: skip if already on the street book
+            broker_block = self._broker_slot_guard(ticker, max_allowed_slots)
+            if broker_block:
+                skipped.append(broker_block)
+                if broker_block.get("reason") in ("BROKER_SLOTS_FULL",):
+                    break
+                continue
 
-        # Step 4: Execute Autonomous Buy via KIS OpenAPI if Auto-Buy is ON
-        if not self.is_enabled:
-            res = {
-                "status": "skipped",
-                "reason": "AUTO_BUY_DISABLED",
-                "ticker": ticker,
-                "message": "전자동 매수(Auto-Buy) 기능이 비활성화(PAUSED) 상태입니다.",
-                "timestamp": now_str
-            }
-            self.last_run_result = res
-            self.last_action = "AUTO_BUY_PAUSED"
-            return res
+            equity = float(
+                port.get("total_equity_usd")
+                or port.get("total_value")
+                or pick.get("sizing", {}).get("remaining_cash_usd")
+                or 7500.0
+            )
+            cur_price = float(pick.get("price", 0.0) or 0.0)
+            sizing = calculate_target_shares(
+                portfolio_nav=equity,
+                current_price=cur_price,
+                slot_rank=next_slot_rank,
+                is_bull=is_bull_regime,
+            )
+            pick = dict(pick)
+            pick["sizing"] = sizing
+            pick["slot_rank"] = next_slot_rank
+            pick["slot_weight"] = sizing.get("slot_weight")
 
-        # Check KIS Live Price before placing order
+            if not sizing.get("eligible", False) or int(sizing.get("shares", 0) or 0) <= 0 or cur_price <= 0:
+                skipped.append({
+                    "status": "skipped",
+                    "reason": "SIZING_NOT_ELIGIBLE",
+                    "ticker": ticker,
+                    "slot_rank": next_slot_rank,
+                    "message": sizing.get("reason") or f"{ticker} 슬롯 자본금 부족 또는 유효하지 않은 수량",
+                })
+                continue
+
+            if not self.is_enabled:
+                skipped.append({
+                    "status": "skipped",
+                    "reason": "AUTO_BUY_DISABLED",
+                    "ticker": ticker,
+                    "slot_rank": next_slot_rank,
+                    "slot_weight": sizing.get("slot_weight"),
+                    "shares": int(sizing.get("shares", 0)),
+                    "message": (
+                        f"전자동 매수 OFF — 슬롯#{next_slot_rank} "
+                        f"({float(sizing.get('slot_weight') or 0)*100:.0f}%) "
+                        f"{ticker} {int(sizing.get('shares', 0))}주 시뮬레이션 스킵"
+                    ),
+                })
+                planning_slot_rank = int(planning_slot_rank) + 1
+                continue
+
+            entry_res = await self._execute_satellite_entry(
+                pick=pick,
+                slot_rank=next_slot_rank,
+                holdings=holdings,
+                now_str=now_str,
+            )
+            if entry_res.get("status") == "success":
+                entries.append(entry_res)
+            else:
+                skipped.append(entry_res)
+                # Hard broker ack failure: try next candidate for remaining slots
+                continue
+
+        proxy_note = self._ensure_cash_proxy_parked(feed)
+
+        if entries:
+            status = "success"
+            reason = "MULTI_SLOT_ENTRIES"
+            action = f"BOUGHT_{len(entries)}_SLOTS"
+            message = f"C1-M2 멀티 슬롯 진입 {len(entries)}건 체결. 잔여 유휴분 Cash Proxy 점검 완료."
+        elif any(s.get("reason") == "AUTO_BUY_DISABLED" for s in skipped):
+            status = "skipped"
+            reason = "AUTO_BUY_DISABLED"
+            action = "AUTO_BUY_PAUSED_MULTI_SLOT"
+            message = "전자동 매수 OFF — 슬롯 후보 시뮬레이션만 수행. 유휴분은 Cash Proxy 계획에 반영."
+        elif any(s.get("reason") == "SLOTS_FULL" for s in skipped) and not entries:
+            status = "skipped"
+            reason = "SLOTS_FULL"
+            action = f"SLOTS_FULL_MAX_{max_allowed_slots}"
+            message = skipped[0].get("message", "슬롯 만석")
+        else:
+            status = "skipped"
+            reason = (skipped[0].get("reason") if skipped else "NO_ACTION")
+            action = f"SKIPPED_{reason}"
+            message = (
+                skipped[0].get("message")
+                if skipped
+                else "진입 없음. 잔여 유휴분은 Cash Proxy에 파킹합니다."
+            )
+
+        res = {
+            "status": status,
+            "reason": reason,
+            "action": "MULTI_SLOT_CYCLE",
+            "message": message,
+            "is_bull_regime": is_bull_regime,
+            "max_slots": max_allowed_slots,
+            "slot_weights": weights,
+            "entries": entries,
+            "skipped": skipped,
+            "cash_proxy": proxy_note,
+            "timestamp": now_str,
+        }
+        # Backward-compat single-trade field when exactly one buy landed
+        if len(entries) == 1 and entries[0].get("trade"):
+            res["trade"] = entries[0]["trade"]
+        self.last_run_result = res
+        self.last_action = action
+        logger.info(
+            f"[AutoPilot Cycle Complete] status={status} entries={len(entries)} "
+            f"skipped={len(skipped)} idle_proxy={proxy_note.get('idle_nav_usd')}"
+        )
+        return res
+
+    def _collect_ranked_candidates(self, feed: Dict[str, Any]) -> List[Dict[str, Any]]:
+        ranked = feed.get("ranked_conviction_list") or []
+        if isinstance(ranked, list) and ranked:
+            return [c for c in ranked if isinstance(c, dict) and c.get("ticker")]
+        picks: List[Dict[str, Any]] = []
+        for key in ("top_conviction_pick", "top_conviction_runner_up"):
+            item = feed.get(key)
+            if isinstance(item, dict) and item.get("ticker"):
+                picks.append(item)
+        return picks
+
+    def _resolve_bull_regime(
+        self, feed: Dict[str, Any], candidates: List[Dict[str, Any]]
+    ) -> bool:
+        if candidates:
+            sizing = candidates[0].get("sizing") or {}
+            if "is_bull_regime" in sizing:
+                return bool(sizing.get("is_bull_regime"))
+        slot_summary = feed.get("slot_allocation_summary") or {}
+        if "is_bull_regime" in slot_summary:
+            return bool(slot_summary.get("is_bull_regime"))
+        macro = feed.get("macro") or {}
+        if "is_bull_regime" in macro:
+            return bool(macro.get("is_bull_regime"))
+        return True
+
+    def _next_unheld_candidate(
+        self,
+        candidates: List[Dict[str, Any]],
+        held: Set[str],
+        considered: Set[str],
+    ) -> Optional[Dict[str, Any]]:
+        for pick in candidates:
+            ticker = str(pick.get("ticker", "")).upper()
+            if not ticker or ticker in held or ticker in considered or is_proxy_ticker(ticker):
+                continue
+            return pick
+        return None
+
+    def _broker_slot_guard(self, ticker: str, max_allowed_slots: int) -> Optional[Dict[str, Any]]:
+        if not default_kis_broker.is_configured():
+            return None
+        try:
+            broker_bal = default_kis_broker.get_overseas_balance()
+            broker_holdings = broker_bal.get("holdings", [])
+            broker_sats = [bh for bh in broker_holdings if not is_proxy_ticker(str(bh.get("ticker", "")))]
+            broker_tickers = [str(bh.get("ticker", "")).upper() for bh in broker_holdings]
+            if ticker in broker_tickers:
+                return {
+                    "status": "skipped",
+                    "reason": "ALREADY_IN_BROKER_HOLDINGS",
+                    "ticker": ticker,
+                    "message": f"증권사 실계좌에 {ticker} 종목이 이미 체결되어 보유 중입니다.",
+                }
+            if len(broker_sats) >= max_allowed_slots:
+                return {
+                    "status": "skipped",
+                    "reason": "BROKER_SLOTS_FULL",
+                    "message": f"증권사 실계좌 위성 슬롯 만석 도달 (실보유 위성: {len(broker_sats)}개)",
+                }
+        except Exception as b_err:
+            logger.warning(f"[AutoPilot Broker Guardrail Error] {b_err}")
+        return None
+
+    async def _execute_satellite_entry(
+        self,
+        pick: Dict[str, Any],
+        slot_rank: int,
+        holdings: List[Dict[str, Any]],
+        now_str: str,
+    ) -> Dict[str, Any]:
+        """Place one satellite buy after freeing proxy cash if needed."""
+        ticker = str(pick.get("ticker", "")).upper()
+        ticker_name = pick.get("name", ticker)
+        sizing = pick.get("sizing") or {}
+        shares = int(sizing.get("shares", 0) or 0)
+        cur_price = float(pick.get("price", 0.0) or 0.0)
+
         live_price = None
         if default_kis_broker.is_configured():
             try:
@@ -279,10 +438,15 @@ class AutoPilotTrader:
         exec_price = live_price if live_price and live_price > 0 else cur_price
         needed_usd = float(shares) * float(exec_price)
 
-        # C1-M2: free cash from QQQ/QLD proxy before leadership entry
-        proxy_sells = self._free_proxy_cash_for_entry(needed_usd, holdings)
-
-        # Institutional Marketable Limit: Add 0.5% slippage buffer to cross the spread and guarantee instant fill
+        # Free only the cash shortfall from QQQ/QLD (not the full notional if cash exists)
+        port_cash = 0.0
+        try:
+            port_now = get_live_portfolio()
+            port_cash = float(port_now.get("cash_usd") or port_now.get("cash") or 0.0)
+        except Exception:
+            port_cash = 0.0
+        shortfall = max(0.0, needed_usd - max(0.0, port_cash))
+        proxy_sells = self._free_proxy_cash_for_entry(shortfall, holdings) if shortfall > 0 else []
         marketable_exec_price = round(exec_price * 1.005, 2)
 
         order_id = None
@@ -291,7 +455,6 @@ class AutoPilotTrader:
 
         if default_kis_broker.is_configured():
             try:
-                # Detect exchange (NYS or NASD)
                 ex_cd = "NYSE" if ticker in ["CVX", "JNJ", "XOM", "UNH", "PG", "JPM", "V", "MA", "LLY"] else "NASD"
                 broker_res = default_kis_broker.place_order(
                     ticker=ticker,
@@ -299,34 +462,36 @@ class AutoPilotTrader:
                     qty=shares,
                     price=marketable_exec_price,
                     order_type="00",
-                    exchange=ex_cd
+                    exchange=ex_cd,
                 )
                 order_id = broker_res.get("order_id")
                 broker_status = broker_res.get("status", "error")
                 broker_msg = broker_res.get("broker_message", broker_res.get("message", ""))
                 if not is_broker_order_ack(broker_status):
-                    res = {
+                    return {
                         "status": "skipped",
                         "reason": str(broker_status or "BROKER_ORDER_NOT_ACKED"),
                         "ticker": ticker,
+                        "slot_rank": slot_rank,
                         "message": broker_msg or "증권사 주문 확인 실패. 로컬 원장에 매수를 기록하지 않았습니다.",
                         "client_order_id": broker_res.get("client_order_id"),
                         "cash_proxy_sells": proxy_sells,
-                        "timestamp": now_str,
                     }
-                    self.last_run_result = res
-                    self.last_action = f"BROKER_NOT_ACKED_{ticker}"
-                    return res
             except Exception as ex_err:
                 logger.error(f"[AutoPilot KIS Order Error] {ex_err}")
-                broker_status = "FAILED"
-                broker_msg = str(ex_err)
+                return {
+                    "status": "skipped",
+                    "reason": "BROKER_ORDER_FAILED",
+                    "ticker": ticker,
+                    "slot_rank": slot_rank,
+                    "message": str(ex_err),
+                    "cash_proxy_sells": proxy_sells,
+                }
 
-        # Step 5: Save to SQLite SSOT (stop = entry * 0.95 / C1-M2 -5%)
         target_price = derive_target_price(exec_price)
         stop_loss_price = derive_stop_price(exec_price)
         partial_tp_price = derive_partial_tp_price(exec_price)
-        
+
         inserted_id = add_portfolio_buy(
             ticker=ticker,
             buy_price=exec_price,
@@ -334,7 +499,7 @@ class AutoPilotTrader:
             buy_date=now_str[:10],
             target_price=target_price,
             stop_loss_price=stop_loss_price,
-            partial_tp_price=partial_tp_price
+            partial_tp_price=partial_tp_price,
         )
 
         trade_record = {
@@ -346,39 +511,45 @@ class AutoPilotTrader:
             "buy_price": exec_price,
             "stop_loss_price": stop_loss_price,
             "stop_loss_pct": -HARD_STOP_PCT,
+            "slot_rank": slot_rank,
             "slot_weight": sizing.get("slot_weight"),
             "total_usd": round(exec_price * shares, 2),
             "order_id": order_id,
             "broker_status": broker_status,
             "broker_message": broker_msg,
             "cash_proxy_sells": proxy_sells,
-            "strategy": "C1-M2 Rank Conviction Entry (50/30/20 + QQQ Proxy)"
+            "strategy": f"C1-M2 Multi-Slot Entry #{slot_rank} (50/30/20 + QQQ Proxy)",
         }
         self.trade_logs.append(trade_record)
-        self.last_action = f"BOUGHT_{ticker}_{shares}SHARES"
+        self.last_action = f"BOUGHT_{ticker}_{shares}SHARES_SLOT{slot_rank}"
 
-        # Step 6: Broadcast live alerts to WebSockets
         fresh_port = sync_portfolio_prices()
         await hub.broadcast(EventType.AUTOPILOT_BUY, trade_record)
         await hub.broadcast_delta(EventType.POSITION_DELTA, {
             "ticker": ticker,
             "action": "BUY",
             "holding": next(
-                (h for h in (fresh_port.get("holdings") or []) if str(h.get("ticker", "")).upper() == ticker.upper()),
+                (
+                    h for h in (fresh_port.get("holdings") or [])
+                    if str(h.get("ticker", "")).upper() == ticker
+                ),
                 None,
             ),
         })
         await hub.broadcast(EventType.PORTFOLIO_UPDATE, fresh_port)
 
-        res = {
+        logger.info(
+            f"[AutoPilot] Slot#{slot_rank} buy: {ticker} {shares} @ ${exec_price} "
+            f"(weight={sizing.get('slot_weight')})"
+        )
+        return {
             "status": "success",
             "action": "AUTONOMOUS_BUY_EXECUTED",
+            "ticker": ticker,
+            "slot_rank": slot_rank,
             "trade": trade_record,
-            "timestamp": now_str
+            "timestamp": now_str,
         }
-        self.last_run_result = res
-        logger.info(f"[AutoPilot Cycle Complete] Successfully executed autonomous buy: {ticker} {shares} shares @ ${exec_price}")
-        return res
 
     def _leverage_mode_now(self) -> bool:
         try:
