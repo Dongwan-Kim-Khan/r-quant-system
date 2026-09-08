@@ -740,11 +740,12 @@ def main() -> None:
             SPECS["M2"], calendar, panels, bench, composite, universes, proxy_ohlc, start_i
         )
 
-        spy_m = pack_dca(spy_led, "SPY")
-        qqq_m = pack_dca(qqq_led, "QQQ")
-        qld_m = pack_dca(qld_led, "QLD") if qld_led else None
-        c1_m = pack_dca(c1_led, "C1_v1")
-        m2_m = pack_dca(m2_led, "M2")
+        end = calendar[-1].strftime("%Y-%m-%d")
+        spy_m = pack_dca(spy_led, "SPY", end)
+        qqq_m = pack_dca(qqq_led, "QQQ", end)
+        qld_m = pack_dca(qld_led, "QLD", end) if qld_led else None
+        c1_m = pack_dca(c1_led, "C1_v1", end)
+        m2_m = pack_dca(m2_led, "M2", end)
         c1_m["trades_n"] = len(c1_book.trades)
         m2_m["trades_n"] = len(m2_book.trades)
         c1_m["regime_days"] = dict(c1_sl.regime_days)
