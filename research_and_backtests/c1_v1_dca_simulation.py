@@ -19,7 +19,7 @@ import sys
 import time
 import warnings
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Callable, Dict, List, Optional, Set, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -188,13 +188,19 @@ def pack_dca(ledger: FlowLedger, label: str, end_date: str) -> dict:
     }
 
 
+def resolve_monthly(monthly: Union[float, Callable[[pd.Timestamp], float]], ts: pd.Timestamp) -> float:
+    if callable(monthly):
+        return float(monthly(ts))
+    return float(monthly)
+
+
 def run_bh_dca(
     ticker: str,
     calendar: pd.DatetimeIndex,
     ohlc: dict,
     start_i: int,
     seed: float = SEED,
-    monthly: float = MONTHLY,
+    monthly: Union[float, Callable[[pd.Timestamp], float]] = MONTHLY,
 ) -> FlowLedger:
     n = len(calendar)
     dates = [d.strftime("%Y-%m-%d") for d in calendar]
@@ -240,11 +246,13 @@ def run_bh_dca(
 
     for i in range(start_i, n):
         if is_month_first(calendar, i, start_i):
-            cash += monthly
-            invested += monthly
-            ledger.dates.append(dates[i])
-            ledger.amounts.append(-monthly)
-            buy_all(i, "open")
+            dep = resolve_monthly(monthly, calendar[i])
+            if dep > 0:
+                cash += dep
+                invested += dep
+                ledger.dates.append(dates[i])
+                ledger.amounts.append(-dep)
+                buy_all(i, "open")
         elif i == start_i and shares <= 0:
             buy_all(i, "open")
 
@@ -266,7 +274,7 @@ def run_c1_dca(
     proxy_ohlc: Dict[str, dict],
     start_i: int,
     seed: float = SEED,
-    monthly: float = MONTHLY,
+    monthly: Union[float, Callable[[pd.Timestamp], float]] = MONTHLY,
 ) -> Tuple[Book, TuneSleeve, FlowLedger]:
     n = len(calendar)
     dates = [d.strftime("%Y-%m-%d") for d in calendar]
@@ -406,11 +414,15 @@ def run_c1_dca(
 
     for i in range(start_i, n):
         # --- DCA inject before any trading ---
+        deposited = False
         if is_month_first(calendar, i, start_i):
-            book.cash += monthly
-            invested += monthly
-            ledger.dates.append(dates[i])
-            ledger.amounts.append(-monthly)
+            dep = resolve_monthly(monthly, calendar[i])
+            if dep > 0:
+                book.cash += dep
+                invested += dep
+                ledger.dates.append(dates[i])
+                ledger.amounts.append(-dep)
+                deposited = True
 
         asof = i - 1
         lev = target_leverage(spy[asof], sma200[asof], vix[asof])
@@ -431,7 +443,7 @@ def run_c1_dca(
         sl.regime_days[regime] += 1
         force_proxy = prev_lev is None or abs((prev_lev or 0.0) - lev) > 1e-9 or i == start_i
         # Force proxy rebalance on deposit days so new cash parks into QQQ/QLD
-        if is_month_first(calendar, i, start_i):
+        if deposited:
             force_proxy = True
 
         for tk in list(book.positions.keys()):
