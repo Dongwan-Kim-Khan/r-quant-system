@@ -515,8 +515,23 @@ def diagnose(payload: dict) -> List[str]:
         if w8[k]["cagr_pct"] >= base["cagr_pct"]
         and (not w3 or w3[k]["cagr_pct"] >= w3["Baseline"]["cagr_pct"] - 1.0)
     ]
+    cagr22 = [k for k in ("M1", "M2", "M3", "M4") if w8[k]["cagr_pct"] >= 22.0]
     if sweet:
         lines.append(f"- **스윗스팟 후보: {', '.join(sweet)}** — Baseline 8년을 이기면서 AI 알파를 1%p 이내로 보존.")
+    elif cagr22:
+        k = cagr22[0]
+        ai_note = ""
+        if w3:
+            ai_note = f" AI 3년 {w3[k]['cagr_pct']:.2f}% (Baseline 대비 {w3[k]['cagr_pct'] - w3['Baseline']['cagr_pct']:+.2f}%p)."
+        lines.append(
+            f"- **CAGR 22%는 {k}가 달성** ({w8[k]['cagr_pct']:.2f}%)하나 MDD {w8[k]['mdd_pct']:.2f}%로 "
+            f"Baseline {base['mdd_pct']:.2f}%보다 깊다.{ai_note} "
+            "손절 완화는 승률·PF를 올리지만 크래시 베타를 키운다 — 채택 시 MDD 예산 재정의 필요."
+        )
+        lines.append(
+            "- **스윗스팟(8년↑ + AI 보존 + MDD 비악화)은 미결.** Baseline C1을 기본 운용으로 두고, "
+            "M2는 ‘CAGR 우선 변형’으로만 기록한다."
+        )
     else:
         best_m = max(models, key=lambda kv: kv[1]["cagr_pct"])
         lines.append(
