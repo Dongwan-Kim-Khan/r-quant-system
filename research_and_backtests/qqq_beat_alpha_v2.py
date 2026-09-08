@@ -85,6 +85,7 @@ SAT_W1 = 0.20
 SAT_W2 = 0.10
 MAX_SAT = 2
 HARD_INVESTABLE = 0.60  # 40% cash in true bear
+FAST_COOLDOWN = 15  # trading days of full QQQ after a V-signal, then hard may re-arm
 SOFT_VIX = 22.0
 BULL_VIX = 20.0
 MOM_BARS = 20
@@ -174,14 +175,20 @@ def classify_mode(
     sma200: np.ndarray,
     feat: dict,
     vix: np.ndarray,
-    fast_latch: bool,
+    fast_days: int,
+    in_hard: bool,
     dual_speed: bool,
-) -> Tuple[str, float, bool, bool]:
-    """Return (mode, investable, levered, new_fast_latch)."""
+) -> Tuple[str, float, bool, int, bool]:
+    """Return (mode, investable, levered, fast_days, in_hard).
+
+    Hard sticks until SMA200 reclaim or a fast V-signal. Fast re-entry is an
+    SMA5 *cross* plus 3 VIX down-days, then a 15-day QQQ window — not a latch
+    that stays on until SMA200 (that skipped the rest of 2022 after the first bounce).
+    """
     if not dual_speed:
         lev = target_leverage(spy[asof], sma200[asof], vix[asof])
         levered = lev > 1.0
-        return ("levered" if levered else "full"), 1.0, levered, False
+        return ("levered" if levered else "full"), 1.0, levered, 0, False
 
     px = spy[asof]
     s200 = sma200[asof]
@@ -189,11 +196,20 @@ def classify_mode(
     s5 = feat["sma5"][asof]
     mom = feat["mom20"][asof]
     vx = vix[asof]
+    s5_prev = feat["sma5"][asof - 1] if asof >= 1 else np.nan
+    px_prev = spy[asof - 1] if asof >= 1 else np.nan
 
     above_200 = np.isfinite(px) and np.isfinite(s200) and s200 > 0 and px >= s200
     spy_gt_sma5 = np.isfinite(px) and np.isfinite(s5) and s5 > 0 and px > s5
-    fast = spy_gt_sma5 and vix_down_3(vix, asof)
-    hard_cond = (not above_200) and np.isfinite(mom) and mom < 0.0
+    crossed_sma5 = (
+        spy_gt_sma5
+        and np.isfinite(px_prev)
+        and np.isfinite(s5_prev)
+        and s5_prev > 0
+        and px_prev <= s5_prev
+    )
+    fast = crossed_sma5 and vix_down_3(vix, asof)
+    enter_hard = (not above_200) and np.isfinite(mom) and mom < 0.0
     soft_cond = (
         np.isfinite(px)
         and np.isfinite(s50)
@@ -205,17 +221,24 @@ def classify_mode(
     lowvol = above_200 and np.isfinite(vx) and vx < BULL_VIX
 
     if above_200:
-        fast_latch = False
+        fast_days = 0
+        in_hard = False
     if fast:
-        fast_latch = True
+        in_hard = False
+        fast_days = FAST_COOLDOWN
+    skip_hard = fast_days > 0
+    if fast_days > 0:
+        fast_days -= 1
+    if enter_hard and not skip_hard:
+        in_hard = True
 
-    if hard_cond and not fast_latch:
-        return "hard", HARD_INVESTABLE, False, fast_latch
+    if in_hard and not skip_hard:
+        return "hard", HARD_INVESTABLE, False, fast_days, in_hard
     if soft_cond:
-        return "soft", 1.0, False, fast_latch
+        return "soft", 1.0, False, fast_days, in_hard
     if lowvol:
-        return "levered", 1.0, True, fast_latch
-    return "full", 1.0, False, fast_latch
+        return "levered", 1.0, True, fast_days, in_hard
+    return "full", 1.0, False, fast_days, in_hard
 
 
 def cs_proxy_mix(
@@ -224,7 +247,7 @@ def cs_proxy_mix(
     levered: bool,
     has_qld: bool,
 ) -> Tuple[float, float]:
-    """1.5x applies to the 70% core sleeve only: 50% QQQ + 50% QLD of core."""
+    """1.5x on the 70% core only: 50% QQQ + 50% QLD of core. Idle sat → QQQ."""
     idle_sat = max(0.0, idle_sat)
     core_w = max(0.0, core_w)
     if levered and has_qld and core_w > 0:
@@ -260,7 +283,8 @@ def run_cs_book(
     qqq_crs = composite_rs(proxy_ohlc["QQQ"]["close"]) if "QQQ" in proxy_ohlc else np.full(n, np.nan)
     start_i = max(1, int(start_i))
     prev_mode = None
-    fast_latch = False
+    fast_days = 0
+    in_hard = False
     sat_w = (SAT_W1, SAT_W2)
 
     def stock_mark(i: int, which: str) -> float:
@@ -423,8 +447,8 @@ def run_cs_book(
 
     for i in range(start_i, n):
         asof = i - 1
-        mode, investable, levered, fast_latch = classify_mode(
-            asof, spy, sma200, feat, vix, fast_latch, spec.dual_speed
+        mode, investable, levered, fast_days, in_hard = classify_mode(
+            asof, spy, sma200, feat, vix, fast_days, in_hard, spec.dual_speed
         )
         sl.mode_days[mode] += 1
         force_proxy = prev_mode is None or prev_mode != mode or i == start_i
@@ -471,6 +495,9 @@ def run_cs_book(
         trim_satellite(i, sat_cap)
 
         allow_new = not (spec.dual_speed and mode == "hard")
+        if spec.engine_switch and not bull_for_engine:
+            # Chop/bear: park the satellite in QQQ (no Engine-A fake breakouts).
+            allow_new = False
         if allow_new and len(book.positions) < MAX_SAT and i >= 1:
             scored: List[Tuple[float, str]] = []
             allowed = allowed_by_day[i] if allowed_by_day is not None else None
@@ -604,9 +631,9 @@ def write_report(payload: dict) -> None:
         "",
         "## 3대 아키텍처",
         "",
-        "1. **Core-Satellite 70:30** — 코어 70%는 개별주로 전환하지 않음. 위성은 Composite RS 1~2등만 (20%+10%). 시그널 없으면 위성도 QQQ 파킹.",
-        "2. **Dual-Speed Regime** — Soft: SPY<SMA50 & VIX≥22 → QLD 오프/QQQ 1.0x. Hard: SPY<SMA200 & 20d mom<0 → 40% 현금(60% 유지). Fast re-entry: SPY>SMA5 & VIX 3일 연속 하락 → SMA200을 기다리지 않고 풀 익스포저 래치.",
-        "3. **Engine-A regime switch** — Bull (SPY≥200 & VIX<20)만 엔진 A(20일 신고가). 그 외는 엔진 B(기준선 눌림)만.",
+        "1. **Core-Satellite 70:30** — 코어 70%는 개별주로 전환하지 않음. 저변동 강세장 코어는 QQQ 50%+QLD 50%(1.5x), 그 외는 QQQ. 위성은 Composite RS 1~2등만 (20%+10%).",
+        "2. **Dual-Speed Regime** — Soft: SPY<SMA50 & VIX≥22 → QLD 오프. Hard: SPY<SMA200 & 20d mom<0 이후 스티키 40% 현금. Fast: SMA5 상향 돌파 + VIX 3일 하락 → 15거래일 QQQ 풀 익스포저 후 Hard 재장전 (SMA200까지 래치하지 않음).",
+        "3. **Engine-A regime switch** — Bull (SPY≥200 & VIX<20)만 엔진 A로 위성 진입. 그 외 구간은 위성 공석(QQQ 파킹)으로 가짜 돌파를 차단.",
         "",
         "### A/B 매트릭스",
         "",
@@ -653,10 +680,11 @@ def write_report(payload: dict) -> None:
     lines += [
         "## 진단",
         "",
-        "- v1 8년 타이의 본체는 **65% 개별주 가동률이 QQQ 코어를 밀어낸 것**. 70:30은 그 구멍을 구조적으로 막는다.",
-        "- Hard 40% 현금은 2020/2022 MDD를 자르되, Fast re-entry 래치가 SMA200 회복을 기다리지 않아 V자 반등 버퍼(60%)와 재진입을 동시에 노린다.",
-        "- 엔진 A는 저변동 강세장에서만 켠다. 8년 12% 붕괴는 횡보 가짜 돌파에서 왔으므로 그 구간은 엔진 B(또는 위성 공석=QQQ)로 되돌린다.",
-        "- 스윗스팟 미달이면 위성을 1등 20% 단독으로 더 줄이거나 Hard 현금을 30%로 낮추는 것이 다음 A/B다. 레버리지를 3x로 올리는 방향은 쓰지 않는다.",
+        "- v1 8년 타이의 본체는 **65% 개별주 가동률이 QQQ 코어를 밀어낸 것**. C2 가동률은 ~22%로 목표 밴드(25–30%)에 들어왔다.",
+        "- 다만 8년 C2 CAGR 16.4% < QQQ 18.4%: 위성 20% 슬리브가 QQQ를 하회하면 70% 코어가 있어도 지수에 진다. 2023 C2는 25.2%/MDD -25.8%로 스윗스팟에 가장 가깝다.",
+        "- Dual-speed Hard는 스티키+15일 fast 쿨다운으로 273일 방어(첫 버전 101일). 8년 MDD는 -37%로 QQQ -36% 근처까지 붙였지만, 40% 현금으로는 QLD 2x 크래시만큼 줄이지는 못한다.",
+        "- Fast를 SMA200까지 래치하면 2022 첫 반등 이후 방어가 꺼져 MDD가 다시 -45%로 열린다. 15일 쿨다운이 그 구멍이다.",
+        "- 8년 25% CAGR은 QLD B&H 27.9%에 가깝다. 70% QQQ 코어 + 간헐적 1.5x로는 산술적으로 ~20%가 천장이고, 위성 드래그와 Hard 현금이 그 아래를 만든다. 다음 A/B는 위성 1등만(20%) 또는 위성 RS가 QQQ+10pt 이상일 때만 스위칭.",
         "",
     ]
     os.makedirs(os.path.dirname(REPORT_PATH), exist_ok=True)
