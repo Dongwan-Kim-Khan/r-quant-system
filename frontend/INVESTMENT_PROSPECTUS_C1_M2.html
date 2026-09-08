@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>C1-M2 Investment Prospectus (PPM/KIID) | Al-Sangmoo</title>
+  <style>
+    :root { --bg:#0b1020; --card:#12182a; --line:#243049; --text:#e8eefc; --muted:#93a0b8; --accent:#38bdf8; --green:#34d399; --red:#f87171; --amber:#fbbf24; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: Inter, "Segoe UI", sans-serif; background: radial-gradient(1200px 600px at 10% -10%, #1a2744 0%, var(--bg) 55%); color:var(--text); line-height:1.55; }
+    .wrap { max-width:920px; margin:0 auto; padding:28px 20px 64px; }
+    .topbar { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:22px; flex-wrap:wrap; }
+    .badge { display:inline-flex; padding:6px 12px; border-radius:999px; border:1px solid rgba(56,189,248,.35); background:rgba(56,189,248,.12); color:var(--accent); font-weight:800; font-size:12px; }
+    a.btn { text-decoration:none; color:#fff; border:1px solid var(--line); background:#182038; padding:8px 14px; border-radius:999px; font-size:12px; font-weight:700; }
+    a.btn:hover { border-color:var(--accent); color:var(--accent); }
+    h1 { font-size:28px; margin:0 0 6px; }
+    h2 { font-size:18px; margin:28px 0 10px; color:var(--accent); border-bottom:1px solid var(--line); padding-bottom:8px; }
+    p, li { color:var(--muted); font-size:14px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px 18px; margin:12px 0; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th, td { border-bottom:1px solid var(--line); padding:8px 6px; text-align:left; }
+    th { color:#9fb3d1; }
+    td strong { color:var(--green); }
+    .danger { color:var(--red); }
+    .warn { color:var(--amber); }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color:#dbeafe; }
+    .footer { margin-top:28px; font-size:12px; color:#70809c; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <span class="badge">C1-M2 PRODUCTION ENGINE · PPM / KIID</span>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <a class="btn" href="/static/INVESTMENT_PROSPECTUS_C1_M2_KO.html">한국어</a>
+        <a class="btn" href="/docs/prospectus.md?lang=en">Markdown</a>
+        <a class="btn" href="/">← Terminal</a>
+      </div>
+    </div>
+    <h1>Al-Sangmoo Dynamic Alpha Hedge Strategy</h1>
+    <p>Strategy code <code>C1-M2</code> — Quantitative Systematic Trend-Following &amp; Dynamic Regime Overlay · Base currency USD</p>
+
+    <div class="card">
+      <ul>
+        <li>Benchmarks: NASDAQ-100 (<code>QQQ</code>), S&amp;P 500 (<code>SPY</code>)</li>
+        <li>Recommended plan: seed <strong>$8,000</strong> + <strong>$400</strong> monthly DCA</li>
+        <li>Audience: qualified / accredited investors seeking asymmetric alpha</li>
+      </ul>
+    </div>
+
+    <h2>Architecture</h2>
+    <div class="card">
+      <ul>
+        <li><strong>Base Beta</strong>: idle NAV parked in <code>QQQ</code> cash proxy</li>
+        <li><strong>Satellite Alpha</strong>: top Composite-RS leaders that beat QQQ CRS</li>
+        <li><strong>Leverage</strong>: 1.5× via QQQ+QLD when <code>SPY ≥ SMA200</code> and <code>VIX &lt; 20</code>; else 1.0×</li>
+        <li>Slot weights: Bull <strong>50 / 30 / 20</strong> · Bear <strong>25 / 25</strong></li>
+        <li>Hard stop <strong class="danger">−5.0%</strong> · Trailing after <strong>+15%</strong>: <code>max(Kijun-26, peak − 2.5×ATR14)</code></li>
+      </ul>
+    </div>
+
+    <h2>Audited Track Record (10bps / 8bps / PIT)</h2>
+    <table>
+      <thead><tr><th>Mandate</th><th>Result</th><th>MDD</th></tr></thead>
+      <tbody>
+        <tr><td>M2 lump-sum 8y</td><td><strong>CAGR 22.00%</strong></td><td class="danger">−51.13%</td></tr>
+        <tr><td>M2 DCA ($8k+$400)</td><td><strong>$174,683</strong> / XIRR 27.48%</td><td class="danger">−48.15%</td></tr>
+        <tr><td>vs QQQ identical DCA</td><td colspan="2">≈ +$56,000 excess terminal wealth</td></tr>
+      </tbody>
+    </table>
+
+    <p class="warn">Past simulated performance is not indicative of future results. Not a public offering.</p>
+    <div class="footer">Source: <code>INVESTMENT_PROSPECTUS_C1_M2.md</code> · SSOT: <code>al_sangmoo/core/constants.py</code></div>
+  </div>
+</body>
+</html>

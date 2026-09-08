@@ -285,6 +285,36 @@ async def serve_dashboard():
         return FileResponse(FRONTEND_INDEX, media_type="text/html", headers=html_headers)
     return HTMLResponse("<h1>R Quant Terminal: Frontend Not Found</h1>", status_code=404)
 
+
+@app.get("/docs/prospectus", response_class=HTMLResponse)
+@app.get("/docs/prospectus-ko", response_class=HTMLResponse)
+async def serve_prospectus_ko():
+    """C1-M2 Korean investment prospectus (PPM/KIID HTML)."""
+    path = os.path.join(FRONTEND_DIR, "INVESTMENT_PROSPECTUS_C1_M2_KO.html")
+    if os.path.exists(path):
+        return FileResponse(path, media_type="text/html")
+    return RedirectResponse(url="/static/INVESTMENT_PROSPECTUS_C1_M2_KO.html", status_code=307)
+
+
+@app.get("/docs/prospectus-en", response_class=HTMLResponse)
+async def serve_prospectus_en():
+    """C1-M2 English investment prospectus (PPM/KIID HTML)."""
+    path = os.path.join(FRONTEND_DIR, "INVESTMENT_PROSPECTUS_C1_M2.html")
+    if os.path.exists(path):
+        return FileResponse(path, media_type="text/html")
+    return RedirectResponse(url="/static/INVESTMENT_PROSPECTUS_C1_M2.html", status_code=307)
+
+
+@app.get("/docs/prospectus.md")
+async def serve_prospectus_markdown(lang: str = "ko"):
+    """Raw markdown prospectus for archival download / review."""
+    name = "INVESTMENT_PROSPECTUS_C1_M2_KO.md" if str(lang).lower().startswith("ko") else "INVESTMENT_PROSPECTUS_C1_M2.md"
+    path = os.path.join(BASE_DIR, name)
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Prospectus markdown not found")
+    return FileResponse(path, media_type="text/markdown; charset=utf-8", filename=name)
+
+
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
     """Handles browser favicon requests without 404 log clutter."""

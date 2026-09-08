@@ -3,10 +3,10 @@
  * Professional Bloomberg Dark Terminal Aesthetic (Zero Emojis).
  * Al-Sangmoo GS-Quant Upgraded 3-Slot Trading Cockpit.
  */
-import { ApiClient } from './api.js?v=4.1.9';
-import { ChartEngine } from './chart.js?v=4.1.9';
-import { QuantDecoder } from './decoder.js?v=4.1.9';
-import { deriveStopPrice, deriveTargetPrice, isMarketTicker } from './constants.js?v=4.1.9';
+import { ApiClient } from './api.js?v=4.2.3';
+import { ChartEngine } from './chart.js?v=4.2.3';
+import { QuantDecoder } from './decoder.js?v=4.2.3';
+import { deriveStopPrice, deriveTargetPrice, isMarketTicker, SLOT_WEIGHTS_BULL, SLOT_WEIGHTS_BEAR, isCashProxyTicker } from './constants.js?v=4.2.3';
 
 export const UI = {
     currentSelectedTicker: "",
@@ -61,7 +61,8 @@ export const UI = {
         try { this.renderMacro(data.macro, isBullRegime); } catch (e) { console.warn("[UI] renderMacro error:", e); }
         try { this.renderDynamicSectors(data.universe_sectors); } catch (e) { console.warn("[UI] renderDynamicSectors error:", e); }
         try { this.renderKPIs(data.kpis, data.portfolio, isBullRegime); } catch (e) { console.warn("[UI] renderKPIs error:", e); }
-        try { this.renderSlotVisualizer(data.portfolio, isBullRegime, data.top_conviction_pick); } catch (e) { console.warn("[UI] renderSlotVisualizer error:", e); }
+        try { this.renderSlotVisualizer(data.portfolio, isBullRegime, data.top_conviction_pick, data.slot_allocation_summary, data.macro); } catch (e) { console.warn("[UI] renderSlotVisualizer error:", e); }
+        try { this.renderEngineOverlay(data.slot_allocation_summary, data.macro, data.portfolio, data.risk_constitution); } catch (e) { console.warn("[UI] renderEngineOverlay error:", e); }
         try { this.renderTopPicks(data.top_conviction_pick, data.top_conviction_runner_up); } catch (e) { console.warn("[UI] renderTopPicks error:", e); }
         try { this.renderPortfolio(data.portfolio); } catch (e) { console.warn("[UI] renderPortfolio error:", e); }
         try { this.renderTradeLogs(data.execution_logs); } catch (e) { console.warn("[UI] renderTradeLogs error:", e); }
@@ -196,37 +197,98 @@ export const UI = {
         }
         const regimeDescEl = document.getElementById("kpiRegimeDesc");
         if (regimeDescEl) {
-            regimeDescEl.textContent = effectiveIsBull ? "BULL MARKET: 3-SLOT 100% CAPITAL DEPLOYMENT" : "BEAR MARKET: 2-SLOT 50% CASH DEFENSE";
+            regimeDescEl.textContent = effectiveIsBull
+                ? "BULL: 50/30/20 + QQQ PROXY (1.5x IF VIX<20)"
+                : "BEAR: 25/25 SLOTS + QQQ CORE (LEV OFF)";
         }
     },
 
-    renderSlotVisualizer(portfolioData, isBullRegime, topPick) {
+    renderEngineOverlay(slotSummary, macro, portfolioData, riskConstitution) {
+        const p = portfolioData || {};
+        const holdings = Array.isArray(p.holdings) ? p.holdings.filter((h) => isMarketTicker(h && h.ticker)) : [];
+        const proxyHoldings = holdings.filter((h) => isCashProxyTicker(h.ticker));
+        const proxyVal = proxyHoldings.reduce((acc, h) => {
+            const px = Number(h.current_price || h.buy_price || 0);
+            const qty = Number(h.quantity || 0);
+            return acc + px * qty;
+        }, 0);
+        const proxyQty = proxyHoldings.reduce((acc, h) => acc + Number(h.quantity || 0), 0);
+        const summary = slotSummary || {};
+        const lev = (summary.leverage) || (macro && macro.leverage) || {};
+        const leverageOn = Boolean(lev.leverage_mode || lev.qld_allowed);
+
+        const qStatus = document.getElementById("qqqProxyStatus");
+        const qDetail = document.getElementById("qqqProxyDetail");
+        if (qStatus) {
+            qStatus.textContent = proxyVal > 0
+                ? `PARKED $${proxyVal.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                : "IDLE CASH → QQQ READY";
+            qStatus.style.color = proxyVal > 0 ? "#38bdf8" : "#94a3b8";
+        }
+        if (qDetail) {
+            qDetail.textContent = proxyQty > 0
+                ? `QQQ/QLD ${proxyQty.toFixed(0)} sh · Cash Proxy Overlay`
+                : "주도주 미진입 시 유휴 NAV를 QQQ에 파킹";
+        }
+
+        const levStatus = document.getElementById("leverageStatus");
+        const levDetail = document.getElementById("leverageDetail");
+        const levBadge = document.getElementById("leverageBadge");
+        const levLabel = leverageOn ? "1.5x (QLD Boost)" : "1.0x (QQQ Core)";
+        if (levStatus) {
+            levStatus.textContent = levLabel;
+            levStatus.style.color = leverageOn ? "#fbbf24" : "#c084fc";
+        }
+        if (levDetail) {
+            const spyOk = lev.spy_above_sma200;
+            const vixOk = lev.vix_below_20;
+            levDetail.textContent = `SPY≥SMA200=${spyOk === null || spyOk === undefined ? "?" : spyOk} · VIX<20=${vixOk === null || vixOk === undefined ? "?" : vixOk}`;
+        }
+        if (levBadge) {
+            levBadge.textContent = leverageOn ? "LEV: 1.5x" : "LEV: 1.0x";
+            levBadge.className = leverageOn
+                ? "status-pill-chip active-green"
+                : "status-pill-chip";
+            levBadge.title = leverageOn
+                ? "SPY≥SMA200 & VIX<20 — QQQ+QLD 1.5x boost active"
+                : "Core 1.0x QQQ (leverage conditions not met)";
+        }
+
+        // Optional risk constitution echo on autopilot badge title
+        const autoBadge = document.getElementById("autopilotBadge");
+        if (autoBadge && riskConstitution) {
+            const sl = riskConstitution.stop_loss_pct ?? -0.05;
+            autoBadge.title = `C1-M2 Autopilot · stop ${(sl * 100).toFixed(1)}% · 50/30/20 + QQQ Proxy`;
+        }
+    },
+
+    renderSlotVisualizer(portfolioData, isBullRegime, topPick, slotSummary) {
         const grid = document.getElementById("slotVisualizerGrid");
         const summaryText = document.getElementById("slotSummaryText");
         if (!grid) return;
 
         const p = portfolioData || {};
-        const holdings = Array.isArray(p.holdings) ? p.holdings.filter((h) => isMarketTicker(h && h.ticker)) : [];
-        const maxSlots = isBullRegime ? 3 : 2;
-        
+        const allHoldings = Array.isArray(p.holdings) ? p.holdings.filter((h) => isMarketTicker(h && h.ticker)) : [];
+        // Satellite slots only — QQQ/QLD cash-proxy excluded from conviction slots
+        const holdings = allHoldings.filter((h) => !isCashProxyTicker(h.ticker));
+        const weights = isBullRegime ? SLOT_WEIGHTS_BULL : SLOT_WEIGHTS_BEAR;
+        const maxSlots = weights.length;
+
         if (summaryText) {
-            summaryText.textContent = `${holdings.length} / ${maxSlots} SLOTS OCCUPIED`;
+            const weightLabel = isBullRegime ? "50/30/20" : "25/25";
+            summaryText.textContent = `${holdings.length} / ${maxSlots} SLOTS · ${weightLabel}`;
             summaryText.style.color = holdings.length >= maxSlots ? '#f87171' : '#38bdf8';
         }
 
         const totalEquity = Number(p.total_equity_usd !== undefined ? p.total_equity_usd : (p.total_equity || 7500.0));
-        const curHoldingsVal = holdings.reduce((acc, h) => acc + Number(h.current_value || (Number(h.current_price || h.buy_price || 0) * Number(h.quantity || 1))), 0);
-        const maxEquityDeployable = totalEquity * (isBullRegime ? 1.0 : 0.50); // 100% in Bull, 50% in Bear
-        const remainingDeployable = Math.max(0, maxEquityDeployable - curHoldingsVal);
-        const emptySlotsCount = Math.max(1, maxSlots - holdings.length);
-        const targetSlotUsd = Math.round(remainingDeployable / emptySlotsCount);
-        const slotWeightPct = totalEquity > 0 ? ((targetSlotUsd / totalEquity) * 100).toFixed(1) : (isBullRegime ? '33.3' : '25.0');
-        const cashReserveUsd = Math.round(totalEquity * 0.5);
 
         let slotHtml = '';
         for (let i = 0; i < 3; i++) {
-            if (i < holdings.length) {
-                // Occupied Slot
+            const targetWeight = weights[i];
+            const targetPctLabel = targetWeight !== undefined ? `${Math.round(targetWeight * 100)}%` : "—";
+            const targetUsd = targetWeight !== undefined ? Math.round(totalEquity * targetWeight) : 0;
+
+            if (i < holdings.length && targetWeight !== undefined) {
                 const h = holdings[i];
                 const pnl = Number(h.pnl_pct || 0);
                 const isPos = pnl >= 0;
@@ -241,7 +303,7 @@ export const UI = {
                 slotHtml += `
                     <div class="slot-card occupied" style="background:var(--surface-card); border:1px solid var(--hairline-dark); border-top:3px solid ${pnlColor}; border-radius:14px; padding:12px 14px; cursor:pointer;" onclick="window.TerminalUI.selectStock('${this.escapeHtml(h.ticker)}', ${curPrice})">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                            <span style="font-size:10px; font-weight:800; color:var(--text-muted); font-family:'JetBrains Mono';">SLOT #${i + 1} (${actualWeightPct}%)</span>
+                            <span style="font-size:10px; font-weight:800; color:var(--text-muted); font-family:'JetBrains Mono';">SLOT #${i + 1} TARGET ${targetPctLabel} · NOW ${actualWeightPct}%</span>
                             <span style="font-size:9px; font-weight:800; padding:2px 8px; border-radius:9999px; font-family:'JetBrains Mono'; ${isTrailing ? 'background:rgba(251,191,36,0.15); color:#fbbf24;' : 'background:rgba(255,255,255,0.08); color:var(--text-secondary);'}">${isTrailing ? '[TRAILING]' : '[HOLDING]'}</span>
                         </div>
                         <div style="display:flex; justify-content:space-between; align-items:baseline;">
@@ -254,22 +316,20 @@ export const UI = {
                         </div>
                     </div>
                 `;
-            } else if (i < maxSlots) {
-                // Empty Available Slot (Dynamically sizes to fill the 50% Bear or 100% Bull Cap)
+            } else if (targetWeight !== undefined) {
                 slotHtml += `
                     <div class="slot-card empty" style="background:var(--surface-deep); border:1px dashed rgba(52,211,153,0.3); border-radius:14px; padding:12px 14px; display:flex; flex-direction:column; justify-content:center; text-align:center;">
-                        <div style="font-size:10px; font-weight:800; color:#34d399; font-family:'JetBrains Mono';">SLOT #${i + 1} [EMPTY]</div>
-                        <div style="font-size:12px; font-weight:700; color:#ffffff; margin-top:3px; font-family:'JetBrains Mono';">$${targetSlotUsd.toLocaleString()} (${slotWeightPct}%)</div>
-                        <div style="font-size:10px; color:var(--text-muted); margin-top:3px; font-family:'JetBrains Mono';">진입 가능</div>
+                        <div style="font-size:10px; font-weight:800; color:#34d399; font-family:'JetBrains Mono';">SLOT #${i + 1} [EMPTY · ${targetPctLabel}]</div>
+                        <div style="font-size:12px; font-weight:700; color:#ffffff; margin-top:3px; font-family:'JetBrains Mono';">$${targetUsd.toLocaleString()}</div>
+                        <div style="font-size:10px; color:var(--text-muted); margin-top:3px; font-family:'JetBrains Mono';">C1-M2 진입 가능</div>
                     </div>
                 `;
             } else {
-                // Locked Slot (Bear Mode 50% Cash Defense)
                 slotHtml += `
                     <div class="slot-card locked" style="background:var(--surface-deep); border:1px dashed rgba(73,79,223,0.4); border-radius:14px; padding:12px 14px; display:flex; flex-direction:column; justify-content:center; text-align:center;">
-                        <div style="font-size:10px; font-weight:800; color:#c7d2fe; font-family:'JetBrains Mono';">SLOT #${i + 1} [현금 방어]</div>
-                        <div style="font-size:12px; font-weight:700; color:#e0e7ff; margin-top:3px; font-family:'JetBrains Mono';">50% 대피 ($${cashReserveUsd.toLocaleString()})</div>
-                        <div style="font-size:10px; color:var(--text-muted); margin-top:3px; font-family:'JetBrains Mono';">하락장 쉴드</div>
+                        <div style="font-size:10px; font-weight:800; color:#c7d2fe; font-family:'JetBrains Mono';">SLOT #${i + 1} [LOCKED]</div>
+                        <div style="font-size:12px; font-weight:700; color:#e0e7ff; margin-top:3px; font-family:'JetBrains Mono';">BEAR MAX 2 SLOTS</div>
+                        <div style="font-size:10px; color:var(--text-muted); margin-top:3px; font-family:'JetBrains Mono';">잔여 → QQQ CORE</div>
                     </div>
                 `;
             }

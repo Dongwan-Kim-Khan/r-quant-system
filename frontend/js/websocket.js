@@ -1,9 +1,9 @@
 /**
  * R QUANT TERMINAL: WebSocket hub, heartbeat, and TerminalApp controller.
  */
-import { ApiClient } from './api.js?v=4.1.9';
-import { UI } from './ui.js?v=4.1.9';
-import { ChartEngine } from './chart.js?v=4.1.9';
+import { ApiClient } from './api.js?v=4.2.3';
+import { UI } from './ui.js?v=4.2.3';
+import { ChartEngine } from './chart.js?v=4.2.3';
 
 export const ConnectionState = {
     DISCONNECTED: "DISCONNECTED",
@@ -320,7 +320,13 @@ export const WebSocketClient = {
             }
         }
         UI.renderPortfolio(dash.portfolio);
-        UI.renderSlotVisualizer(dash.portfolio, dash.slot_allocation_summary && dash.slot_allocation_summary.is_bull_regime, dash.top_conviction_pick);
+        UI.renderSlotVisualizer(
+            dash.portfolio,
+            dash.slot_allocation_summary && dash.slot_allocation_summary.is_bull_regime,
+            dash.top_conviction_pick,
+            dash.slot_allocation_summary
+        );
+        UI.renderEngineOverlay(dash.slot_allocation_summary, dash.macro, dash.portfolio, dash.risk_constitution);
     },
 
     _setConnectionState(state) {

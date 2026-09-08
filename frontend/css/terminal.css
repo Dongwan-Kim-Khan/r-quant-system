@@ -109,6 +109,7 @@ header {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    text-decoration: none;
 }
 .btn-outline-pill:hover {
     background: var(--surface-card-hover);
