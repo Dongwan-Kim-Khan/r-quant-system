@@ -3,14 +3,17 @@
  * Professional Bloomberg Dark Terminal Aesthetic (Zero Emojis).
  * Al-Sangmoo GS-Quant Upgraded 3-Slot Trading Cockpit.
  */
-import { ApiClient } from './api.js?v=4.0.6';
-import { ChartEngine } from './chart.js?v=4.0.6';
-import { QuantDecoder } from './decoder.js?v=4.0.6';
+import { ApiClient } from './api.js?v=4.1.9';
+import { ChartEngine } from './chart.js?v=4.1.9';
+import { QuantDecoder } from './decoder.js?v=4.1.9';
+import { deriveStopPrice, deriveTargetPrice, isMarketTicker } from './constants.js?v=4.1.9';
 
 export const UI = {
     currentSelectedTicker: "",
     currentSelectedPrice: 0.0,
     latestDashboardData: null,
+    MAX_LOGS: 300,
+    MAX_TOASTS: 5,
 
     escapeHtml(str) {
         if (str === null || str === undefined) return '';
@@ -20,6 +23,27 @@ export const UI = {
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
+    },
+
+    toast(message, level = "info") {
+        let host = document.getElementById("toastHost");
+        if (!host) {
+            host = document.createElement("div");
+            host.id = "toastHost";
+            host.className = "toast-host";
+            host.setAttribute("aria-live", "polite");
+            document.body.appendChild(host);
+        }
+        const node = document.createElement("div");
+        node.className = `toast toast-${level}`;
+        node.textContent = String(message || "");
+        host.appendChild(node);
+        while (host.childElementCount > this.MAX_TOASTS) {
+            host.removeChild(host.firstElementChild);
+        }
+        setTimeout(() => {
+            if (node.parentNode) node.parentNode.removeChild(node);
+        }, 6500);
     },
 
     renderDashboard(data) {
@@ -35,6 +59,7 @@ export const UI = {
             : true;
 
         try { this.renderMacro(data.macro, isBullRegime); } catch (e) { console.warn("[UI] renderMacro error:", e); }
+        try { this.renderDynamicSectors(data.universe_sectors); } catch (e) { console.warn("[UI] renderDynamicSectors error:", e); }
         try { this.renderKPIs(data.kpis, data.portfolio, isBullRegime); } catch (e) { console.warn("[UI] renderKPIs error:", e); }
         try { this.renderSlotVisualizer(data.portfolio, isBullRegime, data.top_conviction_pick); } catch (e) { console.warn("[UI] renderSlotVisualizer error:", e); }
         try { this.renderTopPicks(data.top_conviction_pick, data.top_conviction_runner_up); } catch (e) { console.warn("[UI] renderTopPicks error:", e); }
@@ -72,9 +97,40 @@ export const UI = {
         if (mg.gold) updateVal("gaugeGoldVal", mg.gold.val, '$');
     },
 
+    renderDynamicSectors(sectors) {
+        const host = document.getElementById("dynamicSectorsContainer");
+        if (!host) return;
+        const rows = Array.isArray(sectors) ? sectors.slice() : [];
+        rows.sort((a, b) => (Number(a.rank) || 99) - (Number(b.rank) || 99));
+        const badge = document.getElementById("universeTotalBadge");
+        const total = rows.reduce((n, s) => n + Number(s.quota || 0), 0) || 60;
+        if (badge) badge.textContent = `${total} UNIVERSE`;
+        if (!rows.length) {
+            host.innerHTML = `<div style="color:var(--text-muted);font-size:11px;text-align:center;padding:8px;">NO SECTOR DATA</div>`;
+            return;
+        }
+        host.innerHTML = rows.map((s) => {
+            const quota = Number(s.quota) || 0;
+            const rs = Number(s.rs_3m) || 0;
+            const width = Math.max(0, Math.min(100, (quota / 14) * 100));
+            const rsColor = rs >= 0 ? "#34d399" : "#f87171";
+            const sign = rs >= 0 ? "+" : "";
+            const name = this.escapeHtml(String(s.sector || ""));
+            const etf = this.escapeHtml(String(s.etf || ""));
+            const stocks = (s.stocks || s.selected_stocks || []).map((t) => String(t)).join(" ");
+            return `<div class="sector-row" title="${this.escapeHtml(stocks)}">
+                <span class="sector-rank">#${Number(s.rank) || 0}</span>
+                <span class="sector-name">${name} (${etf})</span>
+                <span class="sector-bar-track"><span class="sector-bar-fill" style="width:${width.toFixed(1)}%;"></span></span>
+                <span class="sector-quota">${quota} / 60</span>
+                <span class="sector-rs" style="color:${rsColor};">${sign}${rs.toFixed(1)}% RS</span>
+            </div>`;
+        }).join("");
+    },
+
     renderKPIs(kpis, portfolioData, isBullRegime) {
         const p = portfolioData || {};
-        const holdings = Array.isArray(p.holdings) ? p.holdings : [];
+        const holdings = Array.isArray(p.holdings) ? p.holdings.filter((h) => isMarketTicker(h && h.ticker)) : [];
 
         const effectiveIsBull = (isBullRegime !== undefined && isBullRegime !== null)
             ? Boolean(isBullRegime)
@@ -150,7 +206,7 @@ export const UI = {
         if (!grid) return;
 
         const p = portfolioData || {};
-        const holdings = Array.isArray(p.holdings) ? p.holdings : [];
+        const holdings = Array.isArray(p.holdings) ? p.holdings.filter((h) => isMarketTicker(h && h.ticker)) : [];
         const maxSlots = isBullRegime ? 3 : 2;
         
         if (summaryText) {
@@ -194,7 +250,7 @@ export const UI = {
                         </div>
                         <div style="font-size:11px; color:var(--text-muted); margin-top:4px; display:flex; justify-content:space-between; font-family:'JetBrains Mono';">
                             <span>$${curPrice.toFixed(2)} (${curQty} SH)</span>
-                            <span style="color:${isTrailing ? '#fbbf24' : '#f87171'}; font-weight:700;">${isTrailing ? `TP: $${Number(h.trailing_floor || curPrice * 0.93).toFixed(2)}` : `SL: $${Number(h.stop_loss_price || buyPrice * 0.96).toFixed(2)}`}</span>
+                            <span style="color:${isTrailing ? '#fbbf24' : '#f87171'}; font-weight:700;">${isTrailing ? `TP: $${Number(h.trailing_floor || curPrice * 0.93).toFixed(2)}` : `SL: $${Number(h.stop_loss_price || deriveStopPrice(buyPrice)).toFixed(2)}`}</span>
                         </div>
                     </div>
                 `;
@@ -292,7 +348,7 @@ export const UI = {
             console.log("[ORDER SUCCESS]", res);
             if (window.TerminalApp) window.TerminalApp.refreshData();
         } catch (err) {
-            alert(`Order Failed: ${err.message}`);
+            this.toast(`Order Failed: ${err.message}`, "error");
         } finally {
             if (btnEl) {
                 setTimeout(() => {
@@ -308,7 +364,7 @@ export const UI = {
         if (!pBody) return;
 
         const p = portfolioData || {};
-        const holdings = Array.isArray(p.holdings) ? p.holdings : [];
+        const holdings = Array.isArray(p.holdings) ? p.holdings.filter((h) => isMarketTicker(h && h.ticker)) : [];
 
         if (holdings.length === 0) {
             pBody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:28px; font-family:'Inter', sans-serif; font-size:12px;">No active holdings. Select a top conviction pick or search above to enter a slot.</td></tr>`;
@@ -327,8 +383,8 @@ export const UI = {
             const pnlAmt = Number(h.pnl_amount !== undefined ? h.pnl_amount : (safeCurrentPrice - safeBuyPrice) * safeQty);
             const pnlAmtFormatted = `${pnlAmt >= 0 ? '+$' : '-$'}${Math.abs(pnlAmt).toFixed(2)}`;
 
-            const stopLossP = Number(h.stop_loss_price || safeBuyPrice * 0.96);
-            const trailingP = Number(h.trailing_floor || (safeBuyPrice * 1.15));
+            const stopLossP = Number(h.stop_loss_price || deriveStopPrice(safeBuyPrice));
+            const trailingP = Number(h.trailing_floor || deriveTargetPrice(safeBuyPrice));
             const isTrailing = Boolean(h.is_trailing_active);
 
             return `
@@ -361,7 +417,7 @@ export const UI = {
                     await ApiClient.sellStock(id, price);
                     if (window.TerminalApp) window.TerminalApp.refreshData();
                 } catch (err) {
-                    alert(`Exit Failed: ${err.message}`);
+                    this.toast(`Exit Failed: ${err.message}`, "error");
                     btn.disabled = false;
                     btn.textContent = "EXIT";
                 }
@@ -369,9 +425,34 @@ export const UI = {
         });
     },
 
+    defaultChartTarget(data) {
+        if (!data) return null;
+        const named = [
+            data.top_conviction_pick,
+            data.top_conviction_runner_up,
+            (data.tier1 && data.tier1[0]),
+            (data.dual_consensus && data.dual_consensus[0]),
+            (data.tier2 && data.tier2[0]),
+            (data.strat1_exclusive && data.strat1_exclusive[0]),
+        ];
+        for (const item of named) {
+            const tk = item && item.ticker;
+            if (isMarketTicker(tk)) {
+                return { ticker: String(tk).toUpperCase(), price: Number(item.price || item.current_price || 0) };
+            }
+        }
+        const holdings = (data.portfolio && data.portfolio.holdings) || [];
+        const real = holdings.find((h) => isMarketTicker(h && h.ticker));
+        if (real) {
+            return { ticker: String(real.ticker).toUpperCase(), price: Number(real.current_price || real.buy_price || 0) };
+        }
+        return null;
+    },
+
     selectStock(ticker, price) {
         if (!ticker) return;
         const cleanTicker = ticker.trim().toUpperCase();
+        if (!isMarketTicker(cleanTicker)) return;
         const p = Number(price || 0.0);
         this.currentSelectedTicker = cleanTicker;
         this.currentSelectedPrice = p;
@@ -397,8 +478,8 @@ export const UI = {
         if (qbTicker) qbTicker.textContent = ticker;
         if (qbPrice) qbPrice.textContent = `$${p.toFixed(2)}`;
         if (qbBuyPrice) qbBuyPrice.value = p.toFixed(2);
-        if (qbStop) qbStop.textContent = `$${(p * 0.96).toFixed(2)}`;
-        if (qbTarget) qbTarget.textContent = `$${(p * 1.15).toFixed(2)}`;
+        if (qbStop) qbStop.textContent = `$${deriveStopPrice(p).toFixed(2)}`;
+        if (qbTarget) qbTarget.textContent = `$${deriveTargetPrice(p).toFixed(2)}`;
     },
 
     renderTradeLogs(logs) {
@@ -406,7 +487,7 @@ export const UI = {
         const countEl = document.getElementById("tradeLogCount");
         if (!tBody) return;
 
-        const tradeList = Array.isArray(logs) ? logs : [];
+        const tradeList = Array.isArray(logs) ? logs.slice(-this.MAX_LOGS) : [];
         if (countEl) countEl.textContent = `${tradeList.length} EXECUTIONS LOGGED`;
 
         if (tradeList.length === 0) {
@@ -464,5 +545,9 @@ export const UI = {
                 </tr>
             `;
         }).join('');
+
+        while (tBody.childElementCount > this.MAX_LOGS) {
+            tBody.removeChild(tBody.firstElementChild);
+        }
     }
 };

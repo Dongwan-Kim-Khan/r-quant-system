@@ -3,8 +3,9 @@ AL-SANGMOO QUANT TERMINAL: AUTOPILOT APIRouter
 REST endpoints for inspecting and controlling the 100% Full-Auto Pilot Quant Trader.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
+from al_sangmoo.core.auth import require_mutating_auth
 from al_sangmoo.domain.risk.autopilot_trader import default_autopilot
 
 router = APIRouter(prefix="/api/autopilot", tags=["AutoPilot"])
@@ -20,7 +21,7 @@ async def get_autopilot_status():
     return default_autopilot.get_status()
 
 
-@router.post("/toggle")
+@router.post("/toggle", dependencies=[Depends(require_mutating_auth)])
 async def toggle_autopilot(req: AutoPilotToggleRequest):
     """Enables or pauses the full-auto buying engine."""
     default_autopilot.set_enabled(req.enabled)
@@ -31,7 +32,7 @@ async def toggle_autopilot(req: AutoPilotToggleRequest):
     }
 
 
-@router.post("/trigger_now")
+@router.post("/trigger_now", dependencies=[Depends(require_mutating_auth)])
 async def trigger_autopilot_now():
     """Manually triggers a full-auto cycle immediately (scan -> conviction -> slot buy)."""
     res = await default_autopilot.run_autopilot_cycle(force_scan=True)

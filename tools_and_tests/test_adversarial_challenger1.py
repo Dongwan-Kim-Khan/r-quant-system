@@ -298,7 +298,7 @@ class AdversarialSecurityTests(unittest.TestCase):
             
         legit_korean_reasons = [
             "목표가 15.0% 달성으로 인한 전량 익절",
-            "손절선 (-3.0%) 이탈에 따른 원칙적 칼손절",
+            "손절선 (-4.0%) 이탈에 따른 원칙적 칼손절",
             "50% 분할 익절 완료 (수익률 8.5%)",
             "MANUAL_SELL - 사용자 수동 매도",
             "시장 급락(MSI 85.0pt) 위험에 따른 현금화 매도",

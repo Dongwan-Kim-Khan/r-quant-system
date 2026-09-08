@@ -4,6 +4,9 @@ Dynamic ATR & Volatility Risk Parity Position Sizer.
 import numpy as np
 import pandas as pd
 from typing import Dict, Any, Optional
+from al_sangmoo.core.constants import STOP_LOSS_PCT
+from al_sangmoo.core.feature_flags import use_riskfolio_hrp
+from al_sangmoo.domain.quant.macro import classify_msi_stance
 
 def calculate_atr(df: pd.DataFrame, window: int = 14) -> float:
     """Computes 14-day Average True Range (ATR)."""
@@ -41,15 +44,16 @@ def calculate_dynamic_position_size(
             "dollar_risk": 0.0
         }
 
-    # 1. Determine Macro Multiplier based on MSI 2.0
-    if msi_score >= 75.0:
-        macro_mult = 0.0       # CASH_EXIT: 0% new buys
-    elif msi_score >= 50.0:
-        macro_mult = 0.35      # DEFENSE_HOLD: Conservative 35% sizing
-    elif msi_score >= 30.0:
-        macro_mult = 0.75      # SELECTIVE_BUY: 75% sizing
+    # 1. Macro multiplier from MSI 2.0 RISK index (high = smaller size)
+    stance = classify_msi_stance(msi_score)
+    if stance == "CASH_EXIT":
+        macro_mult = 0.0
+    elif stance == "DEFENSE_HOLD":
+        macro_mult = 0.35
+    elif stance == "SELECTIVE_BUY":
+        macro_mult = 0.75
     else:
-        macro_mult = 1.0       # ACTIVE_BUY: 100% full sizing
+        macro_mult = 1.0
 
     # 2. ATR Volatility Risk Scaling
     effective_atr = atr_14 if atr_14 > 0 else (current_price * 0.03)
@@ -63,7 +67,7 @@ def calculate_dynamic_position_size(
     shares = round(final_allocation / current_price, 4)
     allocated_cash = round(shares * current_price, 2)
     allocation_pct = round((allocated_cash / portfolio_equity) * 100, 2) if portfolio_equity > 0 else 0.0
-    dollar_risk = round(allocated_cash * 0.04, 2) # Strict 4% stop risk
+    dollar_risk = round(allocated_cash * abs(STOP_LOSS_PCT), 2)
 
     return {
         "ticker_price": current_price,
@@ -148,4 +152,17 @@ def calculate_slot_position_size(
         "max_slots": 3 if is_bull_regime else 2,
         "reason": f"{shares}주 집중 매수 (약 {allocated_krw:,}원 / 슬롯 점유율 {allocation_pct}% / {'상승장 3-Slot 100% 풀가동' if is_bull_regime else '하락장 2-Slot 50% 현금 대피'})"
     }
+
+
+def hrp_slot_allocations(price_history_df: pd.DataFrame, total_capital: float) -> Dict[str, float]:
+    """Equal-weight unless USE_RISKFOLIO_HRP is on."""
+    from al_sangmoo.domain.risk.riskfolio_sizer import RiskfolioPositionSizer
+
+    sizer = RiskfolioPositionSizer(total_capital)
+    if not use_riskfolio_hrp():
+        cols = list(price_history_df.columns) if price_history_df is not None else []
+        n = max(1, len(cols))
+        even = total_capital / n
+        return {str(c): round(even, 2) for c in cols}
+    return sizer.calculate_hrp_weights(price_history_df)
 

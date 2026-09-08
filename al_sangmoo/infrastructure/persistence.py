@@ -9,6 +9,13 @@ from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 import yfinance as yf
 from al_sangmoo.core.config import DB_FILE, CHARTS_DIR
+from al_sangmoo.core.constants import (
+    HARD_STOP_PCT,
+    TRAILING_ACTIVATE_PCT,
+    derive_partial_tp_price,
+    derive_stop_price,
+    derive_target_price,
+)
 
 REASON_REGEX = re.compile(r'^[A-Za-z0-9_\-\s\(\)가-힣.,%]{1,100}$')
 
@@ -168,6 +175,17 @@ def init_database() -> None:
             cursor.execute("ALTER TABLE macro_history ADD COLUMN msi_score REAL DEFAULT 50.0")
         except Exception:
             pass
+        for col_sql in (
+            "ALTER TABLE my_portfolio ADD COLUMN max_gain_pct REAL DEFAULT 0",
+            "ALTER TABLE my_portfolio ADD COLUMN peak_high REAL DEFAULT 0",
+            "ALTER TABLE my_portfolio ADD COLUMN kijun_26 REAL DEFAULT 0",
+            "ALTER TABLE my_portfolio ADD COLUMN atr_14 REAL DEFAULT 0",
+            "ALTER TABLE my_portfolio ADD COLUMN trailing_floor REAL DEFAULT 0",
+        ):
+            try:
+                cursor.execute(col_sql)
+            except Exception:
+                pass
         conn.commit()
 
 def save_macro_history_record(date_str: str, macro_climate: dict, macro_gauges: dict) -> None:
@@ -222,9 +240,9 @@ def add_portfolio_buy(
         buy_date = datetime.now().strftime("%Y-%m-%d")
         
     total_cost = buy_price * quantity
-    eff_target_price = target_price if target_price is not None else round(buy_price * 1.15, 2)
-    eff_stop_loss_price = stop_loss_price if stop_loss_price is not None else round(buy_price * 0.96, 2)
-    eff_partial_tp_price = partial_tp_price if partial_tp_price is not None else round(buy_price * 1.08, 2)
+    eff_target_price = target_price if target_price is not None else derive_target_price(buy_price)
+    eff_stop_loss_price = stop_loss_price if stop_loss_price is not None else derive_stop_price(buy_price)
+    eff_partial_tp_price = partial_tp_price if partial_tp_price is not None else derive_partial_tp_price(buy_price)
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
     with get_connection() as conn:
@@ -305,6 +323,10 @@ def get_live_portfolio() -> dict:
     CQRS Read Query: Returns active portfolio holdings directly from SQLite.
     Strictly non-blocking: Zero network calls (no yf.download) and zero SQL write operations (no UPDATE).
     """
+    from al_sangmoo.domain.risk.trailing_stop import (
+        compute_trailing_floor,
+        latch_peak_gain,
+    )
     init_database()
     with get_connection() as conn:
         cursor = conn.cursor()
@@ -328,21 +350,32 @@ def get_live_portfolio() -> dict:
         h['quantity'] = quantity
         h['total_cost'] = total_cost
         h['current_price'] = cur_price
-        # v2 Trailing Stop Floor & Hard Stop (-4%)
-        stop_p = float(h.get('stop_loss_price') or round(buy_price * 0.96, 2))
+        # v2 Hard Stop (-4%) and uncapped trailing floor (SSOT)
+        stop_p = float(h.get('stop_loss_price') or derive_stop_price(buy_price))
         h['stop_loss_price'] = stop_p
-        
-        # Calculate dynamic trailing stop floor if gain >= +15%
-        if pnl_pct >= 15.0:
-            trailing_floor = max(cur_price * 0.93, buy_price * 1.10)
-            h['trailing_floor'] = round(trailing_floor, 2)
-            h['is_trailing_active'] = True
-        else:
-            h['trailing_floor'] = round(buy_price * 1.15, 2)
-            h['is_trailing_active'] = False
 
-        h['target_price'] = float(h.get('target_price', round(buy_price * 1.15, 2)))
-        h['partial_tp_price'] = float(h.get('partial_tp_price', round(buy_price * 1.08, 2)))
+        latched = latch_peak_gain(
+            buy_price,
+            cur_price,
+            peak_high=float(h.get('peak_high') or 0.0),
+            max_gain_pct=float(h.get('max_gain_pct') or 0.0),
+        )
+        h['peak_high'] = latched['peak_high']
+        h['max_gain_pct'] = latched['max_gain_pct']
+        h['is_trailing_active'] = latched['trailing_active']
+        stored_floor = float(h.get('trailing_floor') or 0.0)
+        if latched['trailing_active']:
+            computed_floor = compute_trailing_floor(
+                float(h.get('kijun_26') or 0.0),
+                latched['peak_high'],
+                float(h.get('atr_14') or 0.0),
+            )
+            h['trailing_floor'] = round(stored_floor or computed_floor or derive_target_price(buy_price), 2)
+        else:
+            h['trailing_floor'] = derive_target_price(buy_price)
+
+        h['target_price'] = float(h.get('target_price', derive_target_price(buy_price)))
+        h['partial_tp_price'] = float(h.get('partial_tp_price', derive_partial_tp_price(buy_price)))
         h['exit_advice'] = h.get('exit_advice') or "보유 지속 (v2 가디언 감시 중)"
         
         total_invested += total_cost
@@ -475,14 +508,15 @@ def sync_portfolio_prices() -> dict:
         pnl_pct = ((cur_price - buy_price) / buy_price) * 100 if buy_price > 0 else 0.0
         pnl_amt = cur_val - total_cost
         
-        if pnl_pct >= 15.0:
-            advice = f"전량 익절 매도 권고 (목표가 달성 {pnl_pct:+.2f}%)"
-        elif pnl_pct <= -4.0:
+        if pnl_pct <= -HARD_STOP_PCT:
             advice = f"칼손절 긴급 매도 권고 (손절선 이탈 {pnl_pct:+.2f}%)"
-        elif 8.0 <= pnl_pct < 15.0:
-            advice = f"50% 분할 익절 권고 (수익률 {pnl_pct:+.1f}%)"
+        elif pnl_pct >= TRAILING_ACTIVATE_PCT:
+            advice = f"무제한 트레일링 익절 홀딩 (Let Winners Run, {pnl_pct:+.2f}%)"
         else:
-            advice = f"보유 지속 (손절선 ${buy_price * 0.96:,.2f} 유지)"
+            advice = (
+                f"보유 지속 (손절선 ${derive_stop_price(buy_price):,.2f} / "
+                f"+{TRAILING_ACTIVATE_PCT:.0f}% 이후 무제한 트레일링)"
+            )
             
         update_rows.append((cur_price, cur_val, pnl_pct, pnl_amt, advice, h['id']))
         
@@ -529,6 +563,20 @@ def get_trade_history_records(limit: int = 100) -> list:
             for r in rows
         ]
 
+def _pick_px(p) -> float:
+    if not isinstance(p, dict):
+        return 0.0
+    for key in ("close", "price", "latest_close"):
+        val = p.get(key)
+        if val is None or val == "":
+            continue
+        try:
+            return float(val)
+        except (TypeError, ValueError):
+            continue
+    return 0.0
+
+
 def save_recommendation_matrix_record(date_str: str, bull_picks: list, neutral_picks: list, bear_picks: list) -> None:
     init_database()
     b1 = bull_picks[0] if len(bull_picks) > 0 else {"ticker": "-", "close": 0}
@@ -549,9 +597,9 @@ def save_recommendation_matrix_record(date_str: str, bull_picks: list, neutral_p
         )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            date_str, b1.get('ticker', '-'), b1.get('close', 0), b2.get('ticker', '-'), b2.get('close', 0),
-            n1.get('ticker', '-'), n1.get('close', 0), n2.get('ticker', '-'), n2.get('close', 0),
-            s1.get('ticker', '-'), s1.get('close', 0), s2.get('ticker', '-'), s2.get('close', 0), now_str
+            date_str, b1.get('ticker', '-'), _pick_px(b1), b2.get('ticker', '-'), _pick_px(b2),
+            n1.get('ticker', '-'), _pick_px(n1), n2.get('ticker', '-'), _pick_px(n2),
+            s1.get('ticker', '-'), _pick_px(s1), s2.get('ticker', '-'), _pick_px(s2), now_str
         ))
         conn.commit()
 
@@ -583,9 +631,9 @@ def archive_daily_recommendations(today_str: str, dual_consensus: list, strat1_e
         for item, rec_type in all_recs:
             tk = item["ticker"]
             price = float(item["price"])
-            tgt_p = float(item.get("target_price", round(price * 1.15, 2)))
-            stop_p = float(item.get("stop_price", round(price * 0.96, 2)))
-            part_p = round(price * 1.08, 2)
+            tgt_p = float(item.get("target_price", derive_target_price(price)))
+            stop_p = float(item.get("stop_price", derive_stop_price(price)))
+            part_p = derive_partial_tp_price(price)
             
             cursor.execute("""
             INSERT OR REPLACE INTO trades (

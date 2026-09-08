@@ -13,9 +13,19 @@ import json
 from datetime import datetime, time as dtime
 from typing import Dict, Any, List, Optional
 
-import db_manager
+from al_sangmoo.infrastructure.persistence import (
+    add_portfolio_buy,
+    get_live_portfolio,
+    sync_portfolio_prices,
+)
 from al_sangmoo.infrastructure.brokers.kis_broker import default_kis_broker
-from al_sangmoo.api.hub import hub
+from al_sangmoo.infrastructure.idempotent_order import is_broker_order_ack
+from al_sangmoo.core.constants import (
+    derive_partial_tp_price,
+    derive_stop_price,
+    derive_target_price,
+)
+from al_sangmoo.api.hub import hub, EventType
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +96,7 @@ class AutoPilotTrader:
                 # Check if we should execute a scheduled cycle
                 if self.is_enabled and is_market_hours:
                     # Run cycle if slot available
-                    port = db_manager.get_live_portfolio()
+                    port = get_live_portfolio()
                     holdings = port.get("holdings", [])
                     if len(holdings) < 2:
                         await self.run_autopilot_cycle(force_scan=False)
@@ -153,7 +163,7 @@ class AutoPilotTrader:
             return res
 
         # Step 3: Inspect active portfolio holdings & Slot capacity
-        port = db_manager.get_live_portfolio()
+        port = get_live_portfolio()
         holdings = port.get("holdings", [])
         active_tickers = [str(h["ticker"]).upper() for h in holdings]
 
@@ -262,17 +272,29 @@ class AutoPilotTrader:
                 order_id = broker_res.get("order_id")
                 broker_status = broker_res.get("status", "error")
                 broker_msg = broker_res.get("broker_message", broker_res.get("message", ""))
+                if not is_broker_order_ack(broker_status):
+                    res = {
+                        "status": "skipped",
+                        "reason": str(broker_status or "BROKER_ORDER_NOT_ACKED"),
+                        "ticker": ticker,
+                        "message": broker_msg or "증권사 주문 확인 실패. 로컬 원장에 매수를 기록하지 않았습니다.",
+                        "client_order_id": broker_res.get("client_order_id"),
+                        "timestamp": now_str,
+                    }
+                    self.last_run_result = res
+                    self.last_action = f"BROKER_NOT_ACKED_{ticker}"
+                    return res
             except Exception as ex_err:
                 logger.error(f"[AutoPilot KIS Order Error] {ex_err}")
                 broker_status = "FAILED"
                 broker_msg = str(ex_err)
 
         # Step 5: Save to SQLite SSOT
-        target_price = round(exec_price * 1.15, 2)
-        stop_loss_price = round(exec_price * 0.96, 2)
-        partial_tp_price = round(exec_price * 1.08, 2)
+        target_price = derive_target_price(exec_price)
+        stop_loss_price = derive_stop_price(exec_price)
+        partial_tp_price = derive_partial_tp_price(exec_price)
         
-        inserted_id = db_manager.add_portfolio_buy(
+        inserted_id = add_portfolio_buy(
             ticker=ticker,
             buy_price=exec_price,
             quantity=float(shares),
@@ -299,9 +321,17 @@ class AutoPilotTrader:
         self.last_action = f"BOUGHT_{ticker}_{shares}SHARES"
 
         # Step 6: Broadcast live alerts to WebSockets
-        fresh_port = db_manager.sync_portfolio_prices()
-        await hub.broadcast("autopilot_buy_alert", trade_record)
-        await hub.broadcast("portfolio_update", fresh_port)
+        fresh_port = sync_portfolio_prices()
+        await hub.broadcast(EventType.AUTOPILOT_BUY, trade_record)
+        await hub.broadcast_delta(EventType.POSITION_DELTA, {
+            "ticker": ticker,
+            "action": "BUY",
+            "holding": next(
+                (h for h in (fresh_port.get("holdings") or []) if str(h.get("ticker", "")).upper() == ticker.upper()),
+                None,
+            ),
+        })
+        await hub.broadcast(EventType.PORTFOLIO_UPDATE, fresh_port)
 
         res = {
             "status": "success",

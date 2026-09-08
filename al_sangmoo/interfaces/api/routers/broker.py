@@ -1,13 +1,19 @@
 import re
 import asyncio
 from typing import Optional, Literal
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
-import db_manager
+from al_sangmoo.core.auth import require_mutating_auth
 from al_sangmoo.infrastructure.brokers.kis_broker import default_kis_broker
+from al_sangmoo.infrastructure.idempotent_order import is_broker_order_ack
 from al_sangmoo.domain.risk.order_guardrail import validate_pre_trade_guardrail, ORDER_MUTEX
 from al_sangmoo.domain.reconciliation import check_sync
-from al_sangmoo.infrastructure.persistence import add_portfolio_buy, record_portfolio_sell, get_live_portfolio
+from al_sangmoo.infrastructure.persistence import (
+    add_portfolio_buy,
+    get_live_portfolio,
+    record_execution_log,
+    record_portfolio_sell,
+)
 
 router = APIRouter(prefix="/api/broker", tags=["Broker Execution"])
 
@@ -53,7 +59,7 @@ def get_broker_balance():
     return default_kis_broker.get_account_balance()
 
 
-@router.post("/reconcile")
+@router.post("/reconcile", dependencies=[Depends(require_mutating_auth)])
 def run_reconciliation(auto_calibrate: bool = True):
     """
     Executes a 1-time daily reconciliation audit between KIS Broker and local SQLite DB.
@@ -61,7 +67,7 @@ def run_reconciliation(auto_calibrate: bool = True):
     """
     return check_sync(auto_calibrate=auto_calibrate)
 
-@router.post("/order")
+@router.post("/order", dependencies=[Depends(require_mutating_auth)])
 async def execute_broker_order(order: BrokerOrderRequest):
     """
     Submits a live/virtual order to Korea Investment & Securities (KIS).
@@ -103,7 +109,7 @@ async def execute_broker_order(order: BrokerOrderRequest):
         )
 
         # 3. If Order Submitted / Filled, sync to SQLite
-        if result.get("status") in ("submitted", "filled"):
+        if is_broker_order_ack(result.get("status")):
             if final_side == "BUY":
                 add_portfolio_buy(
                     ticker=order.ticker.upper(),
@@ -125,7 +131,7 @@ async def execute_broker_order(order: BrokerOrderRequest):
             
             # Record execution log for real-time audit log parity
             try:
-                db_manager.record_execution_log(
+                record_execution_log(
                     ticker=order.ticker.upper(),
                     side=final_side,
                     quantity=float(final_qty),

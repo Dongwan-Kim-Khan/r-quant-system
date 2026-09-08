@@ -1,11 +1,17 @@
 /**
- * R QUANT TERMINAL v2: REAL-TIME WEBSOCKET & APP CONTROLLER MODULE
- * Professional 24/7 Persistent WebSocket Hub with Active Heartbeat (Ping/Pong)
- * and Instant Auto-Resume on Tab Visibility/Focus.
+ * R QUANT TERMINAL: WebSocket hub, heartbeat, and TerminalApp controller.
  */
-import { ApiClient } from './api.js?v=4.0.6';
-import { UI } from './ui.js?v=4.0.6';
-import { ChartEngine } from './chart.js?v=4.0.6';
+import { ApiClient } from './api.js?v=4.1.9';
+import { UI } from './ui.js?v=4.1.9';
+import { ChartEngine } from './chart.js?v=4.1.9';
+
+export const ConnectionState = {
+    DISCONNECTED: "DISCONNECTED",
+    CONNECTING: "CONNECTING",
+    CONNECTED: "CONNECTED",
+    REAUTHENTICATING: "REAUTHENTICATING",
+    ERROR: "ERROR",
+};
 
 export const WebSocketClient = {
     socket: null,
@@ -16,6 +22,7 @@ export const WebSocketClient = {
     heartbeatInterval: null,
     lastPongReceived: Date.now(),
     isSocketConnected: false,
+    connectionState: "DISCONNECTED",
 
     init() {
         this._setupLifecycleListeners();
@@ -23,74 +30,44 @@ export const WebSocketClient = {
     },
 
     _setupLifecycleListeners() {
-        // Auto-Resume when switching tabs, waking computer from sleep, or focusing window
+        const wake = () => this.checkAndReconnect();
         document.addEventListener("visibilitychange", () => {
-            if (document.visibilityState === "visible") {
-                this.checkAndReconnect();
-            }
+            if (document.visibilityState === "visible") wake();
         });
-
-        window.addEventListener("focus", () => {
-            this.checkAndReconnect();
-        });
-
-        window.addEventListener("pageshow", () => {
-            this.checkAndReconnect();
-        });
-
-        window.addEventListener("online", () => {
-            this.checkAndReconnect();
-        });
-
-        // Web Worker 24/7 Anti-Sleep Ticker (Immune to browser background tab throttling)
+        window.addEventListener("focus", wake);
+        window.addEventListener("pageshow", wake);
+        window.addEventListener("online", wake);
         try {
-            const blob = new Blob([`
-                setInterval(function() {
-                    postMessage('tick');
-                }, 3000);
-            `], { type: 'application/javascript' });
-            const worker = new Worker(URL.createObjectURL(blob));
+            const worker = new Worker(URL.createObjectURL(new Blob(
+                ["setInterval(function(){postMessage('tick');},3000);"],
+                { type: "application/javascript" }
+            )));
             worker.onmessage = () => {
                 if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-                    try { this.socket.send("ping"); } catch(e) {}
+                    try { this.socket.send("ping"); } catch (e) {}
                 } else if (!this.socket || this.socket.readyState === WebSocket.CLOSED) {
                     this.checkAndReconnect();
                 }
             };
-        } catch (e) {
-            console.warn("[WS] WebWorker background ticker fallback:", e);
-        }
-
-        // Periodic 10-second fallback check for idle tabs
-        setInterval(() => {
-            if (document.visibilityState === "visible") {
-                this.checkAndReconnect();
-            }
-        }, 10000);
+        } catch (e) {}
+        setInterval(() => { if (document.visibilityState === "visible") wake(); }, 10000);
     },
 
     checkAndReconnect() {
-        // 1. Instant HTTP refresh on visibility/wake (renders in < 10ms without waiting for WS push)
-        ApiClient.getDashboardData().then(fresh => {
-            if (fresh) UI.renderDashboard(fresh);
-        }).catch(() => {});
-        ApiClient.getPortfolioData().then(freshPort => {
-            if (freshPort) UI.renderPortfolio(freshPort);
-        }).catch(() => {});
-        if (ChartEngine.currentTicker) {
-            ChartEngine.loadChart(ChartEngine.currentTicker);
-        }
-
-        // 2. Check WebSocket connection health
-        if (this.socket && this.socket.readyState === WebSocket.CONNECTING) {
-            return; // Still establishing connection, do not interrupt
-        }
+        const wsOpen = this.socket && this.socket.readyState === WebSocket.OPEN;
         const isStale = (Date.now() - this.lastPongReceived) > 30000;
-        if (!this.socket || this.socket.readyState !== WebSocket.OPEN || isStale) {
-            console.log("[WS] Resuming connection (stale or disconnected)...");
-            this.reconnectAttempts = 0;
-            this.connect();
+        if (wsOpen && !isStale && this.connectionState === ConnectionState.CONNECTED) {
+            this._stopHttpPolling();
+            return;
         }
+        if (this.socket && this.socket.readyState === WebSocket.CONNECTING) {
+            return;
+        }
+        this._setConnectionState(ConnectionState.REAUTHENTICATING);
+        this._hydrateFromHttp();
+        this._startHttpPolling();
+        this.reconnectAttempts = 0;
+        this.connect();
     },
 
     connect() {
@@ -119,11 +96,12 @@ export const WebSocketClient = {
         const wsUrl = `${protocol}//${host}/ws`;
 
         if (window.location.protocol === 'file:') {
+            this._setConnectionState(ConnectionState.DISCONNECTED);
             this._setStatus("LOCAL FILE", "#3b82f6");
             return;
         }
 
-        this._setStatus("CONNECTING...", "#f59e0b");
+        this._setConnectionState(ConnectionState.CONNECTING);
 
         try {
             this.socket = new WebSocket(wsUrl);
@@ -138,7 +116,7 @@ export const WebSocketClient = {
                     this.reconnectTimeoutId = null;
                 }
                 this.lastPongReceived = Date.now();
-                this._setStatus("LIVE HUB", "#10b981");
+                this._setConnectionState(ConnectionState.CONNECTED);
                 this._startHeartbeat();
                 this._stopHttpPolling();
             };
@@ -163,20 +141,20 @@ export const WebSocketClient = {
                 console.warn("[WS] Connection closed. Code:", e.code, "Reason:", e.reason);
                 this.isSocketConnected = false;
                 this._stopHeartbeat();
-                this._setStatus("RECONNECTING", "#f59e0b");
+                this._setConnectionState(ConnectionState.REAUTHENTICATING);
                 this._startHttpPolling();
                 this._scheduleReconnect();
             };
 
             this.socket.onerror = (err) => {
                 console.warn("[WS] Socket error:", err);
-                this._setStatus("OFFLINE", "#ef4444");
+                this._setConnectionState(ConnectionState.ERROR);
             };
 
         } catch (err) {
             console.error("[WS] Initialization exception:", err);
             this._stopHeartbeat();
-            this._setStatus("OFFLINE", "#ef4444");
+            this._setConnectionState(ConnectionState.ERROR);
             this._startHttpPolling();
             this._scheduleReconnect();
         }
@@ -218,6 +196,13 @@ export const WebSocketClient = {
 
         if (eventType === "live_feed_update" && msg.data) {
             UI.renderDashboard(msg.data);
+        } else if (eventType === "POSITION_DELTA" && msg.data) {
+            this._applyPositionDelta(msg.data);
+        } else if (eventType === "SYSTEM_STATUS" && msg.data && msg.data.state) {
+            const next = String(msg.data.state).toUpperCase();
+            if (Object.values(ConnectionState).includes(next)) {
+                this._setConnectionState(next);
+            }
         } else if (eventType === "portfolio_update" && msg.data) {
             UI.renderPortfolio(msg.data);
             UI.renderKPIs(null, msg.data, null);
@@ -236,16 +221,10 @@ export const WebSocketClient = {
             UI.renderKPIs(null, msg.data.portfolio, null);
         } else if (eventType === "autopilot_buy_alert" && msg.data) {
             const tr = msg.data;
-            alert(`[AUTOPILOT: ORDER COMPLETED]\n\n• TICKER: ${tr.ticker} (${tr.name})\n• SHARES: ${tr.shares} SH\n• PRICE: $${Number(tr.buy_price).toFixed(2)}\n• STRATEGY: ${tr.strategy}`);
-            ApiClient.getDashboardData().then(fresh => {
-                if (fresh) UI.renderDashboard(fresh);
-            });
+            UI.toast(`[AUTOPILOT] ${tr.ticker} ${tr.shares} SH @ $${Number(tr.buy_price).toFixed(2)}`, "success");
         } else if (eventType === "guardian_alert" && msg.data) {
             const act = msg.data;
-            alert(`[PORTFOLIO GUARDIAN TRIGGERED]\n\n• TICKER: ${act.ticker}\n• PNL: ${act.pnl_pct}%\n• EXIT PRICE: $${Number(act.sell_price).toFixed(2)}\n• REASON: ${act.reason}`);
-            ApiClient.getDashboardData().then(fresh => {
-                if (fresh) UI.renderDashboard(fresh);
-            });
+            UI.toast(`[GUARDIAN] ${act.ticker} ${act.pnl_pct}% @ $${Number(act.sell_price || 0).toFixed(2)} — ${act.reason || "exit"}`, "warn");
         } else if (eventType === "scan_status") {
             const btnScan = document.getElementById("btnScanNow");
             const dataStatus = (msg.data && msg.data.status) ? msg.data.status : msg.status;
@@ -254,9 +233,6 @@ export const WebSocketClient = {
                     btnScan.disabled = false;
                     btnScan.textContent = "RUN SCAN";
                 }
-                ApiClient.getDashboardData().then(fresh => {
-                    if (fresh) UI.renderDashboard(fresh);
-                });
             } else if (dataStatus === "started") {
                 if (btnScan) {
                     btnScan.disabled = true;
@@ -285,8 +261,16 @@ export const WebSocketClient = {
     },
 
     _startHttpPolling() {
+        if (this.connectionState === ConnectionState.CONNECTED) {
+            this._stopHttpPolling();
+            return;
+        }
         if (this.pollingInterval) return;
         this.pollingInterval = setInterval(async () => {
+            if (this.connectionState === ConnectionState.CONNECTED) {
+                this._stopHttpPolling();
+                return;
+            }
             try {
                 const fresh = await ApiClient.getDashboardData();
                 if (fresh) UI.renderDashboard(fresh);
@@ -301,6 +285,56 @@ export const WebSocketClient = {
             clearInterval(this.pollingInterval);
             this.pollingInterval = null;
         }
+    },
+
+    _hydrateFromHttp() {
+        ApiClient.getDashboardData().then(fresh => {
+            if (fresh) UI.renderDashboard(fresh);
+        }).catch(() => {});
+        ApiClient.getPortfolioData().then(freshPort => {
+            if (freshPort) UI.renderPortfolio(freshPort);
+        }).catch(() => {});
+    },
+
+    _applyPositionDelta(delta) {
+        if (!delta) return;
+        const dash = UI.latestDashboardData;
+        if (!dash) return;
+        if (!dash.portfolio) dash.portfolio = { holdings: [] };
+        if (!Array.isArray(dash.portfolio.holdings)) dash.portfolio.holdings = [];
+        const tk = String(delta.ticker || (delta.holding && delta.holding.ticker) || "").toUpperCase();
+        if (!tk) return;
+        const action = String(delta.action || "").toUpperCase();
+        if (action === "EXIT" || delta.holding === null) {
+            dash.portfolio.holdings = dash.portfolio.holdings.filter(
+                (h) => String(h.ticker || "").toUpperCase() !== tk
+            );
+        } else if (delta.holding) {
+            const idx = dash.portfolio.holdings.findIndex(
+                (h) => String(h.ticker || "").toUpperCase() === tk
+            );
+            if (idx >= 0) {
+                dash.portfolio.holdings[idx] = { ...dash.portfolio.holdings[idx], ...delta.holding };
+            } else {
+                dash.portfolio.holdings.push(delta.holding);
+            }
+        }
+        UI.renderPortfolio(dash.portfolio);
+        UI.renderSlotVisualizer(dash.portfolio, dash.slot_allocation_summary && dash.slot_allocation_summary.is_bull_regime, dash.top_conviction_pick);
+    },
+
+    _setConnectionState(state) {
+        this.connectionState = state;
+        const labels = {
+            DISCONNECTED: ["OFFLINE", "#ef4444"],
+            CONNECTING: ["CONNECTING", "#f59e0b"],
+            CONNECTED: ["LIVE HUB", "#10b981"],
+            REAUTHENTICATING: ["REAUTH", "#f59e0b"],
+            ERROR: ["ERROR", "#ef4444"],
+        };
+        const pair = labels[state];
+        if (pair) this._setStatus(pair[0], pair[1]);
+        if (state === ConnectionState.CONNECTED) this._stopHttpPolling();
     },
 
     _setStatus(text, color) {
@@ -344,24 +378,8 @@ export const TerminalApp = {
             const data = await ApiClient.getDashboardData();
             if (data) {
                 UI.renderDashboard(data);
-                // Default to active holding if exists, otherwise top pick / NVDA
-                const holdings = (data.portfolio && data.portfolio.holdings) || [];
-                let defaultTicker = "NVDA";
-                let defaultPrice = 0;
-                if (holdings.length > 0) {
-                    defaultTicker = holdings[0].ticker;
-                    defaultPrice = Number(holdings[0].current_price || holdings[0].buy_price || 0);
-                } else if (data.top_conviction_pick) {
-                    defaultTicker = data.top_conviction_pick.ticker;
-                    defaultPrice = Number(data.top_conviction_pick.price || 0);
-                } else if (data.dual_consensus && data.dual_consensus.length > 0) {
-                    defaultTicker = data.dual_consensus[0].ticker;
-                    defaultPrice = Number(data.dual_consensus[0].price || 0);
-                } else if (data.strat1_exclusive && data.strat1_exclusive.length > 0) {
-                    defaultTicker = data.strat1_exclusive[0].ticker;
-                    defaultPrice = Number(data.strat1_exclusive[0].price || 0);
-                }
-                UI.selectStock(defaultTicker, defaultPrice);
+                const pick = UI.defaultChartTarget(data);
+                if (pick) UI.selectStock(pick.ticker, pick.price);
             }
         } catch (err) {
             console.error("[TerminalApp] Initial dashboard fetch failed:", err);
@@ -389,7 +407,7 @@ export const TerminalApp = {
                     const fresh = await ApiClient.getDashboardData();
                     if (fresh) UI.renderDashboard(fresh);
                 } catch (e) {
-                    alert("Scan error: " + e.message);
+                    UI.toast("Scan error: " + e.message, "error");
                 } finally {
                     btnScan.disabled = false;
                     btnScan.textContent = "RUN SCAN";
@@ -413,7 +431,7 @@ export const TerminalApp = {
                     await ApiClient.syncBroker();
                     this.refreshData();
                 } catch (e) {
-                    alert("Sync error: " + e.message);
+                    UI.toast("Sync error: " + e.message, "error");
                 } finally {
                     btnSync.disabled = false;
                     btnSync.textContent = "DAILY SYNC";
@@ -430,7 +448,7 @@ export const TerminalApp = {
                     await ApiClient.resetPortfolio();
                     this.refreshData();
                 } catch (e) {
-                    alert("Reset error: " + e.message);
+                    UI.toast("Reset error: " + e.message, "error");
                 }
             };
         }
@@ -440,11 +458,15 @@ export const TerminalApp = {
         if (btnExecBuy) {
             btnExecBuy.onclick = async () => {
                 if (btnExecBuy.disabled) return;
-                const ticker = (document.getElementById("qbTicker")?.textContent || "NVDA").trim();
+                const ticker = (UI.currentSelectedTicker || ChartEngine.currentTicker || document.getElementById("qbTicker")?.textContent || "").trim();
+                if (!ticker || ticker === "---") {
+                    UI.toast("Please select a stock first.", "warn");
+                    return;
+                }
                 const price = parseFloat(document.getElementById("qbBuyPrice")?.value || 0);
                 const qty = parseFloat(document.getElementById("qbQty")?.value || 1);
                 if (price <= 0 || qty <= 0) {
-                    alert("Please enter valid price and quantity.");
+                    UI.toast("Please enter valid price and quantity.", "warn");
                     return;
                 }
                 btnExecBuy.disabled = true;
@@ -454,7 +476,7 @@ export const TerminalApp = {
                     console.log(`[ORDER COMPLETED] ${ticker} ${qty} SH`);
                     this.refreshData();
                 } catch (e) {
-                    alert("Buy Failed: " + e.message);
+                    UI.toast("Buy Failed: " + e.message, "error");
                 } finally {
                     setTimeout(() => {
                         btnExecBuy.disabled = false;
@@ -509,8 +531,6 @@ export const TerminalApp = {
         const dropdown = document.getElementById("searchDropdown");
         const spinner = document.getElementById("searchSpinner");
         if (!input || !dropdown) return;
-
-        // Shortcut key "/"
         window.addEventListener("keydown", (e) => {
             if (e.key === "/" && document.activeElement !== input) {
                 e.preventDefault();
@@ -518,65 +538,41 @@ export const TerminalApp = {
                 input.select();
             }
         });
-
         let debounceTimer = null;
         input.addEventListener("input", () => {
             clearTimeout(debounceTimer);
             const query = input.value.trim();
-            if (!query) {
-                dropdown.style.display = "none";
-                return;
-            }
+            if (!query) { dropdown.style.display = "none"; return; }
             if (spinner) spinner.style.display = "block";
             debounceTimer = setTimeout(async () => {
                 try {
                     const results = await ApiClient.searchStocks(query);
                     if (spinner) spinner.style.display = "none";
-                    if (results && results.length > 0) {
-                        dropdown.innerHTML = '';
-                        results.forEach(r => {
-                            const isKr = (r.ticker || '').endsWith('.KS') || (r.ticker || '').endsWith('.KQ');
-                            const priceDisplay = r.price && r.price > 0 ? (isKr ? '₩' + Number(r.price).toLocaleString() : '$' + Number(r.price).toFixed(2)) : '';
-                            const item = document.createElement('div');
-                            item.className = 'search-item';
-                            item.style.cssText = 'padding:8px 12px; border-bottom:1px solid #1e293b; cursor:pointer; display:flex; justify-content:space-between; align-items:center;';
-                            item.dataset.ticker = r.ticker || '';
-                            item.dataset.price = String(r.price || 0);
-
-                            const leftDiv = document.createElement('div');
-                            const strongEl = document.createElement('strong');
-                            strongEl.style.cssText = 'color:#f8fafc; font-family:\'JetBrains Mono\';';
-                            strongEl.textContent = r.ticker || '';
-                            const spanEl = document.createElement('span');
-                            spanEl.style.cssText = 'color:#94a3b8; font-size:11px; margin-left:6px;';
-                            spanEl.textContent = r.name || r.name_kr || '';
-                            leftDiv.appendChild(strongEl);
-                            leftDiv.appendChild(spanEl);
-
-                            const priceSpan = document.createElement('span');
-                            priceSpan.style.cssText = 'color:#38bdf8; font-weight:700; font-family:\'JetBrains Mono\';';
-                            priceSpan.textContent = priceDisplay;
-
-                            item.appendChild(leftDiv);
-                            item.appendChild(priceSpan);
-                            item.onclick = () => {
-                                UI.selectStock(r.ticker, parseFloat(r.price || 0));
-                                dropdown.style.display = "none";
-                                input.value = '';
-                            };
-                            dropdown.appendChild(item);
-                        });
+                    if (!results || !results.length) {
+                        dropdown.innerHTML = `<div style="padding:10px;color:#64748b;font-size:11px;text-align:center;">NO RESULTS FOUND</div>`;
                         dropdown.style.display = "block";
-                    } else {
-                        dropdown.innerHTML = `<div style="padding:10px; color:#64748b; font-size:11px; text-align:center;">NO RESULTS FOUND</div>`;
-                        dropdown.style.display = "block";
+                        return;
                     }
+                    dropdown.innerHTML = results.map((r) => {
+                        const tk = UI.escapeHtml(r.ticker || "");
+                        const nm = UI.escapeHtml(r.name || r.name_kr || "");
+                        const isKr = (r.ticker || "").endsWith(".KS") || (r.ticker || "").endsWith(".KQ");
+                        const px = r.price > 0 ? (isKr ? "₩" + Number(r.price).toLocaleString() : "$" + Number(r.price).toFixed(2)) : "";
+                        return `<div class="search-item" data-ticker="${tk}" data-price="${Number(r.price || 0)}" style="padding:8px 12px;border-bottom:1px solid #1e293b;cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><div><strong style="color:#f8fafc;font-family:'JetBrains Mono';">${tk}</strong><span style="color:#94a3b8;font-size:11px;margin-left:6px;">${nm}</span></div><span style="color:#38bdf8;font-weight:700;font-family:'JetBrains Mono';">${px}</span></div>`;
+                    }).join("");
+                    dropdown.querySelectorAll(".search-item").forEach((item) => {
+                        item.onclick = () => {
+                            UI.selectStock(item.dataset.ticker, parseFloat(item.dataset.price || 0));
+                            dropdown.style.display = "none";
+                            input.value = "";
+                        };
+                    });
+                    dropdown.style.display = "block";
                 } catch (e) {
                     if (spinner) spinner.style.display = "none";
                 }
             }, 250);
         });
-
         document.addEventListener("click", (e) => {
             if (!input.contains(e.target) && !dropdown.contains(e.target)) dropdown.style.display = "none";
         });

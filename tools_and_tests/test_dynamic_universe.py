@@ -74,6 +74,79 @@ def test_constants_get_active_watchlist():
     assert len(w) == 60
 
 
+def test_load_universe_sectors_dashboard_contract():
+    """Snapshot rows map to rank/sector/etf/rs_3m/quota/stocks for the dashboard widget."""
+    from al_sangmoo.domain.quant.dynamic_universe import load_universe_sectors
+    rows = load_universe_sectors()
+    assert len(rows) == 11
+    assert [r["rank"] for r in rows] == list(range(1, 12))
+    assert sum(r["quota"] for r in rows) == 60
+    top = rows[0]
+    assert top["sector"]
+    assert top["etf"]
+    assert "rs_3m" in top
+    assert isinstance(top["stocks"], list)
+    assert "selected_stocks" not in top
+
+
+def test_dashboard_widget_markup_and_renderer():
+    """Frontend shell and renderer exist without subjective sector adjectives."""
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    html = (root / "frontend" / "index.html").read_text(encoding="utf-8")
+    ui = (root / "frontend" / "js" / "ui.js").read_text(encoding="utf-8")
+    feed = (root / "generate_dashboard_feed.py").read_text(encoding="utf-8")
+    dash = (root / "al_sangmoo" / "interfaces" / "api" / "routers" / "dashboard.py").read_text(encoding="utf-8")
+    assert 'id="dynamicSectorsContainer"' in html
+    widget = html.split('id="dynamicSectorsContainer"', 1)[0]
+    assert "주도" not in widget[widget.rfind("DYNAMIC SECTORS"):]
+    assert "씨앗" not in html[html.find("DYNAMIC SECTORS"):html.find("dynamicSectorsContainer") + 80]
+    assert "renderDynamicSectors" in ui
+    assert "universe_sectors" in feed
+    assert "load_universe_sectors" in dash
+    assert "(quota / 14)" in ui
+
+
+def test_select_sector_candidates_does_not_slice_canned_list(monkeypatch):
+    import al_sangmoo.domain.quant.dynamic_universe as du
+
+    def _boom(*args, **kwargs):
+        raise RuntimeError("offline")
+
+    monkeypatch.setattr(du.yf, "download", _boom)
+    assert du.select_sector_candidates("SEMICONDUCTOR", 14) == []
+
+
+def test_synthetic_sector_snapshot_hides_example_tickers(monkeypatch, tmp_path):
+    import json
+    import al_sangmoo.domain.quant.dynamic_universe as du
+
+    snap = {
+        "sector_breakdown": [
+            {
+                "rank": i + 1,
+                "sector": f"S{i}",
+                "etf": "X",
+                "rs_3m": round(15.0 - i * 2.0, 2),
+                "quota": 1,
+                "selected_stocks": ["NVDA", "AMD"],
+            }
+            for i in range(11)
+        ]
+    }
+    path = tmp_path / "snap.json"
+    path.write_text(json.dumps(snap), encoding="utf-8")
+    monkeypatch.setattr(du, "SNAPSHOT_FILE", str(path))
+    du._SECTORS_CACHE = []
+    du._SECTORS_MTIME = -1.0
+    rows = du.load_universe_sectors()
+    assert len(rows) == 11
+    assert all(r["stocks"] == [] for r in rows)
+    assert all(r["rs_3m"] == 0.0 for r in rows)
+    du._SECTORS_CACHE = []
+    du._SECTORS_MTIME = -1.0
+
+
 def test_api_dynamic_universe_endpoint():
     """Verifies the GET /api/universe/dynamic FastAPI router endpoint."""
     client = TestClient(app)

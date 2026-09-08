@@ -1,22 +1,36 @@
 """
 AL-SANGMOO QUANT TERMINAL: PORTFOLIO GUARDIAN DAEMON
-Continuous background auto-execution engine for -4% Stop-Loss and +15% Partial Take-Profit (50%).
-Directly executes broker sell orders via KIS OpenAPI and logs to SSOT SQLite.
+Background auto-execution of v2 exits:
+  1. -4.0% hard stop (full exit)
+  2. 26-day kijun close breakdown (full exit)
+  3. Uncapped trailing after +15% peak gain: max(Kijun-26, peak - 2.5*ATR(14))
+No 50% partial take-profit.
 """
 
 import asyncio
 import logging
-import math
 import time
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
 from typing import Dict, Any, List, Optional
-import pandas as pd
-import yfinance as yf
 
-import db_manager
+from al_sangmoo.core.market_time import is_regular_hours_for_ticker
+from al_sangmoo.infrastructure.persistence import (
+    get_connection,
+    get_live_portfolio,
+    record_portfolio_sell,
+)
 from al_sangmoo.infrastructure.brokers.kis_broker import default_kis_broker
-from al_sangmoo.domain.quant.ichimoku import calculate_ichimoku_indicators
-from al_sangmoo.api.hub import hub
+from al_sangmoo.api.hub import hub, EventType
+from al_sangmoo.infrastructure.idempotent_order import is_broker_order_ack
+from al_sangmoo.core.constants import derive_stop_price
+from al_sangmoo.domain.risk.trailing_stop import (
+    ATR_TRAIL_MULT,
+    HARD_STOP_PCT,
+    TRAILING_ACTIVATE_PCT,
+    evaluate_guardian_exit,
+    fetch_trailing_snapshot,
+    format_holding_advice,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -24,35 +38,24 @@ logger = logging.getLogger(__name__)
 def is_market_open_for_orders(ticker_sym: str) -> bool:
     """
     Checks if regular financial market is currently OPEN to accept automated orders.
-    - US Market: 09:30 - 16:00 EDT (Monday to Friday)
+    - US Market: 09:30 - 16:00 America/New_York (Monday to Friday, DST-aware)
     - KR Market: 09:00 - 15:30 KST (Monday to Friday)
     """
-    if ticker_sym.endswith(".KS") or ticker_sym.endswith(".KQ"):
-        now_kr = datetime.now(timezone(timedelta(hours=9)))
-        if now_kr.weekday() >= 5:
-            return False
-        mins = now_kr.hour * 60 + now_kr.minute
-        return (9 * 60 <= mins <= 15 * 60 + 30)
-    else:
-        now_ny = datetime.now(timezone(timedelta(hours=-4)))  # EDT
-        if now_ny.weekday() >= 5:
-            return False
-        mins = now_ny.hour * 60 + now_ny.minute
-        return (9 * 60 + 30 <= mins <= 16 * 60)
+    return is_regular_hours_for_ticker(ticker_sym)
 
 
 class PortfolioGuardian:
     """
-    Autonomous background guardian monitoring active positions every N seconds.
-    Enforces Al-Sangmoo 17-Year quantitative exit rules without requiring user intervention:
-      1. -4% Stop Loss or 26D Kijun break: 100% full stop loss execution.
-      2. +15% Take Profit: 50% partial profit locking (letting remaining 50% run for top gains).
+    Autonomous background guardian monitoring active positions.
+    Enforces Al-Sangmoo v2 exits without user intervention:
+      1. -4% hard stop or 26D kijun close breakdown: 100% exit.
+      2. After +15% peak gain: uncapped trailing floor max(kijun, peak - 2.5*ATR).
     """
 
-    def __init__(self, check_interval_seconds: int = 3):
+    def __init__(self, check_interval_seconds: int = 10):
         self.interval = check_interval_seconds
         self.is_running = False
-        self.is_enabled = True  # Auto-execution enabled by default
+        self.is_enabled = True
         self._task: Optional[asyncio.Task] = None
         self.last_check_time: Optional[str] = None
         self.last_sync_time: float = 0.0
@@ -86,18 +89,20 @@ class PortfolioGuardian:
             "last_check_time": self.last_check_time,
             "recent_actions": self.last_actions[-10:],
             "rules": {
-                "stop_loss_pct": -4.0,
-                "take_profit_pct": 15.0,
-                "partial_tp_ratio": 0.50,
-                "kijun_break_check": True
+                "stop_loss_pct": -HARD_STOP_PCT,
+                "trailing_activate_pct": TRAILING_ACTIVATE_PCT,
+                "atr_multiplier": ATR_TRAIL_MULT,
+                "partial_tp_ratio": 0.0,
+                "uncapped_trailing": True,
+                "kijun_break_check": True,
             }
         }
 
     def _get_adaptive_interval(self, holdings_count: int) -> float:
         """
         Adaptive polling interval:
-        - 3s if active holdings exist (ultra-snappy real-time price & PnL sync).
-        - 15s if portfolio is empty to conserve KIS OpenAPI rate limits.
+        - configured interval if holdings exist
+        - 15s if portfolio is empty to conserve KIS OpenAPI rate limits
         """
         if holdings_count > 0:
             return float(self.interval)
@@ -120,43 +125,102 @@ class PortfolioGuardian:
 
     async def check_and_execute_guardian_rules(self) -> Dict[str, Any]:
         """
-        Scans all active SQLite positions, updates prices, and executes KIS orders
-        for -4% full stop-loss or +15% 50% partial take-profit in a background worker thread.
+        Scans active SQLite positions, updates prices, and executes KIS full-exit
+        orders for hard stop, kijun breakdown, or uncapped trailing TP.
         """
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.last_check_time = now_str
 
-        # Offload synchronous broker and price lookups to background worker thread
         res = await asyncio.to_thread(self._sync_check_and_execute_guardian_rules)
 
-        # Broadcast live alerts to WebSockets on main async loop
         for act in res.get("actions", []):
             try:
-                await hub.broadcast("guardian_alert", act)
+                await hub.broadcast(EventType.GUARDIAN_ALERT, act)
+                await hub.broadcast_delta(EventType.POSITION_DELTA, {
+                    "ticker": act.get("ticker"),
+                    "action": act.get("action") or "EXIT",
+                    "holding": None,
+                })
             except Exception:
                 pass
 
         try:
-            fresh_port = db_manager.get_live_portfolio()
-            await hub.broadcast("portfolio_update", fresh_port)
+            fresh_port = get_live_portfolio()
+            await hub.broadcast(EventType.PORTFOLIO_UPDATE, fresh_port)
         except Exception:
             pass
 
         return res
 
+    def _fetch_live_price(self, ticker: str, fallback: float) -> float:
+        cur_price = None
+        try:
+            if default_kis_broker.is_configured():
+                cur_price = default_kis_broker.get_live_price(ticker)
+
+            if cur_price is None or cur_price <= 0:
+                import yfinance as yf
+                import logging as _logging
+                _logging.getLogger("yfinance").setLevel(_logging.CRITICAL)
+                ticker_obj = yf.Ticker(ticker)
+                try:
+                    fast_info = getattr(ticker_obj, "fast_info", None)
+                    if fast_info:
+                        p = (
+                            getattr(fast_info, "last_price", None)
+                            or getattr(fast_info, "regular_market_price", None)
+                            or getattr(fast_info, "previous_close", None)
+                        )
+                        if p and float(p) > 0:
+                            cur_price = float(p)
+                except Exception:
+                    pass
+        except Exception as exc:
+            logger.warning(f"[Portfolio Guardian] Live price fetch failed for {ticker}: {exc}")
+
+        if cur_price is None or cur_price <= 0:
+            cur_price = float(fallback or 0.0)
+        return float(cur_price or 0.0)
+
+    def _persist_mark(self, holding_id: int, cur_price: float, total_qty: float, buy_price: float, decision: Dict[str, Any]) -> None:
+        pnl_pct = float(decision.get("pnl_pct") or 0.0)
+        pnl_amt = (cur_price - buy_price) * total_qty
+        cur_val = cur_price * total_qty
+        hard_stop_price = float(decision.get("hard_stop_price") or derive_stop_price(buy_price))
+        advice = format_holding_advice(decision, buy_price)
+        try:
+            with get_connection() as conn:
+                conn.cursor().execute("""
+                UPDATE my_portfolio
+                SET current_price = ?, current_value = ?, pnl_pct = ?, pnl_amount = ?,
+                    stop_loss_price = ?, max_gain_pct = ?, peak_high = ?,
+                    kijun_26 = ?, atr_14 = ?, trailing_floor = ?, exit_advice = ?
+                WHERE id = ?
+                """, (
+                    cur_price, cur_val, pnl_pct, pnl_amt,
+                    hard_stop_price,
+                    float(decision.get("max_gain_pct") or 0.0),
+                    float(decision.get("peak_high") or 0.0),
+                    float(decision.get("kijun_26") or 0.0),
+                    float(decision.get("atr_14") or 0.0),
+                    float(decision.get("trailing_floor") or 0.0),
+                    advice,
+                    holding_id,
+                ))
+                conn.commit()
+        except Exception as e:
+            logger.debug(f"[Guardian DB Update Error] {e}")
+
     def _sync_check_and_execute_guardian_rules(self) -> Dict[str, Any]:
         """
-        1. Queries DB for active portfolio holdings.
-        2. Syncs latest real-time quote via primary KIS Broker TR (HHDFS00000300) / fast cache.
-        3. Enforces strict Al-Sangmoo Institutional Quant Rules:
-           - -4.0% Strict Hard Stop (Full Exit)
-           - +15.0% Uncapped Trailing TP
-           - 26D Kijun Support Breakdown
+        1. Query DB for active holdings.
+        2. Sync live quote via KIS / yfinance.
+        3. Load 26D kijun + ATR(14) and enforce v2 full-exit rules.
         """
         now_ts = time.time()
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.last_check_time = now_str
-        
+
         if default_kis_broker.is_configured() and (now_ts - self.last_sync_time > 300.0):
             try:
                 default_kis_broker.check_sync()
@@ -164,7 +228,7 @@ class PortfolioGuardian:
             except Exception as sync_err:
                 logger.debug(f"[Portfolio Guardian] Background check_sync skipped: {sync_err}")
 
-        portfolio = db_manager.get_live_portfolio()
+        portfolio = get_live_portfolio()
         holdings = portfolio.get("holdings", [])
         if not holdings:
             return {"status": "success", "checked_count": 0, "actions": []}
@@ -179,83 +243,44 @@ class PortfolioGuardian:
             if buy_price <= 0 or total_qty <= 0:
                 continue
 
-            cur_price = None
-            kijun_line = float(h.get("stop_loss_price", buy_price * 0.96))
-
-            try:
-                if default_kis_broker.is_configured():
-                    cur_price = default_kis_broker.get_live_price(ticker)
-                
-                if cur_price is None or cur_price <= 0:
-                    import logging as _logging
-                    _logging.getLogger("yfinance").setLevel(_logging.CRITICAL)
-                    ticker_obj = yf.Ticker(ticker)
-                    try:
-                        fast_info = getattr(ticker_obj, "fast_info", None)
-                        if fast_info:
-                            p = getattr(fast_info, "last_price", None) or getattr(fast_info, "regular_market_price", None) or getattr(fast_info, "previous_close", None)
-                            if p and float(p) > 0:
-                                cur_price = float(p)
-                    except Exception:
-                        pass
-            except Exception as exc:
-                logger.warning(f"[Portfolio Guardian] Live price fetch failed for {ticker}: {exc}")
-
-            if cur_price is None or cur_price <= 0:
-                cur_price = float(h.get("current_price") or buy_price)
-
-            if cur_price is None or cur_price <= 0:
+            fallback_px = float(h.get("current_price") or buy_price)
+            cur_price = self._fetch_live_price(ticker, fallback_px)
+            if cur_price <= 0:
                 continue
 
-            pnl_pct = ((cur_price - buy_price) / buy_price) * 100.0
-            cur_val = cur_price * total_qty
-            total_cost = buy_price * total_qty
-            pnl_amt = cur_val - total_cost
-            
-            hard_stop_price = round(buy_price * 0.96, 2)
-            
-            try:
-                with db_manager.get_connection() as conn:
-                    conn.cursor().execute("""
-                    UPDATE my_portfolio
-                    SET current_price = ?, current_value = ?, pnl_pct = ?, pnl_amount = ?, stop_loss_price = ?
-                    WHERE id = ?
-                    """, (cur_price, cur_val, pnl_pct, pnl_amt, hard_stop_price, holding_id))
-                    conn.commit()
-            except Exception as e:
-                logger.debug(f"[Guardian DB Update Error] {e}")
+            snap = fetch_trailing_snapshot(ticker, buy_date=str(h.get("buy_date") or ""))
+            peak_seed = max(
+                float(h.get("peak_high") or 0.0),
+                float(snap.get("peak_from_hist") or 0.0),
+                float(snap.get("last_high") or 0.0),
+            )
+            decision = evaluate_guardian_exit(
+                buy_price=buy_price,
+                current_price=cur_price,
+                kijun_26=float(snap.get("kijun_26") or h.get("kijun_26") or 0.0),
+                atr_14=float(snap.get("atr_14") or h.get("atr_14") or 0.0),
+                peak_high=peak_seed,
+                max_gain_pct=float(h.get("max_gain_pct") or 0.0),
+            )
+            pnl_pct = float(decision["pnl_pct"])
+            self._persist_mark(holding_id, cur_price, total_qty, buy_price, decision)
 
-            action_type = None
-            action_reason = None
-            sell_qty = 0.0
-            is_full_exit = True
+            action_type = decision.get("action")
+            action_reason = decision.get("reason")
+            if not action_type:
+                continue
 
-            if pnl_pct <= -4.0 or cur_price <= hard_stop_price:
-                action_type = "AUTO_STOP_LOSS"
-                action_reason = f"[가디언 칼손절] {ticker} 손절선(-4.0% / ${hard_stop_price:,.2f}) 도달 전량 매도 (수익률: {pnl_pct:+.2f}%, 현재가: ${cur_price:,.2f})"
-                sell_qty = total_qty
-                is_full_exit = True
+            sell_qty = total_qty
+            order_id = None
+            broker_status = "LOCAL"
 
-            elif pnl_pct >= 15.0:
-                trailing_floor = max(kijun_line, buy_price * 1.10)
-                if cur_price < trailing_floor:
-                    action_type = "AUTO_TRAILING_TP"
-                    action_reason = f"[가디언 트레일링 익절] {ticker} 대세 상승 완결 무제한 익절 (수익률: {pnl_pct:+.2f}%, 현재가: ${cur_price:,.2f})"
-                    sell_qty = total_qty
-                    is_full_exit = True
-
-            elif kijun_line > 0 and cur_price < kijun_line and pnl_pct > 0:
-                action_type = "AUTO_KIJUN_EXIT"
-                action_reason = f"[가디언 기준선 이탈] {ticker} 26일 기준선(${kijun_line:,.2f}) 하회 추세 청산 (수익률: {pnl_pct:+.2f}%)"
-                sell_qty = total_qty
-                is_full_exit = True
-
-            if action_type and self.is_enabled and sell_qty > 0:
-                market_open = is_market_open_for_orders(ticker)
-
+            if self.is_enabled:
                 if default_kis_broker.is_configured():
-                    if not market_open:
-                        logger.info(f"[Portfolio Guardian] {ticker} {action_type} signal detected, but regular market is currently closed. Auto-order skipped until market open.")
+                    if not is_market_open_for_orders(ticker):
+                        logger.info(
+                            f"[Portfolio Guardian] {ticker} {action_type} signal detected, "
+                            "but regular market is currently closed. Auto-order skipped until market open."
+                        )
                         continue
 
                     try:
@@ -270,70 +295,48 @@ class PortfolioGuardian:
                             exchange=ex_cd
                         )
                         broker_status = broker_res.get("status", "error")
-                        if broker_status != "success":
-                            logger.error(f"[Portfolio Guardian] Broker sell order rejected for {ticker}: {broker_res.get('message')}. Local DB holding retained.")
+                        order_id = broker_res.get("order_id") or broker_res.get("odno")
+                        if not is_broker_order_ack(broker_status):
+                            logger.error(
+                                f"[Portfolio Guardian] Broker sell order rejected for {ticker}: "
+                                f"{broker_res.get('message')}. Local DB holding retained."
+                            )
                             continue
                     except Exception as e:
                         logger.error(f"[Portfolio Guardian Broker Error] {e}")
                         continue
 
                 logger.warning(f"[Portfolio Guardian Triggered] {action_reason}")
+                record_portfolio_sell(
+                    holding_id=holding_id,
+                    sell_price=cur_price,
+                    reason=f"{action_type} ({pnl_pct:+.2f}%)"
+                )
+            else:
+                logger.info(f"[Portfolio Guardian] Signal {action_type} for {ticker} suppressed (auto-exec disabled).")
+                continue
 
-                if is_full_exit:
-                    db_manager.record_portfolio_sell(
-                        holding_id=holding_id,
-                        sell_price=cur_price,
-                        reason=f"{action_type} ({pnl_pct:+.2f}%)"
-                    )
-                else:
-                    remaining_qty = total_qty - sell_qty
-                    with db_manager.get_connection() as conn:
-                        cursor = conn.cursor()
-                        rem_cost = remaining_qty * buy_price
-                        rem_val = remaining_qty * cur_price
-                        pnl_amt = rem_val - rem_cost
-                        cursor.execute("""
-                        UPDATE my_portfolio
-                        SET quantity = ?, total_cost = ?, current_value = ?,
-                            current_price = ?, pnl_pct = ?, pnl_amount = ?,
-                            exit_advice = ?
-                        WHERE id = ?
-                        """, (
-                            remaining_qty, rem_cost, rem_val,
-                            cur_price, pnl_pct, pnl_amt,
-                            f"50% 분할익절 완료 (잔여 {int(remaining_qty)}주 추세 홀딩)",
-                            holding_id
-                        ))
-                        # Insert partial trade record to history
-                        cursor.execute("""
-                        INSERT INTO trade_history (
-                            holding_id, ticker, buy_date, sell_date, buy_price,
-                            sell_price, quantity, pnl_pct, pnl_amount, reason, created_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, (
-                            holding_id, ticker, h.get("buy_date", now_str[:10]), now_str[:10],
-                            buy_price, cur_price, sell_qty, pnl_pct, (cur_price - buy_price) * sell_qty,
-                            f"AUTO_PARTIAL_TP_50 ({pnl_pct:+.2f}%)", now_str
-                        ))
-                        conn.commit()
-
-                action_record = {
-                    "timestamp": now_str,
-                    "holding_id": holding_id,
-                    "ticker": ticker,
-                    "action": action_type,
-                    "buy_price": buy_price,
-                    "sell_price": cur_price,
-                    "sold_quantity": sell_qty,
-                    "remaining_quantity": total_qty - sell_qty if not is_full_exit else 0.0,
-                    "is_full_exit": is_full_exit,
-                    "pnl_pct": round(pnl_pct, 2),
-                    "order_id": order_id,
-                    "broker_status": broker_status,
-                    "reason": action_reason
-                }
-                triggered_actions.append(action_record)
-                self.last_actions.append(action_record)
+            action_record = {
+                "timestamp": now_str,
+                "holding_id": holding_id,
+                "ticker": ticker,
+                "action": action_type,
+                "buy_price": buy_price,
+                "sell_price": cur_price,
+                "sold_quantity": sell_qty,
+                "remaining_quantity": 0.0,
+                "is_full_exit": True,
+                "pnl_pct": round(pnl_pct, 2),
+                "trailing_floor": decision.get("trailing_floor"),
+                "kijun_26": decision.get("kijun_26"),
+                "atr_14": decision.get("atr_14"),
+                "peak_high": decision.get("peak_high"),
+                "order_id": order_id,
+                "broker_status": broker_status,
+                "reason": action_reason,
+            }
+            triggered_actions.append(action_record)
+            self.last_actions.append(action_record)
 
         return {
             "status": "success",
@@ -344,6 +347,5 @@ class PortfolioGuardian:
         }
 
 
-# Global singleton daemon instance (10s ultra-fast real-time sync)
+# Global singleton daemon instance (10s real-time sync)
 default_guardian = PortfolioGuardian(check_interval_seconds=10)
-

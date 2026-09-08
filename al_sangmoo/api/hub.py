@@ -3,16 +3,32 @@ WebSocket Broadcast Gateway & Real-Time Event Hub.
 """
 import asyncio
 import time
-from typing import List, Dict, Any
+from enum import Enum
+from typing import List, Dict, Any, Union
 from fastapi import WebSocket, WebSocketDisconnect
 
 MAX_CONNECTIONS = 50
+
+
+class EventType(str, Enum):
+    POSITION_DELTA = "POSITION_DELTA"
+    PORTFOLIO_UPDATE = "portfolio_update"
+    LIVE_FEED_UPDATE = "live_feed_update"
+    PRICE_UPDATE = "price_update"
+    GUARDIAN_ALERT = "guardian_alert"
+    AUTOPILOT_BUY = "autopilot_buy_alert"
+    ORDER_STATUS = "ORDER_STATUS"
+    SYSTEM_STATUS = "SYSTEM_STATUS"
+    SCAN_STATUS = "scan_status"
+    CONNECTED = "connected"
+
 
 class WebSocketBroadcastHub:
     def __init__(self, max_connections: int = MAX_CONNECTIONS):
         self.max_connections = max_connections
         self.active_connections: List[WebSocket] = []
         self._lock = asyncio.Lock()
+        self._seq = 0
 
     async def connect(self, websocket: WebSocket) -> bool:
         async with self._lock:
@@ -46,21 +62,30 @@ class WebSocketBroadcastHub:
             except Exception:
                 pass
 
-    async def broadcast(self, event_type: str, data: Any = None) -> None:
+    def _normalize_event(self, event_type: Union[EventType, str]) -> str:
+        if isinstance(event_type, EventType):
+            return event_type.value
+        return str(event_type)
+
+    async def broadcast(self, event_type: Union[EventType, str], data: Any = None) -> None:
         """
         Broadcasts an event message to all connected clients using non-blocking dispatch with timeouts.
         Automatically prunes disconnected clients.
         """
-        message = {
-            "event": event_type,
-            "type": event_type,
-            "data": data or {},
-            "timestamp": time.time()
-        }
-        
+        event_name = self._normalize_event(event_type)
         async with self._lock:
+            self._seq += 1
+            seq = self._seq
             sockets = list(self.active_connections)
-            
+
+        message = {
+            "event": event_name,
+            "type": event_name,
+            "data": data or {},
+            "seq": seq,
+            "timestamp": time.time(),
+        }
+
         if not sockets:
             return
 
@@ -82,5 +107,10 @@ class WebSocketBroadcastHub:
 
             for dead in dead_connections:
                 asyncio.create_task(self._safe_close(dead, code=1011, reason="Broadcast timeout/error"))
+
+    async def broadcast_delta(self, event_type: Union[EventType, str], data: Dict[str, Any]) -> None:
+        """Send a field-level change without requiring clients to HTTP-refetch /api/dashboard."""
+        await self.broadcast(event_type, data)
+
 
 hub = WebSocketBroadcastHub()

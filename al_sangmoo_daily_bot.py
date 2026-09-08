@@ -8,8 +8,15 @@ from datetime import datetime, timedelta
 import pandas as pd
 import yfinance as yf
 import youtube_stream_scanner
-import db_manager
 import generate_dashboard_feed
+from al_sangmoo.infrastructure.persistence import (
+    archive_daily_recommendations,
+    get_connection,
+    get_live_portfolio,
+    init_db,
+    save_macro_history_record,
+    save_recommendation_matrix_record,
+)
 
 # Windows cp949 terminal encoding fix
 if sys.platform.startswith('win'):
@@ -72,7 +79,11 @@ def send_email_report(subject, html_body, receiver=None):
         print(f"[Email Dispatch Error] {e}")
         return False
 
-from al_sangmoo.core.constants import WATCHLIST, STOCK_DICT, TICKER_SECTORS, get_active_watchlist, get_macro_tailwind_sectors
+from al_sangmoo.core.constants import (
+    WATCHLIST, STOCK_DICT, TICKER_SECTORS, get_active_watchlist, get_macro_tailwind_sectors,
+    HARD_STOP_PCT, TRAILING_ACTIVATE_PCT,
+    derive_partial_tp_price, derive_stop_price, derive_target_price,
+)
 
 # Global 60 Universe SSOT (Dynamic Sector-Weighted)
 UNIVERSE = get_active_watchlist()
@@ -81,6 +92,7 @@ from al_sangmoo.domain.quant.ichimoku import (
     detect_cloud_trampoline_bounce,
     compute_institutional_flow_indicators
 )
+from al_sangmoo.domain.risk.trailing_stop import compute_trailing_floor
 from al_sangmoo.domain.quant.scoring import (
     QuantIndicators,
     WeeklyTrendContext,
@@ -95,7 +107,9 @@ from al_sangmoo.domain.quant.scoring import (
 )
 from al_sangmoo.domain.quant.macro import (
     evaluate_macro_stance,
-    calculate_msi_regime
+    calculate_msi_regime,
+    extract_msi_score,
+    resolve_capital_regime,
 )
 
 def scan_and_select_2x2x2(stream_sentiment_list=None):
@@ -121,18 +135,23 @@ def scan_and_select_2x2x2(stream_sentiment_list=None):
     # 1. Macro Climate & Sector Tailwind Gate
     try:
         stream_info = youtube_stream_scanner.fetch_latest_wepoll_stream()
-        macro_climate = stream_info.get("macro_climate", {})
+        macro_climate = stream_info.get("macro_climate", {}) or {}
+        macro_gauges = stream_info.get("macro_gauges", {}) or {}
     except Exception:
-        macro_climate = evaluate_macro_stance()
-        
-    macro_stance = macro_climate.get("macro_stance", "DEFENSE_HOLD")
-    tailwind_sectors = get_macro_tailwind_sectors(macro_stance)
+        macro_climate = evaluate_macro_stance() or {}
+        macro_gauges = {}
+
+    msi_score = extract_msi_score(macro_climate, default=50.0)
+    us10y_val = float(macro_gauges.get("us10y", {}).get("val", 4.4)) if isinstance(macro_gauges.get("us10y"), dict) else 4.4
+    wti_val = float(macro_gauges.get("wti", {}).get("val", 78.0)) if isinstance(macro_gauges.get("wti"), dict) else 78.0
+    vix_val = float(macro_gauges.get("vix", {}).get("val", 16.0)) if isinstance(macro_gauges.get("vix"), dict) else 16.0
+    tailwind_sectors = get_macro_tailwind_sectors(msi_score, us10y_val, wti_val, vix_val)
     
     chart_data = {}
     for ticker in scan_list:
         try:
-            df = yf.download(ticker, period="6mo", interval="1d", progress=False)
-            if df.empty or len(df) < 55:
+            df = yf.download(ticker, period="3y", interval="1d", progress=False)
+            if df.empty or len(df) < 250:
                 continue
             if isinstance(df.columns, pd.MultiIndex):
                 df.columns = df.columns.get_level_values(0)
@@ -218,14 +237,15 @@ def scan_and_select_2x2x2(stream_sentiment_list=None):
         stream_mentioned_tickers=stream_tickers
     )
     
-    bull_picks = (tier1_picks + tier2_picks)[:2]
-    neutral_picks = (tier2_picks + tier1_picks)[2:4]
-    bear_picks = tier3_picks[:2]
+    # v2 3-Gate: Tier-1 leaders, Tier-2 pullbacks. Snipers are not bear picks.
+    bull_picks = tier1_picks[:2]
+    neutral_picks = tier2_picks[:2]
+    bear_picks = []
     
     return bull_picks, neutral_picks, bear_picks, macro_climate
 
 def evaluate_user_portfolio_positions():
-    portfolio_data = db_manager.get_live_portfolio()
+    portfolio_data = get_live_portfolio()
     holdings = portfolio_data.get("holdings", [])
     
     portfolio_alerts = []
@@ -235,25 +255,23 @@ def evaluate_user_portfolio_positions():
         cur_price = float(h['current_price'])
         pnl_pct = float(h['pnl_pct'])
         qty = float(h['quantity'])
-        target_p = float(h.get('target_price', round(buy_price * 1.15, 2)))
-        stop_p = float(h.get('stop_loss_price', round(buy_price * 0.96, 2)))
+        target_p = float(h.get('target_price', derive_target_price(buy_price)))
+        stop_p = float(h.get('stop_loss_price', derive_stop_price(buy_price)))
         
-        is_take_profit = cur_price >= target_p or pnl_pct >= 15.0
-        is_stop_loss = cur_price <= stop_p or pnl_pct <= -4.0
-        is_partial_tp = 8.0 <= pnl_pct < 15.0
+        is_stop_loss = cur_price <= stop_p or pnl_pct <= -HARD_STOP_PCT
+        is_trailing = pnl_pct >= TRAILING_ACTIVATE_PCT or float(h.get("max_gain_pct") or 0.0) >= TRAILING_ACTIVATE_PCT
+        trailing_floor = float(h.get("trailing_floor") or 0.0)
         
-        if is_take_profit:
-            badge = "전량 익절 매도"
-            advice = f"목표 수익률(+15%) 달성에 따른 전량 차익 실현 권고 (수익률 {pnl_pct:+.2f}%)"
-        elif is_stop_loss:
+        if is_stop_loss:
             badge = "칼손절 긴급 매도"
-            advice = f"손절 기준선(-4%) 이탈에 따른 전량 리스크 청산 권고 (손실률 {pnl_pct:+.2f}%)"
-        elif is_partial_tp:
-            badge = "50% 분할 익절"
-            advice = f"1차 분할 익절 구간 진입 (+{pnl_pct:.1f}%). 50% 차익 실현 후 스탑 본절가 상향"
+            advice = f"손절 기준선(-{HARD_STOP_PCT:.0f}%) 이탈에 따른 전량 리스크 청산 권고 (손실률 {pnl_pct:+.2f}%)"
+        elif is_trailing:
+            badge = "무제한 트레일링"
+            floor_txt = f" floor ${trailing_floor:,.2f}" if trailing_floor > 0 else ""
+            advice = f"+{TRAILING_ACTIVATE_PCT:.0f}% 고점 돌파 후 무제한 트레일링 홀딩 (Let Winners Run,{floor_txt} 수익률 {pnl_pct:+.2f}%)"
         else:
             badge = "보유 지속"
-            advice = f"26일 기준선 지지 유효. 손절선 ${stop_p:,.2f} 유지 / 목표가 ${target_p:,.2f}"
+            advice = f"26일 기준선 지지 유효. 손절선 ${stop_p:,.2f} 유지 / +{TRAILING_ACTIVATE_PCT:.0f}% 이후 트레일링 익절"
             
         portfolio_alerts.append({
             "ticker": ticker,
@@ -304,20 +322,22 @@ def evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, 
                 new_max = max(prev_max, pnl_pct)
                 days_active = (datetime.now() - datetime.strptime(row['date'], "%Y-%m-%d")).days
                 
-                is_stop_loss = pnl_pct <= -4.0 or (pos_type == 'BULL' and cur_price < kijun)
-                is_take_profit = pnl_pct >= 15.0
-                is_partial_tp = 8.0 <= pnl_pct < 15.0
+                is_stop_loss = pnl_pct <= -HARD_STOP_PCT or (pos_type == 'BULL' and cur_price < kijun and new_max < TRAILING_ACTIVATE_PCT)
+                atr_14 = float(last['ATR14']) if 'ATR14' in last.index and pd.notna(last['ATR14']) else 0.0
+                peak_high = entry_price * (1.0 + new_max / 100.0)
+                trail_floor = compute_trailing_floor(kijun, peak_high, atr_14) if new_max >= TRAILING_ACTIVATE_PCT else 0.0
+                is_trailing_exit = pos_type == 'BULL' and new_max >= TRAILING_ACTIVATE_PCT and trail_floor > 0 and cur_price < trail_floor
                 is_expired = days_active >= 65
                 
-                if is_take_profit:
-                    status = 'CLOSED_PROFIT'
-                    advice = f"목표 수익률(+15%) 달성 (+{pnl_pct:.1f}%)"
-                elif is_stop_loss:
+                if is_stop_loss:
                     status = 'CLOSED_STOP'
-                    advice = f"손절선(-4%) 이탈 ({pnl_pct:.1f}%)"
-                elif is_partial_tp:
+                    advice = f"손절선(-{HARD_STOP_PCT:.0f}%) 또는 기준선 이탈 ({pnl_pct:.1f}%)"
+                elif is_trailing_exit:
+                    status = 'CLOSED_PROFIT'
+                    advice = f"무제한 트레일링 익절 (floor ${trail_floor:,.2f}, +{pnl_pct:.1f}%)"
+                elif new_max >= TRAILING_ACTIVATE_PCT:
                     status = 'OPEN'
-                    advice = f"50% 분할 익절 구간 (+{pnl_pct:.1f}%)"
+                    advice = f"트레일링 홀딩 (Let Winners Run, floor ${trail_floor:,.2f}, +{pnl_pct:.1f}%)"
                 elif is_expired:
                     status = 'CLOSED_EXPIRED'
                     advice = f"3개월 만기 도달 포지션 종료 ({pnl_pct:+.1f}%)"
@@ -339,7 +359,7 @@ def evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, 
         new_rows = []
         for b in bull_picks:
             b_p = float(b.get('price') or b.get('close') or 100.0)
-            new_rows.append({"date": today_str, "ticker": b['ticker'], "type": "BULL", "entry_price": b_p, "current_price": b_p, "pnl_pct": 0.0, "max_gain_pct": 0.0, "status": "OPEN", "days_active": 0, "exit_advice": "신규 진입 (목표가 +15%, 손절가 -4%)"})
+            new_rows.append({"date": today_str, "ticker": b['ticker'], "type": "BULL", "entry_price": b_p, "current_price": b_p, "pnl_pct": 0.0, "max_gain_pct": 0.0, "status": "OPEN", "days_active": 0, "exit_advice": f"신규 진입 (목표가 +{TRAILING_ACTIVATE_PCT:.0f}%, 손절가 -{HARD_STOP_PCT:.0f}%)"})
         for n in neutral_picks:
             n_p = float(n.get('price') or n.get('close') or 100.0)
             new_rows.append({"date": today_str, "ticker": n['ticker'], "type": "NEUTRAL", "entry_price": n_p, "current_price": n_p, "pnl_pct": 0.0, "max_gain_pct": 0.0, "status": "OPEN", "days_active": 0, "exit_advice": "중립 관망"})
@@ -354,14 +374,14 @@ def evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, 
     
     # SQLite sync
     try:
-        db_manager.init_db()
-        with db_manager.get_connection() as conn:
+        init_db()
+        with get_connection() as conn:
             cursor = conn.cursor()
             for idx, row in history_df.iterrows():
                 e_price = float(row['entry_price'])
-                tgt_p = round(e_price * 1.15, 2)
-                stop_p = round(e_price * 0.96, 2)
-                part_p = round(e_price * 1.08, 2)
+                tgt_p = derive_target_price(e_price)
+                stop_p = derive_stop_price(e_price)
+                part_p = derive_partial_tp_price(e_price)
                 now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 cursor.execute("""
                 INSERT OR REPLACE INTO trades (
@@ -426,9 +446,15 @@ def generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_e
     pnl_color = "#10b981" if overall_pnl_pct >= 0 else "#ef4444"
     pnl_bg = "rgba(16, 185, 129, 0.12)" if overall_pnl_pct >= 0 else "rgba(239, 68, 68, 0.12)"
 
-    # 2. Macro & Regime Stance
-    msi_score = float(macro_info.get("msi_score", macro_climate.get("msi_score", 50.0)))
-    is_bull = bool(macro_info.get("is_bull_regime", msi_score < 60.0))
+    # 2. Macro & Regime Stance (MSI = risk index; slots = SPY 200 SMA / SSOT fallback)
+    msi_score = extract_msi_score(macro_info)
+    slot_summary = (feed_data or {}).get("slot_allocation_summary") or {}
+    if "is_bull_regime" in macro_info:
+        is_bull = bool(macro_info["is_bull_regime"])
+    elif "is_bull_regime" in slot_summary:
+        is_bull = bool(slot_summary["is_bull_regime"])
+    else:
+        is_bull = bool(resolve_capital_regime(msi_score=msi_score, fetch_spy=False)["is_bull_regime"])
     max_slots = 3 if is_bull else 2
     regime_title = "BULL REGIME (강세 국면)" if is_bull else "BEAR REGIME (약세 방어 국면)"
     regime_desc = "3-Slot 100% 가동 / 주도 섹터 모멘텀 집중" if is_bull else "2-Slot 캡 / 50% 현금 대피 안전 모드"
@@ -456,7 +482,7 @@ def generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_e
             "ticker": d["ticker"], "name": d.get("name", d["ticker"]),
             "sector": d.get("sector", "주도 섹터"), "conviction_score": float(d.get("score", 95.0)),
             "rs_3m": float(d.get("rs_3m", 15.0)), "price": p_val,
-            "target_price": round(p_val * 1.15, 2), "stop_price": round(p_val * 0.96, 2),
+            "target_price": derive_target_price(p_val), "stop_price": derive_stop_price(p_val),
             "sizing": {"shares": max(1, int(2500 / p_val)), "allocated_usd": round(p_val * max(1, int(2500 / p_val)), 2), "weight_pct": 33.3},
             "rationale": "26일 기준선 생명선 지지 및 기관 스마트머니 잠행 매집(OBV) 확인. 최우선 집중 진입 대상."
         }
@@ -467,7 +493,7 @@ def generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_e
             "ticker": d2["ticker"], "name": d2.get("name", d2["ticker"]),
             "sector": d2.get("sector", "주도 섹터"), "conviction_score": float(d2.get("score", 90.0)),
             "rs_3m": float(d2.get("rs_3m", 12.0)), "price": p_val2,
-            "target_price": round(p_val2 * 1.15, 2), "stop_price": round(p_val2 * 0.96, 2),
+            "target_price": derive_target_price(p_val2), "stop_price": derive_stop_price(p_val2),
             "sizing": {"shares": max(1, int(2500 / p_val2)), "allocated_usd": round(p_val2 * max(1, int(2500 / p_val2)), 2), "weight_pct": 33.3},
             "rationale": "주봉 대세 상승 안착 및 주도 섹터 모멘텀 후속 주자."
         }
@@ -590,8 +616,8 @@ def generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_e
             buy_p = float(h.get("buy_price", 0))
             cur_p = float(h.get("current_price", buy_p))
             pnl_val = float(h.get("pnl_pct", 0.0))
-            stop_p = float(h.get("stop_loss_price", round(buy_p * 0.96, 2)))
-            tgt_p = float(h.get("target_price", round(buy_p * 1.15, 2)))
+            stop_p = float(h.get("stop_loss_price", derive_stop_price(buy_p)))
+            tgt_p = float(h.get("target_price", derive_target_price(buy_p)))
             advice = h.get("exit_advice", "보유 지속 (가디언 감시 중)")
 
             item_color = "#10b981" if pnl_val >= 0 else "#ef4444"
@@ -679,8 +705,8 @@ def generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_e
         tp_score = float(top_pick.get("conviction_score", 90.0))
         tp_rs = float(top_pick.get("rs_3m", 0.0))
         tp_p = float(top_pick.get("price", 0.0))
-        tp_tgt = float(top_pick.get("target_price", round(tp_p * 1.15, 2)))
-        tp_stp = float(top_pick.get("stop_price", round(tp_p * 0.96, 2)))
+        tp_tgt = float(top_pick.get("target_price", derive_target_price(tp_p)))
+        tp_stp = float(top_pick.get("stop_price", derive_stop_price(tp_p)))
         tp_sec = top_pick.get("sector", "LEADER")
         tp_size = top_pick.get("sizing", {})
         tp_shares = tp_size.get("shares", max(1, int(2500 / max(1, tp_p))))
@@ -715,8 +741,8 @@ def generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_e
         ru_score = float(runner_up.get("conviction_score", 85.0))
         ru_rs = float(runner_up.get("rs_3m", 0.0))
         ru_p = float(runner_up.get("price", 0.0))
-        ru_tgt = float(runner_up.get("target_price", round(ru_p * 1.15, 2)))
-        ru_stp = float(runner_up.get("stop_price", round(ru_p * 0.96, 2)))
+        ru_tgt = float(runner_up.get("target_price", derive_target_price(ru_p)))
+        ru_stp = float(runner_up.get("stop_price", derive_stop_price(ru_p)))
         ru_sec = runner_up.get("sector", "RUNNER")
         ru_size = runner_up.get("sizing", {})
         ru_shares = ru_size.get("shares", max(1, int(2500 / max(1, ru_p))))
@@ -836,8 +862,14 @@ def print_markdown_briefing(today_str, dual_consensus, strat1_exclusive, strat2_
     
     tot_equity_usd = float(portfolio.get("total_equity_usd", 7500.0))
     overall_pnl_pct = float(portfolio.get("overall_pnl_pct", 0.0) or portfolio.get("unrealized_pnl_pct", 0.0))
-    msi_score = float(macro_info.get("msi_score", 50.0))
-    is_bull = bool(macro_info.get("is_bull_regime", True))
+    msi_score = extract_msi_score(macro_info)
+    slot_summary = feed_data.get("slot_allocation_summary") or {}
+    if "is_bull_regime" in macro_info:
+        is_bull = bool(macro_info["is_bull_regime"])
+    elif "is_bull_regime" in slot_summary:
+        is_bull = bool(slot_summary["is_bull_regime"])
+    else:
+        is_bull = bool(resolve_capital_regime(msi_score=msi_score, fetch_spy=False)["is_bull_regime"])
     
     top_pick = conviction.get("top_pick", {})
     runner_up = conviction.get("runner_up", {})
@@ -901,9 +933,9 @@ def main():
         print(f"[Dashboard Feed Error] {e}")
         feed_data = {}
         
-    dual_consensus = feed_data.get("dual_consensus", [])
-    strat1_exclusive = feed_data.get("strat1_exclusive", [])
-    strat2_exclusive = feed_data.get("strat2_exclusive", [])
+    dual_consensus = feed_data.get("tier1") or feed_data.get("dual_consensus") or []
+    strat1_exclusive = feed_data.get("tier2") or feed_data.get("strat1_exclusive") or []
+    strat2_exclusive = feed_data.get("tier3") or feed_data.get("strat2_exclusive") or []
     conviction = feed_data.get("conviction", {})
     portfolio = feed_data.get("portfolio", {})
     macro_info = feed_data.get("macro", {})
@@ -911,17 +943,17 @@ def main():
     # 3. Evaluate User Real Portfolio Positions
     portfolio_alerts = evaluate_user_portfolio_positions()
     
-    # 4. Update Background History
-    bull_picks = (dual_consensus + strat1_exclusive)[:2]
-    neutral_picks = (strat1_exclusive + dual_consensus)[2:4]
-    bear_picks = strat2_exclusive[:2]
+    # 4. Update Background History (Tier-1 / Tier-2 only; snipers are not bears)
+    bull_picks = dual_consensus[:2]
+    neutral_picks = strat1_exclusive[:2]
+    bear_picks = []
     history_df, health_status = evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, today_str)
     
     # 5. Save Macro Snapshot, Recommendation Matrix, and Archive Daily Recommendations into SQLite
     try:
-        db_manager.save_macro_history_record(today_str, macro_climate, macro_gauges)
-        db_manager.save_recommendation_matrix_record(today_str, bull_picks, neutral_picks, bear_picks)
-        db_manager.archive_daily_recommendations(today_str, dual_consensus, strat1_exclusive, strat2_exclusive)
+        save_macro_history_record(today_str, macro_climate, macro_gauges)
+        save_recommendation_matrix_record(today_str, bull_picks, neutral_picks, bear_picks)
+        archive_daily_recommendations(today_str, dual_consensus, strat1_exclusive, strat2_exclusive)
         print("[SQLite DB] Saved macro history, recommendation matrix, and daily recommendation archive.")
     except Exception as e:
         print(f"[SQLite DB Warning] {e}")
@@ -934,7 +966,9 @@ def main():
         
     overall_pnl = float(portfolio.get("overall_pnl_pct", 0.0) or portfolio.get("unrealized_pnl_pct", 0.0))
     pnl_str = f"{'+' if overall_pnl >= 0 else ''}{overall_pnl:.2f}%"
-    is_bull = bool(macro_info.get("is_bull_regime", True))
+    is_bull = bool(macro_info.get("is_bull_regime", resolve_capital_regime(
+        msi_score=extract_msi_score(macro_info), fetch_spy=False
+    )["is_bull_regime"]))
     regime_str = "BULL REGIME (강세장)" if is_bull else "BEAR REGIME (약세장)"
     top_t = conviction.get("top_pick", {}).get("ticker") if conviction.get("top_pick") else (dual_consensus[0]["ticker"] if dual_consensus else "MARKET_RADAR")
     

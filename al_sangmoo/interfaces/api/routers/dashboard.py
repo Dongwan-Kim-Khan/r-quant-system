@@ -1,6 +1,7 @@
 import os
 import json
 from fastapi import APIRouter, HTTPException
+from al_sangmoo.core.constants import derive_stop_price, derive_target_price, is_market_ticker
 
 router = APIRouter(tags=["Dashboard"])
 
@@ -61,6 +62,16 @@ async def get_dashboard_data():
         
     # Shallow copy dictionary for high-performance non-mutating response
     feed_out = dict(feed)
+
+    try:
+        from al_sangmoo.domain.quant.dynamic_universe import load_universe_sectors
+        live_sectors = load_universe_sectors()
+        if live_sectors:
+            feed_out["universe_sectors"] = live_sectors
+        else:
+            feed_out.setdefault("universe_sectors", [])
+    except Exception:
+        feed_out.setdefault("universe_sectors", [])
     
     # Inject real-time macro gauges (30s TTL cache)
     try:
@@ -73,8 +84,14 @@ async def get_dashboard_data():
 
     # Inject real-time live portfolio from SQLite SSOT (pure CQRS fast read < 0.5ms)
     try:
-        import db_manager
-        live_portfolio = db_manager.get_live_portfolio()
+        from al_sangmoo.infrastructure.persistence import get_execution_logs, get_live_portfolio
+        live_portfolio = get_live_portfolio()
+        if isinstance(live_portfolio, dict) and isinstance(live_portfolio.get("holdings"), list):
+            live_portfolio = dict(live_portfolio)
+            live_portfolio["holdings"] = [
+                h for h in live_portfolio["holdings"]
+                if isinstance(h, dict) and is_market_ticker(h.get("ticker"))
+            ]
         feed_out["portfolio"] = live_portfolio
 
         # Build unified live price map across holdings and broker
@@ -100,8 +117,8 @@ async def get_dashboard_data():
                 if h.get("current_price"):
                     cur_p = float(h["current_price"])
                     item_copy["price"] = cur_p
-                    item_copy["target_price"] = round(cur_p * 1.15, 2)
-                    item_copy["stop_price"] = round(cur_p * 0.96, 2)
+                    item_copy["target_price"] = derive_target_price(cur_p)
+                    item_copy["stop_price"] = derive_stop_price(cur_p)
             else:
                 item_copy["in_wallet"] = False
                 item_copy["holding_pnl"] = 0.0
@@ -118,13 +135,12 @@ async def get_dashboard_data():
 
         # 4. Inject Execution Audit Logs
         try:
-            feed_out["execution_logs"] = db_manager.get_execution_logs(limit=50)
+            feed_out["execution_logs"] = get_execution_logs(limit=50)
         except Exception:
             feed_out["execution_logs"] = []
     except Exception as e:
         # Fallback gracefully to feed cached portfolio if DB query fails
         pass
-        
     return feed_out
 
 @router.get("/api/summary")

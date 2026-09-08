@@ -2,8 +2,8 @@
  * R QUANT TERMINAL v2: INTERACTIVE CHART ENGINE MODULE
  * Encapsulates TradingView Lightweight Charts, Series, Timeframe Switcher, and +26D Cloud Renderer.
  */
-import { ApiClient } from './api.js?v=4.0.6';
-import { QuantDecoder } from './decoder.js?v=4.0.6';
+import { ApiClient } from './api.js?v=4.1.9';
+import { QuantDecoder } from './decoder.js?v=4.1.9';
 
 export const ChartEngine = {
     mainChart: null,
@@ -19,7 +19,62 @@ export const ChartEngine = {
     
     currentTimeframe: 'daily',
     currentLoadedChartObj: null,
-    currentTicker: "NVDA",
+    currentTicker: "",
+    _requestSeq: 0,
+    _renderSeq: 0,
+    _inflightTicker: "",
+
+    _payloadTicker(chartObj) {
+        return String((chartObj && chartObj.ticker) || "").toUpperCase();
+    },
+
+    _isCurrentPayload(chartObj) {
+        const tk = this._payloadTicker(chartObj);
+        return !tk || !this.currentTicker || tk === this.currentTicker;
+    },
+
+    _refClose(candles) {
+        if (!candles || !candles.length) return 0;
+        if (candles.length >= 2) return Number(candles[candles.length - 2].close) || 0;
+        return Number(candles[0].open || candles[0].close) || 0;
+    },
+
+    _sanePrice(px, ref) {
+        const p = Number(px);
+        const r = Number(ref);
+        if (!(p > 0)) return 0;
+        if (!(r > 0)) return p;
+        const ratio = p / r;
+        return (ratio >= 0.85 && ratio <= 1.15) ? p : 0;
+    },
+
+    _repairExplodedLast(candles) {
+        if (!candles || candles.length < 2) return candles;
+        const prev = Number(candles[candles.length - 2].close);
+        if (!(prev > 0)) return candles;
+        const last = { ...candles[candles.length - 1] };
+        const close = Number(last.close);
+        const high = Number(last.high);
+        if (!((close / prev > 1.25) || (close / prev < 0.8) || (high / prev > 1.25))) return candles;
+        const open = Number(last.open) || prev;
+        last.close = prev;
+        last.high = Math.max(open, prev);
+        last.low = Math.min(open, prev);
+        candles[candles.length - 1] = last;
+        return candles;
+    },
+
+    _clearSeries() {
+        if (!this.candleSeries) return;
+        this.candleSeries.setData([]);
+        if (this.kijunSeries) this.kijunSeries.setData([]);
+        if (this.tenkanSeries) this.tenkanSeries.setData([]);
+        if (this.spanASeries) this.spanASeries.setData([]);
+        if (this.spanBSeries) this.spanBSeries.setData([]);
+        if (this.sma20Series) this.sma20Series.setData([]);
+        if (this.sma60Series) this.sma60Series.setData([]);
+        if (this.volumeSeries) this.volumeSeries.setData([]);
+    },
 
     /**
      * Initialize Lightweight Charts and series
@@ -110,8 +165,8 @@ export const ChartEngine = {
             if (this.volumeChart) this.volumeChart.applyOptions({ width: w, height: 90 });
         });
 
-        // If data was loaded before chart initialization finished, render now
-        if (this.currentLoadedChartObj) {
+        // If data was loaded before chart initialization finished, render only if it still matches
+        if (this.currentLoadedChartObj && this._isCurrentPayload(this.currentLoadedChartObj)) {
             this.renderData(this.currentLoadedChartObj);
         }
     },
@@ -132,44 +187,71 @@ export const ChartEngine = {
 
     async loadChart(ticker, livePriceHint = 0) {
         if (!ticker) return;
-        this.currentTicker = ticker.toUpperCase();
-        
+        const cleanTicker = ticker.toUpperCase();
+        const switched = this.currentTicker && this.currentTicker !== cleanTicker;
+        this.currentTicker = cleanTicker;
+
         const curTickerEl = document.getElementById("curTicker");
         const curPriceEl = document.getElementById("curPrice");
-        if (curTickerEl) curTickerEl.textContent = this.currentTicker;
+        if (curTickerEl) curTickerEl.textContent = cleanTicker;
         if (curPriceEl && livePriceHint > 0) {
             curPriceEl.textContent = `$${Number(livePriceHint).toFixed(2)}`;
         }
+
+        if (switched) {
+            this.currentLoadedChartObj = null;
+            this._clearSeries();
+            const dashData = window.TerminalUI ? window.TerminalUI.latestDashboardData : null;
+            QuantDecoder.update(cleanTicker, null, dashData);
+        }
+
+        // Same-ticker re-entry during init (dashboard + WS hydrate) must not abort the in-flight fetch.
+        if (this._inflightTicker === cleanTicker) {
+            return;
+        }
+
+        const requestSeq = ++this._requestSeq;
+        this._inflightTicker = cleanTicker;
 
         if (!this.mainChart) {
             this.init();
         }
 
         try {
-            const reqTicker = this.currentTicker;
+            const reqTicker = cleanTicker;
             const chartData = await ApiClient.getChartData(reqTicker);
-            if (this.currentTicker !== reqTicker) return;
+            if (requestSeq !== this._requestSeq || this.currentTicker !== reqTicker) return;
+            const payloadTk = this._payloadTicker(chartData);
+            if (payloadTk && payloadTk !== reqTicker) return;
             if (chartData && !chartData.aborted) {
                 const latestPrice = (livePriceHint > 0) 
                     ? livePriceHint 
                     : (chartData.latest_close || (chartData.candles && chartData.candles.length > 0 ? chartData.candles[chartData.candles.length - 1].close : 0));
                 
                 this.renderData(chartData, null, latestPrice);
-                
-                if (curPriceEl && latestPrice > 0) {
-                    curPriceEl.textContent = `$${Number(latestPrice).toFixed(2)}`;
+
+                const painted = (chartData.candles && chartData.candles.length)
+                    ? chartData.candles[chartData.candles.length - 1]
+                    : null;
+                const headerPx = this._sanePrice(latestPrice, this._refClose(chartData.candles || []))
+                    || (painted ? Number(painted.close) : 0);
+                if (curPriceEl && this.currentTicker === reqTicker && headerPx > 0) {
+                    curPriceEl.textContent = `$${Number(headerPx).toFixed(2)}`;
                 }
 
-                // Update Decoder with live price
                 const dashData = window.TerminalUI ? window.TerminalUI.latestDashboardData : null;
                 QuantDecoder.update(this.currentTicker, chartData, dashData);
             } else if (!chartData || !chartData.aborted) {
                 this.renderNotFound(this.currentTicker);
             }
         } catch (err) {
-            if (this.currentTicker !== ticker.toUpperCase()) return;
+            if (requestSeq !== this._requestSeq || this.currentTicker !== ticker.toUpperCase()) return;
             console.error(`[ChartEngine] Error loading chart for ${this.currentTicker}:`, err);
             this.renderNotFound(this.currentTicker);
+        } finally {
+            if (requestSeq === this._requestSeq) {
+                this._inflightTicker = "";
+            }
         }
     },
 
@@ -214,7 +296,7 @@ export const ChartEngine = {
     },
 
     renderData(chartObj, tf = null, livePrice = 0) {
-        if (!chartObj) return;
+        if (!chartObj || !this._isCurrentPayload(chartObj)) return;
         this.currentLoadedChartObj = chartObj;
         const targetTf = tf || this.currentTimeframe;
 
@@ -230,40 +312,50 @@ export const ChartEngine = {
             tfData = chartObj;
         }
 
-        const candles = tfData.candles ? [...tfData.candles] : [];
-        const effectivePrice = livePrice > 0 ? livePrice : (chartObj.latest_close || 0);
-        if (candles.length > 0 && effectivePrice > 0) {
+        const candles = this._repairExplodedLast(tfData.candles ? [...tfData.candles] : []);
+        const ref = this._refClose(candles);
+        const overlayPx = this._sanePrice(livePrice, ref) || this._sanePrice(chartObj.latest_close, ref);
+        if (candles.length > 0 && overlayPx > 0) {
             const lastIdx = candles.length - 1;
             const lastC = { ...candles[lastIdx] };
-            lastC.close = Number(effectivePrice);
-            lastC.high = Math.max(lastC.high, Number(effectivePrice));
-            lastC.low = Math.min(lastC.low, Number(effectivePrice));
+            lastC.close = overlayPx;
+            lastC.high = Math.max(Number(lastC.high) || overlayPx, overlayPx);
+            lastC.low = Math.min(Number(lastC.low) || overlayPx, overlayPx);
             candles[lastIdx] = lastC;
         }
 
-        this.candleSeries.setData(candles);
-        this.kijunSeries.setData(tfData.kijun_line || []);
-        this.tenkanSeries.setData(tfData.tenkan_line || []);
-        this.spanASeries.setData(tfData.span_a_line || []);
-        this.spanBSeries.setData(tfData.span_b_line || []);
-        this.sma20Series.setData(tfData.sma20 || []);
-        this.sma60Series.setData(tfData.sma60 || []);
-        const volData = (tfData && tfData.volume && tfData.volume.length > 0)
-            ? tfData.volume
-            : (chartObj.volume || []);
-        this.volumeSeries.setData(volData);
+        try {
+            this.candleSeries.setData(candles);
+            this.kijunSeries.setData(tfData.kijun_line || []);
+            this.tenkanSeries.setData(tfData.tenkan_line || []);
+            this.spanASeries.setData(tfData.span_a_line || []);
+            this.spanBSeries.setData(tfData.span_b_line || []);
+            this.sma20Series.setData(tfData.sma20 || []);
+            this.sma60Series.setData(tfData.sma60 || []);
+            const volData = (tfData && tfData.volume && tfData.volume.length > 0)
+                ? tfData.volume
+                : (chartObj.volume || []);
+            this.volumeSeries.setData(volData);
+        } catch (err) {
+            console.error("[ChartEngine] setData rejected payload", chartObj && chartObj.ticker, err);
+            this._clearSeries();
+            return;
+        }
 
-        // Dynamic timescale framing
+        const renderTicker = this.currentTicker;
+        const renderSeq = ++this._renderSeq;
         requestAnimationFrame(() => {
+            if (this._renderSeq !== renderSeq || this.currentTicker !== renderTicker) return;
             try {
                 const totalCandles = candles.length;
                 this.mainChart.timeScale().resetTimeScale();
                 this.volumeChart.timeScale().resetTimeScale();
 
                 if (totalCandles > 0) {
-                    const barsToShow = targetTf === 'weekly' ? Math.min(80, totalCandles) : Math.min(130, totalCandles);
+                    const barsToShow = Math.min(targetTf === 'weekly' ? 104 : 500, totalCandles);
+                    const fromIdx = Math.max(0, totalCandles - barsToShow);
                     const targetRange = {
-                        from: totalCandles - barsToShow,
+                        from: fromIdx,
                         to: totalCandles + 28
                     };
                     this.mainChart.timeScale().setVisibleLogicalRange(targetRange);
@@ -281,8 +373,17 @@ export const ChartEngine = {
 
     updateLiveTick(ticker, price) {
         if (!ticker || !price || this.currentTicker !== ticker.toUpperCase()) return;
+        if (this.currentLoadedChartObj && !this._isCurrentPayload(this.currentLoadedChartObj)) return;
         const p = Number(price);
         const curPriceEl = document.getElementById("curPrice");
+
+        let lastClose = 0;
+        if (this.currentLoadedChartObj) {
+            const tfData = (this.currentLoadedChartObj.timeframes && this.currentLoadedChartObj.timeframes[this.currentTimeframe]) || this.currentLoadedChartObj;
+            const candles = tfData.candles || [];
+            lastClose = this._refClose(candles) || (candles.length ? Number(candles[candles.length - 1].close) : 0);
+        }
+        if (lastClose > 0 && this._sanePrice(p, lastClose) <= 0) return;
         if (curPriceEl) curPriceEl.textContent = `$${p.toFixed(2)}`;
 
         if (this.currentLoadedChartObj) {
@@ -323,16 +424,7 @@ export const ChartEngine = {
     },
 
     renderNotFound(ticker) {
-        if (this.candleSeries) {
-            this.candleSeries.setData([]);
-            this.kijunSeries.setData([]);
-            this.tenkanSeries.setData([]);
-            this.spanASeries.setData([]);
-            this.spanBSeries.setData([]);
-            this.sma20Series.setData([]);
-            this.sma60Series.setData([]);
-            this.volumeSeries.setData([]);
-        }
+        this._clearSeries();
 
         const curPrice = document.getElementById("curPrice");
         const qbPrice = document.getElementById("qbPrice");

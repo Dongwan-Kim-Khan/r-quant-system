@@ -1,9 +1,10 @@
 """
 FastAPI Router for Autonomous Portfolio Guardian Daemon.
 """
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from typing import Optional
+from al_sangmoo.core.auth import require_mutating_auth
 from al_sangmoo.domain.risk.portfolio_guardian import default_guardian
 
 router = APIRouter(prefix="/api/guardian", tags=["Portfolio Guardian"])
@@ -16,13 +17,13 @@ def get_guardian_status():
     """Returns guardian operational status, rules, and recent auto-exit records."""
     return default_guardian.get_status()
 
-@router.post("/toggle")
+@router.post("/toggle", dependencies=[Depends(require_mutating_auth)])
 def toggle_guardian(req: ToggleGuardianRequest):
     """Enables or disables automated broker order execution."""
     default_guardian.set_enabled(req.enabled)
     return {"status": "success", "is_enabled": default_guardian.is_enabled}
 
-@router.post("/check_now")
+@router.post("/check_now", dependencies=[Depends(require_mutating_auth)])
 async def trigger_guardian_check():
     """Triggers an on-demand audit and executes any triggered exit rules."""
     return await default_guardian.check_and_execute_guardian_rules()

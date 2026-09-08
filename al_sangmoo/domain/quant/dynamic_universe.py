@@ -12,7 +12,7 @@ import sys
 import json
 import time
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
 from typing import Dict, Any, List, Optional, Tuple
 import pandas as pd
 import yfinance as yf
@@ -90,9 +90,9 @@ DYNAMIC_SLOT_QUOTAS = [14, 12, 10, 8, 6, 4, 2, 1, 1, 1, 1]
 
 
 def get_current_market_date() -> str:
-    """Returns the current trading session date string (YYYY-MM-DD) in US Eastern Time."""
-    now_ny = datetime.now(timezone(timedelta(hours=-4)))  # EDT
-    return now_ny.strftime("%Y-%m-%d")
+    """Returns the current trading session date string (YYYY-MM-DD) in US Eastern Time (DST-aware)."""
+    from al_sangmoo.core.market_time import now_us_eastern
+    return now_us_eastern().strftime("%Y-%m-%d")
 
 
 def evaluate_sector_momentum() -> List[Dict[str, Any]]:
@@ -182,8 +182,8 @@ def select_sector_candidates(sector: str, quota: int) -> List[str]:
     except Exception as e:
         logger.debug(f"[Dynamic Universe] Candidate ranking fallback for {sector}: {e}")
 
-    # Fallback: slice top candidates from predefined list
-    return candidates[:quota]
+    # Never slice the canned mega-cap list — that paints NVDA/AMD as live RS winners.
+    return []
 
 
 def build_dynamic_60_watchlist(force_refresh: bool = False) -> Dict[str, Any]:
@@ -270,6 +270,58 @@ def build_dynamic_60_watchlist(force_refresh: bool = False) -> Dict[str, Any]:
                 pass
 
     return snapshot_payload
+
+
+_SECTORS_CACHE: List[Dict[str, Any]] = []
+_SECTORS_MTIME = -1.0
+
+
+def load_universe_sectors() -> List[Dict[str, Any]]:
+    """Fast snapshot read mapped to the dashboard `universe_sectors` contract."""
+    global _SECTORS_CACHE, _SECTORS_MTIME
+    try:
+        mtime = os.path.getmtime(SNAPSHOT_FILE) if os.path.exists(SNAPSHOT_FILE) else 0.0
+    except OSError:
+        mtime = 0.0
+    if _SECTORS_CACHE and mtime == _SECTORS_MTIME:
+        return _SECTORS_CACHE
+    snapshot: Dict[str, Any] = {}
+    try:
+        if os.path.exists(SNAPSHOT_FILE):
+            with open(SNAPSHOT_FILE, "r", encoding="utf-8") as f:
+                snapshot = json.load(f) or {}
+    except Exception:
+        _SECTORS_CACHE = []
+        _SECTORS_MTIME = mtime
+        return _SECTORS_CACHE
+    rows = snapshot.get("sector_breakdown") or []
+    out: List[Dict[str, Any]] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        stocks = row.get("stocks") or row.get("selected_stocks") or []
+        try:
+            rs_val = float(row.get("rs_3m") or 0.0)
+        except (TypeError, ValueError):
+            rs_val = 0.0
+        out.append({
+            "rank": int(row.get("rank") or 0),
+            "sector": str(row.get("sector") or ""),
+            "etf": str(row.get("etf") or ""),
+            "rs_3m": round(rs_val, 2),
+            "quota": int(row.get("quota") or 0),
+            "stocks": [str(s).upper() for s in stocks if s],
+        })
+    out.sort(key=lambda x: x["rank"] or 99)
+    synth_rs = [round(15.0 - i * 2.0, 2) for i in range(len(out))]
+    got_rs = [round(float(r.get("rs_3m") or 0), 2) for r in out]
+    if out and got_rs == synth_rs:
+        for row in out:
+            row["stocks"] = []
+            row["rs_3m"] = 0.0
+    _SECTORS_CACHE = out
+    _SECTORS_MTIME = mtime
+    return out
 
 
 def get_dynamic_watchlist() -> List[str]:

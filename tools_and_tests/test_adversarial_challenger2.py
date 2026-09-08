@@ -516,10 +516,9 @@ def test_server_portfolio_endpoint_concurrency_and_latency():
         
         def fake_heavy_scan():
             time.sleep(0.5)
-            return ([], [], [], {"macro_stance": "NORMAL"})
+            return {"charts": {}, "macro": {}, "tier1": [], "tier2": []}
             
-        with patch("al_sangmoo_daily_bot.scan_and_select_2x2x2", side_effect=fake_heavy_scan), \
-             patch("server.build_dashboard_data", return_value={"charts": {}, "macro": {}}):
+        with patch("server.build_dashboard_data", side_effect=fake_heavy_scan):
             
             # Start background scan
             status, _ = await asgi_request(app, "POST", "/api/scan_now")

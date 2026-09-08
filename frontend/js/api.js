@@ -10,9 +10,22 @@ function getBaseUrl() {
     return '';
 }
 
+function authHeaders(extra) {
+    const headers = Object.assign({}, extra || {});
+    let key = '';
+    try {
+        if (typeof window !== 'undefined') {
+            key = String(window.AL_SANGMOO_API_KEY || window.localStorage.getItem('AL_SANGMOO_API_KEY') || '').trim();
+        }
+    } catch (e) { /* ignore */ }
+    if (key) headers['X-API-Key'] = key;
+    return headers;
+}
+
 export const ApiClient = {
     // Current in-flight chart abort controller
     _chartAbortController: null,
+    _inflightChartTicker: null,
 
     /**
      * Fetch complete executive dashboard feed
@@ -85,22 +98,33 @@ export const ApiClient = {
         // 1. Fast in-memory client cache (< 0.01ms)
         if (this._chartMemoryCache.has(cleanTicker)) {
             const cached = this._chartMemoryCache.get(cleanTicker);
-            if (Date.now() - cached.timestamp < 120000) { // 2-min cache
+            const cachedTk = String(cached?.data?.ticker || "").toUpperCase();
+            if (Date.now() - cached.timestamp < 3000 && (!cachedTk || cachedTk === cleanTicker)) {
+                if (this._chartAbortController && this._inflightChartTicker !== cleanTicker) {
+                    this._chartAbortController.abort();
+                }
                 return cached.data;
             }
         }
 
-        if (this._chartAbortController) {
+        if (this._chartAbortController && this._inflightChartTicker !== cleanTicker) {
             this._chartAbortController.abort();
         }
+        this._inflightChartTicker = cleanTicker;
         this._chartAbortController = new AbortController();
         const signal = this._chartAbortController.signal;
         const base = getBaseUrl();
+        const timeoutId = setTimeout(() => this._chartAbortController.abort(), 8000);
 
         try {
-            const res = await fetch(`${base}/api/chart/${encodeURIComponent(cleanTicker)}`, { signal });
+            const res = await fetch(`${base}/api/chart/${encodeURIComponent(cleanTicker)}?_=${Date.now()}`, { signal, cache: "no-store" });
             if (res.ok) {
                 const data = await res.json();
+                const payloadTk = String(data?.ticker || "").toUpperCase();
+                if (payloadTk && payloadTk !== cleanTicker) {
+                    console.warn(`[API] chart payload ticker ${payloadTk} != ${cleanTicker}`);
+                    return null;
+                }
                 this._chartMemoryCache.set(cleanTicker, { timestamp: Date.now(), data });
                 return data;
             }
@@ -109,6 +133,8 @@ export const ApiClient = {
                 return { aborted: true };
             }
             console.warn(`[API] /api/chart/${cleanTicker} fetch failed:`, err);
+        } finally {
+            clearTimeout(timeoutId);
         }
 
         return null;
@@ -139,7 +165,7 @@ export const ApiClient = {
         const base = getBaseUrl();
         const res = await fetch(`${base}/api/portfolio/buy`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify(order)
         });
         if (!res.ok) {
@@ -156,7 +182,7 @@ export const ApiClient = {
         const base = getBaseUrl();
         const res = await fetch(`${base}/api/portfolio/buy_top_pick`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
+            headers: authHeaders({ 'Content-Type': 'application/json' })
         });
         if (!res.ok) {
             const err = await res.json().catch(() => ({ detail: 'Top pick buy failed' }));
@@ -173,7 +199,7 @@ export const ApiClient = {
         const base = getBaseUrl();
         const res = await fetch(`${base}/api/portfolio/sell/${id}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ sell_price: Number(sellPrice), reason: reason })
         });
         if (!res.ok) {
@@ -188,7 +214,7 @@ export const ApiClient = {
      */
     async resetPortfolio() {
         const base = getBaseUrl();
-        const res = await fetch(`${base}/api/portfolio/reset`, { method: 'POST' });
+        const res = await fetch(`${base}/api/portfolio/reset`, { method: 'POST', headers: authHeaders() });
         if (!res.ok) {
             throw new Error('Portfolio reset failed');
         }
@@ -200,7 +226,7 @@ export const ApiClient = {
      */
     async triggerScanNow() {
         const base = getBaseUrl();
-        const res = await fetch(`${base}/api/scan_now`, { method: 'POST' });
+        const res = await fetch(`${base}/api/scan_now`, { method: 'POST', headers: authHeaders() });
         if (!res.ok) {
             const err = await res.json().catch(() => ({ detail: 'Scan trigger failed' }));
             throw new Error(err.detail || 'Scan trigger failed');
@@ -241,7 +267,7 @@ export const ApiClient = {
      */
     async triggerReconciliation() {
         const base = getBaseUrl();
-        const res = await fetch(`${base}/api/broker/reconcile`, { method: 'POST' });
+        const res = await fetch(`${base}/api/broker/reconcile`, { method: 'POST', headers: authHeaders() });
         if (!res.ok) {
             const err = await res.json().catch(() => ({ detail: 'Reconciliation failed' }));
             throw new Error(err.detail || 'Reconciliation failed');
@@ -270,7 +296,7 @@ export const ApiClient = {
         const base = getBaseUrl();
         const res = await fetch(`${base}/api/guardian/toggle`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ enabled })
         });
         if (!res.ok) throw new Error('Failed to toggle guardian');
@@ -282,7 +308,7 @@ export const ApiClient = {
      */
     async checkGuardianNow() {
         const base = getBaseUrl();
-        const res = await fetch(`${base}/api/guardian/check_now`, { method: 'POST' });
+        const res = await fetch(`${base}/api/guardian/check_now`, { method: 'POST', headers: authHeaders() });
         if (!res.ok) throw new Error('Failed to run guardian check');
         return await res.json();
     },
@@ -308,7 +334,7 @@ export const ApiClient = {
         const base = getBaseUrl();
         const res = await fetch(`${base}/api/autopilot/toggle`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ enabled })
         });
         if (!res.ok) throw new Error('Failed to toggle autopilot');
@@ -320,7 +346,7 @@ export const ApiClient = {
      */
     async triggerAutoPilotNow() {
         const base = getBaseUrl();
-        const res = await fetch(`${base}/api/autopilot/trigger_now`, { method: 'POST' });
+        const res = await fetch(`${base}/api/autopilot/trigger_now`, { method: 'POST', headers: authHeaders() });
         if (!res.ok) throw new Error('Failed to trigger autopilot cycle');
         return await res.json();
     },

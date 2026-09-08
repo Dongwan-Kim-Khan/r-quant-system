@@ -15,7 +15,7 @@ __pycache__/
 test_*.db*
 backups/*.db
 *.vtt
-.pytest_cache/
+node_modules/
 # KIS OAuth Tokens & Data Caches
 .kis_token_*.json
 data/.kis_token_*.json

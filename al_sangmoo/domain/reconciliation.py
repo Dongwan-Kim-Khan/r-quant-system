@@ -8,6 +8,7 @@ import logging
 from datetime import datetime
 from typing import Dict, Any, List
 
+from al_sangmoo.core.constants import derive_partial_tp_price, derive_stop_price, derive_target_price
 from al_sangmoo.infrastructure.brokers.kis_broker import default_kis_broker
 from al_sangmoo.infrastructure.persistence import (
     get_connection,
@@ -90,9 +91,9 @@ def check_sync(auto_calibrate: bool = True) -> Dict[str, Any]:
                     new_cost = b_qty * b_avg
                     pnl_pct = ((b_cur - b_avg) / b_avg * 100) if b_avg > 0 else 0.0
                     pnl_amt = new_val - new_cost
-                    target_pr = round(b_avg * 1.15, 2)
-                    stop_pr = round(b_avg * 0.96, 2)
-                    partial_tp = round(b_avg * 1.08, 2)
+                    target_pr = derive_target_price(b_avg)
+                    stop_pr = derive_stop_price(b_avg)
+                    partial_tp = derive_partial_tp_price(b_avg)
                     
                     cursor.execute("""
                     UPDATE my_portfolio
@@ -136,9 +137,9 @@ def check_sync(auto_calibrate: bool = True) -> Dict[str, Any]:
                     new_cost = b_qty * effective_avg
                     pnl_pct = ((b_cur - effective_avg) / effective_avg * 100) if effective_avg > 0 else 0.0
                     pnl_amt = new_val - new_cost
-                    target_pr = round(effective_avg * 1.15, 2)
-                    stop_pr = round(effective_avg * 0.96, 2)
-                    partial_tp = round(effective_avg * 1.08, 2)
+                    target_pr = derive_target_price(effective_avg)
+                    stop_pr = derive_stop_price(effective_avg)
+                    partial_tp = derive_partial_tp_price(effective_avg)
                     
                     cursor.execute("""
                     UPDATE my_portfolio
@@ -177,9 +178,9 @@ def check_sync(auto_calibrate: bool = True) -> Dict[str, Any]:
                     b_avg = float(b_item.get("avg_price", 0.0))
                     b_cur = float(b_item.get("current_price", b_avg))
                     total_cost = b_qty * b_avg
-                    target_pr = round(b_avg * 1.15, 2)
-                    stop_pr = round(b_avg * 0.96, 2)
-                    partial_tp = round(b_avg * 1.08, 2)
+                    target_pr = derive_target_price(b_avg)
+                    stop_pr = derive_stop_price(b_avg)
+                    partial_tp = derive_partial_tp_price(b_avg)
                     
                     cursor.execute("""
                     INSERT INTO my_portfolio (

@@ -7,7 +7,8 @@ Tailored for constrained capital environments (e.g. 10,000,000 KRW / $7,500).
 from typing import Dict, Any, List, Optional
 import math
 from al_sangmoo.domain.risk.position_sizer import calculate_slot_position_size
-from al_sangmoo.core.constants import STOCK_DICT, TICKER_SECTORS
+from al_sangmoo.core.constants import STOCK_DICT, TICKER_SECTORS, derive_stop_price, derive_target_price
+from al_sangmoo.core.feature_flags import use_residual_momentum
 
 
 def calculate_composite_conviction_score(
@@ -127,6 +128,10 @@ def rank_and_select_top_picks(
             is_breakout=is_breakout
         )
 
+        if use_residual_momentum():
+            residual = float(c.get("residual_momentum") or 0.0)
+            conviction_score = round(max(0.0, min(100.0, conviction_score + residual * 0.05)), 1)
+
         # Calculate Dynamic Regime position sizing for 10M KRW ($7,500)
         sizing = calculate_slot_position_size(
             portfolio_equity=portfolio_equity_usd,
@@ -143,8 +148,8 @@ def rank_and_select_top_picks(
             "strategy": c.get("strategy", "Tier 1 (거시 주도주)"),
             "strategy_code": c.get("strategy_code", "TIER_1_LEADER"),
             "price": price,
-            "target_price": round(price * 1.15, 2),
-            "stop_price": round(price * 0.96, 2),
+            "target_price": derive_target_price(price),
+            "stop_price": derive_stop_price(price),
             "conviction_score": conviction_score,
             "bull_score": score,
             "flow_ratio": flow_ratio,

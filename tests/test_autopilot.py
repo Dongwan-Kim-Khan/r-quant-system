@@ -41,7 +41,7 @@ class TestAutoPilotTrader(unittest.IsolatedAsyncioTestCase):
             res = await self.autopilot.run_autopilot_cycle(force_scan=False)
             self.assertIn(res.get("status"), ["skipped", "success"])
             if res.get("status") == "skipped":
-                self.assertIn(res.get("reason"), ["ALREADY_IN_WALLET", "ALREADY_IN_BROKER_HOLDINGS", "SLOTS_FULL", "BROKER_SLOTS_FULL", "NO_QUALIFIED_TOP_PICK"])
+                self.assertIn(res.get("reason"), ["ALREADY_IN_WALLET", "ALREADY_IN_BROKER_HOLDINGS", "SLOTS_FULL", "BROKER_SLOTS_FULL", "NO_QUALIFIED_TOP_PICK", "AUTO_BUY_DISABLED"])
 
 
 if __name__ == '__main__':

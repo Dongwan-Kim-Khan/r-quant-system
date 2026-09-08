@@ -1,6 +1,40 @@
 """
 Centralized Constants & Single Source of Truth for R-Sangmoo Quant Trading Platform.
 """
+import re
+
+# v2 constitution (fractional). Live buy stop = buy_price * (1 + STOP_LOSS_PCT)
+STOP_LOSS_PCT = -0.04
+TAKE_PROFIT_PCT = 0.15
+PARTIAL_TP_PCT = 0.08  # persisted display only; guardian does not partial-exit
+
+HARD_STOP_PCT = abs(STOP_LOSS_PCT) * 100.0       # 4.0 percentage points
+TRAILING_ACTIVATE_PCT = TAKE_PROFIT_PCT * 100.0  # 15.0 percentage points
+PARTIAL_TP_DISPLAY_PCT = PARTIAL_TP_PCT * 100.0  # 8.0 percentage points
+
+STOP_LOSS_MULT = 1.0 + STOP_LOSS_PCT             # 0.96
+TAKE_PROFIT_MULT = 1.0 + TAKE_PROFIT_PCT         # 1.15
+PARTIAL_TP_MULT = 1.0 + PARTIAL_TP_PCT           # 1.08
+
+
+def derive_stop_price(entry: float) -> float:
+    return round(float(entry) * STOP_LOSS_MULT, 2)
+
+
+def derive_target_price(entry: float) -> float:
+    return round(float(entry) * TAKE_PROFIT_MULT, 2)
+
+
+def is_market_ticker(ticker: str) -> bool:
+    """True for exchange symbols like NVDA / 005930.KS. False for test junk (W_0_12, SEED_1)."""
+    t = str(ticker or "").strip().upper()
+    if not t or "_" in t:
+        return False
+    return bool(re.match(r"^([A-Z]{1,5}|[0-9]{6})(\.(KS|KQ))?$", t))
+
+
+def derive_partial_tp_price(entry: float) -> float:
+    return round(float(entry) * PARTIAL_TP_MULT, 2)
 
 WATCHLIST = [
     # Mega Tech & AI Platforms (10)
@@ -163,9 +197,10 @@ TICKER_SECTORS = {
     "COST": "CONSUMER", "WMT": "CONSUMER", "NFLX": "CONSUMER", "DIS": "CONSUMER"
 }
 
-def get_macro_tailwind_sectors(msi_score: float = 65.0, us10y: float = 4.4, wti: float = 78.0, vix: float = 16.0) -> list:
+def get_macro_tailwind_sectors(msi_score: float = 50.0, us10y: float = 4.4, wti: float = 78.0, vix: float = 16.0) -> list:
     """
     Returns active institutional macro tailwind sectors based on Gate-0 climate.
+    MSI is a RISK index: higher MSI rotates toward defense / value, lower MSI toward growth.
     """
     tailwind = []
     

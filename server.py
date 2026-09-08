@@ -15,7 +15,8 @@ import uvicorn
 
 from contextlib import asynccontextmanager
 import pandas as pd
-import db_manager
+from al_sangmoo.core.feature_flags import use_webhook_router
+from al_sangmoo.infrastructure.persistence import get_live_portfolio, init_database
 from al_sangmoo.api.hub import hub
 from al_sangmoo.interfaces.api.routers import (
     dashboard,
@@ -24,7 +25,8 @@ from al_sangmoo.interfaces.api.routers import (
     scanner,
     broker,
     guardian,
-    autopilot
+    autopilot,
+    webhook,
 )
 from al_sangmoo.domain.risk.portfolio_guardian import default_guardian
 from al_sangmoo.domain.risk.autopilot_trader import default_autopilot
@@ -170,7 +172,7 @@ async def lifespan(app: FastAPI):
     except Exception:
         pass
 
-    db_manager.init_database()
+    init_database()
     default_guardian.start()
     default_autopilot.start()
 
@@ -238,12 +240,21 @@ async def add_security_headers_middleware(request: Request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["X-XSS-Protection"] = "1; mode=block"
+    path = request.url.path
+    if path == "/" or path.endswith(".html"):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    elif path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-cache, must-revalidate"
+    elif path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
     return response
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
 FRONTEND_INDEX = os.path.join(FRONTEND_DIR, "index.html")
-LEGACY_DASHBOARD = os.path.join(BASE_DIR, "al_sangmoo_dashboard.html")
 
 # Mount Modular Static Assets (/static/css/terminal.css, /static/js/*.js)
 if os.path.exists(FRONTEND_DIR):
@@ -257,16 +268,21 @@ app.include_router(scanner.router)
 app.include_router(broker.router)
 app.include_router(guardian.router)
 app.include_router(autopilot.router)
+if use_webhook_router():
+    app.include_router(webhook.router)
 
 
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_dashboard():
     """Serves the modular Bloomberg dark terminal frontend index.html."""
+    html_headers = {
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+        "Pragma": "no-cache",
+        "Expires": "0",
+    }
     if os.path.exists(FRONTEND_INDEX):
-        return FileResponse(FRONTEND_INDEX, media_type="text/html")
-    elif os.path.exists(LEGACY_DASHBOARD):
-        return FileResponse(LEGACY_DASHBOARD, media_type="text/html")
+        return FileResponse(FRONTEND_INDEX, media_type="text/html", headers=html_headers)
     return HTMLResponse("<h1>R Quant Terminal: Frontend Not Found</h1>", status_code=404)
 
 @app.get("/favicon.ico", include_in_schema=False)
@@ -293,7 +309,7 @@ async def websocket_live_hub(websocket: WebSocket):
     if not connected:
         return
     try:
-        p_data = db_manager.get_live_portfolio()
+        p_data = get_live_portfolio()
         await websocket.send_json({"type": "connected", "event": "connected", "data": {"portfolio": p_data}})
         while True:
             msg = await websocket.receive_text()

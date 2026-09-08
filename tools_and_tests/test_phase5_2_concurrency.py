@@ -189,13 +189,7 @@ def test_tier1_r1_background_scan_worker():
         server._is_scanning = False
         
         with patch.object(server.hub, "broadcast", side_effect=mock_broadcast), \
-             patch("al_sangmoo_daily_bot.scan_and_select_2x2x2", return_value=(
-                 [{"ticker": "NVDA", "close": 130.0}],
-                 [{"ticker": "AAPL", "close": 220.0}],
-                 [{"ticker": "TSLA", "close": 210.0}],
-                 {"macro_stance": "BULL", "msi_score": 75.0}
-             )), \
-             patch("server.build_dashboard_data", return_value={"charts": {}, "macro": {}}):
+             patch("server.build_dashboard_data", return_value={"charts": {}, "macro": {}, "tier1": [], "tier2": []}):
             
             await server._run_background_scan_pipeline()
             
@@ -211,7 +205,7 @@ def test_tier1_r1_background_scan_worker():
 
             # Test exception resilience in worker
             events_broadcast.clear()
-            with patch("al_sangmoo_daily_bot.scan_and_select_2x2x2", side_effect=RuntimeError("Simulated Scan Failure")):
+            with patch("server.build_dashboard_data", side_effect=RuntimeError("Simulated Scan Failure")):
                 await server._run_background_scan_pipeline()
                 assert server._is_scanning is False, "_is_scanning must reset to False in finally block on exception"
                 err_statuses = [e[1].get("status") for e in events_broadcast if e[0] == "scan_status"]
@@ -343,10 +337,9 @@ def test_tier2_r1_nonblocking_scan_latency():
         
         def mock_heavy_scan():
             time.sleep(1.0)
-            return ([], [], [], {"macro_stance": "NORMAL"})
+            return {"charts": {}, "macro": {}, "tier1": [], "tier2": []}
             
-        with patch("al_sangmoo_daily_bot.scan_and_select_2x2x2", side_effect=mock_heavy_scan), \
-             patch("server.build_dashboard_data", return_value={"charts": {}, "macro": {}}):
+        with patch("server.build_dashboard_data", side_effect=mock_heavy_scan):
             
             t0 = time.time()
             status, headers, body = await asgi_request(app, "POST", "/api/scan_now")
@@ -411,10 +404,9 @@ def test_tier2_r1_concurrent_read_latency_during_scan():
         
         def mock_heavy_scan():
             time.sleep(0.8)
-            return ([], [], [], {"macro_stance": "NORMAL"})
+            return {"charts": {}, "macro": {}, "tier1": [], "tier2": []}
             
-        with patch("al_sangmoo_daily_bot.scan_and_select_2x2x2", side_effect=mock_heavy_scan), \
-             patch("server.build_dashboard_data", return_value={"charts": {}, "macro": {}}):
+        with patch("server.build_dashboard_data", side_effect=mock_heavy_scan):
             
             await asgi_request(app, "POST", "/api/scan_now")
             assert server._is_scanning is True
@@ -458,10 +450,9 @@ def test_tier3_r1_scan_storm_single_flight_lock():
             nonlocal scan_execution_count
             scan_execution_count += 1
             time.sleep(0.4)
-            return ([], [], [], {"macro_stance": "NORMAL"})
+            return {"charts": {}, "macro": {}, "tier1": [], "tier2": []}
             
-        with patch("al_sangmoo_daily_bot.scan_and_select_2x2x2", side_effect=mock_scan), \
-             patch("server.build_dashboard_data", return_value={"charts": {}, "macro": {}}):
+        with patch("server.build_dashboard_data", side_effect=mock_scan):
             
             results = await asyncio.gather(*[asgi_request(app, "POST", "/api/scan_now") for _ in range(20)])
             

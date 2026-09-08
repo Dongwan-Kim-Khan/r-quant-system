@@ -5,6 +5,9 @@ from typing import Dict, Any, List
 import re
 import asyncio
 
+from al_sangmoo.core.feature_flags import use_nautilus_order_fsm
+from al_sangmoo.domain.risk.order_state_machine import default_order_fsm
+
 TICKER_REGEX = re.compile(r'^[A-Za-z0-9.\^=-]{1,15}$')
 ORDER_MUTEX = asyncio.Lock()
 
@@ -16,7 +19,9 @@ def validate_pre_trade_guardrail(
     active_holdings: List[Dict[str, Any]],
     msi_score: float = 50.0,
     max_single_asset_pct: float = 0.25,
-    min_order_dollar: float = 10.0
+    min_order_dollar: float = 10.0,
+    ask_price: float = None,
+    bid_price: float = None,
 ) -> Dict[str, Any]:
     """
     Executes mandatory pre-trade sanity & risk boundary checks.
@@ -34,8 +39,9 @@ def validate_pre_trade_guardrail(
     if order_value < min_order_dollar:
         return {"allowed": False, "reason": f"최소 주문 금액(${min_order_dollar}) 미만입니다."}
 
-    # 2. Systemic Macro Guardrail (CASH_EXIT Rule)
-    if msi_score >= 75.0:
+    # 2. Systemic Macro Guardrail (CASH_EXIT Rule) — MSI is a risk index
+    from al_sangmoo.domain.quant.macro import is_new_buy_blocked
+    if is_new_buy_blocked(msi_score):
         return {
             "allowed": False,
             "reason": f"[CASH_EXIT] 거시 위험 지수 임계치 초과(MSI {msi_score:.1f}점)로 신규 매수가 전면 차단되었습니다."
@@ -53,6 +59,14 @@ def validate_pre_trade_guardrail(
                 "allowed": False,
                 "reason": f"단일 종목 최대 한도({max_single_asset_pct*100:.0f}%, ${max_allowed_val:,.2f})를 초과합니다 (요청금액: ${combined_val:,.2f})."
             }
+
+    if use_nautilus_order_fsm():
+        try:
+            default_order_fsm.pre_trade_risk_check(
+                ticker_clean, "BUY", ask_price=ask_price, bid_price=bid_price
+            )
+        except (RuntimeError, ValueError) as exc:
+            return {"allowed": False, "reason": str(exc)}
 
     return {
         "allowed": True,

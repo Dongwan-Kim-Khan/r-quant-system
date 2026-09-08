@@ -326,10 +326,9 @@ def challenge_2a_100_coroutine_scan_storm():
             nonlocal scan_count
             scan_count += 1
             time.sleep(0.5)
-            return ([], [], [], {"macro_stance": "NORMAL"})
+            return {"charts": {}, "macro": {}, "tier1": [], "tier2": []}
             
-        with patch("al_sangmoo_daily_bot.scan_and_select_2x2x2", side_effect=mock_heavy_scan), \
-             patch("server.build_dashboard_data", return_value={"charts": {}, "macro": {}}):
+        with patch("server.build_dashboard_data", side_effect=mock_heavy_scan):
             
             t0 = time.time()
             tasks = [asgi_request(app, "POST", "/api/scan_now") for _ in range(100)]
@@ -386,7 +385,7 @@ def challenge_2b_scan_pipeline_exception_recovery():
             
         with patch.object(server.hub, "broadcast", side_effect=capture_broadcast):
             # 1. Simulate scan crash
-            with patch("al_sangmoo_daily_bot.scan_and_select_2x2x2", side_effect=RuntimeError("Simulated Fatal Quant Error")):
+            with patch("server.build_dashboard_data", side_effect=RuntimeError("Simulated Fatal Quant Error")):
                 status, _, body = await asgi_request(app, "POST", "/api/scan_now")
                 assert status == 200
                 assert json.loads(body.decode("utf-8"))["status"] == "scanning_started"
@@ -403,8 +402,7 @@ def challenge_2b_scan_pipeline_exception_recovery():
                 
             # 2. Trigger new scan immediately - should succeed
             broadcast_events.clear()
-            with patch("al_sangmoo_daily_bot.scan_and_select_2x2x2", return_value=([], [], [], {"macro_stance": "NORMAL"})), \
-                 patch("server.build_dashboard_data", return_value={"charts": {}, "macro": {}}):
+            with patch("server.build_dashboard_data", return_value={"charts": {}, "macro": {}, "tier1": [], "tier2": []}):
                 status2, _, body2 = await asgi_request(app, "POST", "/api/scan_now")
                 assert status2 == 200
                 assert json.loads(body2.decode("utf-8"))["status"] == "scanning_started"
@@ -453,10 +451,9 @@ def challenge_3a_event_loop_latency_under_heavy_scan():
                 # Simulate CPU work in thread
                 sum(i*i for i in range(500))
                 time.sleep(0.005)
-            return ([], [], [], {"macro_stance": "NORMAL"})
+            return {"charts": {}, "macro": {}, "tier1": [], "tier2": []}
             
-        with patch("al_sangmoo_daily_bot.scan_and_select_2x2x2", side_effect=simulated_heavy_scan), \
-             patch("server.build_dashboard_data", return_value={"charts": {}, "macro": {}}):
+        with patch("server.build_dashboard_data", side_effect=simulated_heavy_scan):
             
             # Start background scan
             st, _, b = await asgi_request(app, "POST", "/api/scan_now")
@@ -537,10 +534,9 @@ def challenge_3b_websocket_ping_pong_jitter_during_active_scan():
             while not release_scan_event.is_set():
                 sum(i*i for i in range(500))
                 time.sleep(0.005)
-            return ([], [], [], {"macro_stance": "NORMAL"})
+            return {"charts": {}, "macro": {}, "tier1": [], "tier2": []}
             
-        with patch("al_sangmoo_daily_bot.scan_and_select_2x2x2", side_effect=simulated_heavy_scan), \
-             patch("server.build_dashboard_data", return_value={"charts": {}, "macro": {}}):
+        with patch("server.build_dashboard_data", side_effect=simulated_heavy_scan):
             
             # Start background scan
             await asgi_request(app, "POST", "/api/scan_now")

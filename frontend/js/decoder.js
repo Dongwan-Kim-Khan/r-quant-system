@@ -59,7 +59,13 @@ export const QuantDecoder = {
             }
         }
 
-        if (!liveChartData) return;
+        if (!liveChartData || (liveChartData.ticker && String(liveChartData.ticker).toUpperCase() !== String(ticker || "").toUpperCase())) {
+            ["sigKijunVal", "sigTenkanVal", "sigCloudVal", "sigRsVal"].forEach((id) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = "—";
+            });
+            return;
+        }
 
         // 2. Card 1: 26D Kijun Support (생명선 지지)
         if (liveChartData.kijun) {

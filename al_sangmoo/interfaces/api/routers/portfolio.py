@@ -5,14 +5,24 @@ import logging
 import asyncio
 from datetime import datetime
 from typing import Optional
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
 
-import db_manager
 from al_sangmoo.api.hub import hub
+from al_sangmoo.core.auth import require_mutating_auth
+from al_sangmoo.infrastructure.persistence import (
+    add_portfolio_buy,
+    get_live_portfolio,
+    get_trade_history_records,
+    record_execution_log,
+    record_portfolio_sell,
+    reset_all_holdings,
+)
 from al_sangmoo.infrastructure.brokers.kis_broker import default_kis_broker
 from al_sangmoo.domain.risk.order_guardrail import validate_pre_trade_guardrail, ORDER_MUTEX
+from al_sangmoo.domain.reconciliation import check_sync
+from al_sangmoo.infrastructure.idempotent_order import is_broker_order_ack
 
 logger = logging.getLogger(__name__)
 
@@ -72,8 +82,6 @@ class SellOrder(BaseModel):
             raise ValueError("유효하지 않은 사유 형식입니다. 특수문자가 제한됩니다.")
         return clean
 
-from al_sangmoo.domain.reconciliation import check_sync
-
 @router.get("")
 def get_portfolio(reconcile: bool = False):
     """Returns active portfolio holdings and total account equity directly from SQLite SSOT (CQRS Pure Read)."""
@@ -82,16 +90,16 @@ def get_portfolio(reconcile: bool = False):
             check_sync(auto_calibrate=True)
         except Exception as e:
             logger.warning(f"Reconciliation during get_portfolio failed: {e}")
-    return db_manager.get_live_portfolio()
+    return get_live_portfolio()
 
-@router.post("/sync")
+@router.post("/sync", dependencies=[Depends(require_mutating_auth)])
 async def sync_portfolio_with_broker(auto_calibrate: bool = True):
     """
     Synchronizes and calibrates local SQLite portfolio against live/virtual KIS broker account.
     Calibrates exact fill prices (pchs_avg_pric), quantities, and splits.
     """
     audit_report = check_sync(auto_calibrate=auto_calibrate)
-    p_data = db_manager.get_live_portfolio()
+    p_data = get_live_portfolio()
     await hub.broadcast("portfolio_update", p_data)
     return {
         "status": "success",
@@ -99,7 +107,7 @@ async def sync_portfolio_with_broker(auto_calibrate: bool = True):
         "portfolio": p_data
     }
 
-@router.post("/buy")
+@router.post("/buy", dependencies=[Depends(require_mutating_auth)])
 async def buy_stock(order: BuyOrder):
     """
     Executes buy order via KIS Broker Gateway (if configured) and updates local SQLite portfolio.
@@ -143,7 +151,7 @@ async def buy_stock(order: BuyOrder):
                 order_type="00",
                 exchange=order.exchange or "NASD"
             )
-            if broker_res.get("status") not in ("submitted", "filled"):
+            if not is_broker_order_ack(broker_res.get("status")):
                 reason = broker_res.get("reason", "증권사 주문 전송 실패")
                 if any(kw in str(reason) for kw in ["초당 거래건수", "EGW00201", "장종료", "모의투자", "40580000"]):
                     logger.warning(f"Broker buy warning ({reason}). Proceeding with local SQLite order.")
@@ -155,14 +163,14 @@ async def buy_stock(order: BuyOrder):
                 broker_msg = broker_res.get("message")
 
         # 2. Record to local SQLite SSOT portfolio
-        inserted_id = db_manager.add_portfolio_buy(
+        inserted_id = add_portfolio_buy(
             ticker=ticker_clean,
             buy_price=price,
             quantity=qty,
             buy_date=order.buy_date
         )
 
-        p_data = db_manager.get_live_portfolio()
+        p_data = get_live_portfolio()
         await hub.broadcast("portfolio_update", p_data)
 
         mode_label = broker_status.get("mode", "SIMULATOR") if default_kis_broker.is_configured() else "SIMULATOR"
@@ -172,7 +180,7 @@ async def buy_stock(order: BuyOrder):
 
         # Record execution audit log
         try:
-            db_manager.record_execution_log(
+            record_execution_log(
                 ticker=ticker_clean,
                 side="BUY",
                 quantity=qty,
@@ -193,7 +201,7 @@ async def buy_stock(order: BuyOrder):
             "broker_message": broker_msg
         }
 
-@router.post("/sell/{position_id}")
+@router.post("/sell/{position_id}", dependencies=[Depends(require_mutating_auth)])
 async def sell_stock(position_id: int, order: SellOrder):
     """
     Executes sell order via KIS Broker Gateway (if configured) and updates local SQLite portfolio.
@@ -204,7 +212,7 @@ async def sell_stock(position_id: int, order: SellOrder):
             raise HTTPException(status_code=400, detail="유효하지 않은 포지션 ID입니다.")
 
         # 1. Retrieve holding details from SQLite
-        live_port = db_manager.get_live_portfolio()
+        live_port = get_live_portfolio()
         holding_to_sell = None
         for h in live_port.get("holdings", []):
             if int(h["id"]) == int(position_id):
@@ -231,7 +239,7 @@ async def sell_stock(position_id: int, order: SellOrder):
                 order_type="00",
                 exchange=order.exchange or "NASD"
             )
-            if broker_res.get("status") not in ("submitted", "filled"):
+            if not is_broker_order_ack(broker_res.get("status")):
                 reason = broker_res.get("reason", "증권사 매도 주문 전송 실패")
                 # If broker reports no broker balance or rate limit glitch (e.g. unfilled limit order or paper discrepancy),
                 # allow local ledger liquidation to prevent frozen UI positions
@@ -245,7 +253,7 @@ async def sell_stock(position_id: int, order: SellOrder):
                 broker_msg = broker_res.get("message")
 
         # 3. Update SQLite portfolio to SOLD
-        success = db_manager.record_portfolio_sell(
+        success = record_portfolio_sell(
             holding_id=position_id,
             sell_price=price,
             sell_date=order.sell_date,
@@ -254,7 +262,7 @@ async def sell_stock(position_id: int, order: SellOrder):
         if not success:
             raise HTTPException(status_code=404, detail="포지션 청산 기록에 실패했습니다.")
 
-        p_data = db_manager.get_live_portfolio()
+        p_data = get_live_portfolio()
         await hub.broadcast("portfolio_update", p_data)
 
         msg = f"포지션 #{position_id} ({ticker_clean} {qty}주) 매도 청산 완료"
@@ -263,7 +271,7 @@ async def sell_stock(position_id: int, order: SellOrder):
 
         # Record execution audit log
         try:
-            db_manager.record_execution_log(
+            record_execution_log(
                 ticker=ticker_clean,
                 side="SELL",
                 quantity=float(qty),
@@ -283,7 +291,7 @@ async def sell_stock(position_id: int, order: SellOrder):
             "broker_message": broker_msg
         }
 
-@router.post("/buy_top_pick")
+@router.post("/buy_top_pick", dependencies=[Depends(require_mutating_auth)])
 async def buy_top_pick():
     """
     Directly buys the Goldman Sachs-style #1 Top Conviction Pick
@@ -317,17 +325,17 @@ async def buy_top_pick():
 
 
 
-@router.post("/reset")
+@router.post("/reset", dependencies=[Depends(require_mutating_auth)])
 async def reset_portfolio():
     """Resets simulated portfolio holdings."""
-    db_manager.reset_all_holdings()
-    p_data = db_manager.get_live_portfolio()
+    reset_all_holdings()
+    p_data = get_live_portfolio()
     await hub.broadcast("portfolio_update", p_data)
     return {"status": "success", "message": "포트폴리오 계좌가 성공적으로 초기화(비우기)되었습니다."}
 
 @router.get("/history")
 def get_portfolio_history():
     """Returns all past closed trades and realized returns."""
-    return db_manager.get_trade_history_records()
+    return get_trade_history_records()
 
 

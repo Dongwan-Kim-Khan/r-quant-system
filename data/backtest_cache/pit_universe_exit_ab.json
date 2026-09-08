@@ -1,0 +1,1222 @@
+{
+  "meta": {
+    "method": "Freeze dynamic-60 at snapshot using sector 3M RS quotas; drop names not listed yet; HTML vs LIVE exits from snapshot to 2026-08-28.",
+    "caveat": "Does not restore delisted/acquired names missing from today's master book. Removes future IPOs and 2026-watchlist look-ahead.",
+    "initial": 100000.0,
+    "friction": {
+      "slippage_bps": 10.0,
+      "fee_bps": 8.0
+    },
+    "elapsed_sec": 35.7
+  },
+  "windows": {
+    "2018-08-31": {
+      "pit": {
+        "asof": "2018-08-31",
+        "n": 57,
+        "watchlist": [
+          "REGN",
+          "VRTX",
+          "LLY",
+          "BIIB",
+          "BMY",
+          "PFE",
+          "ISRG",
+          "MRK",
+          "TMO",
+          "MDT",
+          "JNJ",
+          "AMGN",
+          "UNH",
+          "GILD",
+          "LULU",
+          "COST",
+          "TJX",
+          "ROST",
+          "WMT",
+          "PG",
+          "PEP",
+          "LOW",
+          "TGT",
+          "NKE",
+          "CMG",
+          "HD",
+          "MDB",
+          "ZS",
+          "TEAM",
+          "FTNT",
+          "DOCU",
+          "PANW",
+          "OKTA",
+          "AMZN",
+          "AAPL",
+          "CRM",
+          "DELL",
+          "MSFT",
+          "GOOGL",
+          "NOW",
+          "INTU",
+          "KKR",
+          "BX",
+          "MSTR",
+          "V",
+          "PYPL",
+          "MA",
+          "HWM",
+          "HEI",
+          "BAH",
+          "HII",
+          "TT",
+          "GWW",
+          "SHW",
+          "SRE",
+          "WBD",
+          "AMD"
+        ],
+        "sectors": [
+          {
+            "rank": 1,
+            "sector": "HEALTHCARE",
+            "etf": "XLV",
+            "rs_3m": 11.11,
+            "quota": 14,
+            "selected": [
+              "REGN",
+              "VRTX",
+              "LLY",
+              "BIIB",
+              "BMY",
+              "PFE",
+              "ISRG",
+              "MRK",
+              "TMO",
+              "MDT",
+              "JNJ",
+              "AMGN",
+              "UNH",
+              "GILD"
+            ],
+            "selected_rs": [
+              {
+                "ticker": "REGN",
+                "rs_3m": 30.43
+              },
+              {
+                "ticker": "VRTX",
+                "rs_3m": 26.54
+              },
+              {
+                "ticker": "LLY",
+                "rs_3m": 24.56
+              },
+              {
+                "ticker": "BIIB",
+                "rs_3m": 18.37
+              },
+              {
+                "ticker": "BMY",
+                "rs_3m": 16.62
+              },
+              {
+                "ticker": "PFE",
+                "rs_3m": 13.94
+              },
+              {
+                "ticker": "ISRG",
+                "rs_3m": 13.74
+              },
+              {
+                "ticker": "MRK",
+                "rs_3m": 11.73
+              },
+              {
+                "ticker": "TMO",
+                "rs_3m": 11.33
+              },
+              {
+                "ticker": "MDT",
+                "rs_3m": 11.25
+              },
+              {
+                "ticker": "JNJ",
+                "rs_3m": 10.87
+              },
+              {
+                "ticker": "AMGN",
+                "rs_3m": 9.95
+              },
+              {
+                "ticker": "UNH",
+                "rs_3m": 9.83
+              },
+              {
+                "ticker": "GILD",
+                "rs_3m": 8.09
+              }
+            ]
+          },
+          {
+            "rank": 2,
+            "sector": "CONSUMER_RETAIL",
+            "etf": "XLY",
+            "rs_3m": 7.93,
+            "quota": 12,
+            "selected": [
+              "LULU",
+              "COST",
+              "TJX",
+              "ROST",
+              "WMT",
+              "PG",
+              "PEP",
+              "LOW",
+              "TGT",
+              "NKE",
+              "CMG",
+              "HD"
+            ],
+            "selected_rs": [
+              {
+                "ticker": "LULU",
+                "rs_3m": 24.89
+              },
+              {
+                "ticker": "COST",
+                "rs_3m": 17.84
+              },
+              {
+                "ticker": "TJX",
+                "rs_3m": 16.95
+              },
+              {
+                "ticker": "ROST",
+                "rs_3m": 14.17
+              },
+              {
+                "ticker": "WMT",
+                "rs_3m": 13.28
+              },
+              {
+                "ticker": "PG",
+                "rs_3m": 12.14
+              },
+              {
+                "ticker": "PEP",
+                "rs_3m": 11.78
+              },
+              {
+                "ticker": "LOW",
+                "rs_3m": 11.54
+              },
+              {
+                "ticker": "TGT",
+                "rs_3m": 11.46
+              },
+              {
+                "ticker": "NKE",
+                "rs_3m": 11.01
+              },
+              {
+                "ticker": "CMG",
+                "rs_3m": 4.82
+              },
+              {
+                "ticker": "HD",
+                "rs_3m": 4.6
+              }
+            ]
+          },
+          {
+            "rank": 3,
+            "sector": "CYBER_SAAS",
+            "etf": "CIBR",
+            "rs_3m": 5.6,
+            "quota": 10,
+            "selected": [
+              "MDB",
+              "ZS",
+              "TEAM",
+              "FTNT",
+              "DOCU",
+              "PANW",
+              "OKTA"
+            ],
+            "selected_rs": [
+              {
+                "ticker": "MDB",
+                "rs_3m": 46.14
+              },
+              {
+                "ticker": "ZS",
+                "rs_3m": 42.02
+              },
+              {
+                "ticker": "TEAM",
+                "rs_3m": 35.01
+              },
+              {
+                "ticker": "FTNT",
+                "rs_3m": 32.53
+              },
+              {
+                "ticker": "DOCU",
+                "rs_3m": 14.38
+              },
+              {
+                "ticker": "PANW",
+                "rs_3m": 13.39
+              },
+              {
+                "ticker": "OKTA",
+                "rs_3m": 13.28
+              }
+            ]
+          },
+          {
+            "rank": 4,
+            "sector": "MEGA_TECH",
+            "etf": "XLK",
+            "rs_3m": 5.13,
+            "quota": 8,
+            "selected": [
+              "AMZN",
+              "AAPL",
+              "CRM",
+              "DELL",
+              "MSFT",
+              "GOOGL",
+              "NOW",
+              "INTU"
+            ],
+            "selected_rs": [
+              {
+                "ticker": "AMZN",
+                "rs_3m": 18.65
+              },
+              {
+                "ticker": "AAPL",
+                "rs_3m": 17.75
+              },
+              {
+                "ticker": "CRM",
+                "rs_3m": 13.84
+              },
+              {
+                "ticker": "DELL",
+                "rs_3m": 10.99
+              },
+              {
+                "ticker": "MSFT",
+                "rs_3m": 9.92
+              },
+              {
+                "ticker": "GOOGL",
+                "rs_3m": 7.02
+              },
+              {
+                "ticker": "NOW",
+                "rs_3m": 5.52
+              },
+              {
+                "ticker": "INTU",
+                "rs_3m": 5.4
+              }
+            ]
+          },
+          {
+            "rank": 5,
+            "sector": "FINANCIALS",
+            "etf": "XLF",
+            "rs_3m": 3.21,
+            "quota": 6,
+            "selected": [
+              "KKR",
+              "BX",
+              "MSTR",
+              "V",
+              "PYPL",
+              "MA"
+            ],
+            "selected_rs": [
+              {
+                "ticker": "KKR",
+                "rs_3m": 16.17
+              },
+              {
+                "ticker": "BX",
+                "rs_3m": 13.85
+              },
+              {
+                "ticker": "MSTR",
+                "rs_3m": 13.47
+              },
+              {
+                "ticker": "V",
+                "rs_3m": 9.98
+              },
+              {
+                "ticker": "PYPL",
+                "rs_3m": 8.56
+              },
+              {
+                "ticker": "MA",
+                "rs_3m": 8.13
+              }
+            ]
+          },
+          {
+            "rank": 6,
+            "sector": "DEFENSE_AERO",
+            "etf": "ITA",
+            "rs_3m": 2.8,
+            "quota": 4,
+            "selected": [
+              "HWM",
+              "HEI",
+              "BAH",
+              "HII"
+            ],
+            "selected_rs": [
+              {
+                "ticker": "HWM",
+                "rs_3m": 26.3
+              },
+              {
+                "ticker": "HEI",
+                "rs_3m": 19.61
+              },
+              {
+                "ticker": "BAH",
+                "rs_3m": 13.16
+              },
+              {
+                "ticker": "HII",
+                "rs_3m": 9.77
+              }
+            ]
+          },
+          {
+            "rank": 7,
+            "sector": "INDUSTRIALS",
+            "etf": "XLI",
+            "rs_3m": 2.47,
+            "quota": 2,
+            "selected": [
+              "TT",
+              "GWW"
+            ],
+            "selected_rs": [
+              {
+                "ticker": "TT",
+                "rs_3m": 14.57
+              },
+              {
+                "ticker": "GWW",
+                "rs_3m": 12.56
+              }
+            ]
+          },
+          {
+            "rank": 8,
+            "sector": "MATERIALS",
+            "etf": "XLB",
+            "rs_3m": -0.99,
+            "quota": 1,
+            "selected": [
+              "SHW"
+            ],
+            "selected_rs": [
+              {
+                "ticker": "SHW",
+                "rs_3m": 16.69
+              }
+            ]
+          },
+          {
+            "rank": 9,
+            "sector": "POWER_ENERGY",
+            "etf": "XLE",
+            "rs_3m": -1.46,
+            "quota": 1,
+            "selected": [
+              "SRE"
+            ],
+            "selected_rs": [
+              {
+                "ticker": "SRE",
+                "rs_3m": 12.91
+              }
+            ]
+          },
+          {
+            "rank": 10,
+            "sector": "COMMUNICATION",
+            "etf": "XLC",
+            "rs_3m": -1.56,
+            "quota": 1,
+            "selected": [
+              "WBD"
+            ],
+            "selected_rs": [
+              {
+                "ticker": "WBD",
+                "rs_3m": 28.01
+              }
+            ]
+          },
+          {
+            "rank": 11,
+            "sector": "SEMICONDUCTOR",
+            "etf": "SMH",
+            "rs_3m": -1.77,
+            "quota": 1,
+            "selected": [
+              "AMD"
+            ],
+            "selected_rs": [
+              {
+                "ticker": "AMD",
+                "rs_3m": 69.49
+              }
+            ]
+          }
+        ],
+        "unlisted_count": 21
+      },
+      "html": {
+        "final_equity": 116949.37,
+        "total_return_pct": 16.95,
+        "cagr_pct": 1.98,
+        "sharpe": 0.199,
+        "mdd_pct": -53.4,
+        "n_days": 2008,
+        "start": "2018-08-31",
+        "end": "2026-08-28",
+        "trades": {
+          "n": 238,
+          "win_rate": 23.11,
+          "profit_factor": 1.225,
+          "avg_pnl": 0.803,
+          "median_pnl": -4.096,
+          "avg_bars": 23.4,
+          "reasons": {
+            "HARD_STOP": {
+              "n": 181,
+              "avg_pnl": -4.667,
+              "share_pct": 76.1
+            },
+            "TRAILING": {
+              "n": 54,
+              "avg_pnl": 17.331,
+              "share_pct": 22.7
+            },
+            "EOB": {
+              "n": 3,
+              "avg_pnl": 33.288,
+              "share_pct": 1.3
+            }
+          }
+        }
+      },
+      "live": {
+        "final_equity": 89259.9,
+        "total_return_pct": -10.74,
+        "cagr_pct": -1.42,
+        "sharpe": 0.07,
+        "mdd_pct": -68.92,
+        "n_days": 2008,
+        "start": "2018-08-31",
+        "end": "2026-08-28",
+        "trades": {
+          "n": 489,
+          "win_rate": 29.24,
+          "profit_factor": 1.088,
+          "avg_pnl": 0.226,
+          "median_pnl": -2.426,
+          "avg_bars": 11.1,
+          "reasons": {
+            "KIJUN": {
+              "n": 221,
+              "avg_pnl": 0.018,
+              "share_pct": 45.2
+            },
+            "HARD_STOP": {
+              "n": 212,
+              "avg_pnl": -4.801,
+              "share_pct": 43.4
+            },
+            "TRAILING": {
+              "n": 53,
+              "avg_pnl": 19.443,
+              "share_pct": 10.8
+            },
+            "EOB": {
+              "n": 3,
+              "avg_pnl": 31.329,
+              "share_pct": 0.6
+            }
+          }
+        }
+      },
+      "ols_live_on_html": {
+        "beta": [
+          -6.9e-05,
+          0.804652
+        ],
+        "se": [
+          0.000255,
+          0.018366
+        ],
+        "t": [
+          -0.273,
+          43.811
+        ],
+        "p": [
+          0.785,
+          0.0
+        ],
+        "r2": 0.4891,
+        "n": 2007,
+        "alpha": {
+          "daily_pct": -0.0069,
+          "annualized_pct": -1.74,
+          "t": -0.273,
+          "p": 0.785
+        },
+        "spec": "R_live = a + b*R_html + e"
+      },
+      "ols_vs_qqq": {
+        "html": {
+          "daily_pct": -0.0118,
+          "annualized_pct": -2.97,
+          "t": -0.418,
+          "p": 0.6762,
+          "beta_qqq": 0.369437,
+          "r2": 0.1654
+        },
+        "live": {
+          "daily_pct": -0.0271,
+          "annualized_pct": -6.83,
+          "t": -0.834,
+          "p": 0.4042,
+          "beta_qqq": 0.43188,
+          "r2": 0.1708
+        }
+      },
+      "verdict": "REVERT_HTML"
+    },
+    "2023-08-31": {
+      "pit": {
+        "asof": "2023-08-31",
+        "n": 60,
+        "watchlist": [
+          "MPC",
+          "VST",
+          "SLB",
+          "ETN",
+          "CCJ",
+          "CEG",
+          "VLO",
+          "PSX",
+          "COP",
+          "EOG",
+          "OXY",
+          "XOM",
+          "CVX",
+          "DUK",
+          "TJX",
+          "BKNG",
+          "ROST",
+          "MAR",
+          "HD",
+          "ABNB",
+          "LOW",
+          "WMT",
+          "COST",
+          "PG",
+          "PM",
+          "LULU",
+          "IONQ",
+          "APP",
+          "OKTA",
+          "PANW",
+          "TEAM",
+          "ZS",
+          "CRWD",
+          "ZM",
+          "MDB",
+          "DDOG",
+          "CHTR",
+          "CMCSA",
+          "WBD",
+          "NFLX",
+          "TMUS",
+          "TTWO",
+          "SPOT",
+          "VZ",
+          "CAT",
+          "PH",
+          "EMR",
+          "TT",
+          "FDX",
+          "PCAR",
+          "NVDA",
+          "LRCX",
+          "AVGO",
+          "AMAT",
+          "SCCO",
+          "SHW",
+          "ADBE",
+          "COIN",
+          "RKLB",
+          "LLY"
+        ],
+        "sectors": [
+          {
+            "rank": 1,
+            "sector": "POWER_ENERGY",
+            "etf": "XLE",
+            "rs_3m": 11.29,
+            "quota": 14,
+            "selected": [
+              "MPC",
+              "VST",
+              "SLB",
+              "ETN",
+              "CCJ",
+              "CEG",
+              "VLO",
+              "PSX",
+              "COP",
+              "EOG",
+              "OXY",
+              "XOM",
+              "CVX",
+              "DUK"
+            ],
+            "selected_rs": [
+              {
+                "ticker": "MPC",
+                "rs_3m": 31.09
+              },
+              {
+                "ticker": "VST",
+                "rs_3m": 27.1
+              },
+              {
+                "ticker": "SLB",
+                "rs_3m": 26.06
+              },
+              {
+                "ticker": "ETN",
+                "rs_3m": 23.54
+              },
+              {
+                "ticker": "CCJ",
+                "rs_3m": 23.01
+              },
+              {
+                "ticker": "CEG",
+                "rs_3m": 18.99
+              },
+              {
+                "ticker": "VLO",
+                "rs_3m": 18.88
+              },
+              {
+                "ticker": "PSX",
+                "rs_3m": 17.65
+              },
+              {
+                "ticker": "COP",
+                "rs_3m": 16.3
+              },
+              {
+                "ticker": "EOG",
+                "rs_3m": 14.92
+              },
+              {
+                "ticker": "OXY",
+                "rs_3m": 5.19
+              },
+              {
+                "ticker": "XOM",
+                "rs_3m": 5.13
+              },
+              {
+                "ticker": "CVX",
+                "rs_3m": 3.1
+              },
+              {
+                "ticker": "DUK",
+                "rs_3m": -0.98
+              }
+            ]
+          },
+          {
+            "rank": 2,
+            "sector": "CONSUMER_RETAIL",
+            "etf": "XLY",
+            "rs_3m": 8.73,
+            "quota": 12,
+            "selected": [
+              "TJX",
+              "BKNG",
+              "ROST",
+              "MAR",
+              "HD",
+              "ABNB",
+              "LOW",
+              "WMT",
+              "COST",
+              "PG",
+              "PM",
+              "LULU"
+            ],
+            "selected_rs": [
+              {
+                "ticker": "TJX",
+                "rs_3m": 18.4
+              },
+              {
+                "ticker": "BKNG",
+                "rs_3m": 18.26
+              },
+              {
+                "ticker": "ROST",
+                "rs_3m": 17.92
+              },
+              {
+                "ticker": "MAR",
+                "rs_3m": 14.83
+              },
+              {
+                "ticker": "HD",
+                "rs_3m": 11.61
+              },
+              {
+                "ticker": "ABNB",
+                "rs_3m": 11.43
+              },
+              {
+                "ticker": "LOW",
+                "rs_3m": 9.85
+              },
+              {
+                "ticker": "WMT",
+                "rs_3m": 9.27
+              },
+              {
+                "ticker": "COST",
+                "rs_3m": 7.16
+              },
+              {
+                "ticker": "PG",
+                "rs_3m": 5.34
+              },
+              {
+                "ticker": "PM",
+                "rs_3m": 4.66
+              },
+              {
+                "ticker": "LULU",
+                "rs_3m": 4.33
+              }
+            ]
+          },
+          {
+            "rank": 3,
+            "sector": "CYBER_SAAS",
+            "etf": "CIBR",
+            "rs_3m": 7.25,
+            "quota": 10,
+            "selected": [
+              "IONQ",
+              "APP",
+              "OKTA",
+              "PANW",
+              "TEAM",
+              "ZS",
+              "CRWD",
+              "ZM",
+              "MDB",
+              "DDOG"
+            ],
+            "selected_rs": [
+              {
+                "ticker": "IONQ",
+                "rs_3m": 86.44
+              },
+              {
+                "ticker": "APP",
+                "rs_3m": 74.2
+              },
+              {
+                "ticker": "OKTA",
+                "rs_3m": 13.11
+              },
+              {
+                "ticker": "PANW",
+                "rs_3m": 12.0
+              },
+              {
+                "ticker": "TEAM",
+                "rs_3m": 10.96
+              },
+              {
+                "ticker": "ZS",
+                "rs_3m": 9.59
+              },
+              {
+                "ticker": "CRWD",
+                "rs_3m": 7.74
+              },
+              {
+                "ticker": "ZM",
+                "rs_3m": 5.87
+              },
+              {
+                "ticker": "MDB",
+                "rs_3m": 1.33
+              },
+              {
+                "ticker": "DDOG",
+                "rs_3m": -2.32
+              }
+            ]
+          },
+          {
+            "rank": 4,
+            "sector": "COMMUNICATION",
+            "etf": "XLC",
+            "rs_3m": 7.24,
+            "quota": 8,
+            "selected": [
+              "CHTR",
+              "CMCSA",
+              "WBD",
+              "NFLX",
+              "TMUS",
+              "TTWO",
+              "SPOT",
+              "VZ"
+            ],
+            "selected_rs": [
+              {
+                "ticker": "CHTR",
+                "rs_3m": 33.04
+              },
+              {
+                "ticker": "CMCSA",
+                "rs_3m": 19.32
+              },
+              {
+                "ticker": "WBD",
+                "rs_3m": 11.83
+              },
+              {
+                "ticker": "NFLX",
+                "rs_3m": 8.29
+              },
+              {
+                "ticker": "TMUS",
+                "rs_3m": 3.86
+              },
+              {
+                "ticker": "TTWO",
+                "rs_3m": 3.4
+              },
+              {
+                "ticker": "SPOT",
+                "rs_3m": 1.47
+              },
+              {
+                "ticker": "VZ",
+                "rs_3m": 1.16
+              }
+            ]
+          },
+          {
+            "rank": 5,
+            "sector": "INDUSTRIALS",
+            "etf": "XLI",
+            "rs_3m": 7.22,
+            "quota": 6,
+            "selected": [
+              "CAT",
+              "PH",
+              "EMR",
+              "TT",
+              "FDX",
+              "PCAR"
+            ],
+            "selected_rs": [
+              {
+                "ticker": "CAT",
+                "rs_3m": 24.05
+              },
+              {
+                "ticker": "PH",
+                "rs_3m": 22.35
+              },
+              {
+                "ticker": "EMR",
+                "rs_3m": 18.65
+              },
+              {
+                "ticker": "TT",
+                "rs_3m": 18.64
+              },
+              {
+                "ticker": "FDX",
+                "rs_3m": 17.71
+              },
+              {
+                "ticker": "PCAR",
+                "rs_3m": 12.26
+              }
+            ]
+          },
+          {
+            "rank": 6,
+            "sector": "SEMICONDUCTOR",
+            "etf": "SMH",
+            "rs_3m": 6.9,
+            "quota": 4,
+            "selected": [
+              "NVDA",
+              "LRCX",
+              "AVGO",
+              "AMAT"
+            ],
+            "selected_rs": [
+              {
+                "ticker": "NVDA",
+                "rs_3m": 25.5
+              },
+              {
+                "ticker": "LRCX",
+                "rs_3m": 14.46
+              },
+              {
+                "ticker": "AVGO",
+                "rs_3m": 13.66
+              },
+              {
+                "ticker": "AMAT",
+                "rs_3m": 13.47
+              }
+            ]
+          },
+          {
+            "rank": 7,
+            "sector": "MATERIALS",
+            "etf": "XLB",
+            "rs_3m": 5.5,
+            "quota": 2,
+            "selected": [
+              "SCCO",
+              "SHW"
+            ],
+            "selected_rs": [
+              {
+                "ticker": "SCCO",
+                "rs_3m": 13.7
+              },
+              {
+                "ticker": "SHW",
+                "rs_3m": 12.83
+              }
+            ]
+          },
+          {
+            "rank": 8,
+            "sector": "MEGA_TECH",
+            "etf": "XLK",
+            "rs_3m": 5.25,
+            "quota": 1,
+            "selected": [
+              "ADBE"
+            ],
+            "selected_rs": [
+              {
+                "ticker": "ADBE",
+                "rs_3m": 28.18
+              }
+            ]
+          },
+          {
+            "rank": 9,
+            "sector": "FINANCIALS",
+            "etf": "XLF",
+            "rs_3m": 4.82,
+            "quota": 1,
+            "selected": [
+              "COIN"
+            ],
+            "selected_rs": [
+              {
+                "ticker": "COIN",
+                "rs_3m": 23.32
+              }
+            ]
+          },
+          {
+            "rank": 10,
+            "sector": "DEFENSE_AERO",
+            "etf": "ITA",
+            "rs_3m": 3.1,
+            "quota": 1,
+            "selected": [
+              "RKLB"
+            ],
+            "selected_rs": [
+              {
+                "ticker": "RKLB",
+                "rs_3m": 28.78
+              }
+            ]
+          },
+          {
+            "rank": 11,
+            "sector": "HEALTHCARE",
+            "etf": "XLV",
+            "rs_3m": 2.22,
+            "quota": 1,
+            "selected": [
+              "LLY"
+            ],
+            "selected_rs": [
+              {
+                "ticker": "LLY",
+                "rs_3m": 25.29
+              }
+            ]
+          }
+        ],
+        "unlisted_count": 3
+      },
+      "html": {
+        "final_equity": 238091.28,
+        "total_return_pct": 138.09,
+        "cagr_pct": 33.79,
+        "sharpe": 1.145,
+        "mdd_pct": -34.29,
+        "n_days": 751,
+        "start": "2023-08-31",
+        "end": "2026-08-28",
+        "trades": {
+          "n": 120,
+          "win_rate": 26.67,
+          "profit_factor": 1.925,
+          "avg_pnl": 3.172,
+          "median_pnl": -4.096,
+          "avg_bars": 18.2,
+          "reasons": {
+            "HARD_STOP": {
+              "n": 87,
+              "avg_pnl": -4.719,
+              "share_pct": 72.5
+            },
+            "TRAILING": {
+              "n": 30,
+              "avg_pnl": 25.311,
+              "share_pct": 25.0
+            },
+            "EOB": {
+              "n": 3,
+              "avg_pnl": 10.619,
+              "share_pct": 2.5
+            }
+          }
+        }
+      },
+      "live": {
+        "final_equity": 158664.01,
+        "total_return_pct": 58.66,
+        "cagr_pct": 16.75,
+        "sharpe": 0.631,
+        "mdd_pct": -52.4,
+        "n_days": 751,
+        "start": "2023-08-31",
+        "end": "2026-08-28",
+        "trades": {
+          "n": 205,
+          "win_rate": 28.29,
+          "profit_factor": 1.372,
+          "avg_pnl": 1.094,
+          "median_pnl": -4.096,
+          "avg_bars": 10.5,
+          "reasons": {
+            "HARD_STOP": {
+              "n": 110,
+              "avg_pnl": -4.953,
+              "share_pct": 53.7
+            },
+            "KIJUN": {
+              "n": 62,
+              "avg_pnl": 0.024,
+              "share_pct": 30.2
+            },
+            "TRAILING": {
+              "n": 30,
+              "avg_pnl": 21.372,
+              "share_pct": 14.6
+            },
+            "EOB": {
+              "n": 3,
+              "avg_pnl": 42.136,
+              "share_pct": 1.5
+            }
+          }
+        }
+      },
+      "ols_live_on_html": {
+        "beta": [
+          -0.000403,
+          0.93647
+        ],
+        "se": [
+          0.000455,
+          0.024547
+        ],
+        "t": [
+          -0.885,
+          38.151
+        ],
+        "p": [
+          0.3761,
+          0.0
+        ],
+        "r2": 0.6605,
+        "n": 750,
+        "alpha": {
+          "daily_pct": -0.0403,
+          "annualized_pct": -10.16,
+          "t": -0.885,
+          "p": 0.3761
+        },
+        "spec": "R_live = a + b*R_html + e"
+      },
+      "ols_vs_qqq": {
+        "html": {
+          "daily_pct": 0.0873,
+          "annualized_pct": 22.0,
+          "t": 1.37,
+          "p": 0.1708,
+          "beta_qqq": 0.490777,
+          "r2": 0.1167
+        },
+        "live": {
+          "daily_pct": 0.0267,
+          "annualized_pct": 6.73,
+          "t": 0.368,
+          "p": 0.7131,
+          "beta_qqq": 0.616695,
+          "r2": 0.1387
+        }
+      },
+      "verdict": "REVERT_HTML"
+    }
+  }
+}

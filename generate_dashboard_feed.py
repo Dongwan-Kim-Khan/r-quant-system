@@ -5,8 +5,13 @@ import json
 import tempfile
 import pandas as pd
 import yfinance as yf
-from datetime import datetime
-import db_manager
+from datetime import datetime, timedelta
+from al_sangmoo.infrastructure.persistence import (
+    get_daily_recommendation_history,
+    get_live_portfolio,
+    get_recommendation_streaks,
+    get_recommendations_matrix,
+)
 from al_sangmoo.infrastructure.atomic_io import atomic_save_json, atomic_read_json
 
 # Windows encoding fix
@@ -35,11 +40,26 @@ from al_sangmoo.domain.quant.scoring import (
     classify_3tier_candidates
 )
 from al_sangmoo.domain.quant.conviction_engine import rank_and_select_top_picks
+from al_sangmoo.domain.quant.macro import extract_msi_score, resolve_capital_regime
+from al_sangmoo.domain.quant.dynamic_universe import load_universe_sectors
 
 
-def compute_all_indicators(ticker):
+def compute_all_indicators(ticker, df=None):
     try:
-        df = yf.download(ticker, period="3y", interval="1d", progress=False)
+        if df is None:
+            end = datetime.now()
+            start = end - timedelta(days=365 * 3 + 45)
+            df = yf.download(
+                ticker,
+                start=start.strftime("%Y-%m-%d"),
+                end=(end + timedelta(days=1)).strftime("%Y-%m-%d"),
+                interval="1d",
+                auto_adjust=True,
+                progress=False,
+                threads=False,
+            )
+        else:
+            df = df.copy()
         if isinstance(df.columns, pd.MultiIndex):
             if 'Close' in df.columns.get_level_values(0):
                 df.columns = df.columns.get_level_values(0)
@@ -47,7 +67,15 @@ def compute_all_indicators(ticker):
                 df.columns = df.columns.get_level_values(1)
             
         df = df.dropna(subset=['Close', 'High', 'Low', 'Volume']).copy()
-        if len(df) < 60:
+        if df is None or len(df) < 200:
+            try:
+                from al_sangmoo.infrastructure.brokers.kis_broker import default_kis_broker
+                kis_df = default_kis_broker.get_daily_ohlcv(ticker, min_bars=500)
+                if kis_df is not None and len(kis_df) > (0 if df is None else len(df)):
+                    df = kis_df.dropna(subset=['Close', 'High', 'Low', 'Volume']).copy()
+            except Exception:
+                pass
+        if df is None or len(df) < 60:
             return None
             
         # 1. Calculate Daily Ichimoku via SSOT Domain Engine
@@ -263,7 +291,7 @@ def build_dashboard_data(output_file=None, charts_dir=None):
     # Calculate Macro Tailwind Sectors from Gate-0 Climate
     macro_climate = macro_info.get("macro_climate", {}) if isinstance(macro_info, dict) else {}
     macro_gauges = macro_info.get("macro_gauges", {}) if isinstance(macro_info, dict) else {}
-    msi_score = float(macro_climate.get("msi_score", 65.0))
+    msi_score = extract_msi_score(macro_info, default=50.0)
     us10y_val = float(macro_gauges.get("us10y", {}).get("val", 4.4)) if isinstance(macro_gauges.get("us10y"), dict) else 4.4
     wti_val = float(macro_gauges.get("wti", {}).get("val", 78.0)) if isinstance(macro_gauges.get("wti"), dict) else 78.0
     vix_val = float(macro_gauges.get("vix", {}).get("val", 16.0)) if isinstance(macro_gauges.get("vix"), dict) else 16.0
@@ -278,9 +306,9 @@ def build_dashboard_data(output_file=None, charts_dir=None):
     )
 
     # Load current portfolio & recommendation streaks
-    portfolio = db_manager.get_live_portfolio()
+    portfolio = get_live_portfolio()
     wallet_map = {h['ticker'].upper(): h for h in portfolio.get('holdings', [])}
-    streaks = db_manager.get_recommendation_streaks()
+    streaks = get_recommendation_streaks()
 
     # Tag IN WALLET & STREAK properties onto each candidate
     for group in [dual_consensus_picks, strat1_exclusive, strat2_exclusive]:
@@ -329,8 +357,8 @@ def build_dashboard_data(output_file=None, charts_dir=None):
             "in_wallet": d.get("in_wallet", False),
             "streak_days": d.get("streak_days", 1),
             "streak_label": d.get("streak_label", ""),
-            "status": "DUAL_5_STAR",
-            "status_label": "DUAL_5_STAR"
+            "status": "TIER_1_LEADER",
+            "status_label": "TIER_1_LEADER"
         })
         
     # 2. Tier 3 Sniper Radar
@@ -382,11 +410,11 @@ def build_dashboard_data(output_file=None, charts_dir=None):
         })
 
     # Load 2+2+2 Matrix and Portfolio from DB
-    matrix = db_manager.get_recommendations_matrix()
+    matrix = get_recommendations_matrix()
     if not isinstance(matrix, list):
         matrix = [matrix] if matrix else []
         
-    portfolio = db_manager.get_live_portfolio()
+    portfolio = get_live_portfolio()
     
     # Ensure any ticker present in matrix is computed in chart_data
     for m in matrix:
@@ -404,7 +432,13 @@ def build_dashboard_data(output_file=None, charts_dir=None):
         if isinstance(c_obj, dict):
             # Save individual ticker chart cache
             ticker_chart_path = os.path.join(target_charts_dir, f"{ticker}.json")
-            atomic_save_json(ticker_chart_path, c_obj)
+            prev = atomic_read_json(ticker_chart_path) or {}
+            prev_n = len(prev.get("candles") or []) if isinstance(prev, dict) else 0
+            new_n = len(c_obj.get("candles") or [])
+            if prev_n >= 250 and new_n < prev_n:
+                c_obj = prev
+            else:
+                atomic_save_json(ticker_chart_path, c_obj)
             
             # Extract lightweight intelligence metadata for instant dashboard loading
             chart_intelligence[ticker] = {
@@ -426,12 +460,17 @@ def build_dashboard_data(output_file=None, charts_dir=None):
             }
 
     # 2. Build lightweight executive summary payload (under 50KB)
-    daily_history = db_manager.get_daily_recommendation_history()
+    daily_history = get_daily_recommendation_history()
     
     # Goldman Sachs-Style Conviction Alpha Ranking & Dynamic Regime Slot Allocator (v2)
     all_candidates = dual_consensus_picks + strat1_exclusive + strat2_exclusive
-    msi_val = float(macro_info.get("msi_score") or macro_info.get("macro_climate", {}).get("msi_score") or macro_info.get("msi", 50.0))
-    is_bull_regime = (msi_val < 65.0)  # MSI < 65 indicates healthy/bull market climate
+    msi_val = extract_msi_score(macro_info, default=50.0)
+    capital = resolve_capital_regime(msi_score=msi_val, fetch_spy=True)
+    is_bull_regime = bool(capital["is_bull_regime"])
+    macro_info["msi_score"] = msi_val
+    macro_info["msi_stance"] = capital["msi_stance"]
+    macro_info["is_bull_regime"] = is_bull_regime
+    macro_info["capital_regime_source"] = capital["regime_source"]
     
     conviction_res = rank_and_select_top_picks(
         candidates=all_candidates,
@@ -451,6 +490,9 @@ def build_dashboard_data(output_file=None, charts_dir=None):
         "top_conviction_runner_up": conviction_res.get("runner_up"),
         "ranked_conviction_list": conviction_res.get("ranked_candidates", []),
         "slot_allocation_summary": conviction_res.get("slot_summary", {}),
+        "tier1": dual_consensus_picks,
+        "tier2": strat1_exclusive,
+        "tier3": strat2_exclusive,
         "dual_consensus": dual_consensus_picks,
         "strat1_exclusive": strat1_exclusive,
         "strat2_exclusive": strat2_exclusive,
@@ -458,13 +500,21 @@ def build_dashboard_data(output_file=None, charts_dir=None):
         "sniper_radar": all_strat2,
         "signal_tracker": signal_tracker,
         "chart_intelligence": chart_intelligence,
+        "universe_sectors": load_universe_sectors(),
         "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
     
     out_path = target_out_path
     atomic_save_json(out_path, payload)
         
-    print(f"Successfully generated modular feed: {out_path} (Size: {os.path.getsize(out_path)/1024:.1f} KB, Charts: {len(chart_data)} saved in {target_charts_dir})")
+    bar_counts = [len((c or {}).get("candles") or []) for c in chart_data.values()]
+    bar_min = min(bar_counts) if bar_counts else 0
+    bar_max = max(bar_counts) if bar_counts else 0
+    print(
+        f"Successfully generated modular feed: {out_path} "
+        f"(Size: {os.path.getsize(out_path)/1024:.1f} KB, Charts: {len(chart_data)} saved in {target_charts_dir}, "
+        f"daily bars min={bar_min} max={bar_max})"
+    )
     return payload
 
 

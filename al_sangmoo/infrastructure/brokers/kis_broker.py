@@ -16,6 +16,7 @@ import requests
 
 from al_sangmoo.core.config import BASE_DIR, load_env
 from al_sangmoo.infrastructure.atomic_io import atomic_save_json
+from al_sangmoo.infrastructure.idempotent_order import make_client_order_id, match_day_order
 
 # Ensure latest .env values are loaded
 load_env()
@@ -97,6 +98,11 @@ class KISBrokerAdapter:
         self._last_overseas_balance: Optional[Dict[str, Any]] = None
         self._last_balance_time: float = 0.0
         self._limiter = TokenBucketLimiter(rate=3.5, capacity=3.5)
+        self._order_lock = threading.Lock()
+        self._inflight_keys = set()
+        self._unconfirmed: Dict[str, Dict[str, Any]] = {}
+        self._price_cache: Dict[str, Tuple[float, float]] = {}
+        self._price_cache_lock = threading.Lock()
 
         # Load cached token on initialization
         self._load_cached_token()
@@ -422,91 +428,230 @@ class KISBrokerAdapter:
 
         return res_dict
 
-    def get_live_price(self, ticker: str) -> Optional[float]:
+    @staticmethod
+    def _parse_positive_price(raw: Any) -> Optional[float]:
+        if raw is None or raw == "":
+            return None
+        try:
+            val = float(str(raw).replace(",", "").strip())
+        except (ValueError, TypeError):
+            return None
+        if val > 0:
+            return round(val, 2)
+        return None
+
+    @classmethod
+    def _price_from_kis_output(cls, output: Any) -> Optional[float]:
         """
-        Fetches official REAL-TIME overseas stock price.
-        In REAL_PRODUCTION mode: queries official KIS TR HHDFS00000300.
-        In VIRTUAL_PAPER / Mock mode or fallback: queries Yahoo Finance real-time fast_info.
+        Overseas last price. KIS sometimes sends `last` as a dotted dollar
+        string and sometimes as an integer scaled by `zdiv` decimal places.
+        Never fall back to domestic `stck_prpr` / `base` — those fields can
+        be leftover KRW prints and explode the last daily candle.
+        """
+        if not isinstance(output, dict):
+            return None
+        try:
+            zdiv = int(str(output.get("zdiv") or "0").strip() or "0")
+        except (ValueError, TypeError):
+            zdiv = 0
+        for key in ("last", "last_price", "ovrs_nmix_prpr"):
+            raw = output.get(key)
+            if raw is None or raw == "":
+                continue
+            text = str(raw).replace(",", "").strip()
+            try:
+                val = float(text)
+            except (ValueError, TypeError):
+                continue
+            if val <= 0:
+                continue
+            if "." not in text and zdiv > 0:
+                val = val / (10 ** zdiv)
+            if val > 0:
+                return round(val, 2)
+        return None
+
+    def _quote_exchanges(self, ticker: str) -> List[str]:
+        nyse_tickers = {
+            "XOM", "CVX", "TSM", "ORCL", "CRM", "NOW", "JNJ", "UNH", "LLY", "DIS",
+            "JPM", "V", "MA", "LMT", "RTX", "NOC", "GE", "GEV", "ETN", "CCJ",
+            "OKLO", "VST", "CEG", "SNOW", "NET", "APP",
+        }
+        primary = "NYS" if ticker in nyse_tickers else "NAS"
+        secondary = "NAS" if primary == "NYS" else "NYS"
+        ordered = [primary, secondary]
+        if "AMS" not in ordered:
+            ordered.append("AMS")
+        return ordered
+
+    def _kis_get_json(self, url: str, tr_id: str, params: Dict[str, str], timeout: float) -> Optional[dict]:
+        def _parse(resp):
+            try:
+                body = resp.json()
+            except Exception:
+                return None
+            return body if isinstance(body, dict) else None
+
+        headers = self._get_headers(tr_id)
+        self._limiter.acquire(0.25)
+        res = requests.get(url, headers=headers, params=params, timeout=timeout)
+        data = _parse(res)
+        token_bad = res.status_code == 401 or (data and data.get("msg_cd") in ("EGW00121", "EGW00122", "EGW00123"))
+        if token_bad and self.authenticate(force_refresh=True):
+            headers = self._get_headers(tr_id)
+            self._limiter.acquire(0.25)
+            res = requests.get(url, headers=headers, params=params, timeout=timeout)
+            data = _parse(res)
+        if res.status_code != 200 or not data or data.get("rt_cd") != "0":
+            return None
+        return data
+
+    def get_live_price(self, ticker: str, fallback_yahoo: bool = True) -> Optional[float]:
+        """
+        Official overseas last price.
+        Primary: HHDFS00000300 /quotations/price (TR must match URL).
+        Secondary: HHDFS76200200 /quotations/price-detail.
+        Yahoo fallback is skipped on the chart request path so the UI does not stall.
         """
         sym_clean = ticker.upper().strip()
-        
-        # 1. Primary Source: Official KIS Live Price TR (HHDFS00000300) for both Real & Virtual Paper
+
+        with self._price_cache_lock:
+            cached = self._price_cache.get(sym_clean)
+            if cached and (time.time() - cached[1] < 2.0) and cached[0] > 0:
+                return cached[0]
+
         if self.is_configured() and self.authenticate():
-            url = f"{self.base_url}/uapi/overseas-price/v1/quotations/price-detail"
-            headers = self._get_headers("HHDFS00000300")
-            
-            # Prioritize exact exchange: NYSE for energy/industrials, NAS for tech
-            nyse_tickers = {"XOM", "CVX", "TSM", "ORCL", "CRM", "NOW", "JNJ", "UNH", "LLY", "DIS", "JPM", "V", "MA", "LMT", "RTX", "NOC", "GE", "GEV", "ETN", "CCJ", "OKLO", "VST", "CEG", "SNOW", "NET", "APP"}
-            primary_ex = "NYS" if sym_clean in nyse_tickers else "NAS"
-            secondary_ex = "NAS" if primary_ex == "NYS" else "NYS"
-            
-            for excd in [primary_ex, secondary_ex]:
-                params = {
-                    "AUTH": "",
-                    "EXCD": excd,
-                    "SYMB": sym_clean
-                }
-                try:
-                    self._limiter.acquire(0.2)
-                    res = requests.get(url, headers=headers, params=params, timeout=0.6)
-                    if res.status_code == 401:
-                        # Auto-renew expired token and retry
-                        if self.authenticate(force_refresh=True):
-                            headers = self._get_headers("HHDFS00000300")
-                            res = requests.get(url, headers=headers, params=params, timeout=0.6)
+            quote_url = f"{self.base_url}/uapi/overseas-price/v1/quotations/price"
+            detail_url = f"{self.base_url}/uapi/overseas-price/v1/quotations/price-detail"
+            endpoints = (
+                (quote_url, "HHDFS00000300"),
+                (detail_url, "HHDFS76200200"),
+            )
+            for excd in self._quote_exchanges(sym_clean):
+                params = {"AUTH": "", "EXCD": excd, "SYMB": sym_clean}
+                for url, tr_id in endpoints:
+                    try:
+                        data = self._kis_get_json(url, tr_id, params, timeout=3.0)
+                        if not data:
+                            continue
+                        px = self._price_from_kis_output(data.get("output") or {})
+                        if px:
+                            with self._price_cache_lock:
+                                self._price_cache[sym_clean] = (px, time.time())
+                            return px
+                    except Exception as exc:
+                        logger.debug("[KIS Live Price] %s %s %s failed: %s", tr_id, excd, sym_clean, exc)
 
-                    if res.status_code == 200:
-                        data = res.json()
-                        if data.get("msg_cd") in ["EGW00121", "EGW00122", "EGW00123"]:
-                            if self.authenticate(force_refresh=True):
-                                headers = self._get_headers("HHDFS00000300")
-                                res = requests.get(url, headers=headers, params=params, timeout=0.6)
-                                if res.status_code == 200:
-                                    data = res.json()
+        if not fallback_yahoo:
+            return None
 
-                        if data.get("rt_cd") == "0":
-                            out = data.get("output", {})
-                            last_str = out.get("last")
-                            if last_str:
-                                try:
-                                    val = float(last_str)
-                                    if val > 0:
-                                        return round(val, 2)
-                                except (ValueError, TypeError):
-                                    pass
-                except Exception as e:
-                    logger.debug(f"[KIS Live Price] Attempt {excd} for {sym_clean} failed: {e}")
-        
-        # 2. Secondary Fallback: Real-time fast quote via fast_info and multi-day history
         try:
             import yfinance as yf
             import logging as _logging
             _logging.getLogger("yfinance").setLevel(_logging.CRITICAL)
             t_obj = yf.Ticker(sym_clean)
-            
-            # Check 1: fast_info (ultra-fast < 0.05ms, real-time price & previous close)
             try:
                 fi = getattr(t_obj, "fast_info", None)
                 if fi:
                     fast_p = getattr(fi, "last_price", None) or getattr(fi, "regular_market_price", None) or getattr(fi, "previous_close", None)
-                    if fast_p and float(fast_p) > 0:
-                        return round(float(fast_p), 2)
+                    parsed = self._parse_positive_price(fast_p)
+                    if parsed:
+                        return parsed
             except Exception:
                 pass
-
-            # Check 2: Daily history fallback (resilient 5-day window without noisy 1m errors)
             try:
                 hist = t_obj.history(period="5d", raise_errors=False)
                 if not hist.empty and "Close" in hist.columns:
-                    last_val = float(hist["Close"].dropna().iloc[-1])
-                    if last_val > 0:
-                        return round(last_val, 2)
+                    parsed = self._parse_positive_price(hist["Close"].dropna().iloc[-1])
+                    if parsed:
+                        return parsed
             except Exception:
                 pass
         except Exception:
             pass
 
         return None
+
+    def get_daily_ohlcv(self, ticker: str, min_bars: int = 250):
+        """
+        Overseas daily bars via HHDFS76240000 /quotations/dailyprice.
+        Used when Yahoo Finance returns too few bars for an on-demand chart.
+        """
+        import pandas as pd
+
+        sym_clean = ticker.upper().strip()
+        if not self.is_configured() or not self.authenticate():
+            return None
+
+        url = f"{self.base_url}/uapi/overseas-price/v1/quotations/dailyprice"
+        rows: List[dict] = []
+        for excd in self._quote_exchanges(sym_clean):
+            rows = []
+            bymd = ""
+            for _ in range(6):
+                params = {
+                    "AUTH": "",
+                    "EXCD": excd,
+                    "SYMB": sym_clean,
+                    "GUBN": "0",
+                    "BYMD": bymd,
+                    "MODP": "1",
+                }
+                try:
+                    data = self._kis_get_json(url, "HHDFS76240000", params, timeout=8.0)
+                except Exception as exc:
+                    logger.debug("[KIS Daily] %s %s failed: %s", excd, sym_clean, exc)
+                    break
+                if not data:
+                    break
+                chunk = data.get("output2") or data.get("output") or []
+                if isinstance(chunk, dict):
+                    chunk = [chunk]
+                if not chunk:
+                    break
+                added = 0
+                oldest = None
+                for item in chunk:
+                    if not isinstance(item, dict):
+                        continue
+                    xymd = str(item.get("xymd") or item.get("date") or "").replace("-", "")
+                    close = self._parse_positive_price(item.get("clos") or item.get("close") or item.get("ovrs_nmix_prpr"))
+                    if not xymd or not close:
+                        continue
+                    open_px = self._parse_positive_price(item.get("open") or item.get("ovrs_nmix_oprc")) or close
+                    high_px = self._parse_positive_price(item.get("high") or item.get("ovrs_nmix_hgpr")) or close
+                    low_px = self._parse_positive_price(item.get("low") or item.get("ovrs_nmix_lwpr")) or close
+                    vol = self._parse_positive_price(item.get("tvol") or item.get("acml_vol") or item.get("volume")) or 0.0
+                    rows.append({
+                        "Date": xymd,
+                        "Open": open_px,
+                        "High": high_px,
+                        "Low": low_px,
+                        "Close": close,
+                        "Volume": vol,
+                    })
+                    added += 1
+                    if oldest is None or xymd < oldest:
+                        oldest = xymd
+                if added == 0 or not oldest or len(rows) >= min_bars:
+                    break
+                try:
+                    prev = datetime.strptime(oldest, "%Y%m%d") - timedelta(days=1)
+                    bymd = prev.strftime("%Y%m%d")
+                except Exception:
+                    break
+            if len(rows) >= 60:
+                break
+
+        if len(rows) < 60:
+            return None
+        df = pd.DataFrame(rows)
+        df["Date"] = pd.to_datetime(df["Date"], format="%Y%m%d", errors="coerce")
+        df = df.dropna(subset=["Date", "Close"]).drop_duplicates(subset=["Date"]).sort_values("Date")
+        df = df.set_index("Date")
+        if len(df) < 60:
+            return None
+        return df[["Open", "High", "Low", "Close", "Volume"]]
 
     def get_purchasable_amount(self, ticker: str, price: float, exchange: str = "NASD") -> Dict[str, Any]:
 
@@ -580,10 +725,12 @@ class KISBrokerAdapter:
 
         if not self.is_configured():
             order_id = f"SIM-{int(time.time() * 1000)}"
+            client_oid = make_client_order_id()
             return {
                 "status": "filled",
                 "mode": "SIMULATION",
                 "order_id": order_id,
+                "client_order_id": client_oid,
                 "ticker": ticker_clean,
                 "side": side.upper(),
                 "qty": qty,
@@ -594,10 +741,134 @@ class KISBrokerAdapter:
         if not self.authenticate():
             return {"status": "error", "reason": "Broker authentication failed"}
 
+        inflight_key = f"{side.upper()}:{ticker_clean}"
+        with self._order_lock:
+            if inflight_key in self._inflight_keys:
+                return {
+                    "status": "rejected",
+                    "reason": "INFLIGHT_DUPLICATE",
+                    "ticker": ticker_clean,
+                    "side": side.upper(),
+                    "message": f"{ticker_clean} {side.upper()} 주문이 이미 전송 중입니다."
+                }
+            self._inflight_keys.add(inflight_key)
+
+        try:
+            pending = self._unconfirmed.get(inflight_key)
+            if pending and (time.time() - float(pending.get("ts") or 0)) < 90:
+                rec = self._recheck_submitted_order(
+                    ticker=ticker_clean,
+                    side=side,
+                    qty=qty,
+                    price=price,
+                    client_order_id=pending.get("client_order_id"),
+                    is_domestic=is_domestic,
+                    exchange=exchange or "NASD",
+                )
+                if rec:
+                    self._unconfirmed.pop(inflight_key, None)
+                    return rec
+                return {
+                    "status": "error",
+                    "reason": "ORDER_TIMEOUT_UNCONFIRMED",
+                    "client_order_id": pending.get("client_order_id"),
+                    "ticker": ticker_clean,
+                    "side": side.upper(),
+                    "message": "이전 주문 HTTP 타임아웃이 원장에서 아직 확인되지 않았습니다. 중복 POST를 차단했습니다."
+                }
+
+            if is_domestic:
+                result = self._place_domestic_order(ticker_clean, side, qty, price, order_type)
+            else:
+                result = self._place_overseas_order(ticker_clean, side, qty, price, exchange or "NASD", order_type)
+
+            if result.get("status") in ("submitted", "filled", "SUCCESS_VIA_RECHECK"):
+                self._unconfirmed.pop(inflight_key, None)
+            elif "TIMEOUT" in str(result.get("reason") or "").upper():
+                self._unconfirmed[inflight_key] = {
+                    "ts": time.time(),
+                    "client_order_id": result.get("client_order_id"),
+                    "qty": qty,
+                    "price": price,
+                    "side": side.upper(),
+                }
+            return result
+        finally:
+            with self._order_lock:
+                self._inflight_keys.discard(inflight_key)
+
+    def query_overseas_day_orders(self, exchange: str = "NASD") -> List[Dict[str, Any]]:
+        """Today's overseas unfilled (nccs) + filled (ccnl) rows. Failures return []."""
+        rows: List[Dict[str, Any]] = []
+        nccs_tr = "VTTS3035R" if self.is_paper else "TTTS3035R"
+        ccnl_tr = "VTTS3039R" if self.is_paper else "TTTS3039R"
+        specs = [
+            (nccs_tr, "/uapi/overseas-stock/v1/trading/inquire-nccs"),
+            (ccnl_tr, "/uapi/overseas-stock/v1/trading/inquire-ccnl"),
+        ]
+        today = datetime.now().strftime("%Y%m%d")
+        for tr_id, path in specs:
+            try:
+                url = f"{self.base_url}{path}"
+                headers = self._get_headers(tr_id)
+                params = {
+                    "CANO": self.account_no,
+                    "ACNT_PRDT_CD": self.account_code,
+                    "OVRS_EXCG_CD": exchange,
+                    "TR_CRCY_CD": "USD",
+                    "CTX_AREA_FK200": "",
+                    "CTX_AREA_NK200": "",
+                    "ORD_STRT_DT": today,
+                    "ORD_END_DT": today,
+                }
+                self._limiter.acquire(1.0)
+                res = requests.get(url, headers=headers, params=params, timeout=8)
+                if res.status_code != 200:
+                    continue
+                data = res.json()
+                if data.get("rt_cd") not in ("0", 0, None) and data.get("rt_cd") not in ("0",):
+                    # still collect output if present
+                    pass
+                payload = data.get("output") or data.get("output1") or data.get("output2") or []
+                if isinstance(payload, dict):
+                    payload = [payload]
+                if isinstance(payload, list):
+                    rows.extend([p for p in payload if isinstance(p, dict)])
+            except Exception as exc:
+                logger.debug(f"[KIS] day-order inquiry skipped ({tr_id}): {exc}")
+        return rows
+
+    def _recheck_submitted_order(
+        self,
+        ticker: str,
+        side: str,
+        qty: int,
+        price: float,
+        client_order_id: Optional[str],
+        is_domestic: bool = False,
+        exchange: str = "NASD",
+    ) -> Optional[Dict[str, Any]]:
+        """After HTTP timeout: look up the day book. Never implies a new POST."""
         if is_domestic:
-            return self._place_domestic_order(ticker_clean, side, qty, price, order_type)
-        else:
-            return self._place_overseas_order(ticker_clean, side, qty, price, exchange or "NASD", order_type)
+            return None
+        try:
+            book = self.query_overseas_day_orders(exchange=exchange)
+        except Exception:
+            return None
+        matched = match_day_order(book, ticker, side, qty, price, client_order_id=client_order_id)
+        if not matched:
+            return None
+        odno = matched.get("order_id") or client_order_id or f"RECHECK-{int(time.time())}"
+        return {
+            "status": "SUCCESS_VIA_RECHECK",
+            "order_id": odno,
+            "client_order_id": client_order_id or matched.get("client_order_id"),
+            "ticker": ticker,
+            "side": side.upper(),
+            "qty": qty,
+            "price": price,
+            "message": "HTTP 타임아웃 후 당일 원장에서 주문을 확인했습니다. 재전송하지 않았습니다."
+        }
 
     def _place_overseas_order(
         self,
@@ -610,9 +881,8 @@ class KISBrokerAdapter:
     ) -> Dict[str, Any]:
         """
         Submits US equity cash order via official KIS endpoint.
-        TR ID:
-          - Buy:  TTTT1002U (Real) / VTTT1002U (Paper)
-          - Sell: TTTT1006U (Real) / VTTT1001U (Paper)
+        Timeout / 5xx: inquire day book, never blindly re-POST (duplicate-fill guard).
+        Rate-limit EGW00201: POST retry is safe because the broker rejected the request.
         """
         is_buy = side.upper() == "BUY"
         if is_buy:
@@ -624,9 +894,8 @@ class KISBrokerAdapter:
 
         url = f"{self.base_url}/uapi/overseas-stock/v1/trading/order"
         headers = self._get_headers(tr_id)
-
-        # Price formatting: Limit order must have formatted string
         unpr_str = f"{price:.2f}" if price > 0 else "0"
+        client_oid = make_client_order_id()
 
         body = {
             "CANO": self.account_no,
@@ -636,67 +905,117 @@ class KISBrokerAdapter:
             "ORD_QTY": str(int(qty)),
             "OVRS_ORD_UNPR": unpr_str,
             "CTAC_TLNO": "",
-            "MGCO_APTM_ODNO": "",
+            "MGCO_APTM_ODNO": client_oid,
             "SLL_TYPE": sll_type,
             "ORD_SVR_DVSN_CD": "0",
             "ORD_DVSN": order_type or "00"
         }
 
+        last_rate_limit = False
         for attempt in range(3):
             try:
                 self._limiter.acquire(1.0)
-                res = requests.post(url, json=body, headers=headers, timeout=12)
-                data = res.json()
-                if (data.get("msg_cd") == "EGW00201" or "초당 거래건수" in data.get("msg1", "")) and attempt < 2:
-                    time.sleep(1.2)
-                    continue
-
-                if res.status_code == 200 and data.get("rt_cd") == "0":
-                    out = data.get("output", {})
-                    odno = out.get("ODNO") or out.get("odno") or f"OD-{int(time.time())}"
-                    msg_txt = data.get("msg1", "Order submitted successfully")
-                    
-                    # Record to execution audit log
-                    try:
-                        from al_sangmoo.infrastructure.persistence import record_execution_log
-                        record_execution_log(
-                            ticker=ticker,
-                            side=side.upper(),
-                            quantity=qty,
-                            price=price,
-                            order_type="MARKETABLE_LIMIT" if order_type == "00" else "MARKET",
-                            status="FILLED",
-                            message=f"{msg_txt} (체결단가 ${price:,.2f})",
-                            order_id=odno
-                        )
-                    except Exception:
-                        pass
-
-                    return {
-                        "status": "submitted",
-                        "order_id": odno,
-                        "ticker": ticker,
-                        "side": side.upper(),
-                        "qty": qty,
-                        "price": price,
-                        "message": msg_txt
-                    }
-                else:
-                    msg_cd = data.get("msg_cd", "")
-                    msg_txt = data.get("msg1", "Unknown Error")
-                    logger.error(f"[KIS US Order Error] {msg_cd}: {msg_txt}")
-                    return {
-                        "status": "rejected",
-                        "reason": f"{msg_txt} ({msg_cd})",
-                        "data": data
-                    }
+                res = requests.post(url, json=body, headers=headers, timeout=8)
+            except (requests.Timeout, requests.ConnectionError) as exc:
+                rec = self._recheck_submitted_order(
+                    ticker, side, qty, price, client_oid, is_domestic=False, exchange=exchange
+                )
+                if rec:
+                    return rec
+                logger.error(f"[KIS US Order Timeout] {exc}")
+                return {
+                    "status": "error",
+                    "reason": "ORDER_TIMEOUT_UNCONFIRMED",
+                    "client_order_id": client_oid,
+                    "ticker": ticker,
+                    "side": side.upper(),
+                    "message": "주문 HTTP 타임아웃. 원장에서 확인되지 않아 재전송하지 않았습니다."
+                }
             except Exception as exc:
-                if attempt == 0:
-                    time.sleep(0.5)
-                    continue
+                rec = self._recheck_submitted_order(
+                    ticker, side, qty, price, client_oid, is_domestic=False, exchange=exchange
+                )
+                if rec:
+                    return rec
                 logger.error(f"[KIS US Order Exception] {exc}")
-                return {"status": "error", "reason": str(exc)}
-        return {"status": "error", "reason": "Max retries exceeded"}
+                return {"status": "error", "reason": str(exc), "client_order_id": client_oid}
+
+            if res.status_code >= 500:
+                rec = self._recheck_submitted_order(
+                    ticker, side, qty, price, client_oid, is_domestic=False, exchange=exchange
+                )
+                if rec:
+                    return rec
+                return {
+                    "status": "error",
+                    "reason": "ORDER_TIMEOUT_UNCONFIRMED",
+                    "client_order_id": client_oid,
+                    "message": f"증권사 HTTP {res.status_code}. 재전송 없이 원장 확인 필요."
+                }
+
+            try:
+                data = res.json()
+            except Exception:
+                rec = self._recheck_submitted_order(
+                    ticker, side, qty, price, client_oid, is_domestic=False, exchange=exchange
+                )
+                if rec:
+                    return rec
+                return {
+                    "status": "error",
+                    "reason": "ORDER_TIMEOUT_UNCONFIRMED",
+                    "client_order_id": client_oid,
+                    "message": "주문 응답 JSON 파싱 실패. 재전송하지 않았습니다."
+                }
+
+            msg_cd = data.get("msg_cd", "")
+            msg_txt = data.get("msg1", "")
+            if (msg_cd == "EGW00201" or "초당 거래건수" in str(msg_txt)) and attempt < 2:
+                last_rate_limit = True
+                time.sleep(1.2)
+                continue
+            last_rate_limit = False
+
+            if res.status_code == 200 and data.get("rt_cd") == "0":
+                out = data.get("output", {})
+                odno = out.get("ODNO") or out.get("odno") or f"OD-{int(time.time())}"
+                msg_ok = data.get("msg1", "Order submitted successfully")
+                try:
+                    from al_sangmoo.infrastructure.persistence import record_execution_log
+                    record_execution_log(
+                        ticker=ticker,
+                        side=side.upper(),
+                        quantity=qty,
+                        price=price,
+                        order_type="MARKETABLE_LIMIT" if order_type == "00" else "MARKET",
+                        status="FILLED",
+                        message=f"{msg_ok} (체결단가 ${price:,.2f})",
+                        order_id=odno
+                    )
+                except Exception:
+                    pass
+                return {
+                    "status": "submitted",
+                    "order_id": odno,
+                    "client_order_id": client_oid,
+                    "ticker": ticker,
+                    "side": side.upper(),
+                    "qty": qty,
+                    "price": price,
+                    "message": msg_ok
+                }
+
+            logger.error(f"[KIS US Order Error] {msg_cd}: {msg_txt}")
+            return {
+                "status": "rejected",
+                "reason": f"{msg_txt} ({msg_cd})",
+                "client_order_id": client_oid,
+                "data": data
+            }
+
+        if last_rate_limit:
+            return {"status": "rejected", "reason": "EGW00201 초당 거래건수 초과 (Max retries)", "client_order_id": client_oid}
+        return {"status": "error", "reason": "Max retries exceeded", "client_order_id": client_oid}
 
     def _place_domestic_order(
         self,
@@ -706,12 +1025,13 @@ class KISBrokerAdapter:
         price: float,
         order_type: str = "01"
     ) -> Dict[str, Any]:
-        """Domestic (KRX) equity order handler."""
+        """Domestic (KRX) equity order. Timeout does not re-POST."""
         raw_code = ticker.replace(".KS", "").replace(".KQ", "").strip()
         is_buy = side.upper() == "BUY"
         tr_id = ("VTTC0802U" if is_buy else "VTTC0801U") if self.is_paper else ("TTTC0802U" if is_buy else "TTTC0801U")
         url = f"{self.base_url}/uapi/domestic-stock/v1/trading/order-cash"
         headers = self._get_headers(tr_id)
+        client_oid = make_client_order_id()
 
         body = {
             "CANO": self.account_no,
@@ -724,22 +1044,40 @@ class KISBrokerAdapter:
 
         try:
             self._limiter.acquire(1.0)
-            res = requests.post(url, json=body, headers=headers, timeout=10)
-            data = res.json()
-            if res.status_code == 200 and data.get("rt_cd") == "0":
-                return {
-                    "status": "submitted",
-                    "order_id": data.get("output", {}).get("ODNO"),
-                    "ticker": ticker,
-                    "side": side.upper(),
-                    "qty": qty,
-                    "price": price,
-                    "message": data.get("msg1")
-                }
-            else:
-                return {"status": "rejected", "reason": data.get("msg1", res.text)}
+            res = requests.post(url, json=body, headers=headers, timeout=8)
+        except (requests.Timeout, requests.ConnectionError) as exc:
+            logger.error(f"[KIS KR Order Timeout] {exc}")
+            return {
+                "status": "error",
+                "reason": "ORDER_TIMEOUT_UNCONFIRMED",
+                "client_order_id": client_oid,
+                "message": "국내주식 주문 HTTP 타임아웃. 재전송하지 않았습니다."
+            }
         except Exception as exc:
-            return {"status": "error", "reason": str(exc)}
+            return {"status": "error", "reason": str(exc), "client_order_id": client_oid}
+
+        try:
+            data = res.json()
+        except Exception:
+            return {
+                "status": "error",
+                "reason": "ORDER_TIMEOUT_UNCONFIRMED",
+                "client_order_id": client_oid,
+                "message": "국내주식 주문 응답 파싱 실패. 재전송하지 않았습니다."
+            }
+
+        if res.status_code == 200 and data.get("rt_cd") == "0":
+            return {
+                "status": "submitted",
+                "order_id": data.get("output", {}).get("ODNO"),
+                "client_order_id": client_oid,
+                "ticker": ticker,
+                "side": side.upper(),
+                "qty": qty,
+                "price": price,
+                "message": data.get("msg1")
+            }
+        return {"status": "rejected", "reason": data.get("msg1", res.text), "client_order_id": client_oid}
 
 
 # Global singleton instance

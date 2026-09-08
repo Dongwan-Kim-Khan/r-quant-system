@@ -49,7 +49,7 @@ The Al-Sangmoo Quant Trading Platform is an institutional-grade algorithmic swin
 - Hard Stop-Loss: -4.0% (`buy_price * 0.96` / `constants.STOP_LOSS_PCT`)
 - Trailing Take-Profit: +15.0% (`buy_price * 1.15` / `constants.TAKE_PROFIT_PCT`)
 - Capital Allocation: 3-slot integer shares ($7,500 / 10M KRW per slot)
-- Macro Regime: MSI 2.0 (0-100) -> CASH_EXIT (<30), DEFENSE_HOLD (30-50), SELECTIVE_BUY (50-70), ACTIVE_BUY (>=70)
+- Macro Regime: MSI 2.0 is a **risk index** (0-100, higher = more danger) → ACTIVE_BUY (<30), SELECTIVE_BUY (30-50), DEFENSE_HOLD (50-75), CASH_EXIT (>=75). Slot count (3 vs 2) follows SPY ≥ 200 SMA, not inverted MSI.
 
 ## Code Layout
 - `server.py`: FastAPI application entry point, lifespan, middleware, WebSocket route.

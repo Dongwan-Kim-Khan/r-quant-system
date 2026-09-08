@@ -7,7 +7,7 @@ from typing import Dict, Any, List, Tuple, Optional, Set, Literal
 import pandas as pd
 import numpy as np
 
-from al_sangmoo.core.constants import STOCK_DICT, TICKER_SECTORS
+from al_sangmoo.core.constants import STOCK_DICT, TICKER_SECTORS, derive_partial_tp_price, derive_stop_price, derive_target_price
 
 
 @dataclass(frozen=True)
@@ -416,9 +416,9 @@ def classify_quant_tier(
 
     # Standard Target & Stops
     entry_price = ind.close
-    target_price = round(entry_price * 1.15, 2)       # +15.0%
-    stop_price = round(entry_price * 0.96, 2)         # -4.0% Hard Stop
-    partial_tp_price = round(entry_price * 1.08, 2)   # +8.0% Partial TP
+    target_price = derive_target_price(entry_price)
+    stop_price = derive_stop_price(entry_price)
+    partial_tp_price = derive_partial_tp_price(entry_price)
 
     # Tier Qualification Predicates
     is_tier1_qualified = (

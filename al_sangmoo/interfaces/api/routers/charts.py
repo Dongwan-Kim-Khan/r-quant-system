@@ -11,42 +11,64 @@ router = APIRouter(tags=["Charts"])
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
 CHARTS_DIR = os.path.join(BASE_DIR, "data", "charts")
+MIN_DAILY_BARS = 250
+
+
+def _daily_bar_count(data) -> int:
+    if not isinstance(data, dict):
+        return 0
+    candles = data.get("candles")
+    if isinstance(candles, list) and candles:
+        return len(candles)
+    tf = data.get("timeframes")
+    daily = tf.get("daily") if isinstance(tf, dict) else None
+    dc = daily.get("candles") if isinstance(daily, dict) else None
+    return len(dc) if isinstance(dc, list) else 0
+
 
 CHART_CACHE = {}
 CACHE_TTL_SECONDS = 3.0
 
 
+def _harmonize_live_price(live: float, ref: float | None) -> float | None:
+    """
+    Drop or rescale a live quote that would turn the last daily bar into a
+    fake 장대양봉 (KIS integer ticks, KRW, allocation amounts, volume).
+    """
+    try:
+        live = float(live)
+    except (TypeError, ValueError):
+        return None
+    if live <= 0:
+        return None
+    try:
+        ref = float(ref or 0)
+    except (TypeError, ValueError):
+        ref = 0.0
+    if ref <= 0:
+        return round(live, 2)
+    ratio = live / ref
+    if 0.85 <= ratio <= 1.15:
+        return round(live, 2)
+    if ratio > 1.15:
+        for div in (10, 100, 1000, 10000):
+            cand = live / div
+            if cand > 0 and 0.85 <= (cand / ref) <= 1.15:
+                return round(cand, 2)
+    return None
+
+
 def get_market_session_date(ticker_sym: str) -> str:
     """
     Determines active financial trading session date (Trade Date):
-    - US stocks (NYSE/NASDAQ): New session begins at 09:30 EDT (13:30 UTC).
-      Before 09:30 EDT (overnight, pre-market), the active trade date is the previous completed session (e.g. 2026-08-26).
-      After 09:30 EDT, the active trade date is today (e.g. 2026-08-27).
+    - US stocks (NYSE/NASDAQ): New session begins at 09:30 America/New_York (DST-aware).
+      Before 09:30 ET (overnight, pre-market), the active trade date is the previous completed session.
+      After 09:30 ET, the active trade date is today.
       Prevents after-market quotes from prematurely creating tomorrow's empty candle bar!
     - Korean stocks (.KS/.KQ): Rolls over at 09:00 KST.
     """
-    from datetime import datetime, timezone, timedelta
-    if ticker_sym.endswith(".KS") or ticker_sym.endswith(".KQ"):
-        now_kr = datetime.now(timezone(timedelta(hours=9)))
-        if now_kr.hour < 9:
-            d = (now_kr - timedelta(days=1)).date()
-        else:
-            d = now_kr.date()
-        while d.weekday() >= 5:
-            d -= timedelta(days=1)
-        return d.strftime("%Y-%m-%d")
-    else:
-        now_ny = datetime.now(timezone(timedelta(hours=-4)))  # EDT
-        if (now_ny.hour < 9) or (now_ny.hour == 9 and now_ny.minute < 30):
-            prev_d = (now_ny - timedelta(days=1)).date()
-            while prev_d.weekday() >= 5:
-                prev_d -= timedelta(days=1)
-            return prev_d.strftime("%Y-%m-%d")
-        else:
-            d = now_ny.date()
-            while d.weekday() >= 5:
-                d -= timedelta(days=1)
-            return d.strftime("%Y-%m-%d")
+    from al_sangmoo.core.market_time import session_date_for_ticker
+    return session_date_for_ticker(ticker_sym)
 
 
 def _enrich_chart_with_realtime_price(data: dict, ticker: str) -> dict:
@@ -62,8 +84,8 @@ def _enrich_chart_with_realtime_price(data: dict, ticker: str) -> dict:
     live_price = None
     # 1. Fast in-memory check from SQLite live portfolio SSOT (< 0.1ms)
     try:
-        import db_manager
-        p = db_manager.get_live_portfolio()
+        from al_sangmoo.infrastructure.persistence import get_live_portfolio
+        p = get_live_portfolio()
         for h in p.get("holdings", []):
             if isinstance(h, dict) and h.get("ticker", "").upper() == ticker:
                 val = float(h.get("current_price", 0))
@@ -73,13 +95,22 @@ def _enrich_chart_with_realtime_price(data: dict, ticker: str) -> dict:
     except Exception:
         pass
 
-    # 2. Query official KIS Broker Live Price TR / fast-info quote
-    if live_price is None or live_price <= 0:
+    # Do not call KIS on this request path — 3 exchanges × 2 TRs × 3s stalls the chart.
+
+    if (live_price is None or live_price <= 0) and isinstance(data.get("candles"), list) and data["candles"]:
         try:
-            from al_sangmoo.infrastructure.brokers.kis_broker import default_kis_broker
-            live_price = default_kis_broker.get_live_price(ticker)
-        except Exception:
-            pass
+            live_price = float(data["candles"][-1].get("close") or 0)
+        except (TypeError, ValueError):
+            live_price = None
+
+    if live_price and live_price > 0:
+        ref_close = None
+        if isinstance(data.get("candles"), list) and data["candles"]:
+            try:
+                ref_close = float(data["candles"][-1].get("close") or 0)
+            except (TypeError, ValueError):
+                ref_close = None
+        live_price = _harmonize_live_price(live_price, ref_close)
 
     if live_price and live_price > 0:
         live_price = round(float(live_price), 2)
@@ -216,17 +247,20 @@ async def get_chart_data(ticker: str):
     ticker_clean = re.sub(r'[^A-Za-z0-9.\^=-]', '', ticker_resolved).strip().upper()
     if not ticker_clean:
         raise HTTPException(status_code=400, detail="유효하지 않은 종목 티커입니다.")
+    from al_sangmoo.core.constants import is_market_ticker
+    if not is_market_ticker(ticker_clean):
+        raise HTTPException(status_code=404, detail=f"'{ticker}' 종목의 시세 데이터를 불러올 수 없습니다.")
 
     now = time.time()
-    # 1. In-memory fast cache with TTL
-    if ticker_clean in CHART_CACHE:
-        entry = CHART_CACHE[ticker_clean]
-        if isinstance(entry, dict) and "data" in entry and (now - entry.get("timestamp", 0) < CACHE_TTL_SECONDS):
-            return entry["data"]
-    if ticker_resolved in CHART_CACHE:
-        entry = CHART_CACHE[ticker_resolved]
-        if isinstance(entry, dict) and "data" in entry and (now - entry.get("timestamp", 0) < CACHE_TTL_SECONDS):
-            return entry["data"]
+    # 1. In-memory fast cache with TTL — reject if the cached payload is a different ticker
+    for cache_key in (ticker_clean, ticker_resolved):
+        if cache_key in CHART_CACHE:
+            entry = CHART_CACHE[cache_key]
+            if isinstance(entry, dict) and "data" in entry and (now - entry.get("timestamp", 0) < CACHE_TTL_SECONDS):
+                cached = entry["data"]
+                cached_tk = str((cached or {}).get("ticker", "")).upper()
+                if cached and (not cached_tk or cached_tk == ticker_clean):
+                    return cached
 
     chart_file = os.path.abspath(os.path.join(CHARTS_DIR, f"{ticker_clean}.json"))
     charts_dir_abs = os.path.abspath(CHARTS_DIR)
@@ -260,6 +294,8 @@ async def get_chart_data(ticker: str):
                                 cached_data = None  # Cache has missing completed day, trigger fresh compute
                         except Exception:
                             pass
+                    if cached_data is not None and _daily_bar_count(cached_data) < MIN_DAILY_BARS:
+                        cached_data = None
                     data = cached_data
         except Exception:
             data = None
@@ -270,7 +306,15 @@ async def get_chart_data(ticker: str):
         if os.path.exists(alt_file) and alt_file.startswith(charts_dir_abs + os.sep):
             try:
                 with open(alt_file, "r", encoding="utf-8") as f:
-                    data = json.load(f)
+                    loaded = json.load(f)
+                loaded_tk = str((loaded or {}).get("ticker", "")).upper()
+                if loaded and (not loaded_tk or loaded_tk in (ticker_clean, str(ticker_resolved).upper())):
+                    if _daily_bar_count(loaded) < MIN_DAILY_BARS:
+                        data = None
+                    else:
+                        data = loaded
+                else:
+                    data = None
             except Exception:
                 data = None
 
@@ -279,18 +323,44 @@ async def get_chart_data(ticker: str):
         data = await asyncio.to_thread(compute_all_indicators, ticker_clean)
         if not data and ticker_resolved != ticker_clean:
             data = await asyncio.to_thread(compute_all_indicators, ticker_resolved)
+        if not data:
+            def _kis_chart(sym: str):
+                try:
+                    from al_sangmoo.infrastructure.brokers.kis_broker import default_kis_broker
+                    ohlcv = default_kis_broker.get_daily_ohlcv(sym)
+                    if ohlcv is None:
+                        return None
+                    return compute_all_indicators(sym, df=ohlcv)
+                except Exception:
+                    return None
+            data = await asyncio.to_thread(_kis_chart, ticker_clean)
+            if not data and ticker_resolved != ticker_clean:
+                data = await asyncio.to_thread(_kis_chart, ticker_resolved)
         if data:
-            try:
-                atomic_save_json(chart_file, data)
-            except Exception:
-                pass
+            new_n = _daily_bar_count(data)
+            old_n = 0
+            old_payload = None
+            if os.path.exists(chart_file):
+                try:
+                    with open(chart_file, "r", encoding="utf-8") as f:
+                        old_payload = json.load(f)
+                    old_n = _daily_bar_count(old_payload)
+                except Exception:
+                    old_payload = None
+            if new_n >= MIN_DAILY_BARS and new_n >= old_n:
+                try:
+                    atomic_save_json(chart_file, data)
+                except Exception:
+                    pass
+            elif old_n >= MIN_DAILY_BARS and new_n < old_n and old_payload:
+                data = old_payload
 
     if not data:
         raise HTTPException(status_code=404, detail=f"'{ticker}' ({ticker_resolved}) 종목의 시세 데이터를 불러올 수 없습니다.")
 
-    # 4. Enrich with official real-time price from KIS OpenAPI
+    # 4. Enrich with official real-time price from KIS OpenAPI (off the event loop)
     try:
-        data = _enrich_chart_with_realtime_price(data, ticker_clean)
+        data = await asyncio.to_thread(_enrich_chart_with_realtime_price, data, ticker_clean)
     except Exception:
         pass
 
@@ -301,5 +371,6 @@ async def get_chart_data(ticker: str):
 
     cache_payload = {"data": data, "timestamp": now}
     CHART_CACHE[ticker_clean] = cache_payload
-    CHART_CACHE[ticker_resolved] = cache_payload
+    if ticker_resolved != ticker_clean:
+        CHART_CACHE[ticker_resolved] = {"data": data, "timestamp": now}
     return data

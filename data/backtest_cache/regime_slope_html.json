@@ -1,0 +1,190 @@
+{
+  "meta": {
+    "elapsed_sec": 5.7,
+    "hysteresis": {
+      "enter_bull_pct": 0.0,
+      "exit_bull_pct": -2.0
+    },
+    "rules": "bull slope top2 large-cap EngineA; chop 50% QQQ+EngineB; bear cash+EngineB; HTML exits; asymmetric 20d slope (enter >0, exit <-2)"
+  },
+  "windows": {
+    "2018-08-31": {
+      "strategy": {
+        "final_equity": 202144.36,
+        "total_return_pct": 102.14,
+        "cagr_pct": 9.23,
+        "sharpe": 0.567,
+        "mdd_pct": -20.23,
+        "n_days": 2008,
+        "start": "2018-08-31",
+        "end": "2026-08-28"
+      },
+      "trades": {
+        "n": 122,
+        "win_rate": 27.05,
+        "profit_factor": 1.465,
+        "avg_pnl": 1.448,
+        "median_pnl": -4.096,
+        "avg_bars": 26.9,
+        "reasons": {
+          "HARD_STOP": {
+            "n": 87,
+            "avg_pnl": -4.288,
+            "share_pct": 71.3
+          },
+          "TRAILING": {
+            "n": 33,
+            "avg_pnl": 16.797,
+            "share_pct": 27.0
+          },
+          "EOB": {
+            "n": 2,
+            "avg_pnl": -2.322,
+            "share_pct": 1.6
+          }
+        }
+      },
+      "spy": {
+        "final_equity": 265891.63,
+        "total_return_pct": 165.89,
+        "cagr_pct": 13.06,
+        "sharpe": 0.729,
+        "mdd_pct": -34.1,
+        "n_days": 2008,
+        "start": "2018-08-31",
+        "end": "2026-08-28"
+      },
+      "qqq": {
+        "final_equity": 385839.78,
+        "total_return_pct": 285.84,
+        "cagr_pct": 18.47,
+        "sharpe": 0.821,
+        "mdd_pct": -35.62,
+        "n_days": 2008,
+        "start": "2018-08-31",
+        "end": "2026-08-28"
+      },
+      "jensen_spy": {
+        "ann_alpha_pct": 6.25,
+        "t": 0.995,
+        "p": 0.3197,
+        "beta": 0.305,
+        "r2": 0.1012,
+        "n": 2007
+      },
+      "jensen_qqq": {
+        "ann_alpha_pct": 5.77,
+        "t": 0.916,
+        "p": 0.3596,
+        "beta": 0.242,
+        "r2": 0.0985,
+        "n": 2007
+      },
+      "regime_share": {
+        "bull": 66.3,
+        "chop": 12.0,
+        "bear": 21.7
+      },
+      "qqq_roundtrips": 66,
+      "regime_transitions": 98,
+      "snapshots": [
+        "2018-08-31 bull slope=2.80 CYBER_SAAS(+7.0) ['PANW', 'TEAM', 'FTNT', 'DOCU', 'OKTA'] | CONSUMER_RETAIL(+4.5) ['BKNG', 'WMT', 'HD', 'PG', 'LOW']",
+        "2019-02-28 bull slope=5.99 CYBER_SAAS(+12.5) ['PANW', 'FTNT', 'TEAM', 'DOCU', 'OKTA'] | MEGA_TECH(+10.4) ['AMZN', 'AAPL', 'META', 'MSFT', 'TSLA']",
+        "2020-02-28 bear slope=-8.91 CONSUMER_RETAIL(-6.9) ['BKNG', 'HD', 'PG', 'WMT', 'SBUX'] | HEALTHCARE(-7.9) ['GILD', 'UNH', 'MRK', 'JNJ', 'PFE']",
+        "2020-08-31 bull slope=7.37 MEGA_TECH(+11.5) ['TSLA', 'AAPL', 'AMZN', 'META', 'MSFT'] | CONSUMER_RETAIL(+9.9) ['WMT', 'HD', 'TGT', 'PG', 'COST']",
+        "2021-08-31 bull slope=3.35 CYBER_SAAS(+5.3) ['ZM', 'CRWD', 'PANW', 'DDOG', 'DOCU'] | FINANCIALS(+5.3) ['BAC', 'PYPL', 'V', 'JPM', 'COIN']",
+        "2022-02-28 bear slope=1.51 CYBER_SAAS(+9.3) ['PANW', 'DDOG', 'ZS', 'NET', 'CRWD'] | DEFENSE_AERO(+8.9) ['BA', 'LMT', 'GE', 'RTX', 'NOC']",
+        "2022-08-31 bear slope=-2.41 POWER_ENERGY(+6.0) ['OXY', 'XOM', 'CVX', 'COP', 'NEE'] | CYBER_SAAS(+1.6) ['PANW', 'CRWD', 'TEAM', 'ZM', 'DDOG']",
+        "2023-02-28 chop slope=-1.96 CYBER_SAAS(+2.3) ['PANW', 'CRWD', 'DDOG', 'TEAM', 'NET'] | DEFENSE_AERO(+1.6) ['BA', 'LMT', 'NOC', 'GE', 'RTX']",
+        "2023-08-31 bull slope=0.20 POWER_ENERGY(+3.4) ['XOM', 'CVX', 'NEE', 'OXY', 'MPC'] | DEFENSE_AERO(+1.2) ['BA', 'RTX', 'GE', 'LMT', 'NOC']",
+        "2024-02-28 bull slope=3.19 SEMICONDUCTOR(+10.1) ['005930.KS', '000660.KS', 'NVDA', 'AMD', 'ARM'] | INDUSTRIALS(+5.3) ['CAT', 'UPS', 'DE', 'HON', 'UNP']",
+        "2025-02-28 chop slope=-2.78 HEALTHCARE(+1.1) ['LLY', 'UNH', 'MRK', 'JNJ', 'DHR'] | POWER_ENERGY(-0.1) ['XOM', 'VST', 'GEV', 'CEG', 'ETN']"
+      ]
+    },
+    "2023-08-31": {
+      "strategy": {
+        "final_equity": 116421.94,
+        "total_return_pct": 16.42,
+        "cagr_pct": 5.23,
+        "sharpe": 0.364,
+        "mdd_pct": -29.25,
+        "n_days": 751,
+        "start": "2023-08-31",
+        "end": "2026-08-28"
+      },
+      "trades": {
+        "n": 45,
+        "win_rate": 28.89,
+        "profit_factor": 1.354,
+        "avg_pnl": 1.18,
+        "median_pnl": -4.096,
+        "avg_bars": 29.3,
+        "reasons": {
+          "HARD_STOP": {
+            "n": 31,
+            "avg_pnl": -4.63,
+            "share_pct": 68.9
+          },
+          "TRAILING": {
+            "n": 12,
+            "avg_pnl": 16.773,
+            "share_pct": 26.7
+          },
+          "EOB": {
+            "n": 2,
+            "avg_pnl": -2.322,
+            "share_pct": 4.4
+          }
+        }
+      },
+      "spy": {
+        "final_equity": 171402.23,
+        "total_return_pct": 71.4,
+        "cagr_pct": 19.82,
+        "sharpe": 1.256,
+        "mdd_pct": -19.0,
+        "n_days": 751,
+        "start": "2023-08-31",
+        "end": "2026-08-28"
+      },
+      "qqq": {
+        "final_equity": 190526.19,
+        "total_return_pct": 90.53,
+        "cagr_pct": 24.15,
+        "sharpe": 1.161,
+        "mdd_pct": -22.88,
+        "n_days": 751,
+        "start": "2023-08-31",
+        "end": "2026-08-28"
+      },
+      "jensen_spy": {
+        "ann_alpha_pct": -0.58,
+        "t": -0.056,
+        "p": 0.9556,
+        "beta": 0.391,
+        "r2": 0.0988,
+        "n": 750
+      },
+      "jensen_qqq": {
+        "ann_alpha_pct": 0.6,
+        "t": 0.057,
+        "p": 0.9545,
+        "beta": 0.267,
+        "r2": 0.082,
+        "n": 750
+      },
+      "regime_share": {
+        "bull": 78.8,
+        "chop": 12.8,
+        "bear": 8.4
+      },
+      "qqq_roundtrips": 24,
+      "regime_transitions": 27,
+      "snapshots": [
+        "2023-08-31 bull slope=0.20 POWER_ENERGY(+3.4) ['XOM', 'CVX', 'NEE', 'OXY', 'MPC'] | DEFENSE_AERO(+1.2) ['BA', 'RTX', 'GE', 'LMT', 'NOC']",
+        "2024-02-28 bull slope=3.19 SEMICONDUCTOR(+10.1) ['005930.KS', '000660.KS', 'NVDA', 'AMD', 'ARM'] | INDUSTRIALS(+5.3) ['CAT', 'UPS', 'DE', 'HON', 'UNP']",
+        "2025-02-28 chop slope=-2.78 HEALTHCARE(+1.1) ['LLY', 'UNH', 'MRK', 'JNJ', 'DHR'] | POWER_ENERGY(-0.1) ['XOM', 'VST', 'GEV', 'CEG', 'ETN']"
+      ]
+    }
+  }
+}
