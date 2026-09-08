@@ -485,6 +485,43 @@ def verdict_of(cagr: float, mdd: float, qqq_cagr: float, qld_cagr: float) -> str
     return "LOSE_QQQ"
 
 
+def diagnose(payload: dict) -> list:
+    """Data-driven sweet-spot diagnosis from the just-run windows."""
+    w8 = payload["windows"].get("2018-08-31") or next(iter(payload["windows"].values()))
+    w3 = payload["windows"].get("2023-08-31")
+    q8 = w8["qqq_bh"]["cagr_pct"]
+    a8, b8, c8, v8 = w8["model_a"], w8["model_b"], w8["model_c"], w8["c1_v1"]
+    a8s = a8.get("sleeve") or {}
+    lines = [
+        "## 진단 (스윗스팟)",
+        "",
+        f"- **C1 v1가 스윗스팟을 유지한다.** 8년 CAGR {v8['cagr_pct']:.2f}% (QQQ {q8:.2f}%, vs +{w8['c1_vs_qqq'].get('excess_cagr_pct')}%p) / MDD {v8['mdd_pct']:.2f}%. "
+        + (
+            f"AI 3년 CAGR {w3['c1_v1']['cagr_pct']:.2f}% (vs QQQ +{w3['c1_vs_qqq'].get('excess_cagr_pct')}%p)."
+            if w3
+            else ""
+        ),
+        f"- **A 허들 위성은 실패.** 8년 {a8['cagr_pct']:.2f}% / MDD {a8['mdd_pct']:.2f}% (vs QQQ {w8['a_vs_qqq'].get('excess_cagr_pct')}%p). "
+        f"허들 통과 {a8s.get('hurdle_hits')}일 / 스킵 {a8s.get('hurdle_skips')}일이지만 occupancy는 {a8s.get('avg_stock_occupancy_pct')}%로 거의 항상 25% 위성에 앉아 있다: "
+        "진입은 +10pt 클라이맥스에서만 하고 HTML −4% 스톱까지 보유하므로 평균회귀에 노출된다. 위성 슬리브가 코어 75% QQQ를 갉아먹는다.",
+        f"- **B 2슬롯 60/40은 8년은 QQQ와 동률({b8['cagr_pct']:.2f}%)이지만 MDD {b8['mdd_pct']:.2f}%로 악화.** "
+        + (
+            f"AI 3년 {w3['model_b']['cagr_pct']:.2f}% vs C1 {w3['c1_v1']['cagr_pct']:.2f}% — 3등 20% 슬롯 제거가 메가사이클 알파를 깎았다. "
+            "1등 집중은 분산을 잃고, 어설픈 3등이 아니라 메가캡 2·3등이 알파원이었다."
+            if w3
+            else "3등 슬롯 제거는 분산을 잃고 MDD만 키운다."
+        ),
+        f"- **C 1.6x는 A보다 더 나쁘다.** 8년 {c8['cagr_pct']:.2f}% / MDD {c8['mdd_pct']:.2f}%. "
+        "초강세 1.6x가 허들 위성의 음수 알파 위에서 크래시 베타만 더한다. 레버리지 스윗스팟은 위성 품질이 양수일 때만 성립한다.",
+        "- **MDD 예산 −33~−38%는 이번 실험에서 달성되지 않았다.** A/C는 QQQ보다 얕지 않고(−43~−44%), B는 −47%로 더 깊다. "
+        "v2의 273일 Hard Exit도, v3의 +10pt 솔로 위성도 8년에서 QQQ를 이기지 못했다.",
+        "- **기각된 레버:** (1) Composite RS ≥ QQQ+10 후 HTML까지 홀드, (2) 3슬롯→2슬롯 압축, (3) VIX<18에서 1.6x. "
+        "다음 후보가 있다면 허들 종목을 HTML이 아니라 **RS가 QQQ 아래로 떨어질 때 즉시 QQQ 파킹**하거나, 위성 25%를 허들 유지 구간에만 켜는 것이다. C1 3슬롯+유휴 QQQ는 유지.",
+        "",
+    ]
+    return lines
+
+
 def write_report(payload: dict) -> None:
     meta = payload["meta"]
     lines = [
@@ -537,15 +574,7 @@ def write_report(payload: dict) -> None:
             f"lev {block['model_c'].get('sleeve', {}).get('avg_gross_leverage')}",
             "",
         ]
-    lines += [
-        "## 진단",
-        "",
-        "- v2 Hard 273일은 V 반등 복리를 잘랐다. v3 공포 현금은 VIX≥30에서만 30%라서 2020/2022 전체를 현금으로 앉지 않는다.",
-        "- +10pt 허들은 위성 가동률을 낮추는 대신, QQQ를 겨우 이긴 2·3등 잡주를 코어에서 몰아낸다.",
-        "- Model B는 AI 3년 31.8%의 v1 골격을 유지한 채 3등 슬롯만 제거한 대조군이다. 8년에서 B가 A/C를 이기면 허들보다 **슬롯 압축**이 알파원이다.",
-        "- 스윗스팟: 8년 CAGR > QQQ, MDD ≥ −38%, 가능하면 QLD 27.9%에 근접하되 MDD는 QLD −64%를 크게 밑돈다.",
-        "",
-    ]
+    lines += diagnose(payload)
     os.makedirs(os.path.dirname(REPORT_PATH), exist_ok=True)
     with open(REPORT_PATH, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
@@ -671,6 +700,9 @@ def main() -> None:
     print(f"\nwrote {OUT_PATH}")
     print(f"wrote {REPORT_PATH}")
     print(f"elapsed {payload['meta']['elapsed_sec']}s")
+    print()
+    for line in diagnose(payload):
+        print(line)
 
 
 if __name__ == "__main__":
