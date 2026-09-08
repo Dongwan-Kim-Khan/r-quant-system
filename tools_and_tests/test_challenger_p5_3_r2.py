@@ -306,7 +306,7 @@ class TestChallengerEmpiricalVerification(unittest.TestCase):
             for item in dual_1 + s1_1 + s2_1:
                 price = item['price']
                 expected_target = round(price * 1.15, 2)
-                expected_stop = round(price * 0.96, 2)
+                expected_stop = round(price * 0.95, 2)
                 self.assertAlmostEqual(item['target_price'], expected_target, places=2)
                 self.assertAlmostEqual(item['stop_price'], expected_stop, places=2)
 

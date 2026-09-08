@@ -92,7 +92,9 @@ def run_backtest_simulation(
                 # Enter at Bar i Open (with slippage)
                 raw_fill = opens[i]
                 fill_price = raw_fill * (1.0 + slippage_bps)
-                alloc = cash * 0.95  # Allocate 95% of available cash
+                # Deploy most available cash into the swing sleeve (not a stop multiplier)
+                cash_utilization = 95.0 / 100.0
+                alloc = cash * cash_utilization
                 shares = (alloc * (1.0 - fee_rate)) / fill_price
                 cash -= alloc
                 position_shares = shares

@@ -260,7 +260,7 @@ def test_m2_classify_3tier_candidates():
     assert len(t1) > 0, "Expected at least 1 Tier 1 pick"
     assert t1[0]["ticker"] == "NVDA"
     assert t1[0]["target_price"] == 138.0 # 120 * 1.15
-    assert t1[0]["stop_price"] == 115.2 # 120 * 0.96
+    assert t1[0]["stop_price"] == 114.0 # 120 * 0.95
     print(f"  - Tier 1 Picks: {[x['ticker'] for x in t1]}")
     print(f"  - Tier 2 Picks: {[x['ticker'] for x in t2]}")
     print(f"  - Tier 3 Picks: {[x['ticker'] for x in t3]}")

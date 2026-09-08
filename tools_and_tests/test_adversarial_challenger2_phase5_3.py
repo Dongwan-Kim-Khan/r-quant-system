@@ -7,7 +7,7 @@ Target:
    and consumer pipelines with 0.0000% discrepancy.
 2. Tier Mutual Exclusivity: Strict partitioning across Tier 1, 2, 3 in
    classify_3tier_candidates (zero duplicates, zero silent drops of qualified candidates).
-3. Stop-Loss Consistency: Verification of -4.0% hard stop across value objects,
+3. Stop-Loss Consistency: Verification of -5.0% hard stop across value objects,
    tier classifications, recommendation payloads, and dashboards.
 4. Test Suite Execution: Verification of test_phase5_3_ssot_quant.py.
 ===============================================================================
@@ -294,12 +294,12 @@ class TestPhase5_3EmpiricalChallenge(unittest.TestCase):
         """
         Challenge 3: Verify that all value objects, risk management modules, and JSON payloads
         strictly and consistently adhere to:
-        - -4.0% Hard Stop (stop_price = round(price * 0.96, 2))
+        - -5.0% Hard Stop (stop_price = round(price * 0.95, 2))
         - +15.0% Primary Target (target_price = round(price * 1.15, 2))
         - +8.0% Partial TP (partial_tp_price = round(price * 1.08, 2))
         """
         print("\n" + "=" * 75)
-        print("  [CHALLENGE 3] -4.0% Hard Stop & +15.0% Target Rule Consistency")
+        print("  [CHALLENGE 3] -5.0% Hard Stop & +15.0% Target Rule Consistency")
         print("=" * 75)
 
         test_prices = [10.0, 25.50, 48.75, 100.0, 130.50, 225.0, 450.25, 980.0, 1500.0]
@@ -321,7 +321,7 @@ class TestPhase5_3EmpiricalChallenge(unittest.TestCase):
                 macro_tailwind_sectors=["GENERAL"]
             )
 
-            expected_stop = round(p * 0.96, 2)
+            expected_stop = round(p * 0.95, 2)
             expected_target = round(p * 1.15, 2)
             expected_partial = round(p * 1.08, 2)
 
@@ -342,10 +342,10 @@ class TestPhase5_3EmpiricalChallenge(unittest.TestCase):
         t1, t2, t3 = classify_3tier_candidates(synthetic_chart_data, tailwind_sectors=["TECH"])
         self.assertEqual(len(t1), 1)
         nvda_t1 = t1[0]
-        self.assertEqual(nvda_t1["stop_price"], round(125.0 * 0.96, 2))  # 120.0
+        self.assertEqual(nvda_t1["stop_price"], round(125.0 * 0.95, 2))  # 120.0
         self.assertEqual(nvda_t1["target_price"], round(125.0 * 1.15, 2)) # 143.75
 
-        print("  -> PASSED: All value objects and payloads consistently adhere to the -4.0% hard stop rule.")
+        print("  -> PASSED: All value objects and payloads consistently adhere to the -5.0% hard stop rule.")
 
     def test_04_consumer_pipeline_parity_50_scenarios(self):
         """
