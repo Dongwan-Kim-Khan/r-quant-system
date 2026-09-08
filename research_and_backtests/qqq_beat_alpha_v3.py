@@ -159,11 +159,15 @@ def lev_investable(spec: V3Spec, spy: float, sma200: float, vix: float) -> Tuple
 
 
 def proxy_mix_capped(stock_w: float, lev: float, investable: float, has_qld: bool) -> Tuple[float, float]:
-    """v1 QLD mix, but never spend more than `investable` of equity."""
+    """QLD mix toward gross leverage `lev`, spending at most `investable`.
+
+    remaining nasdaq beta = lev * investable - stock_w, filled with QQQ (1x)
+    plus QLD (2x) without spending more than investable - stock_w.
+    """
     stock_w = max(0.0, min(1.0, float(stock_w)))
-    inv = max(stock_w, min(1.0, float(investable)))
+    inv = max(0.0, min(1.0, float(investable)))
     spendable = max(0.0, inv - stock_w)
-    remaining = max(0.0, min(float(lev), inv) - stock_w)
+    remaining = max(0.0, float(lev) * inv - stock_w)
     if remaining <= 1e-9 or spendable <= 1e-9:
         return 0.0, 0.0
     if remaining <= spendable + 1e-9 or not has_qld:
