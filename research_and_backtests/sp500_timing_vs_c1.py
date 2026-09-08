@@ -357,6 +357,30 @@ def diagnose(payload: dict) -> List[str]:
             )
         )
     beat = [k for k in ("T1", "T2", "T3") if w8[k]["cagr_pct"] > c1["cagr_pct"]]
+    sso = w8.get("sso_bh") or {}
+    if sso:
+        lines.append(
+            f"- **SSO B&H** 8년 {sso.get('cagr_pct')}% / MDD {sso.get('mdd_pct')}% — "
+            f"타이밍 없이 2x를 들고만 있어도 C1 CAGR({c1['cagr_pct']:.2f}%)을 "
+            + ("이긴다" if float(sso.get("cagr_pct", 0)) > c1["cagr_pct"] else "못 이긴다")
+            + f". 다만 MDD {sso.get('mdd_pct')}%는 C1 {c1['mdd_pct']:.2f}%보다 깊다."
+        )
+    if w3:
+        risk_winners = [
+            k
+            for k in ("T1", "T2", "T3")
+            if w3[k]["mdd_pct"] > w3["c1_v1"]["mdd_pct"] and w3[k]["sharpe"] >= w3["c1_v1"]["sharpe"] - 0.05
+        ]
+        if risk_winners:
+            lines.append(
+                f"- AI 3년 리스크 측면 우위: {', '.join(risk_winners)} "
+                f"(예: T3 MDD {w3['T3']['mdd_pct']:.2f}% / Sharpe {w3['T3']['sharpe']:.3f} vs C1 "
+                f"{w3['c1_v1']['mdd_pct']:.2f}% / {w3['c1_v1']['sharpe']:.3f}). CAGR은 여전히 C1이 앞선다."
+            )
+    lines.append(
+        f"- **T2 실패 원인:** bull+VIX<18에서 UPRO 상시 노출({w8['T2'].get('sleeve', {}).get('regime_days', {}).get('bull_upro')}일) — "
+        "3x 변동성 부패 + SMA200 래그 현금화가 V 반등을 놓쳐 8년 CAGR ≈ 0%."
+    )
     if beat:
         lines.append(
             f"- **인덱스 타이밍이 C1을 8년 CAGR에서 이긴 전략: {', '.join(beat)}.** "
@@ -366,7 +390,7 @@ def diagnose(payload: dict) -> List[str]:
         lines.append(
             "- **순수 S&P 타이밍 3종 모두 8년 CAGR에서 C1을 못 이김.** "
             "C1의 개별 주도주 알파(+유휴 QQQ/1.5x)가 단순 레버리지 스위치보다 우월하다. "
-            "단, T-전략의 MDD·Sharpe가 C1보다 나으면 리스크 패리티 코어 후보로만 남긴다."
+            "SSO B&H식 상시 2x는 CAGR만 보면 매력적이나 MDD −59%를 감당해야 한다."
         )
     lines.append("")
     return lines
