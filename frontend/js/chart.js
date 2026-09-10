@@ -2,8 +2,8 @@
  * R QUANT TERMINAL v2: INTERACTIVE CHART ENGINE MODULE
  * Encapsulates TradingView Lightweight Charts, Series, Timeframe Switcher, and +26D Cloud Renderer.
  */
-import { ApiClient } from './api.js?v=4.3.2';
-import { QuantDecoder } from './decoder.js?v=4.3.2';
+import { ApiClient } from './api.js?v=4.3.3';
+import { QuantDecoder } from './decoder.js?v=4.3.3';
 
 export const ChartEngine = {
     mainChart: null,

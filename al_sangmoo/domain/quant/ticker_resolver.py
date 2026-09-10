@@ -129,16 +129,20 @@ def resolve_ticker(query: str) -> str:
         # Default to .KS if not specified
         return f"{q_raw}.KS"
 
-    # 2. Check exact matches in directory
+    # 2. Resolve exact ticker first. Never let a company-name substring
+    # steal a valid symbol (e.g. APP matched "Apple Inc" -> AAPL).
     for item in STOCK_DIRECTORY:
         if q_clean == item["ticker"].upper():
             return item["ticker"]
+
+    # 3. Resolve exact/partial company names only after ticker exact matching.
+    for item in STOCK_DIRECTORY:
         if q_raw == item["name_kr"] or q_raw in item["name_kr"]:
             return item["ticker"]
         if q_clean == item["name_en"].upper() or q_clean in item["name_en"].upper():
             return item["ticker"]
 
-    # 3. Special aliases / colloquial terms
+    # 4. Special aliases / colloquial terms
     alias_map = {
         "삼전": "005930.KS",
         "하이닉스": "000660.KS",
@@ -162,7 +166,7 @@ def resolve_ticker(query: str) -> str:
     if q_raw in alias_map:
         return alias_map[q_raw]
 
-    # 4. Fallback to clean uppercase symbol
+    # 5. Fallback to clean uppercase symbol
     return q_clean
 
 def search_ticker_suggestions(query: str, limit: int = 8) -> List[Dict[str, Any]]:

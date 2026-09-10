@@ -3,10 +3,10 @@
  * Professional Bloomberg Dark Terminal Aesthetic (Zero Emojis).
  * Al-Sangmoo GS-Quant Upgraded 3-Slot Trading Cockpit.
  */
-import { ApiClient } from './api.js?v=4.3.2';
-import { ChartEngine } from './chart.js?v=4.3.2';
-import { QuantDecoder } from './decoder.js?v=4.3.2';
-import { deriveStopPrice, deriveTargetPrice, isMarketTicker, SLOT_WEIGHTS_BULL, SLOT_WEIGHTS_BEAR, isCashProxyTicker, extractMsiScore, classifyMsiStance, resolveQuickBuyQty } from './constants.js?v=4.3.2';
+import { ApiClient } from './api.js?v=4.3.3';
+import { ChartEngine } from './chart.js?v=4.3.3';
+import { QuantDecoder } from './decoder.js?v=4.3.3';
+import { deriveStopPrice, deriveTargetPrice, isMarketTicker, SLOT_WEIGHTS_BULL, SLOT_WEIGHTS_BEAR, isCashProxyTicker, extractMsiScore, classifyMsiStance, resolveQuickBuyQty } from './constants.js?v=4.3.3';
 
 export const UI = {
     currentSelectedTicker: "",

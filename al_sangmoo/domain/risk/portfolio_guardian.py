@@ -80,6 +80,8 @@ class PortfolioGuardian:
         self.last_sleeve_align_time: float = 0.0
         self.last_actions: List[Dict[str, Any]] = []
         self._sleeve_align_min_interval_sec: float = 60.0
+        self._pending_broker_orders: Dict[str, float] = {}
+        self._pending_order_ttl_sec: float = 300.0
 
     def start(self):
         """Starts the guardian background loop."""
@@ -245,8 +247,10 @@ class PortfolioGuardian:
 
         if default_kis_broker.is_configured() and (now_ts - self.last_sync_time > 300.0):
             try:
-                default_kis_broker.check_sync()
-                self.last_sync_time = now_ts
+                from al_sangmoo.domain.reconciliation import check_sync
+                sync_res = check_sync(auto_calibrate=True)
+                if sync_res.get("status") == "success":
+                    self.last_sync_time = now_ts
             except Exception as sync_err:
                 logger.debug(f"[Portfolio Guardian] Background check_sync skipped: {sync_err}")
 
@@ -269,6 +273,12 @@ class PortfolioGuardian:
             # Idle-NAV park / 1.5x↔1.0x delever is handled by Cash Proxy overlay alignment.
             if is_proxy_ticker(ticker):
                 continue
+
+            pending_key = f"SELL:{ticker}"
+            pending_at = self._pending_broker_orders.get(pending_key, 0.0)
+            if pending_at and (now_ts - pending_at) < self._pending_order_ttl_sec:
+                continue
+            self._pending_broker_orders.pop(pending_key, None)
 
             fallback_px = float(h.get("current_price") or buy_price)
             cur_price = self._fetch_live_price(ticker, fallback_px)
@@ -312,7 +322,7 @@ class PortfolioGuardian:
 
                     try:
                         marketable_sell_price = round(cur_price * 0.995, 2)
-                        ex_cd = "NYSE" if ticker in ["CVX", "JNJ", "XOM", "UNH", "PG", "JPM", "V", "MA", "LLY"] else "NASD"
+                        ex_cd = "NYSE" if ticker in ["CVX", "DELL", "JNJ", "XOM", "UNH", "PG", "JPM", "V", "MA", "LLY"] else "NASD"
                         broker_res = default_kis_broker.place_order(
                             ticker=ticker,
                             side="SELL",
@@ -328,6 +338,23 @@ class PortfolioGuardian:
                                 f"[Portfolio Guardian] Broker sell order rejected for {ticker}: "
                                 f"{broker_res.get('message')}. Local DB holding retained."
                             )
+                            continue
+                        if broker_status != "filled":
+                            # KIS "submitted" is only order acceptance, not a fill.
+                            # Keep the local position until broker reconciliation confirms it left the account.
+                            self._pending_broker_orders[pending_key] = now_ts
+                            triggered_actions.append({
+                                "timestamp": now_str,
+                                "holding_id": holding_id,
+                                "ticker": ticker,
+                                "action": f"{action_type}_SUBMITTED",
+                                "sold_quantity": 0.0,
+                                "remaining_quantity": total_qty,
+                                "order_id": order_id,
+                                "broker_status": broker_status,
+                                "reason": action_reason,
+                            })
+                            self.last_actions.append(triggered_actions[-1])
                             continue
                     except Exception as e:
                         logger.error(f"[Portfolio Guardian Broker Error] {e}")
@@ -476,6 +503,15 @@ class PortfolioGuardian:
             if not ticker or side not in {"BUY", "SELL"} or qty <= 0 or px <= 0:
                 continue
 
+            pending_key = f"{side}:{ticker}"
+            pending_at = self._pending_broker_orders.get(pending_key, 0.0)
+            if pending_at and (now_ts - pending_at) < self._pending_order_ttl_sec:
+                # Do not buy the replacement sleeve until the pending sell settles.
+                if side == "SELL":
+                    break
+                continue
+            self._pending_broker_orders.pop(pending_key, None)
+
             broker_status = "SIMULATED"
             order_id = None
             if default_kis_broker.is_configured():
@@ -489,7 +525,7 @@ class PortfolioGuardian:
                         qty=qty,
                         price=limit,
                         order_type="00",
-                        exchange="NASD",
+                        exchange="AMEX" if ticker == "QLD" else "NASD",
                     )
                     broker_status = broker_res.get("status", "error")
                     order_id = broker_res.get("order_id") or broker_res.get("odno")
@@ -498,6 +534,23 @@ class PortfolioGuardian:
                             f"[Guardian CashProxy] {side} {ticker} x{qty} rejected: "
                             f"{broker_res.get('message')}"
                         )
+                        continue
+                    if broker_status != "filled":
+                        # Accepted is not filled. Broker reconciliation owns the local ledger update.
+                        self._pending_broker_orders[pending_key] = now_ts
+                        executed.append({
+                            "timestamp": now_str,
+                            "ticker": ticker,
+                            "action": f"CASH_PROXY_{side}_SUBMITTED",
+                            "side": side,
+                            "qty": qty,
+                            "price": px,
+                            "order_id": order_id,
+                            "broker_status": broker_status,
+                            "reason": act.get("reason"),
+                        })
+                        if side == "SELL":
+                            break
                         continue
                 except Exception as e:
                     logger.error(f"[Guardian CashProxy {side} Error] {e}")

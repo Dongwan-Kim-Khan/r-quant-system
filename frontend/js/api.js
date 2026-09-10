@@ -56,10 +56,11 @@ export const ApiClient = {
     /**
      * Fetch active portfolio holdings and financial equity summary
      */
-    async getPortfolioData() {
+    async getPortfolioData(reconcile = false) {
         const base = getBaseUrl();
         try {
-            const res = await fetch(`${base}/api/portfolio`);
+            const suffix = reconcile ? '?reconcile=true' : '';
+            const res = await fetch(`${base}/api/portfolio${suffix}`, { cache: 'no-store' });
             if (res.ok) {
                 return await res.json();
             }

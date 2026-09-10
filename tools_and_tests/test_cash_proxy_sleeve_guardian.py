@@ -147,6 +147,47 @@ class TestGuardianSkipsProxyExits(unittest.TestCase):
         self.assertEqual(res["actions"][0]["action"], "AUTO_STOP_LOSS")
         sell_mock.assert_called_once()
 
+    def test_guardian_uses_domain_reconciliation(self):
+        self.g.last_sync_time = 0.0
+        with patch(
+            "al_sangmoo.domain.risk.portfolio_guardian.default_kis_broker.is_configured",
+            return_value=True,
+        ), patch(
+            "al_sangmoo.domain.reconciliation.check_sync",
+            return_value={"status": "success"},
+        ) as sync_mock, patch(
+            "al_sangmoo.domain.risk.portfolio_guardian.get_live_portfolio",
+            return_value={"holdings": [], "total_equity_usd": 7500.0},
+        ), patch.object(self.g, "_align_cash_proxy_sleeve", return_value=[]):
+            self.g._sync_check_and_execute_guardian_rules()
+        sync_mock.assert_called_once_with(auto_calibrate=True)
+
+    def test_submitted_proxy_sell_waits_for_broker_reconciliation(self):
+        holdings = [
+            {"id": 1, "ticker": "QLD", "buy_price": 90.0, "current_price": 90.0, "quantity": 8},
+        ]
+        with patch(
+            "al_sangmoo.domain.risk.portfolio_guardian.get_live_portfolio",
+            return_value={"holdings": holdings, "total_equity_usd": 5000.0, "free_cash_usd": 0.0},
+        ), patch.object(self.g, "_current_leverage_mode", return_value=False), \
+             patch.object(self.g, "_fetch_etf_price", side_effect=lambda t: 450.0 if t == "QQQ" else 90.0), \
+             patch(
+                 "al_sangmoo.domain.risk.portfolio_guardian.default_kis_broker.is_configured",
+                 return_value=True,
+             ), patch(
+                 "al_sangmoo.domain.risk.portfolio_guardian.is_market_open_for_orders",
+                 return_value=True,
+             ), patch(
+                 "al_sangmoo.domain.risk.portfolio_guardian.default_kis_broker.place_order",
+                 return_value={"status": "submitted", "order_id": "PENDING-1"},
+             ), patch(
+                 "al_sangmoo.domain.risk.portfolio_guardian.record_portfolio_sell",
+             ) as sell_mock:
+            actions = self.g._align_cash_proxy_sleeve()
+        sell_mock.assert_not_called()
+        self.assertEqual(actions[0]["broker_status"], "submitted")
+        self.assertEqual(actions[0]["action"], "CASH_PROXY_SELL_SUBMITTED")
+
 
 class TestAutopilotExecutesDeleverSell(unittest.TestCase):
     def setUp(self):
@@ -176,6 +217,28 @@ class TestAutopilotExecutesDeleverSell(unittest.TestCase):
         sell_mock.assert_called()
         # QQQ park may also buy after delever
         self.assertTrue(any(e.get("side") == "SELL" for e in plan["executed"]))
+
+    def test_submitted_delever_does_not_close_local_holding(self):
+        holdings = [
+            {"id": 11, "ticker": "QLD", "quantity": 8, "current_price": 90.0, "buy_price": 90.0},
+        ]
+        with patch(
+            "al_sangmoo.domain.risk.autopilot_trader.get_live_portfolio",
+            return_value={"holdings": holdings, "total_equity_usd": 5000.0, "free_cash_usd": 0.0},
+        ), patch.object(self.ap, "_leverage_mode_now", return_value=False), \
+             patch.object(self.ap, "_etf_price", side_effect=lambda t: 450.0 if t == "QQQ" else 90.0), \
+             patch(
+                 "al_sangmoo.domain.risk.autopilot_trader.default_kis_broker.is_configured",
+                 return_value=True,
+             ), patch(
+                 "al_sangmoo.domain.risk.autopilot_trader.default_kis_broker.place_order",
+                 return_value={"status": "submitted", "order_id": "PENDING-2"},
+             ), patch(
+                 "al_sangmoo.domain.risk.autopilot_trader.record_portfolio_sell",
+             ) as sell_mock:
+            plan = self.ap._ensure_cash_proxy_parked()
+        sell_mock.assert_not_called()
+        self.assertEqual(plan["executed"][0]["status"], "SUBMITTED_AWAITING_RECONCILIATION")
 
 
 if __name__ == "__main__":

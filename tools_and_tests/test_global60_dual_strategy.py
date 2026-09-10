@@ -34,6 +34,7 @@ def test_ticker_resolver_accuracy():
     assert resolve_ticker("록히드마틴") == "LMT"
     assert resolve_ticker("LMT") == "LMT"
     assert resolve_ticker("RTX") == "RTX"
+    assert resolve_ticker("APP") == "APP"
     assert resolve_ticker("앱러빈") == "APP"
     assert resolve_ticker("마벨") == "MRVL"
     assert resolve_ticker("삼성전자") == "005930.KS"

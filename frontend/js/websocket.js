@@ -1,9 +1,9 @@
 /**
  * R QUANT TERMINAL: WebSocket hub, heartbeat, and TerminalApp controller.
  */
-import { ApiClient } from './api.js?v=4.3.2';
-import { UI } from './ui.js?v=4.3.2';
-import { ChartEngine } from './chart.js?v=4.3.2';
+import { ApiClient } from './api.js?v=4.3.3';
+import { UI } from './ui.js?v=4.3.3';
+import { ChartEngine } from './chart.js?v=4.3.3';
 
 export const ConnectionState = {
     DISCONNECTED: "DISCONNECTED",
@@ -372,14 +372,18 @@ export const TerminalApp = {
             if (kisBox) kisBox.style.background = isLive ? "#064e3b" : "#1e293b";
         }).catch(() => {});
 
-        // 3. Initial Dashboard Data Fetch & Immediate Chart Selection
+        // 3. Fetch dashboard and broker-reconciled portfolio concurrently.
+        // Render the feed immediately; then replace its portfolio with broker SSOT.
         try {
+            const portfolioPromise = ApiClient.getPortfolioData(true);
             const data = await ApiClient.getDashboardData();
             if (data) {
                 UI.renderDashboard(data);
                 const pick = UI.defaultChartTarget(data);
                 if (pick) UI.selectStock(pick.ticker, pick.price);
             }
+            const freshPort = await portfolioPromise;
+            if (freshPort) UI.renderPortfolio(freshPort);
         } catch (err) {
             console.error("[TerminalApp] Initial dashboard fetch failed:", err);
         }
@@ -389,7 +393,7 @@ export const TerminalApp = {
         try {
             const data = await ApiClient.getDashboardData();
             if (data) UI.renderDashboard(data);
-            const freshPort = await ApiClient.getPortfolioData();
+            const freshPort = await ApiClient.getPortfolioData(true);
             if (freshPort) UI.renderPortfolio(freshPort);
         } catch (e) {
             console.warn("[TerminalApp] Refresh error:", e);

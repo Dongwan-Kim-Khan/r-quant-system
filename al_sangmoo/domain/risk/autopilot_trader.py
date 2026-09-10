@@ -8,6 +8,7 @@ import asyncio
 import logging
 import os
 import json
+import time
 from datetime import datetime
 from typing import Dict, Any, List, Optional, Set
 
@@ -64,6 +65,8 @@ class AutoPilotTrader:
         self.last_run_result: Optional[Dict[str, Any]] = None
         self.last_action: Optional[str] = None
         self.trade_logs: List[Dict[str, Any]] = []
+        self._pending_proxy_orders: Dict[str, float] = {}
+        self._pending_order_ttl_sec: float = 300.0
 
     def start(self):
         """Starts the autopilot background daemon loop."""
@@ -430,6 +433,17 @@ class AutoPilotTrader:
         sizing = pick.get("sizing") or {}
         shares = int(sizing.get("shares", 0) or 0)
         cur_price = float(pick.get("price", 0.0) or 0.0)
+        pending_key = f"BUY:{ticker}"
+        pending_at = self._pending_proxy_orders.get(pending_key, 0.0)
+        if pending_at and (time.time() - pending_at) < self._pending_order_ttl_sec:
+            return {
+                "status": "skipped",
+                "reason": "BROKER_BUY_PENDING",
+                "ticker": ticker,
+                "slot_rank": slot_rank,
+                "message": "증권사 매수 체결·원장 동기화 대기 중입니다.",
+            }
+        self._pending_proxy_orders.pop(pending_key, None)
 
         live_price = None
         if default_kis_broker.is_configured():
@@ -444,11 +458,25 @@ class AutoPilotTrader:
         port_cash = 0.0
         try:
             port_now = get_live_portfolio()
-            port_cash = float(port_now.get("cash_usd") or port_now.get("cash") or 0.0)
+            port_cash = float(
+                port_now.get("cash_usd")
+                or port_now.get("free_cash_usd")
+                or port_now.get("cash")
+                or 0.0
+            )
         except Exception:
             port_cash = 0.0
         shortfall = max(0.0, needed_usd - max(0.0, port_cash))
         proxy_sells = self._free_proxy_cash_for_entry(shortfall, holdings) if shortfall > 0 else []
+        if any(x.get("status") == "SUBMITTED_AWAITING_RECONCILIATION" for x in proxy_sells):
+            return {
+                "status": "skipped",
+                "reason": "CASH_PROXY_SELL_PENDING",
+                "ticker": ticker,
+                "slot_rank": slot_rank,
+                "message": "Cash Proxy 매도 체결·원장 동기화 대기 중입니다.",
+                "cash_proxy_sells": proxy_sells,
+            }
         marketable_exec_price = round(exec_price * 1.005, 2)
 
         order_id = None
@@ -457,7 +485,7 @@ class AutoPilotTrader:
 
         if default_kis_broker.is_configured():
             try:
-                ex_cd = "NYSE" if ticker in ["CVX", "JNJ", "XOM", "UNH", "PG", "JPM", "V", "MA", "LLY"] else "NASD"
+                ex_cd = "NYSE" if ticker in ["CVX", "DELL", "JNJ", "XOM", "UNH", "PG", "JPM", "V", "MA", "LLY"] else "NASD"
                 broker_res = default_kis_broker.place_order(
                     ticker=ticker,
                     side="BUY",
@@ -477,6 +505,17 @@ class AutoPilotTrader:
                         "slot_rank": slot_rank,
                         "message": broker_msg or "증권사 주문 확인 실패. 로컬 원장에 매수를 기록하지 않았습니다.",
                         "client_order_id": broker_res.get("client_order_id"),
+                        "cash_proxy_sells": proxy_sells,
+                    }
+                if broker_status != "filled":
+                    self._pending_proxy_orders[pending_key] = time.time()
+                    return {
+                        "status": "submitted",
+                        "reason": "BROKER_BUY_AWAITING_RECONCILIATION",
+                        "ticker": ticker,
+                        "slot_rank": slot_rank,
+                        "order_id": order_id,
+                        "message": broker_msg or "증권사 매수 접수 후 체결 동기화 대기 중입니다.",
                         "cash_proxy_sells": proxy_sells,
                     }
             except Exception as ex_err:
@@ -628,18 +667,39 @@ class AutoPilotTrader:
                 px = qqq_px if ticker == CASH_PROXY_TICKER else qld_px
                 if not ticker or side not in {"BUY", "SELL"} or qty <= 0 or px <= 0:
                     continue
+                pending_key = f"{side}:{ticker}"
+                pending_at = self._pending_proxy_orders.get(pending_key, 0.0)
+                if pending_at and (time.time() - pending_at) < self._pending_order_ttl_sec:
+                    if side == "SELL":
+                        break
+                    continue
+                self._pending_proxy_orders.pop(pending_key, None)
                 if default_kis_broker.is_configured():
                     try:
                         limit = round(px * (1.005 if side == "BUY" else 0.995), 2)
                         broker_res = default_kis_broker.place_order(
                             ticker=ticker, side=side, qty=qty,
-                            price=limit, order_type="00", exchange="NASD",
+                            price=limit, order_type="00",
+                            exchange="AMEX" if ticker == "QLD" else "NASD",
                         )
-                        if not is_broker_order_ack(broker_res.get("status", "error")):
+                        broker_status = broker_res.get("status", "error")
+                        if not is_broker_order_ack(broker_status):
                             logger.error(
                                 f"[AutoPilot CashProxy] {side} {ticker} x{qty} rejected: "
                                 f"{broker_res.get('message')}"
                             )
+                            continue
+                        if broker_status != "filled":
+                            # Keep SQLite at broker-confirmed holdings until reconciliation observes the fill.
+                            self._pending_proxy_orders[pending_key] = time.time()
+                            executed.append({
+                                **act,
+                                "status": "SUBMITTED_AWAITING_RECONCILIATION",
+                                "order_id": broker_res.get("order_id"),
+                                "fill_price": None,
+                            })
+                            if side == "SELL":
+                                break
                             continue
                     except Exception as e:
                         logger.error(f"[AutoPilot CashProxy {side} Error] {e}")
@@ -701,14 +761,30 @@ class AutoPilotTrader:
             px = qqq_px if ticker == CASH_PROXY_TICKER else qld_px
             if qty <= 0 or px <= 0:
                 continue
+            pending_key = f"SELL:{ticker}"
+            pending_at = self._pending_proxy_orders.get(pending_key, 0.0)
+            if pending_at and (time.time() - pending_at) < self._pending_order_ttl_sec:
+                executed.append({**act, "status": "SUBMITTED_AWAITING_RECONCILIATION"})
+                break
+            self._pending_proxy_orders.pop(pending_key, None)
             if default_kis_broker.is_configured():
                 try:
                     broker_res = default_kis_broker.place_order(
                         ticker=ticker, side="SELL", qty=qty,
-                        price=round(px * 0.995, 2), order_type="00", exchange="NASD",
+                        price=round(px * 0.995, 2), order_type="00",
+                        exchange="AMEX" if ticker == "QLD" else "NASD",
                     )
-                    if not is_broker_order_ack(broker_res.get("status", "error")):
+                    broker_status = broker_res.get("status", "error")
+                    if not is_broker_order_ack(broker_status):
                         continue
+                    if broker_status != "filled":
+                        self._pending_proxy_orders[pending_key] = time.time()
+                        executed.append({
+                            **act,
+                            "status": "SUBMITTED_AWAITING_RECONCILIATION",
+                            "order_id": broker_res.get("order_id"),
+                        })
+                        break
                 except Exception as e:
                     logger.error(f"[AutoPilot CashProxy Sell Error] {e}")
                     continue
