@@ -108,13 +108,15 @@ class AutoPilotTrader:
                 # Run scheduled check during US market hours (22:30 ~ 06:00 KST)
                 is_market_hours = (now.hour >= 22 or now.hour < 6)
                 
-                # Check if we should execute a scheduled cycle
+                # Market hours: fill empty satellite slots; always align QQQ/QLD sleeve
                 if self.is_enabled and is_market_hours:
-                    # Count satellite slots only (QQQ/QLD cash-proxy excluded)
                     port = get_live_portfolio()
                     sats = satellite_holdings(port.get("holdings", []))
                     if len(sats) < MAX_SLOTS_BULL:
                         await self.run_autopilot_cycle(force_scan=False)
+                    else:
+                        # Slots full — still delever/park cash-proxy sleeve
+                        await asyncio.to_thread(self._ensure_cash_proxy_parked)
             except asyncio.CancelledError:
                 break
             except Exception as e:
@@ -593,14 +595,18 @@ class AutoPilotTrader:
         return 0.0
 
     def _ensure_cash_proxy_parked(self, feed: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Park idle NAV into QQQ (+ QLD if leverage regime). Planning-only unless auto-buy enabled."""
+        """
+        Align idle NAV into QQQ (+ QLD if 1.5x).
+        Executes both SELL (delever / trim) and BUY (park) when auto-buy enabled.
+        """
+        del feed  # reserved for future feed-driven price hints
         port = get_live_portfolio()
-        holdings = port.get("holdings", [])
+        holdings = list(port.get("holdings", []))
         equity = float(port.get("total_equity_usd") or port.get("total_value") or 7500.0)
-        cash = float(port.get("cash_usd") or port.get("cash") or 0.0)
+        cash = float(port.get("cash_usd") or port.get("free_cash_usd") or port.get("cash") or 0.0)
         leverage_on = self._leverage_mode_now()
         qqq_px = self._etf_price(CASH_PROXY_TICKER)
-        qld_px = self._etf_price("QLD") if leverage_on else 0.0
+        qld_px = self._etf_price("QLD")  # always fetch — needed for QLD sells when delevering
         plan = build_cash_proxy_plan(
             total_equity_usd=equity,
             holdings=holdings,
@@ -611,35 +617,68 @@ class AutoPilotTrader:
         )
         executed = []
         if self.is_enabled:
-            for act in plan.get("actions") or []:
-                if act.get("side") != "BUY":
-                    continue
-                ticker = act["ticker"]
-                qty = int(act["qty"])
+            actions = list(plan.get("actions") or [])
+            ordered = [a for a in actions if a.get("side") == "SELL"] + [
+                a for a in actions if a.get("side") == "BUY"
+            ]
+            for act in ordered:
+                ticker = str(act.get("ticker") or "").upper()
+                side = str(act.get("side") or "").upper()
+                qty = int(act.get("qty") or 0)
                 px = qqq_px if ticker == CASH_PROXY_TICKER else qld_px
-                if qty <= 0 or px <= 0:
+                if not ticker or side not in {"BUY", "SELL"} or qty <= 0 or px <= 0:
                     continue
                 if default_kis_broker.is_configured():
                     try:
+                        limit = round(px * (1.005 if side == "BUY" else 0.995), 2)
                         broker_res = default_kis_broker.place_order(
-                            ticker=ticker, side="BUY", qty=qty,
-                            price=round(px * 1.005, 2), order_type="00", exchange="NASD",
+                            ticker=ticker, side=side, qty=qty,
+                            price=limit, order_type="00", exchange="NASD",
                         )
                         if not is_broker_order_ack(broker_res.get("status", "error")):
+                            logger.error(
+                                f"[AutoPilot CashProxy] {side} {ticker} x{qty} rejected: "
+                                f"{broker_res.get('message')}"
+                            )
                             continue
                     except Exception as e:
-                        logger.error(f"[AutoPilot CashProxy Buy Error] {e}")
+                        logger.error(f"[AutoPilot CashProxy {side} Error] {e}")
                         continue
-                add_portfolio_buy(
-                    ticker=ticker,
-                    buy_price=px,
-                    quantity=float(qty),
-                    buy_date=datetime.now().strftime("%Y-%m-%d"),
-                    target_price=derive_target_price(px),
-                    stop_loss_price=derive_stop_price(px),
-                    partial_tp_price=derive_partial_tp_price(px),
+                if side == "BUY":
+                    add_portfolio_buy(
+                        ticker=ticker,
+                        buy_price=px,
+                        quantity=float(qty),
+                        buy_date=datetime.now().strftime("%Y-%m-%d"),
+                        target_price=derive_target_price(px),
+                        stop_loss_price=derive_stop_price(px),
+                        partial_tp_price=derive_partial_tp_price(px),
+                    )
+                else:
+                    sold = False
+                    for h in list(holdings):
+                        if str(h.get("ticker", "")).upper() != ticker:
+                            continue
+                        hid = h.get("id")
+                        if hid is None:
+                            continue
+                        try:
+                            record_portfolio_sell(
+                                holding_id=int(hid),
+                                sell_price=px,
+                                reason=f"CASH_PROXY_SLEEVE ({act.get('reason')})",
+                            )
+                            sold = True
+                        except Exception as e:
+                            logger.error(f"[AutoPilot CashProxy Sell Ledger Error] {e}")
+                        break
+                    if not sold:
+                        continue
+                executed.append({**act, "fill_price": px})
+                logger.info(
+                    f"[AutoPilot] Cash-proxy sleeve: {side} {ticker} x{qty} @ ${px:.2f} "
+                    f"({act.get('reason')})"
                 )
-                executed.append(act)
         plan["executed"] = executed
         return plan
 
