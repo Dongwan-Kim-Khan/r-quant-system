@@ -67,9 +67,29 @@ def check_sync(auto_calibrate: bool = True) -> Dict[str, Any]:
             b_avg = float(b_item.get("avg_price", 0.0)) if b_item else 0.0
             l_avg = float(l_item.get("buy_price", 0.0)) if l_item else 0.0
             
-            # Sub-case 1: Exact match (Quantity & Price match within epsilon)
+            # Sub-case 1: Exact match (Quantity & Price match within epsilon).
+            # Qty & avg agree, but the live current price must STILL be refreshed
+            # from the broker so the local DB / dashboard never freeze on a stale
+            # quote (root-cause fix for prices stuck at a past value).
             if b_item and l_item and abs(b_qty - l_qty) < 1e-4 and abs(b_avg - l_avg) < 0.005:
                 matched_count += 1
+                if auto_calibrate and b_avg > 0:
+                    b_cur = float(b_item.get("current_price") or 0.0)
+                    if b_cur > 0:
+                        new_val = b_qty * b_cur
+                        new_cost = b_qty * b_avg
+                        pnl_pct = ((b_cur - b_avg) / b_avg * 100) if b_avg > 0 else 0.0
+                        pnl_amt = new_val - new_cost
+                        cursor.execute("""
+                        UPDATE my_portfolio
+                        SET current_price = ?, current_value = ?, pnl_pct = ?, pnl_amount = ?
+                        WHERE id = ?
+                        """, (b_cur, new_val, pnl_pct, pnl_amt, l_item["id"]))
+                        calibrations.append({
+                            "ticker": ticker,
+                            "action": "UPDATE_CURRENT_PRICE",
+                            "current_price": b_cur
+                        })
                 continue
                 
             # Sub-case 2: Price Mismatch only (Quantity matches, but execution entry price differs)
