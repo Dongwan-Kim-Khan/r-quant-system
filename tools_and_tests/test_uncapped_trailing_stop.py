@@ -39,10 +39,10 @@ class TestTrailingFloorMath(unittest.TestCase):
 
 
 class TestLatchAndEvaluate(unittest.TestCase):
-    def test_hard_stop_at_minus_four(self):
-        res = evaluate_guardian_exit(buy_price=100.0, current_price=96.0)
+    def test_hard_stop_at_minus_five(self):
+        res = evaluate_guardian_exit(buy_price=100.0, current_price=95.0)
         self.assertEqual(res["action"], "AUTO_STOP_LOSS")
-        self.assertEqual(res["hard_stop_price"], 96.0)
+        self.assertEqual(res["hard_stop_price"], 95.0)
         self.assertTrue(res["is_full_exit"])
 
     def test_hard_stop_beats_kijun(self):
@@ -151,12 +151,15 @@ class TestGuardianUsesSSot(unittest.TestCase):
         g = PortfolioGuardian()
         g.is_enabled = True
 
-        with patch("al_sangmoo.domain.risk.portfolio_guardian.db_manager") as db, \
+        with patch("al_sangmoo.domain.risk.portfolio_guardian.get_live_portfolio") as gpl, \
+             patch("al_sangmoo.domain.risk.portfolio_guardian.record_portfolio_sell") as rps, \
+             patch("al_sangmoo.domain.risk.portfolio_guardian.get_connection") as gconn, \
              patch("al_sangmoo.domain.risk.portfolio_guardian.default_kis_broker") as broker, \
-             patch("al_sangmoo.domain.risk.portfolio_guardian.fetch_trailing_snapshot") as snap:
-            db.get_live_portfolio.return_value = {"holdings": [holding]}
-            db.record_portfolio_sell.return_value = True
-            db.get_connection.return_value.__enter__.return_value.cursor.return_value = MagicMock()
+             patch("al_sangmoo.domain.risk.portfolio_guardian.fetch_trailing_snapshot") as snap, \
+             patch.object(PortfolioGuardian, "_repark_exit_proceeds", return_value=[]):
+            gpl.return_value = {"holdings": [holding]}
+            rps.return_value = True
+            gconn.return_value.__enter__.return_value.cursor.return_value = MagicMock()
             broker.is_configured.return_value = False
             snap.return_value = {"kijun_26": 105.0, "atr_14": 2.0, "peak_from_hist": 120.0, "last_high": 111.0}
             g._fetch_live_price = MagicMock(return_value=110.5)
@@ -166,8 +169,8 @@ class TestGuardianUsesSSot(unittest.TestCase):
             self.assertEqual(res["actions"][0]["action"], "AUTO_TRAILING_TP")
             self.assertTrue(res["actions"][0]["is_full_exit"])
             self.assertEqual(res["actions"][0]["remaining_quantity"], 0.0)
-            db.record_portfolio_sell.assert_called_once()
-            self.assertIn("AUTO_TRAILING_TP", db.record_portfolio_sell.call_args.kwargs["reason"])
+            rps.assert_called_once()
+            self.assertIn("AUTO_TRAILING_TP", rps.call_args.kwargs["reason"])
 
 
 if __name__ == "__main__":

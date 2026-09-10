@@ -1,0 +1,198 @@
+{
+  "meta": {
+    "asof": "2018-08-31",
+    "end": "2026-08-28",
+    "friction": {
+      "slippage_bps": 10.0,
+      "fee_bps": 8.0
+    },
+    "m2_definition": "C1 identical slots/leverage + hard stop -5%",
+    "generated": "2026-09-08 14:03 UTC",
+    "elapsed_sec": 3.3
+  },
+  "scenarios": {
+    "S1_heavy_dca": {
+      "name": "Heavy DCA (소액 시드 / 고적립)",
+      "note": "$3,000 + 96×$600",
+      "seed": 3000.0,
+      "seed_share_pct": 5.0,
+      "expected_invested": 60600.0,
+      "n_monthly": 96,
+      "QQQ": {
+        "label": "QQQ",
+        "total_invested": 60600.0,
+        "final_equity": 143645.58,
+        "net_profit": 83045.58,
+        "roi_pct": 137.04,
+        "xirr_pct": 19.96,
+        "dca_mdd_pct": -27.49,
+        "invested_ratio_mdd_pct": -40.06,
+        "n_deposits": 97,
+        "n_days": 2008,
+        "end": "2026-08-28"
+      },
+      "QLD": {
+        "label": "QLD",
+        "total_invested": 60600.0,
+        "final_equity": 234498.85,
+        "net_profit": 173898.85,
+        "roi_pct": 286.96,
+        "xirr_pct": 31.23,
+        "dca_mdd_pct": -57.51,
+        "invested_ratio_mdd_pct": -67.2,
+        "n_deposits": 97,
+        "n_days": 2008,
+        "end": "2026-08-28"
+      },
+      "C1_v1": {
+        "label": "C1_v1",
+        "total_invested": 60600.0,
+        "final_equity": 186046.69,
+        "net_profit": 125446.69,
+        "roi_pct": 207.01,
+        "xirr_pct": 25.89,
+        "dca_mdd_pct": -39.03,
+        "invested_ratio_mdd_pct": -42.05,
+        "n_deposits": 97,
+        "n_days": 2008,
+        "end": "2026-08-28"
+      },
+      "M2": {
+        "label": "M2",
+        "total_invested": 60600.0,
+        "final_equity": 246778.3,
+        "net_profit": 186178.3,
+        "roi_pct": 307.22,
+        "xirr_pct": 32.41,
+        "dca_mdd_pct": -43.95,
+        "invested_ratio_mdd_pct": -46.28,
+        "n_deposits": 97,
+        "n_days": 2008,
+        "end": "2026-08-28"
+      },
+      "m2_minus_c1": 60731.61
+    },
+    "S2_heavy_lump": {
+      "name": "Heavy Lump-sum (거액 시드 / 저적립)",
+      "note": "$30,000 + 96×$300",
+      "seed": 30000.0,
+      "seed_share_pct": 51.0,
+      "expected_invested": 58800.0,
+      "n_monthly": 96,
+      "QQQ": {
+        "label": "QQQ",
+        "total_invested": 58800.0,
+        "final_equity": 181250.21,
+        "net_profit": 122450.21,
+        "roi_pct": 208.25,
+        "xirr_pct": 18.81,
+        "dca_mdd_pct": -32.43,
+        "invested_ratio_mdd_pct": -37.64,
+        "n_deposits": 97,
+        "n_days": 2008,
+        "end": "2026-08-28"
+      },
+      "QLD": {
+        "label": "QLD",
+        "total_invested": 58800.0,
+        "final_equity": 320558.55,
+        "net_profit": 261758.55,
+        "roi_pct": 445.17,
+        "xirr_pct": 28.78,
+        "dca_mdd_pct": -62.08,
+        "invested_ratio_mdd_pct": -65.32,
+        "n_deposits": 97,
+        "n_days": 2008,
+        "end": "2026-08-28"
+      },
+      "C1_v1": {
+        "label": "C1_v1",
+        "total_invested": 58800.0,
+        "final_equity": 202593.75,
+        "net_profit": 143793.75,
+        "roi_pct": 244.55,
+        "xirr_pct": 20.72,
+        "dca_mdd_pct": -41.11,
+        "invested_ratio_mdd_pct": -41.61,
+        "n_deposits": 97,
+        "n_days": 2008,
+        "end": "2026-08-28"
+      },
+      "M2": {
+        "label": "M2",
+        "total_invested": 58800.0,
+        "final_equity": 282132.8,
+        "net_profit": 223332.8,
+        "roi_pct": 379.82,
+        "xirr_pct": 26.51,
+        "dca_mdd_pct": -46.25,
+        "invested_ratio_mdd_pct": -46.7,
+        "n_deposits": 97,
+        "n_days": 2008,
+        "end": "2026-08-28"
+      },
+      "m2_minus_c1": 79539.05
+    },
+    "S3_step_up": {
+      "name": "Step-up DCA (소득 증가)",
+      "note": "$8,000 + 48×$300 then 48×$800 from 2022-09",
+      "seed": 8000.0,
+      "seed_share_pct": 13.2,
+      "expected_invested": 60800.0,
+      "n_monthly": 96,
+      "QQQ": {
+        "label": "QQQ",
+        "total_invested": 60800.0,
+        "final_equity": 136506.49,
+        "net_profit": 75706.49,
+        "roi_pct": 124.52,
+        "xirr_pct": 20.2,
+        "dca_mdd_pct": -29.06,
+        "invested_ratio_mdd_pct": -40.13,
+        "n_deposits": 97,
+        "n_days": 2008,
+        "end": "2026-08-28"
+      },
+      "QLD": {
+        "label": "QLD",
+        "total_invested": 60800.0,
+        "final_equity": 219089.47,
+        "net_profit": 158289.47,
+        "roi_pct": 260.34,
+        "xirr_pct": 31.34,
+        "dca_mdd_pct": -57.93,
+        "invested_ratio_mdd_pct": -67.14,
+        "n_deposits": 97,
+        "n_days": 2008,
+        "end": "2026-08-28"
+      },
+      "C1_v1": {
+        "label": "C1_v1",
+        "total_invested": 60800.0,
+        "final_equity": 173492.38,
+        "net_profit": 112692.38,
+        "roi_pct": 185.35,
+        "xirr_pct": 25.87,
+        "dca_mdd_pct": -40.23,
+        "invested_ratio_mdd_pct": -41.54,
+        "n_deposits": 97,
+        "n_days": 2008,
+        "end": "2026-08-28"
+      },
+      "M2": {
+        "label": "M2",
+        "total_invested": 60800.0,
+        "final_equity": 219158.31,
+        "net_profit": 158358.31,
+        "roi_pct": 260.46,
+        "xirr_pct": 31.35,
+        "dca_mdd_pct": -45.26,
+        "invested_ratio_mdd_pct": -46.46,
+        "n_deposits": 97,
+        "n_days": 2008,
+        "end": "2026-08-28"
+      },
+      "m2_minus_c1": 45665.93
+    }
+  }
+}

@@ -177,10 +177,9 @@ class TestChallengerEmpiricalVerification(unittest.TestCase):
         self.assertEqual(initial_state, final_state, f'Database mutation detected! Initial: {initial_state}, Final: {final_state}')
         
         first_payload = payloads[0][1]
-        self.assertIn('dual_consensus', first_payload)
-        self.assertIn('strat1_exclusive', first_payload)
-        self.assertIn('strat2_exclusive', first_payload)
-        self.assertIn('signal_tracker', first_payload)
+        self.assertIn('tier1', first_payload)
+        self.assertIn('tier2', first_payload)
+        self.assertIn('tier3', first_payload)
         self.assertIn('chart_intelligence', first_payload)
         
         print(f'  -> PASSED: 16 concurrent threads finished in {elapsed:.2f}s with 0 DB locks and 0 SQLite mutations.')
@@ -306,7 +305,7 @@ class TestChallengerEmpiricalVerification(unittest.TestCase):
             for item in dual_1 + s1_1 + s2_1:
                 price = item['price']
                 expected_target = round(price * 1.15, 2)
-                expected_stop = round(price * 0.96, 2)
+                expected_stop = round(price * 0.95, 2)
                 self.assertAlmostEqual(item['target_price'], expected_target, places=2)
                 self.assertAlmostEqual(item['stop_price'], expected_stop, places=2)
 

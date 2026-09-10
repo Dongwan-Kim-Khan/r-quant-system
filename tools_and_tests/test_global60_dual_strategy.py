@@ -34,6 +34,7 @@ def test_ticker_resolver_accuracy():
     assert resolve_ticker("록히드마틴") == "LMT"
     assert resolve_ticker("LMT") == "LMT"
     assert resolve_ticker("RTX") == "RTX"
+    assert resolve_ticker("APP") == "APP"
     assert resolve_ticker("앱러빈") == "APP"
     assert resolve_ticker("마벨") == "MRVL"
     assert resolve_ticker("삼성전자") == "005930.KS"
@@ -44,9 +45,9 @@ def test_dashboard_json_structure_and_origin():
     with open(DASHBOARD_JSON, "r", encoding="utf-8") as f:
         data = json.load(f)
         
-    assert "primary_accumulation" in data, "Missing primary_accumulation in dashboard_data.json"
-    assert "sniper_radar" in data, "Missing sniper_radar in dashboard_data.json"
-    assert "signal_tracker" in data, "Missing signal_tracker in dashboard_data.json"
+    assert "tier1" in data, "Missing tier1 in dashboard_data.json"
+    assert "tier2" in data, "Missing tier2 in dashboard_data.json"
+    assert "tier3" in data, "Missing tier3 in dashboard_data.json"
     assert "chart_intelligence" in data, "Missing chart_intelligence in dashboard_data.json"
     assert len(data["chart_intelligence"]) >= 50, f"Expected chart intelligence for at least 50 stocks, got {len(data['chart_intelligence'])}"
     
@@ -57,7 +58,7 @@ def test_dashboard_json_structure_and_origin():
     assert len(chart_files) >= 50, f"Expected at least 50 chart files in data/charts, got {len(chart_files)}"
     
     # Check origin tagging
-    for item in data.get("signal_tracker", []):
+    for item in data.get("tier1", []) + data.get("tier2", []) + data.get("tier3", []):
         assert item["origin"] in ["VIKINGS_LIVE", "QUANT_DISCOVERY"], f"Invalid origin {item['origin']}"
         assert "target_price" in item and item["target_price"] > 0
         assert "stop_price" in item and item["stop_price"] > 0

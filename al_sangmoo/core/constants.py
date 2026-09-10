@@ -1,20 +1,40 @@
 """
-Centralized Constants & Single Source of Truth for R-Sangmoo Quant Trading Platform.
+Centralized Constants & Single Source of Truth for Al-Sangmoo Quant Trading Platform.
+C1-M2 Production Engine SSOT (see INVESTMENT_PROSPECTUS_C1_M2.md).
 """
 import re
 
-# v2 constitution (fractional). Live buy stop = buy_price * (1 + STOP_LOSS_PCT)
-STOP_LOSS_PCT = -0.04
+# C1-M2 constitution (fractional). Live buy stop = buy_price * (1 + STOP_LOSS_PCT)
+STOP_LOSS_PCT = -0.05
 TAKE_PROFIT_PCT = 0.15
 PARTIAL_TP_PCT = 0.08  # persisted display only; guardian does not partial-exit
+ATR_MULTIPLIER = 2.5   # trailing floor = max(Kijun-26, peak - ATR_MULTIPLIER * ATR(14))
 
-HARD_STOP_PCT = abs(STOP_LOSS_PCT) * 100.0       # 4.0 percentage points
+HARD_STOP_PCT = abs(STOP_LOSS_PCT) * 100.0       # 5.0 percentage points
 TRAILING_ACTIVATE_PCT = TAKE_PROFIT_PCT * 100.0  # 15.0 percentage points
 PARTIAL_TP_DISPLAY_PCT = PARTIAL_TP_PCT * 100.0  # 8.0 percentage points
 
-STOP_LOSS_MULT = 1.0 + STOP_LOSS_PCT             # 0.96
+STOP_LOSS_MULT = 1.0 + STOP_LOSS_PCT             # 0.95
 TAKE_PROFIT_MULT = 1.0 + TAKE_PROFIT_PCT         # 1.15
 PARTIAL_TP_MULT = 1.0 + PARTIAL_TP_PCT           # 1.08
+
+# C1-M2 3-Slot Conviction Matrix (NAV fractions)
+SLOT_WEIGHTS_BULL = [0.50, 0.30, 0.20]  # ranks 1 / 2 / 3
+SLOT_WEIGHTS_BEAR = [0.25, 0.25]        # SPY < SMA200 → max 2 slots
+MAX_SLOTS_BULL = len(SLOT_WEIGHTS_BULL)
+MAX_SLOTS_BEAR = len(SLOT_WEIGHTS_BEAR)
+
+# Cash-proxy overlay & dynamic leverage (QQQ core / QLD boost)
+CASH_PROXY_TICKER = "QQQ"
+LEVERAGE_TICKER = "QLD"
+LEVERAGE_GROSS_TARGET = 1.5
+LEVERAGE_VIX_MAX = 20.0
+
+# Composite Relative Strength weights (dual-momentum satellite filter)
+COMPOSITE_RS_W_21 = 0.40
+COMPOSITE_RS_W_63 = 0.35
+COMPOSITE_RS_W_126 = 0.25
+COMPOSITE_RS_LOOKBACKS = (21, 63, 126)
 
 
 def derive_stop_price(entry: float) -> float:

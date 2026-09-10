@@ -6,12 +6,12 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>R QUANT TERMINAL | Institutional Trading Cockpit</title>
+    <title>R QUANT TERMINAL | C1-M2 Production Engine</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%2338bdf8'/><path d='M25 70 L40 45 L55 60 L75 30' stroke='%23ffffff' stroke-width='10' stroke-linecap='round' stroke-linejoin='round' fill='none'/></svg>">
     <!-- TradingView Lightweight Charts v4 (Local First with Zero Network Lag) -->
     <script src="/static/js/lightweight-charts.standalone.production.js"></script>
     <!-- Modular CSS -->
-    <link rel="stylesheet" href="/static/css/terminal.css?v=4.1.9">
+    <link rel="stylesheet" href="/static/css/terminal.css?v=4.3.3">
     <!-- Non-Blocking Google Fonts with Instant System Fallback -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,6 +24,7 @@
         <div class="brand">
             <h1>R QUANT TERMINAL</h1>
             <span class="live-pill"><span class="live-dot"></span> LIVE</span>
+            <span id="engineBadge" class="status-pill-chip active-green" title="C1-M2: 50/30/20 · QQQ Cash Proxy · −5% Hard Stop · 1.5x Conditional">[C1-M2 Production Engine]</span>
         </div>
 
         <!-- Universal Stock Search Bar ({rounded.md} — 12px) -->
@@ -47,13 +48,15 @@
             </div>
 
             <!-- Daemon Toggles (Revolut Pill Chips) -->
-            <span id="guardianBadge" class="status-pill-chip active-violet" title="가디언 자동 칼손절(-4%) 및 무제한 트레일링 익절">GUARDIAN: -4% / TP</span>
-            <span id="autopilotBadge" class="status-pill-chip active-green" title="전자동 매수 3-Slot 엔진">AUTOPILOT: 3-SLOT</span>
+            <span id="guardianBadge" class="status-pill-chip active-violet" title="가디언 자동 칼손절(-5%) 및 무제한 트레일링 익절 (+15%→ATR 2.5/기준선)"><span class="badge-dot"></span><span>GUARDIAN: -5% / TP</span></span>
+            <span id="autopilotBadge" class="status-pill-chip active-green" title="전자동 매수 C1-M2 50/30/20 + QQQ Proxy"><span class="badge-dot"></span><span>AUTOPILOT: C1-M2</span></span>
+            <span id="leverageBadge" class="status-pill-chip" title="SPY≥SMA200 & VIX&lt;20 → 1.5x QLD Boost">LEV: --</span>
 
             <div class="status-pill-chip" id="serverStatus">
                 <div class="server-dot" id="serverDot" style="width:6px; height:6px; border-radius:9999px; background:#34d399;"></div>
                 <span id="serverStatusText">LIVE</span>
             </div>
+            <a class="btn-outline-pill" id="btnProspectus" href="/static/INVESTMENT_PROSPECTUS_C1_M2_KO.html" target="_blank" rel="noopener" title="C1-M2 투자설명서 (PPM/KIID)">투자설명서 (PPM)</a>
             <button class="btn-primary-pill" id="btnScanNow">SCAN</button>
             <button class="btn-outline-pill" id="btnRefresh">REFRESH</button>
         </div>
@@ -141,15 +144,28 @@
                 </div>
             </div>
             
-            <!-- A. 3-Slot Capital Allocator Visualizer -->
+            <!-- A. C1-M2 3-Slot Capital Allocator Visualizer -->
             <div class="panel" style="padding:16px 18px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                    <span style="font-size:12px; font-weight:700; color:var(--text-primary);">3-SLOT ALLOCATOR</span>
+                    <span style="font-size:12px; font-weight:700; color:var(--text-primary);">C1-M2 SLOT ALLOCATOR (50/30/20)</span>
                     <span id="slotSummaryText" style="font-size:11px; color:var(--primary-bright); font-weight:700; font-family:'JetBrains Mono';">-- / -- SLOTS</span>
                 </div>
 
-                <div id="slotVisualizerGrid" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;">
+                <div id="slotVisualizerGrid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap:10px;">
                     <!-- Populated dynamically via ui.js -->
+                </div>
+
+                <div id="c1m2OverlayBar" style="display:grid; grid-template-columns: 1.2fr 1fr; gap:10px; margin-top:12px;">
+                    <div style="background:var(--surface-deep); border:1px solid var(--hairline-dark); border-radius:12px; padding:10px 12px;">
+                        <div style="font-size:10px; font-weight:800; color:var(--text-muted); font-family:'JetBrains Mono';">QQQ CASH PROXY</div>
+                        <div id="qqqProxyStatus" style="font-size:13px; font-weight:800; color:#38bdf8; margin-top:4px; font-family:'JetBrains Mono';">PARKING: --</div>
+                        <div id="qqqProxyDetail" style="font-size:10.5px; color:var(--text-muted); margin-top:3px;">유휴 자본 QQQ 파킹 상태</div>
+                    </div>
+                    <div style="background:var(--surface-deep); border:1px solid var(--hairline-dark); border-radius:12px; padding:10px 12px;">
+                        <div style="font-size:10px; font-weight:800; color:var(--text-muted); font-family:'JetBrains Mono';">LEVERAGE OVERLAY</div>
+                        <div id="leverageStatus" style="font-size:13px; font-weight:800; color:#c084fc; margin-top:4px; font-family:'JetBrains Mono';">1.0x QQQ CORE</div>
+                        <div id="leverageDetail" style="font-size:10.5px; color:var(--text-muted); margin-top:3px;">SPY≥SMA200 &amp; VIX&lt;20 → 1.5x</div>
+                    </div>
                 </div>
 
                 <div class="quick-buy-box" id="quickBuyBox">
@@ -160,7 +176,7 @@
                         </div>
                         <div style="font-size:10.5px; color:var(--text-muted); margin-top:3px;">
                             Target(+15%): <span id="qbTargetVal" style="color:#34d399; font-weight:700;">$0.00</span>
-                            &nbsp;|&nbsp; Stop(-4%): <span id="qbStopVal" style="color:#f87171; font-weight:700;">$0.00</span>
+                            &nbsp;|&nbsp; Stop(-5%): <span id="qbStopVal" style="color:#f87171; font-weight:700;">$0.00</span>
                         </div>
                     </div>
                     <div class="quick-buy-controls">
@@ -204,7 +220,7 @@
                                 <th>CURRENT</th>
                                 <th>SHARES</th>
                                 <th>PNL (%)</th>
-                                <th style="color:#f87171;">STOP (-4%)</th>
+                                <th style="color:#f87171;">STOP (-5%)</th>
                                 <th style="color:#fbbf24;">TRAILING</th>
                                 <th>ACTION</th>
                             </tr>
@@ -220,24 +236,24 @@
             <div class="panel" style="padding:16px 18px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid var(--hairline-dark); padding-bottom:10px;">
                     <span style="font-size:12px; font-weight:800; color:var(--text-primary); letter-spacing:0.02em;">STRATEGY PROTOCOL</span>
-                    <span style="font-size:11px; color:var(--primary-bright); font-weight:700; font-family:'JetBrains Mono';">17Y QUANT</span>
+                    <span style="font-size:11px; color:var(--primary-bright); font-weight:700; font-family:'JetBrains Mono';">C1-M2</span>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; font-size:11px; line-height:1.5;">
                     <div style="background:var(--surface-deep); border:1px solid var(--hairline-dark); border-radius:14px; padding:10px 12px;">
-                        <strong style="color:#34d399; font-weight:700;">1. 3-GATE &amp; RS</strong>
-                        <div style="color:var(--text-muted); font-size:10.5px; margin-top:2px;">일목 양운 + 26일선 지지 + 3M 상대강도 최상위 주도주 선정</div>
+                        <strong style="color:#34d399; font-weight:700;">1. 3-GATE &amp; COMPOSITE RS</strong>
+                        <div style="color:var(--text-muted); font-size:10.5px; margin-top:2px;">일목 3-Gate + 0.40×21d + 0.35×63d + 0.25×126d · QQQ CRS 상회만 위성 진입</div>
                     </div>
                     <div style="background:var(--surface-deep); border:1px solid var(--hairline-dark); border-radius:14px; padding:10px 12px;">
-                        <strong style="color:#fbbf24; font-weight:700;">2. 3-SLOT ALLOC</strong>
-                        <div style="color:var(--text-muted); font-size:10.5px; margin-top:2px;">강세장 3슬롯(33.3%) 균등 / 약세장 2슬롯 50% 현금 방어</div>
+                        <strong style="color:#fbbf24; font-weight:700;">2. 50/30/20 + QQQ PROXY</strong>
+                        <div style="color:var(--text-muted); font-size:10.5px; margin-top:2px;">강세 50/30/20 · 약세 25/25 · 유휴 자본 QQQ 파킹 · 조건 충족 시 1.5x QLD</div>
                     </div>
                     <div style="background:var(--surface-deep); border:1px solid var(--hairline-dark); border-radius:14px; padding:10px 12px;">
-                        <strong style="color:#f87171; font-weight:700;">3. -4.0% HARD STOP</strong>
-                        <div style="color:var(--text-muted); font-size:10.5px; margin-top:2px;">진입가 대비 -4.0% 도달 시 가디언이 0.1초 즉시 전량 손절</div>
+                        <strong style="color:#f87171; font-weight:700;">3. -5.0% HARD STOP</strong>
+                        <div style="color:var(--text-muted); font-size:10.5px; margin-top:2px;">진입가 대비 -5.0% 도달 시 가디언이 즉시 전량 손절 (C1-M2)</div>
                     </div>
                     <div style="background:var(--surface-deep); border:1px solid var(--hairline-dark); border-radius:14px; padding:10px 12px;">
-                        <strong style="color:#c084fc; font-weight:700;">4. TRAILING TP</strong>
-                        <div style="color:var(--text-muted); font-size:10.5px; margin-top:2px;">+15% 래치 후 기준선/2.5×ATR 트레일링 전량 익절 (상한 없음)</div>
+                        <strong style="color:#c084fc; font-weight:700;">4. TRAILING TP (+15% → ATR 2.5)</strong>
+                        <div style="color:var(--text-muted); font-size:10.5px; margin-top:2px;">+15% 래치 후 <code>기준선/2.5×ATR</code> (<code>max(Kijun-26, peak−2.5×ATR)</code>) 이탈 시 전량 익절</div>
                     </div>
                 </div>
             </div>
@@ -309,14 +325,15 @@
                         <div class="indicator-val" id="sigCloudVal">ABOVE CLOUD</div>
                     </div>
 
-                    <!-- 4. Momentum / RS -->
+                    <!-- 4. Composite RS -->
                     <div class="indicator-item">
                         <div class="indicator-head">
-                            <span class="indicator-name">4. 3M RS &amp; BREAKOUT</span>
+                            <span class="indicator-name">4. COMPOSITE RS</span>
                             <span class="status-badge status-good" id="sigRsBadge">[상대강도]</span>
                         </div>
-                        <div class="indicator-val" id="sigRsVal">RS: --%</div>
+                        <div class="indicator-val" id="sigRsVal">CRS: --%</div>
                     </div>
+                </div>
             </div>
             <!-- End Decoder Card -->
 
@@ -360,10 +377,10 @@
 
     <!-- Modular App Scripts -->
     <script type="module">
-        import { TerminalApp } from '/static/js/websocket.js?v=4.2.2';
-        import { UI } from '/static/js/ui.js?v=4.2.2';
-        import { ChartEngine } from '/static/js/chart.js?v=4.2.2';
-        import { ApiClient } from '/static/js/api.js?v=4.2.2';
+        import { TerminalApp } from '/static/js/websocket.js?v=4.3.3';
+        import { UI } from '/static/js/ui.js?v=4.3.3';
+        import { ChartEngine } from '/static/js/chart.js?v=4.3.3';
+        import { ApiClient } from '/static/js/api.js?v=4.3.3';
 
         window.TerminalUI = UI;
         window.ChartEngine = ChartEngine;

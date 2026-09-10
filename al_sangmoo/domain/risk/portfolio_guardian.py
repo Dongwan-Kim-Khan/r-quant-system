@@ -1,9 +1,12 @@
 """
 AL-SANGMOO QUANT TERMINAL: PORTFOLIO GUARDIAN DAEMON
-Background auto-execution of v2 exits:
-  1. -4.0% hard stop (full exit)
+Background auto-execution of C1-M2 exits:
+  1. -5.0% hard stop (full exit)
   2. 26-day kijun close breakdown (full exit)
   3. Uncapped trailing after +15% peak gain: max(Kijun-26, peak - 2.5*ATR(14))
+  4. On satellite exit: redeploy proceeds into QQQ cash-proxy (+ QLD if 1.5x regime)
+  5. QQQ/QLD cash-proxy sleeve is NOT subject to satellite exits (−5%/kijun/trailing);
+     sleeve alignment (park / delever QLD→QQQ) runs via Cash Proxy overlay, not Guardian exits.
 No 50% partial take-profit.
 """
 
@@ -18,11 +21,17 @@ from al_sangmoo.infrastructure.persistence import (
     get_connection,
     get_live_portfolio,
     record_portfolio_sell,
+    add_portfolio_buy,
 )
 from al_sangmoo.infrastructure.brokers.kis_broker import default_kis_broker
 from al_sangmoo.api.hub import hub, EventType
 from al_sangmoo.infrastructure.idempotent_order import is_broker_order_ack
-from al_sangmoo.core.constants import derive_stop_price
+from al_sangmoo.core.constants import (
+    CASH_PROXY_TICKER,
+    derive_stop_price,
+    derive_target_price,
+    derive_partial_tp_price,
+)
 from al_sangmoo.domain.risk import cash_proxy, exit_cooldown
 from al_sangmoo.domain.risk.trailing_stop import (
     ATR_TRAIL_MULT,
@@ -32,6 +41,13 @@ from al_sangmoo.domain.risk.trailing_stop import (
     fetch_trailing_snapshot,
     format_holding_advice,
 )
+from al_sangmoo.domain.risk.cash_proxy import (
+    build_cash_proxy_plan,
+    is_proxy_ticker,
+    park_proceeds_after_exit,
+)
+from al_sangmoo.domain.quant.macro import fetch_spy_trend_regime
+from al_sangmoo.domain.risk.macro_guardrail import evaluate_dynamic_leverage
 
 logger = logging.getLogger(__name__)
 
@@ -48,9 +64,11 @@ def is_market_open_for_orders(ticker_sym: str) -> bool:
 class PortfolioGuardian:
     """
     Autonomous background guardian monitoring active positions.
-    Enforces Al-Sangmoo v2 exits without user intervention:
-      1. -4% hard stop or 26D kijun close breakdown: 100% exit.
+    Enforces C1-M2 exits without user intervention:
+      1. -5% hard stop or 26D kijun close breakdown: 100% exit.
       2. After +15% peak gain: uncapped trailing floor max(kijun, peak - 2.5*ATR).
+      3. Satellite exit proceeds immediately repark into QQQ cash proxy.
+      4. Cash-proxy ETFs (QQQ/QLD) skip satellite exit rules; sleeve rebalance is separate.
     """
 
     def __init__(self, check_interval_seconds: int = 10):
@@ -60,7 +78,11 @@ class PortfolioGuardian:
         self._task: Optional[asyncio.Task] = None
         self.last_check_time: Optional[str] = None
         self.last_sync_time: float = 0.0
+        self.last_sleeve_align_time: float = 0.0
         self.last_actions: List[Dict[str, Any]] = []
+        self._sleeve_align_min_interval_sec: float = 60.0
+        self._pending_broker_orders: Dict[str, float] = {}
+        self._pending_order_ttl_sec: float = 300.0
 
     def start(self):
         """Starts the guardian background loop."""
@@ -96,6 +118,8 @@ class PortfolioGuardian:
                 "partial_tp_ratio": 0.0,
                 "uncapped_trailing": True,
                 "kijun_break_check": True,
+                "cash_proxy": CASH_PROXY_TICKER,
+                "engine": "C1-M2",
             }
         }
 
@@ -224,8 +248,10 @@ class PortfolioGuardian:
 
         if default_kis_broker.is_configured() and (now_ts - self.last_sync_time > 300.0):
             try:
-                default_kis_broker.check_sync()
-                self.last_sync_time = now_ts
+                from al_sangmoo.domain.reconciliation import check_sync
+                sync_res = check_sync(auto_calibrate=True)
+                if sync_res.get("status") == "success":
+                    self.last_sync_time = now_ts
             except Exception as sync_err:
                 logger.debug(f"[Portfolio Guardian] Background check_sync skipped: {sync_err}")
 
@@ -243,6 +269,13 @@ class PortfolioGuardian:
             total_qty = float(h.get("quantity", 1.0))
             if buy_price <= 0 or total_qty <= 0:
                 continue
+
+
+            pending_key = f"SELL:{ticker}"
+            pending_at = self._pending_broker_orders.get(pending_key, 0.0)
+            if pending_at and (now_ts - pending_at) < self._pending_order_ttl_sec:
+                continue
+            self._pending_broker_orders.pop(pending_key, None)
 
             fallback_px = float(h.get("current_price") or buy_price)
             cur_price = self._fetch_live_price(ticker, fallback_px)
@@ -293,7 +326,7 @@ class PortfolioGuardian:
 
                     try:
                         marketable_sell_price = round(cur_price * 0.995, 2)
-                        ex_cd = "NYSE" if ticker in ["CVX", "JNJ", "XOM", "UNH", "PG", "JPM", "V", "MA", "LLY"] else "NASD"
+                        ex_cd = "NYSE" if ticker in ["CVX", "DELL", "JNJ", "XOM", "UNH", "PG", "JPM", "V", "MA", "LLY"] else "NASD"
                         broker_res = default_kis_broker.place_order(
                             ticker=ticker,
                             side="SELL",
@@ -309,6 +342,23 @@ class PortfolioGuardian:
                                 f"[Portfolio Guardian] Broker sell order rejected for {ticker}: "
                                 f"{broker_res.get('message')}. Local DB holding retained."
                             )
+                            continue
+                        if broker_status != "filled":
+                            # KIS "submitted" is only order acceptance, not a fill.
+                            # Keep the local position until broker reconciliation confirms it left the account.
+                            self._pending_broker_orders[pending_key] = now_ts
+                            triggered_actions.append({
+                                "timestamp": now_str,
+                                "holding_id": holding_id,
+                                "ticker": ticker,
+                                "action": f"{action_type}_SUBMITTED",
+                                "sold_quantity": 0.0,
+                                "remaining_quantity": total_qty,
+                                "order_id": order_id,
+                                "broker_status": broker_status,
+                                "reason": action_reason,
+                            })
+                            self.last_actions.append(triggered_actions[-1])
                             continue
                     except Exception as e:
                         logger.error(f"[Portfolio Guardian Broker Error] {e}")
@@ -349,13 +399,275 @@ class PortfolioGuardian:
             triggered_actions.append(action_record)
             self.last_actions.append(action_record)
 
+            # C1-M2: satellite exits repark into QQQ cash proxy
+            try:
+                proxy_actions = self._repark_exit_proceeds(sell_qty * cur_price)
+                if proxy_actions:
+                    action_record["cash_proxy_actions"] = proxy_actions
+            except Exception as proxy_err:
+                logger.warning(f"[Portfolio Guardian] Cash-proxy repark failed: {proxy_err}")
+
+        # Sleeve alignment: delever QLD→QQQ / park idle when leverage regime changes
+        sleeve_actions: List[Dict[str, Any]] = []
+        try:
+            sleeve_actions = self._align_cash_proxy_sleeve()
+            if sleeve_actions:
+                triggered_actions.extend(sleeve_actions)
+                self.last_actions.extend(sleeve_actions)
+        except Exception as sleeve_err:
+            logger.warning(f"[Portfolio Guardian] Cash-proxy sleeve align failed: {sleeve_err}")
+
+        sat_checked = len([h for h in holdings if not is_proxy_ticker(str(h.get("ticker") or ""))])
         return {
             "status": "success",
             "timestamp": now_str,
-            "checked_count": len(holdings),
+            "checked_count": sat_checked,
             "actions_count": len(triggered_actions),
-            "actions": triggered_actions
+            "actions": triggered_actions,
+            "cash_proxy_sleeve_actions": sleeve_actions,
         }
+
+    def _current_leverage_mode(self) -> bool:
+        try:
+            spy = fetch_spy_trend_regime()
+            vix = None
+            try:
+                import yfinance as yf
+                hist = yf.Ticker("^VIX").history(period="5d")
+                if hist is not None and not hist.empty:
+                    vix = float(hist["Close"].iloc[-1])
+            except Exception:
+                vix = None
+            lev = evaluate_dynamic_leverage(
+                spy_close=spy.get("spy_close"),
+                spy_sma200=spy.get("spy_sma200"),
+                vix=vix,
+            )
+            return bool(lev.get("leverage_mode"))
+        except Exception:
+            return False
+
+    def _fetch_etf_price(self, ticker: str) -> float:
+        try:
+            if default_kis_broker.is_configured():
+                px = default_kis_broker.get_live_price(ticker)
+                if px and float(px) > 0:
+                    return float(px)
+        except Exception:
+            pass
+        return self._fetch_live_price(ticker, 0.0)
+
+    def _align_cash_proxy_sleeve(self) -> List[Dict[str, Any]]:
+        """
+        Cash Proxy overlay automation (not satellite exits):
+          - 1.0x: sell residual QLD (DELEVERAGE_TO_1X_QQQ_CORE), park idle in QQQ
+          - 1.5x: maintain QQQ+QLD idle mix
+        Delever sells run immediately; other sleeve actions throttle to ~60s.
+        """
+        if not self.is_enabled:
+            return []
+
+        port = get_live_portfolio()
+        holdings = list(port.get("holdings", []))
+        equity = float(port.get("total_equity_usd") or port.get("total_value") or 0.0)
+        cash = float(port.get("cash_usd") or port.get("free_cash_usd") or port.get("cash") or 0.0)
+        if equity <= 0:
+            return []
+
+        leverage_on = self._current_leverage_mode()
+        qqq_px = self._fetch_etf_price(CASH_PROXY_TICKER)
+        qld_px = self._fetch_etf_price("QLD")  # always needed for possible QLD sells
+        plan = build_cash_proxy_plan(
+            total_equity_usd=equity,
+            holdings=holdings,
+            cash_usd=cash,
+            leverage_mode=leverage_on,
+            qqq_price=qqq_px,
+            qld_price=qld_px,
+        )
+        actions = list(plan.get("actions") or [])
+        if not actions:
+            return []
+
+        has_delever = any(a.get("reason") == "DELEVERAGE_TO_1X_QQQ_CORE" for a in actions)
+        now_ts = time.time()
+        if not has_delever and (now_ts - self.last_sleeve_align_time) < self._sleeve_align_min_interval_sec:
+            return []
+        self.last_sleeve_align_time = now_ts
+
+        # SELL first (free cash / delever), then BUY park
+        ordered = [a for a in actions if a.get("side") == "SELL"] + [
+            a for a in actions if a.get("side") == "BUY"
+        ]
+        executed: List[Dict[str, Any]] = []
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        for act in ordered:
+            ticker = str(act.get("ticker") or "").upper()
+            side = str(act.get("side") or "").upper()
+            qty = int(act.get("qty") or 0)
+            px = qqq_px if ticker == CASH_PROXY_TICKER else qld_px
+            if not ticker or side not in {"BUY", "SELL"} or qty <= 0 or px <= 0:
+                continue
+
+            pending_key = f"{side}:{ticker}"
+            pending_at = self._pending_broker_orders.get(pending_key, 0.0)
+            if pending_at and (now_ts - pending_at) < self._pending_order_ttl_sec:
+                # Do not buy the replacement sleeve until the pending sell settles.
+                if side == "SELL":
+                    break
+                continue
+            self._pending_broker_orders.pop(pending_key, None)
+
+            broker_status = "SIMULATED"
+            order_id = None
+            if default_kis_broker.is_configured():
+                if not is_market_open_for_orders(ticker):
+                    continue
+                try:
+                    limit = round(px * (1.005 if side == "BUY" else 0.995), 2)
+                    broker_res = default_kis_broker.place_order(
+                        ticker=ticker,
+                        side=side,
+                        qty=qty,
+                        price=limit,
+                        order_type="00",
+                        exchange="AMEX" if ticker == "QLD" else "NASD",
+                    )
+                    broker_status = broker_res.get("status", "error")
+                    order_id = broker_res.get("order_id") or broker_res.get("odno")
+                    if not is_broker_order_ack(broker_status):
+                        logger.error(
+                            f"[Guardian CashProxy] {side} {ticker} x{qty} rejected: "
+                            f"{broker_res.get('message')}"
+                        )
+                        continue
+                    if broker_status != "filled":
+                        # Accepted is not filled. Broker reconciliation owns the local ledger update.
+                        self._pending_broker_orders[pending_key] = now_ts
+                        executed.append({
+                            "timestamp": now_str,
+                            "ticker": ticker,
+                            "action": f"CASH_PROXY_{side}_SUBMITTED",
+                            "side": side,
+                            "qty": qty,
+                            "price": px,
+                            "order_id": order_id,
+                            "broker_status": broker_status,
+                            "reason": act.get("reason"),
+                        })
+                        if side == "SELL":
+                            break
+                        continue
+                except Exception as e:
+                    logger.error(f"[Guardian CashProxy {side} Error] {e}")
+                    continue
+
+            if side == "BUY":
+                add_portfolio_buy(
+                    ticker=ticker,
+                    buy_price=px,
+                    quantity=float(qty),
+                    buy_date=datetime.now().strftime("%Y-%m-%d"),
+                    target_price=derive_target_price(px),
+                    stop_loss_price=derive_stop_price(px),
+                    partial_tp_price=derive_partial_tp_price(px),
+                )
+            else:
+                sold = False
+                for h in list(holdings):
+                    if str(h.get("ticker") or "").upper() != ticker:
+                        continue
+                    hid = h.get("id")
+                    if hid is None:
+                        continue
+                    try:
+                        record_portfolio_sell(
+                            holding_id=int(hid),
+                            sell_price=px,
+                            reason=f"CASH_PROXY_SLEEVE ({act.get('reason')})",
+                        )
+                        sold = True
+                    except Exception as e:
+                        logger.error(f"[Guardian CashProxy Sell Ledger Error] {e}")
+                    break
+                if not sold:
+                    continue
+
+            rec = {
+                "timestamp": now_str,
+                "ticker": ticker,
+                "action": f"CASH_PROXY_{side}",
+                "side": side,
+                "qty": qty,
+                "price": px,
+                "order_id": order_id,
+                "broker_status": broker_status,
+                "reason": act.get("reason"),
+            }
+            executed.append(rec)
+            logger.info(
+                f"[Portfolio Guardian] Cash-proxy sleeve: {side} {ticker} x{qty} @ ${px:.2f} "
+                f"({act.get('reason')})"
+            )
+
+        return executed
+
+    def _repark_exit_proceeds(self, proceeds_usd: float) -> List[Dict[str, Any]]:
+        """Buy QQQ (+ QLD if 1.5x) with satellite exit proceeds."""
+        if proceeds_usd <= 0 or not self.is_enabled:
+            return []
+        leverage_on = self._current_leverage_mode()
+        qqq_px = self._fetch_etf_price(CASH_PROXY_TICKER)
+        qld_px = self._fetch_etf_price("QLD") if leverage_on else 0.0
+        plan = park_proceeds_after_exit(
+            proceeds_usd=proceeds_usd,
+            leverage_mode=leverage_on,
+            qqq_price=qqq_px,
+            qld_price=qld_px,
+        )
+        executed: List[Dict[str, Any]] = []
+        for act in plan:
+            ticker = act["ticker"]
+            qty = int(act["qty"])
+            if qty <= 0:
+                continue
+            px = qqq_px if ticker == CASH_PROXY_TICKER else qld_px
+            if px <= 0:
+                continue
+            broker_status = "SIMULATED"
+            if default_kis_broker.is_configured():
+                if not is_market_open_for_orders(ticker):
+                    continue
+                try:
+                    broker_res = default_kis_broker.place_order(
+                        ticker=ticker,
+                        side="BUY",
+                        qty=qty,
+                        price=round(px * 1.005, 2),
+                        order_type="00",
+                        exchange="NASD",
+                    )
+                    broker_status = broker_res.get("status", "error")
+                    if not is_broker_order_ack(broker_status):
+                        continue
+                except Exception as e:
+                    logger.error(f"[Guardian CashProxy Buy Error] {e}")
+                    continue
+            add_portfolio_buy(
+                ticker=ticker,
+                buy_price=px,
+                quantity=float(qty),
+                buy_date=datetime.now().strftime("%Y-%m-%d"),
+                target_price=derive_target_price(px),
+                stop_loss_price=derive_stop_price(px),
+                partial_tp_price=derive_partial_tp_price(px),
+            )
+            executed.append({**act, "broker_status": broker_status, "fill_price": px})
+            logger.info(
+                f"[Portfolio Guardian] Cash-proxy repark: BUY {ticker} x{qty} @ ${px:.2f} ({act.get('reason')})"
+            )
+        return executed
 
 
 # Global singleton daemon instance (10s real-time sync)

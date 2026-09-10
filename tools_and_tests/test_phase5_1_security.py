@@ -235,6 +235,8 @@ def test_tier1_r1_xss_remediation():
 
     # 3. Frontend escapeHtml() Utility Verification in Dashboard HTML
     dashboard_path = os.path.join(PROJECT_ROOT, "al_sangmoo_dashboard.html")
+    if not os.path.exists(dashboard_path):
+        dashboard_path = os.path.join(PROJECT_ROOT, "backups", "legacy_html", "al_sangmoo_dashboard.html")
     assert os.path.exists(dashboard_path), "al_sangmoo_dashboard.html not found"
     with open(dashboard_path, "r", encoding="utf-8") as f:
         html_content = f.read()
@@ -784,12 +786,18 @@ def test_tier4_html_dashboard_static_analysis():
     """Tier 4.3: Automated AST & Regex Static Analysis across ALL 4 Dashboard HTML Mirrors."""
     print("\n[Tier 4.3] Automated Static Analysis across ALL 4 Dashboard HTML Mirrors...")
     
-    html_targets = [
-        os.path.join(PROJECT_ROOT, "al_sangmoo_dashboard.html"),
-        os.path.join(PROJECT_ROOT, "html_dashboards", "01_R상무_통합_퀀트_대시보드.html"),
-        os.path.join(PROJECT_ROOT, "html_dashboards", "01_알상무_통합_퀀트_대시보드.html"),
-        os.path.join(PROJECT_ROOT, "HTML_대시보드_모음", "01_R상무_통합_퀀트_대시보드.html")
+    raw_targets = [
+        "al_sangmoo_dashboard.html",
+        os.path.join("html_dashboards", "01_R상무_통합_퀀트_대시보드.html"),
+        os.path.join("html_dashboards", "01_알상무_통합_퀀트_대시보드.html"),
+        os.path.join("HTML_대시보드_모음", "01_R상무_통합_퀀트_대시보드.html")
     ]
+    html_targets = []
+    legacy_backup = os.path.join(PROJECT_ROOT, "backups", "legacy_html")
+    for t in raw_targets:
+        primary = os.path.join(PROJECT_ROOT, t)
+        backup = os.path.join(legacy_backup, t)
+        html_targets.append(primary if os.path.exists(primary) else backup)
     
     reference_hash = None
     for html_path in html_targets:

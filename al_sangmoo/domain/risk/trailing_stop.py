@@ -1,8 +1,8 @@
 """
-Al-Sangmoo v2 uncapped trailing-stop SSOT.
+Al-Sangmoo C1-M2 uncapped trailing-stop SSOT.
 
 Constitution:
-  - Hard stop: entry -4.0%
+  - Hard stop: entry -5.0%
   - Kijun close breakdown: 26-day baseline exit
   - After peak gain >= +15%: trailing floor = max(Kijun-26, peak_high - 2.5 * ATR(14))
   - Full exit only (no 50% partial take-profit)
@@ -14,9 +14,14 @@ from typing import Any, Dict, Optional
 
 import pandas as pd
 
-from al_sangmoo.core.constants import HARD_STOP_PCT, TRAILING_ACTIVATE_PCT, derive_stop_price
+from al_sangmoo.core.constants import (
+    ATR_MULTIPLIER,
+    HARD_STOP_PCT,
+    TRAILING_ACTIVATE_PCT,
+    derive_stop_price,
+)
 
-ATR_TRAIL_MULT = 2.5
+ATR_TRAIL_MULT = ATR_MULTIPLIER  # C1-M2 SSOT alias
 MARKET_CACHE_TTL_SEC = 300.0
 
 _MARKET_CACHE: Dict[str, Dict[str, Any]] = {}

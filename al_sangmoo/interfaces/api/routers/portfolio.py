@@ -39,6 +39,8 @@ class BuyOrder(BaseModel):
     quantity: Optional[float] = Field(default=None, gt=0, le=1_000_000.0)
     buy_date: Optional[str] = Field(default=None)
     exchange: Optional[str] = Field(default="NASD")
+    slot_rank: Optional[int] = Field(default=None, ge=1, le=5)
+    max_single_asset_pct: Optional[float] = Field(default=None, gt=0.0, le=2.0)
 
     @field_validator("ticker")
     @classmethod
@@ -123,24 +125,34 @@ async def buy_stock(order: BuyOrder):
         order_id = None
         broker_msg = None
 
-        # 1. If KIS Broker is configured, submit real/paper order to broker
+        # 1. Pre-Trade Guardrail Validation
+        live_port = get_live_portfolio()
         if default_kis_broker.is_configured():
-            # Pre-Trade Guardrail
             balance_info = await asyncio.to_thread(default_kis_broker.get_overseas_balance)
-            total_equity = float(balance_info.get("total_equity_usd", 100_000.0))
+            total_equity = float(balance_info.get("total_equity_usd", 0.0))
             active_holdings = balance_info.get("holdings", [])
+            if not active_holdings:
+                active_holdings = live_port.get("holdings", [])
+            if total_equity <= 0 or balance_info.get("mode") == "SIMULATED":
+                total_equity = float(live_port.get("total_equity_usd") or 100_000.0)
+        else:
+            total_equity = float(live_port.get("total_equity_usd") or 100_000.0)
+            active_holdings = live_port.get("holdings", [])
 
-            eval_res = validate_pre_trade_guardrail(
-                ticker=ticker_clean,
-                price=price,
-                quantity=qty,
-                total_equity=total_equity if total_equity > 0 else 100_000.0,
-                active_holdings=active_holdings,
-                max_single_asset_pct=0.25
-            )
-            if not eval_res["allowed"]:
-                raise HTTPException(status_code=400, detail=f"사전 리스크 한도 초과: {eval_res['reason']}")
+        eval_res = validate_pre_trade_guardrail(
+            ticker=ticker_clean,
+            price=price,
+            quantity=qty,
+            total_equity=total_equity,
+            active_holdings=active_holdings,
+            max_single_asset_pct=order.max_single_asset_pct,
+            slot_rank=order.slot_rank
+        )
+        if not eval_res["allowed"]:
+            raise HTTPException(status_code=400, detail=f"사전 리스크 한도 초과: {eval_res['reason']}")
 
+        # 2. If KIS Broker is configured, submit real/paper order to broker
+        if default_kis_broker.is_configured():
             # Submit order to KIS
             broker_res = await asyncio.to_thread(
                 default_kis_broker.place_order,
@@ -153,7 +165,7 @@ async def buy_stock(order: BuyOrder):
             )
             if not is_broker_order_ack(broker_res.get("status")):
                 reason = broker_res.get("reason", "증권사 주문 전송 실패")
-                if any(kw in str(reason) for kw in ["초당 거래건수", "EGW00201", "장종료", "모의투자", "40580000"]):
+                if any(kw in str(reason) for kw in ["초당 거래건수", "EGW00201", "장종료", "모의투자", "40580000", "ORDER_TIMEOUT_UNCONFIRMED", "TIMEOUT", "주문시간", "장시작전"]):
                     logger.warning(f"Broker buy warning ({reason}). Proceeding with local SQLite order.")
                     broker_msg = f"증권사 경고: {reason}"
                 else:
@@ -243,7 +255,7 @@ async def sell_stock(position_id: int, order: SellOrder):
                 reason = broker_res.get("reason", "증권사 매도 주문 전송 실패")
                 # If broker reports no broker balance or rate limit glitch (e.g. unfilled limit order or paper discrepancy),
                 # allow local ledger liquidation to prevent frozen UI positions
-                if any(kw in str(reason) for kw in ["잔고", "40240000", "초당 거래건수", "EGW00201", "장종료", "모의투자", "40580000"]):
+                if any(kw in str(reason) for kw in ["잔고", "40240000", "초당 거래건수", "EGW00201", "장종료", "모의투자", "40580000", "ORDER_TIMEOUT_UNCONFIRMED", "TIMEOUT", "주문시간", "장시작전"]):
                     logger.warning(f"Broker sell rejected due to broker warning ({reason}). Proceeding with local liquidation.")
                     broker_msg = f"증권사 경고: {reason}"
                 else:
@@ -319,7 +331,9 @@ async def buy_top_pick():
         ticker=top_pick["ticker"],
         buy_price=float(top_pick["price"]),
         quantity=float(sizing["shares"]),
-        buy_date=datetime.now().strftime("%Y-%m-%d")
+        buy_date=datetime.now().strftime("%Y-%m-%d"),
+        slot_rank=int(sizing.get("slot_rank", 1)),
+        max_single_asset_pct=0.55
     )
     return await buy_stock(order)
 

@@ -1,124 +1,175 @@
-/**
- * verify_slot_allocator_edge_cases.js
- *
- * Drives the live frontend's 3-slot allocator (window.TerminalUI.renderSlotVisualizer)
- * through the regime x holdings edge-case matrix and asserts the rendered
- * occupied / empty / locked slot counts and summary text. Also fails on any
- * console/page error emitted while rendering.
- *
- * Usage:  node tools_and_tests/verify_slot_allocator_edge_cases.js
- * Env:    TARGET_URL (default http://127.0.0.1:8000)
- */
-"use strict";
-
-const path = require("node:path");
-
-function loadChromium() {
-  const candidates = [
-    path.join(__dirname, "..", "node_modules", "playwright"),
-    path.join(__dirname, "..", ".agents", "skills", "playwright-skill", "node_modules", "playwright"),
-    "playwright",
-  ];
-  for (const c of candidates) {
-    try {
-      return require(c).chromium;
-    } catch (_) { /* try next */ }
-  }
-  throw new Error("Playwright is not installed. Run: (cd .agents/skills/playwright-skill && npm run setup)");
-}
-
-const TARGET_URL = process.env.TARGET_URL || "http://127.0.0.1:8000";
-
-function mkHoldings(tickers) {
-  return tickers.map((tk, i) => ({
-    ticker: tk,
-    pnl_pct: 1.5,
-    current_price: 100 + i,
-    buy_price: 95 + i,
-    quantity: 2,
-    current_value: (100 + i) * 2,
-    stop_loss_price: (95 + i) * 0.96,
-  }));
-}
-
-// [name, isBullRegime, holdingTickers, expectOccupied, expectEmpty, expectLocked, expectSummary]
-const CASES = [
-  ["bull / 0 held", true, [], 0, 3, 0, "0 / 3 SLOTS OCCUPIED"],
-  ["bull / 2 held", true, ["AAPL", "MSFT"], 2, 1, 0, "2 / 3 SLOTS OCCUPIED"],
-  ["bull / 3 held (full)", true, ["AAPL", "MSFT", "NVDA"], 3, 0, 0, "3 / 3 SLOTS OCCUPIED"],
-  ["bear / 0 held", false, [], 0, 2, 1, "0 / 2 SLOTS OCCUPIED"],
-  ["bear / 1 held", false, ["AAPL"], 1, 1, 1, "1 / 2 SLOTS OCCUPIED"],
-  ["bear / 2 held (full)", false, ["AAPL", "MSFT"], 2, 0, 1, "2 / 2 SLOTS OCCUPIED"],
-];
+const { chromium } = require('d:/코딩/R/.agents/skills/playwright-skill/node_modules/playwright');
 
 (async () => {
-  const chromium = loadChromium();
-  const browser = await chromium.launch({ headless: true });
-  const jsErrors = [];
-  let failures = 0;
-
-  try {
+    console.log('[EDGE TEST] Launching headless browser for Slot Allocator Edge Cases...');
+    const browser = await chromium.launch({ headless: true });
     const page = await browser.newPage();
-    page.on("console", (msg) => { if (msg.type() === "error") jsErrors.push(msg.text()); });
-    page.on("pageerror", (err) => jsErrors.push(String(err)));
 
-    const resp = await page.goto(TARGET_URL, { waitUntil: "domcontentloaded", timeout: 30000 });
-    if (!resp || !resp.ok()) throw new Error(`Root document HTTP ${resp ? resp.status() : "none"}`);
+    await page.goto('http://127.0.0.1:8000/', { waitUntil: 'networkidle' });
+    await page.waitForTimeout(1000);
 
-    await page.waitForFunction(
-      () => window.TerminalUI && typeof window.TerminalUI.renderSlotVisualizer === "function",
-      { timeout: 15000 }
-    );
-    await page.locator("#slotVisualizerGrid").waitFor({ state: "attached", timeout: 15000 });
+    // Test Scenario 1: 4 Holdings (3 sats + 1 proxy) in Bull regime
+    console.log('[EDGE TEST] Evaluating 4 holdings scenario (DELL, CVX, NVDA, QLD)...');
+    const fourHoldings = {
+        total_equity_usd: 10000,
+        holdings: [
+            { ticker: 'DELL', current_price: 540, buy_price: 530, quantity: 5, pnl_pct: 1.89 },
+            { ticker: 'CVX', current_price: 215, buy_price: 200, quantity: 10, pnl_pct: 7.5 },
+            { ticker: 'NVDA', current_price: 130, buy_price: 125, quantity: 15, pnl_pct: 4.0 },
+            { ticker: 'QLD', current_price: 90, buy_price: 90, quantity: 20, pnl_pct: 0.0 }
+        ]
+    };
+    await page.evaluate((port) => {
+        window.TerminalUI.renderSlotVisualizer(port, true, null, null);
+    }, fourHoldings);
+    await page.waitForTimeout(200);
 
-    for (const [name, isBull, tickers, expOcc, expEmpty, expLocked, expSummary] of CASES) {
-      const holdings = mkHoldings(tickers);
-      const result = await page.evaluate(({ holdings, isBull }) => {
-        const portfolio = { holdings, total_equity_usd: 7500.0 };
-        window.TerminalUI.renderSlotVisualizer(portfolio, isBull, null);
-        const grid = document.getElementById("slotVisualizerGrid");
-        const summary = document.getElementById("slotSummaryText");
-        return {
-          occupied: grid.querySelectorAll(".slot-card.occupied").length,
-          empty: grid.querySelectorAll(".slot-card.empty").length,
-          locked: grid.querySelectorAll(".slot-card.locked").length,
-          total: grid.querySelectorAll(".slot-card").length,
-          summary: summary ? summary.textContent.trim() : "",
+    const slotCards4 = await page.$$eval('#slotVisualizerGrid .slot-card', els => els.map(e => {
+        const strong = e.querySelector('strong');
+        return strong ? strong.textContent.trim() : null;
+    }));
+    console.log('[EDGE TEST] 4 Holdings rendered cards:', slotCards4);
+    if (slotCards4.length !== 4 || !slotCards4.includes('QLD') || !slotCards4.includes('NVDA')) {
+        console.error('[FAIL] 4th holding was dropped!', slotCards4);
+        process.exit(1);
+    }
+    console.log('[PASS] All 4 holdings (including QLD and 3rd satellite) rendered without dropping!');
+
+    const summary4 = await page.$eval('#slotSummaryText', el => el.textContent.trim());
+    console.log('[EDGE TEST] 4 Holdings slot summary:', summary4);
+    if (!summary4.startsWith('3 / 3 SLOTS')) {
+        console.error('[FAIL] QQQ/QLD must not inflate satellite slot count. Expected 3 / 3 SLOTS, got:', summary4);
+        process.exit(1);
+    }
+    console.log('[PASS] Slot counter uses satellite count only (3 / 3), cash proxy excluded!');
+
+    // Test Scenario 1b: 2 sats + QQQ must read 2/3, not 3/3, and KPI must show 1 SLOT READY
+    console.log('[EDGE TEST] Evaluating 2 satellites + QQQ (must not fill 3rd slot)...');
+    const twoSatsPlusQqq = {
+        total_equity_usd: 10000,
+        free_cash_usd: 2000,
+        cash_ratio_pct: 20,
+        holdings: [
+            { ticker: 'NVDA', current_price: 130, buy_price: 125, quantity: 15, pnl_pct: 4.0 },
+            { ticker: 'AMZN', current_price: 180, buy_price: 170, quantity: 10, pnl_pct: 5.9 },
+            { ticker: 'QQQ', current_price: 480, buy_price: 480, quantity: 4, pnl_pct: 0.0 }
+        ]
+    };
+    await page.evaluate((port) => {
+        window.TerminalUI.latestPortfolioData = port;
+        window.TerminalUI.renderSlotVisualizer(port, true, null, null);
+        window.TerminalUI.renderKPIs(null, port, true);
+    }, twoSatsPlusQqq);
+    await page.waitForTimeout(200);
+
+    const summary2p = await page.$eval('#slotSummaryText', el => el.textContent.trim());
+    const kpiSlots = await page.$eval('#kpiCashRatioText', el => el.textContent.trim());
+    console.log('[EDGE TEST] 2 sats + QQQ summary:', summary2p, '| KPI:', kpiSlots);
+    if (!summary2p.startsWith('2 / 3 SLOTS')) {
+        console.error('[FAIL] Expected 2 / 3 SLOTS with QQQ excluded from count, got:', summary2p);
+        process.exit(1);
+    }
+    if (!kpiSlots.includes('1 SLOT READY') && !kpiSlots.includes('1 SLOTS READY')) {
+        console.error('[FAIL] KPI available slots should ignore QQQ. Expected 1 SLOT READY, got:', kpiSlots);
+        process.exit(1);
+    }
+    const cards2p = await page.$$eval('#slotVisualizerGrid .slot-card', els => els.map(e => {
+        const strong = e.querySelector('strong');
+        const badge = e.querySelector('span[style*="border-radius"]');
+        return { ticker: strong ? strong.textContent.trim() : null, badge: badge ? badge.textContent.trim() : null };
+    }));
+    if (!cards2p.some(c => c.ticker === 'QQQ' && c.badge === '[CASH PROXY]')) {
+        console.error('[FAIL] QQQ cash proxy card missing from grid!', cards2p);
+        process.exit(1);
+    }
+    console.log('[PASS] 2 sats + QQQ → 2 / 3 SLOTS and 1 SLOT READY; QQQ still rendered as [CASH PROXY]!');
+
+    // Test Scenario 2: Bear Regime with 3 holdings (2 sats + 1 proxy)
+    console.log('[EDGE TEST] Evaluating Bear Regime scenario (25/25 slots + QQQ)...');
+    const bearHoldings = {
+        total_equity_usd: 8000,
+        holdings: [
+            { ticker: 'DELL', current_price: 540, buy_price: 530, quantity: 3, pnl_pct: 1.89 },
+            { ticker: 'CVX', current_price: 215, buy_price: 200, quantity: 5, pnl_pct: 7.5 },
+            { ticker: 'QQQ', current_price: 480, buy_price: 480, quantity: 8, pnl_pct: 0.0 }
+        ]
+    };
+    await page.evaluate((port) => {
+        window.TerminalUI.renderSlotVisualizer(port, false, null, null);
+    }, bearHoldings);
+    await page.waitForTimeout(200);
+
+    const slotCardsBear = await page.$$eval('#slotVisualizerGrid .slot-card', els => els.map(e => {
+        const strong = e.querySelector('strong');
+        return strong ? strong.textContent.trim() : null;
+    }));
+    console.log('[EDGE TEST] Bear Regime rendered cards:', slotCardsBear);
+    if (!slotCardsBear.includes('QQQ')) {
+        console.error('[FAIL] QQQ Cash Proxy was dropped in Bear Regime!', slotCardsBear);
+        process.exit(1);
+    }
+    console.log('[PASS] QQQ Cash Proxy correctly rendered in Bear Regime!');
+
+    const summaryBear = await page.$eval('#slotSummaryText', el => el.textContent.trim());
+    console.log('[EDGE TEST] Bear Regime slot summary:', summaryBear);
+    if (!summaryBear.startsWith('2 / 2 SLOTS')) {
+        console.error('[FAIL] Bear satellite count should be 2 / 2 (QQQ excluded). Got:', summaryBear);
+        process.exit(1);
+    }
+    console.log('[PASS] Bear slot counter is 2 / 2 (QQQ excluded from satellite count)!');
+
+    // Test Scenario 3: Empty portfolio (0 holdings)
+    console.log('[EDGE TEST] Evaluating Empty Portfolio (0 holdings)...');
+    const emptyPort = { total_equity_usd: 7500, holdings: [] };
+    await page.evaluate((port) => {
+        window.TerminalUI.renderSlotVisualizer(port, true, null, null);
+    }, emptyPort);
+    await page.waitForTimeout(200);
+
+    const emptySlots = await page.$$eval('#slotVisualizerGrid .slot-card.empty', els => els.length);
+    console.log('[EDGE TEST] Empty slots rendered:', emptySlots);
+    if (emptySlots !== 3) {
+        console.error('[FAIL] Expected 3 empty slots, got ' + emptySlots);
+        process.exit(1);
+    }
+    console.log('[PASS] 3 empty slots rendered correctly for empty portfolio!');
+
+    const summaryEmpty = await page.$eval('#slotSummaryText', el => el.textContent.trim());
+    if (!summaryEmpty.startsWith('0 / 3 SLOTS')) {
+        console.error('[FAIL] Empty portfolio should read 0 / 3 SLOTS, got:', summaryEmpty);
+        process.exit(1);
+    }
+
+    // Test Scenario 4: Quick Buy QTY auto-fill (Top Pick sizing.shares vs next-slot NAV)
+    console.log('[EDGE TEST] Evaluating Quick Buy QTY auto-fill...');
+    await page.evaluate(() => {
+        window.TerminalUI.latestDashboardData = {
+            top_conviction_pick: { ticker: 'NVDA', sizing: { shares: 42 } },
+            top_conviction_runner_up: { ticker: 'AMD', sizing: { shares: 17 } },
+            slot_allocation_summary: { is_bull_regime: true },
+            portfolio: { total_equity_usd: 10000, holdings: [], free_cash_usd: 10000 }
         };
-      }, { holdings, isBull });
-
-      const ok =
-        result.occupied === expOcc &&
-        result.empty === expEmpty &&
-        result.locked === expLocked &&
-        result.total === 3 &&
-        result.summary === expSummary;
-
-      if (ok) {
-        console.log(`[slot-edge] PASS  ${name}  -> occ=${result.occupied} empty=${result.empty} locked=${result.locked} | "${result.summary}"`);
-      } else {
-        failures++;
-        console.error(`[slot-edge] FAIL  ${name}`);
-        console.error(`   expected occ=${expOcc} empty=${expEmpty} locked=${expLocked} summary="${expSummary}"`);
-        console.error(`   actual   occ=${result.occupied} empty=${result.empty} locked=${result.locked} total=${result.total} summary="${result.summary}"`);
-      }
+        window.TerminalUI.latestPortfolioData = { total_equity_usd: 10000, holdings: [], free_cash_usd: 10000 };
+        window.TerminalUI.updateQuickBuyConsole('NVDA', 100);
+    });
+    const qtyPick = await page.$eval('#qbQty', el => el.value);
+    console.log('[EDGE TEST] Top Pick NVDA qbQty:', qtyPick);
+    if (qtyPick !== '42') {
+        console.error('[FAIL] Top Pick should auto-fill sizing.shares=42, got:', qtyPick);
+        process.exit(1);
     }
 
-    if (jsErrors.length) {
-      failures++;
-      console.error(`[slot-edge] FAIL: ${jsErrors.length} console/page error(s):`);
-      jsErrors.forEach((e) => console.error("   - " + e));
+    await page.evaluate(() => {
+        window.TerminalUI.updateQuickBuyConsole('AAPL', 200);
+    });
+    const qtyGen = await page.$eval('#qbQty', el => el.value);
+    console.log('[EDGE TEST] General AAPL qbQty (slot1 50% of $10k / $200):', qtyGen);
+    if (qtyGen !== '25') {
+        console.error('[FAIL] General ticker should fill floor(slotCap/price)=25, got:', qtyGen);
+        process.exit(1);
     }
+    console.log('[PASS] Quick Buy QTY auto-fills Top Pick shares and next-slot capacity!');
 
-    if (failures === 0) {
-      console.log(`[slot-edge] ALL ${CASES.length} EDGE CASES PASSED (0 console errors).`);
-    } else {
-      process.exitCode = 1;
-    }
-  } catch (err) {
-    console.error("[slot-edge] FAIL:", err && err.message ? err.message : err);
-    process.exitCode = 1;
-  } finally {
     await browser.close();
-  }
+    console.log('[ALL EDGE CASE TESTS PASSED SUCCESSFULLY]');
 })();

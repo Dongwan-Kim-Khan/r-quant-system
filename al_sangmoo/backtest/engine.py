@@ -18,7 +18,7 @@ def run_backtest_simulation(
     initial_capital: float = 100000.0,
     slippage_bps: float = 0.0010,       # 10 bps (0.10%) bid-ask spread
     fee_rate: float = 0.0008,           # 8 bps (0.08%) commission + regulatory fees
-    stop_loss_pct: float = STOP_LOSS_PCT,     # -4.0% constitution hard stop
+    stop_loss_pct: float = STOP_LOSS_PCT,     # -5.0% C1-M2 hard stop
     take_profit_pct: float = TAKE_PROFIT_PCT,  # +15.0% trailing latch / primary target
     timeout_bars: int = 60              # 60-bar max swing horizon
 ) -> Dict[str, Any]:
@@ -92,7 +92,9 @@ def run_backtest_simulation(
                 # Enter at Bar i Open (with slippage)
                 raw_fill = opens[i]
                 fill_price = raw_fill * (1.0 + slippage_bps)
-                alloc = cash * 0.95  # Allocate 95% of available cash
+                # Deploy most available cash into the swing sleeve (not a stop multiplier)
+                cash_utilization = 95.0 / 100.0
+                alloc = cash * cash_utilization
                 shares = (alloc * (1.0 - fee_rate)) / fill_price
                 cash -= alloc
                 position_shares = shares

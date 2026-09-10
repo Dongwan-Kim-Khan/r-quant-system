@@ -26,10 +26,8 @@ if sys.platform.startswith('win'):
         pass
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-HISTORY_CSV = os.path.join(BASE_DIR, "trade_history.csv")
 REPORTS_DIR = os.path.join(BASE_DIR, "daily_reports")
 DASHBOARD_JSON = os.path.join(BASE_DIR, "dashboard_data.json")
-DASHBOARD_HTML = os.path.join(BASE_DIR, "al_sangmoo_dashboard.html")
 os.makedirs(REPORTS_DIR, exist_ok=True)
 
 def load_env_file():
@@ -81,9 +79,11 @@ def send_email_report(subject, html_body, receiver=None):
 
 from al_sangmoo.core.constants import (
     WATCHLIST, STOCK_DICT, TICKER_SECTORS, get_active_watchlist, get_macro_tailwind_sectors,
-    HARD_STOP_PCT, TRAILING_ACTIVATE_PCT,
+    HARD_STOP_PCT, TRAILING_ACTIVATE_PCT, CASH_PROXY_TICKER,
     derive_partial_tp_price, derive_stop_price, derive_target_price,
 )
+from al_sangmoo.domain.risk.position_sizer import calculate_target_shares
+from al_sangmoo.domain.risk.cash_proxy import satellite_holdings, proxy_holdings
 
 # Global 60 Universe SSOT (Dynamic Sector-Weighted)
 UNIVERSE = get_active_watchlist()
@@ -289,9 +289,13 @@ def evaluate_user_portfolio_positions():
     return portfolio_alerts
 
 def evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, today_str):
-    if os.path.exists(HISTORY_CSV):
-        history_df = pd.read_csv(HISTORY_CSV)
-    else:
+    init_db()
+    try:
+        with get_connection() as conn:
+            history_df = pd.read_sql_query("SELECT * FROM trades", conn)
+    except Exception:
+        history_df = pd.DataFrame()
+    if history_df.empty:
         history_df = pd.DataFrame(columns=[
             "date", "ticker", "type", "entry_price", "current_price",
             "pnl_pct", "max_gain_pct", "status", "days_active", "exit_advice"
@@ -369,9 +373,7 @@ def evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, 
             
         if new_rows:
             history_df = pd.concat([history_df, pd.DataFrame(new_rows)], ignore_index=True)
-            
-    history_df.to_csv(HISTORY_CSV, index=False)
-    
+
     # SQLite sync
     try:
         init_db()
@@ -457,12 +459,12 @@ def generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_e
         is_bull = bool(resolve_capital_regime(msi_score=msi_score, fetch_spy=False)["is_bull_regime"])
     max_slots = 3 if is_bull else 2
     regime_title = "BULL REGIME (강세 국면)" if is_bull else "BEAR REGIME (약세 방어 국면)"
-    regime_desc = "3-Slot 100% 가동 / 주도 섹터 모멘텀 집중" if is_bull else "2-Slot 캡 / 50% 현금 대피 안전 모드"
+    regime_desc = "3-Slot 50/30/20 + QQQ Cash Proxy / 1.5x 레버리지 조건부" if is_bull else "2-Slot 25/25 + QQQ 코어 (레버리지 OFF)"
     regime_badge_color = "#10b981" if is_bull else "#ef4444"
     regime_badge_bg = "rgba(16, 185, 129, 0.15)" if is_bull else "rgba(239, 68, 68, 0.15)"
     
     macro_headline = macro_climate.get("macro_headline", f"[{regime_title}: MSI {msi_score:.1f}pt - {regime_desc}]")
-    macro_directive = macro_climate.get("macro_action_directive", "17년 퀀트 프레임워크 3-Slot 자동 자금 관리 가동 중")
+    macro_directive = macro_climate.get("macro_action_directive", "C1-M2 3-Slot 컨빅션 + QQQ Cash Proxy 자동 자금 관리 가동 중")
     tailwind_sectors = ", ".join(macro_info.get("tailwind_sectors", ["에너지", "반도체"]))
     
     vix = macro_gauges.get("vix", {"val": 15.8, "status": "NORMAL"})
@@ -478,24 +480,42 @@ def generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_e
     if not top_pick and dual_consensus:
         d = dual_consensus[0]
         p_val = float(d.get("price", 100.0))
+        eq = float(portfolio.get("total_equity_usd") or portfolio.get("total_value") or 7500.0)
+        sz1 = calculate_target_shares(eq, p_val, slot_rank=1, is_bull=is_bull)
         top_pick = {
             "ticker": d["ticker"], "name": d.get("name", d["ticker"]),
             "sector": d.get("sector", "주도 섹터"), "conviction_score": float(d.get("score", 95.0)),
             "rs_3m": float(d.get("rs_3m", 15.0)), "price": p_val,
             "target_price": derive_target_price(p_val), "stop_price": derive_stop_price(p_val),
-            "sizing": {"shares": max(1, int(2500 / p_val)), "allocated_usd": round(p_val * max(1, int(2500 / p_val)), 2), "weight_pct": 33.3},
-            "rationale": "26일 기준선 생명선 지지 및 기관 스마트머니 잠행 매집(OBV) 확인. 최우선 집중 진입 대상."
+            "sizing": {
+                "shares": sz1["shares"],
+                "allocated_usd": sz1["allocated_usd"],
+                "weight_pct": round(float(sz1.get("slot_weight") or 0.5) * 100, 1),
+                "slot_weight": sz1.get("slot_weight"),
+                "eligible": sz1.get("eligible", True),
+                "is_bull_regime": is_bull,
+            },
+            "rationale": "26일 기준선 생명선 지지 및 기관 스마트머니 잠행 매집(OBV) 확인. 최우선 집중 진입 대상 (C1-M2 Slot#1 50%)."
         }
     if not runner_up and len(dual_consensus) > 1:
         d2 = dual_consensus[1]
         p_val2 = float(d2.get("price", 100.0))
+        eq = float(portfolio.get("total_equity_usd") or portfolio.get("total_value") or 7500.0)
+        sz2 = calculate_target_shares(eq, p_val2, slot_rank=2, is_bull=is_bull)
         runner_up = {
             "ticker": d2["ticker"], "name": d2.get("name", d2["ticker"]),
             "sector": d2.get("sector", "주도 섹터"), "conviction_score": float(d2.get("score", 90.0)),
             "rs_3m": float(d2.get("rs_3m", 12.0)), "price": p_val2,
             "target_price": derive_target_price(p_val2), "stop_price": derive_stop_price(p_val2),
-            "sizing": {"shares": max(1, int(2500 / p_val2)), "allocated_usd": round(p_val2 * max(1, int(2500 / p_val2)), 2), "weight_pct": 33.3},
-            "rationale": "주봉 대세 상승 안착 및 주도 섹터 모멘텀 후속 주자."
+            "sizing": {
+                "shares": sz2["shares"],
+                "allocated_usd": sz2["allocated_usd"],
+                "weight_pct": round(float(sz2.get("slot_weight") or 0.3) * 100, 1),
+                "slot_weight": sz2.get("slot_weight"),
+                "eligible": sz2.get("eligible", True),
+                "is_bull_regime": is_bull,
+            },
+            "rationale": "주봉 대세 상승 안착 및 주도 섹터 모멘텀 후속 주자 (C1-M2 Slot#2 30%)."
         }
 
     # Build HTML
@@ -603,7 +623,7 @@ def generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_e
                             <th style="text-align:right;">BUY</th>
                             <th style="text-align:right;">CURRENT</th>
                             <th style="text-align:right;">PNL %</th>
-                            <th style="text-align:right;">STOP (-4%)</th>
+                            <th style="text-align:right;">STOP (-5%)</th>
                             <th style="text-align:right;">TARGET (+15%)</th>
                             <th>GUARDIAN ACTION</th>
                         </tr>
@@ -709,7 +729,9 @@ def generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_e
         tp_stp = float(top_pick.get("stop_price", derive_stop_price(tp_p)))
         tp_sec = top_pick.get("sector", "LEADER")
         tp_size = top_pick.get("sizing", {})
-        tp_shares = tp_size.get("shares", max(1, int(2500 / max(1, tp_p))))
+        tp_shares = tp_size.get("shares", calculate_target_shares(
+            float(portfolio.get("total_equity_usd") or 7500.0), max(1.0, tp_p), slot_rank=1, is_bull=is_bull
+        ).get("shares", 1))
         tp_usd = tp_size.get("allocated_usd", round(tp_p * tp_shares, 2))
         tp_rat = top_pick.get("rationale", "일목균형표 26일 기준선 지지 및 기관 잠행 매집 확인 완료.")
 
@@ -727,7 +749,7 @@ def generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_e
                     </div>
                 </div>
                 <div class="pick-body">
-                    • <strong>진입 권장가:</strong> <span style="font-family:monospace; font-weight:700; color:#ffffff;">${tp_p:,.2f}</span> &nbsp;|&nbsp; <strong>목표가(+15%):</strong> <span style="font-family:monospace; font-weight:700; color:#10b981;">${tp_tgt:,.2f}</span> &nbsp;|&nbsp; <strong>손절선(-4%):</strong> <span style="font-family:monospace; font-weight:700; color:#ef4444;">${tp_stp:,.2f}</span><br>
+                    • <strong>진입 권장가:</strong> <span style="font-family:monospace; font-weight:700; color:#ffffff;">${tp_p:,.2f}</span> &nbsp;|&nbsp; <strong>목표가(+15%):</strong> <span style="font-family:monospace; font-weight:700; color:#10b981;">${tp_tgt:,.2f}</span> &nbsp;|&nbsp; <strong>손절선(-5%):</strong> <span style="font-family:monospace; font-weight:700; color:#ef4444;">${tp_stp:,.2f}</span><br>
                     • <strong>1,000만원 기준 권장 수량:</strong> <span style="font-family:monospace; font-weight:700; color:#38bdf8;">{tp_shares}주 (${tp_usd:,.2f} / 포트폴리오 약 33%)</span><br>
                     • <strong>퀀트 분석 사유:</strong> {tp_rat}
                 </div>
@@ -745,7 +767,9 @@ def generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_e
         ru_stp = float(runner_up.get("stop_price", derive_stop_price(ru_p)))
         ru_sec = runner_up.get("sector", "RUNNER")
         ru_size = runner_up.get("sizing", {})
-        ru_shares = ru_size.get("shares", max(1, int(2500 / max(1, ru_p))))
+        ru_shares = ru_size.get("shares", calculate_target_shares(
+            float(portfolio.get("total_equity_usd") or 7500.0), max(1.0, ru_p), slot_rank=2, is_bull=is_bull
+        ).get("shares", 1))
         ru_usd = ru_size.get("allocated_usd", round(ru_p * ru_shares, 2))
         ru_rat = runner_up.get("rationale", "주봉 대세 상승 안착 및 주도 섹터 2위 모멘텀 후보.")
 
@@ -763,7 +787,7 @@ def generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_e
                     </div>
                 </div>
                 <div class="pick-body">
-                    • <strong>진입 권장가:</strong> <span style="font-family:monospace; font-weight:700; color:#ffffff;">${ru_p:,.2f}</span> &nbsp;|&nbsp; <strong>목표가(+15%):</strong> <span style="font-family:monospace; font-weight:700; color:#10b981;">${ru_tgt:,.2f}</span> &nbsp;|&nbsp; <strong>손절선(-4%):</strong> <span style="font-family:monospace; font-weight:700; color:#ef4444;">${ru_stp:,.2f}</span><br>
+                    • <strong>진입 권장가:</strong> <span style="font-family:monospace; font-weight:700; color:#ffffff;">${ru_p:,.2f}</span> &nbsp;|&nbsp; <strong>목표가(+15%):</strong> <span style="font-family:monospace; font-weight:700; color:#10b981;">${ru_tgt:,.2f}</span> &nbsp;|&nbsp; <strong>손절선(-5%):</strong> <span style="font-family:monospace; font-weight:700; color:#ef4444;">${ru_stp:,.2f}</span><br>
                     • <strong>1,000만원 기준 권장 수량:</strong> <span style="font-family:monospace; font-weight:700; color:#38bdf8;">{ru_shares}주 (${ru_usd:,.2f} / 포트폴리오 약 33%)</span><br>
                     • <strong>퀀트 분석 사유:</strong> {ru_rat}
                 </div>
@@ -831,7 +855,7 @@ def generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_e
             </div>
             <div style="font-size:12px; color:#94a3b8; line-height:1.6;">
                 • <strong>포워드 트래킹 상태:</strong> {health_status}<br>
-                • <strong>포트폴리오 가디언:</strong> 10초 주기 실시간 칼손절(-4%) 및 무제한 트레일링 익절(+15%) 무인 감시 가동 중<br>
+                • <strong>포트폴리오 가디언:</strong> 10초 주기 실시간 칼손절(-5%) 및 무제한 트레일링 익절(+15%) 무인 감시 가동 중<br>
                 • <strong>오토파일럿 트레이더:</strong> 미국장 개장 시(22:30 KST) 슬롯 여유 확인 후 자동 매수 대기 중<br>
                 • <strong>실시간 터미널 대시보드:</strong> <a href="http://localhost:8000" target="_blank" style="color:#38bdf8; font-weight:700; text-decoration:underline;">http://localhost:8000 (알상무 퀀트 통합 터미널)</a>
             </div>

@@ -5,6 +5,7 @@ and calibrates corporate actions (splits, dividend shares, manual trades).
 """
 
 import logging
+import threading
 from datetime import datetime
 from typing import Dict, Any, List
 
@@ -17,9 +18,16 @@ from al_sangmoo.infrastructure.persistence import (
 )
 
 logger = logging.getLogger(__name__)
+_RECONCILE_LOCK = threading.Lock()
 
 
 def check_sync(auto_calibrate: bool = True) -> Dict[str, Any]:
+    """Serialize broker-to-SQLite calibration to prevent duplicate imports."""
+    with _RECONCILE_LOCK:
+        return _check_sync_unlocked(auto_calibrate=auto_calibrate)
+
+
+def _check_sync_unlocked(auto_calibrate: bool = True) -> Dict[str, Any]:
     """
     Executes a 1-time daily reconciliation audit between KIS Broker and local SQLite DB.
     

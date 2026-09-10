@@ -29,6 +29,8 @@ class BrokerOrderRequest(BaseModel):
     buy_date: Optional[str] = Field(default=None)
     order_type: Optional[str] = Field(default="00", description="'00': Limit (지정가), '01': Market")
     exchange: Optional[str] = Field(default="NASD", description="'NASD', 'NYSE', 'AMEX'")
+    slot_rank: Optional[int] = Field(default=None, ge=1, le=5)
+    max_single_asset_pct: Optional[float] = Field(default=None, gt=0.0, le=2.0)
 
     @field_validator("ticker")
     @classmethod
@@ -82,17 +84,24 @@ async def execute_broker_order(order: BrokerOrderRequest):
 
         # 1. Pre-Trade Guardrail Validation
         balance_info = await asyncio.to_thread(default_kis_broker.get_overseas_balance)
-        total_equity = float(balance_info.get("total_equity_usd", 100_000.0))
+        total_equity = float(balance_info.get("total_equity_usd", 0.0))
         active_holdings = balance_info.get("holdings", [])
+        if not active_holdings:
+            live_port = get_live_portfolio()
+            active_holdings = live_port.get("holdings", [])
+        if total_equity <= 0 or balance_info.get("mode") == "SIMULATED":
+            live_port = get_live_portfolio()
+            total_equity = float(live_port.get("total_equity_usd") or 100_000.0)
         
         order_price = final_price if final_price > 0 else 100.0
         eval_res = validate_pre_trade_guardrail(
             ticker=order.ticker,
             price=order_price,
             quantity=float(final_qty),
-            total_equity=total_equity if total_equity > 0 else 100_000.0,
+            total_equity=total_equity,
             active_holdings=active_holdings,
-            max_single_asset_pct=0.25
+            max_single_asset_pct=order.max_single_asset_pct,
+            slot_rank=order.slot_rank
         )
         if not eval_res["allowed"] and final_side == "BUY":
             raise HTTPException(status_code=400, detail=f"Pre-Trade Risk Violation: {eval_res['reason']}")

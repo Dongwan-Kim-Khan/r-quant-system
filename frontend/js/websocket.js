@@ -1,9 +1,9 @@
 /**
  * R QUANT TERMINAL: WebSocket hub, heartbeat, and TerminalApp controller.
  */
-import { ApiClient } from './api.js?v=4.1.9';
-import { UI } from './ui.js?v=4.1.9';
-import { ChartEngine } from './chart.js?v=4.1.9';
+import { ApiClient } from './api.js?v=4.3.3';
+import { UI } from './ui.js?v=4.3.3';
+import { ChartEngine } from './chart.js?v=4.3.3';
 
 export const ConnectionState = {
     DISCONNECTED: "DISCONNECTED",
@@ -290,8 +290,8 @@ export const WebSocketClient = {
     _hydrateFromHttp() {
         ApiClient.getDashboardData().then(fresh => {
             if (fresh) UI.renderDashboard(fresh);
-        }).catch(() => {});
-        ApiClient.getPortfolioData().then(freshPort => {
+            return ApiClient.getPortfolioData();
+        }).then(freshPort => {
             if (freshPort) UI.renderPortfolio(freshPort);
         }).catch(() => {});
     },
@@ -320,7 +320,13 @@ export const WebSocketClient = {
             }
         }
         UI.renderPortfolio(dash.portfolio);
-        UI.renderSlotVisualizer(dash.portfolio, dash.slot_allocation_summary && dash.slot_allocation_summary.is_bull_regime, dash.top_conviction_pick);
+        UI.renderSlotVisualizer(
+            dash.portfolio,
+            dash.slot_allocation_summary && dash.slot_allocation_summary.is_bull_regime,
+            dash.top_conviction_pick,
+            dash.slot_allocation_summary
+        );
+        UI.renderEngineOverlay(dash.slot_allocation_summary, dash.macro, dash.portfolio, dash.risk_constitution);
     },
 
     _setConnectionState(state) {
@@ -359,28 +365,25 @@ export const TerminalApp = {
 
         // 2. Initial Broker Status Check in parallel (non-blocking)
         ApiClient.getBrokerStatus().then(brokerSt => {
-            const kisText = document.getElementById("kisStatusText");
-            const kisDot = document.getElementById("kisStatusDot");
-            const kisBox = document.getElementById("kisBrokerStatusBox");
-            if (brokerSt && brokerSt.is_configured) {
-                if (kisText) kisText.textContent = "KIS API: CONNECTED";
-                if (kisDot) { kisDot.style.background = "#34d399"; kisDot.style.boxShadow = "0 0 6px #34d399"; }
-                if (kisBox) kisBox.style.background = "#064e3b";
-            } else {
-                if (kisText) kisText.textContent = "KIS API: SIMULATION";
-                if (kisDot) { kisDot.style.background = "#f59e0b"; kisDot.style.boxShadow = "0 0 6px #f59e0b"; }
-                if (kisBox) kisBox.style.background = "#1e293b";
-            }
+            const isLive = Boolean(brokerSt && brokerSt.is_configured);
+            const kisText = document.getElementById("kisStatusText"), kisDot = document.getElementById("kisStatusDot"), kisBox = document.getElementById("kisBrokerStatusBox");
+            if (kisText) kisText.textContent = isLive ? "KIS API: CONNECTED" : "KIS API: SIMULATION";
+            if (kisDot) { kisDot.style.background = isLive ? "#34d399" : "#f59e0b"; kisDot.style.boxShadow = `0 0 6px ${isLive ? '#34d399' : '#f59e0b'}`; }
+            if (kisBox) kisBox.style.background = isLive ? "#064e3b" : "#1e293b";
         }).catch(() => {});
 
-        // 3. Initial Dashboard Data Fetch & Immediate Chart Selection
+        // 3. Fetch dashboard and broker-reconciled portfolio concurrently.
+        // Render the feed immediately; then replace its portfolio with broker SSOT.
         try {
+            const portfolioPromise = ApiClient.getPortfolioData(true);
             const data = await ApiClient.getDashboardData();
             if (data) {
                 UI.renderDashboard(data);
                 const pick = UI.defaultChartTarget(data);
                 if (pick) UI.selectStock(pick.ticker, pick.price);
             }
+            const freshPort = await portfolioPromise;
+            if (freshPort) UI.renderPortfolio(freshPort);
         } catch (err) {
             console.error("[TerminalApp] Initial dashboard fetch failed:", err);
         }
@@ -390,6 +393,8 @@ export const TerminalApp = {
         try {
             const data = await ApiClient.getDashboardData();
             if (data) UI.renderDashboard(data);
+            const freshPort = await ApiClient.getPortfolioData(true);
+            if (freshPort) UI.renderPortfolio(freshPort);
         } catch (e) {
             console.warn("[TerminalApp] Refresh error:", e);
         }
@@ -400,42 +405,28 @@ export const TerminalApp = {
         const btnScan = document.getElementById("btnScanNow");
         if (btnScan) {
             btnScan.onclick = async () => {
-                btnScan.disabled = true;
-                btnScan.textContent = "SCANNING...";
+                btnScan.disabled = true; btnScan.textContent = "SCANNING...";
                 try {
                     await ApiClient.triggerScan();
                     const fresh = await ApiClient.getDashboardData();
                     if (fresh) UI.renderDashboard(fresh);
-                } catch (e) {
-                    UI.toast("Scan error: " + e.message, "error");
-                } finally {
-                    btnScan.disabled = false;
-                    btnScan.textContent = "RUN SCAN";
-                }
+                } catch (e) { UI.toast("Scan error: " + e.message, "error"); }
+                finally { btnScan.disabled = false; btnScan.textContent = "RUN SCAN"; }
             };
         }
 
         // Refresh Button
         const btnRefresh = document.getElementById("btnRefresh");
-        if (btnRefresh) {
-            btnRefresh.onclick = () => this.refreshData();
-        }
+        if (btnRefresh) btnRefresh.onclick = () => this.refreshData();
 
         // Daily Sync
         const btnSync = document.getElementById("btnSyncBroker");
         if (btnSync) {
             btnSync.onclick = async () => {
-                btnSync.disabled = true;
-                btnSync.textContent = "SYNCING...";
-                try {
-                    await ApiClient.syncBroker();
-                    this.refreshData();
-                } catch (e) {
-                    UI.toast("Sync error: " + e.message, "error");
-                } finally {
-                    btnSync.disabled = false;
-                    btnSync.textContent = "DAILY SYNC";
-                }
+                btnSync.disabled = true; btnSync.textContent = "SYNCING...";
+                try { await ApiClient.syncBroker(); this.refreshData(); }
+                catch (e) { UI.toast("Sync error: " + e.message, "error"); }
+                finally { btnSync.disabled = false; btnSync.textContent = "SYNC"; }
             };
         }
 
@@ -444,12 +435,8 @@ export const TerminalApp = {
         if (btnReset) {
             btnReset.onclick = async () => {
                 if (!confirm("Reset entire portfolio?")) return;
-                try {
-                    await ApiClient.resetPortfolio();
-                    this.refreshData();
-                } catch (e) {
-                    UI.toast("Reset error: " + e.message, "error");
-                }
+                try { await ApiClient.resetPortfolio(); this.refreshData(); }
+                catch (e) { UI.toast("Reset error: " + e.message, "error"); }
             };
         }
 
@@ -495,22 +482,54 @@ export const TerminalApp = {
         }
 
         // Toggle Helper for Badges
-        const setupToggleBadge = (id, getFn, toggleFn, labelPrefix) => {
+        const setupToggleBadge = (id, getFn, toggleFn, labelPrefix, activeClass, activeSuffix) => {
             const badge = document.getElementById(id);
             if (!badge) return;
             badge.style.cursor = "pointer";
+
+            let isToggling = false;
+
+            const setBadgeState = (enabled) => {
+                badge.className = enabled ? `status-pill-chip ${activeClass}` : "status-pill-chip disabled";
+                const text = enabled ? `${labelPrefix}: ${activeSuffix}` : `${labelPrefix}: OFF`;
+                badge.innerHTML = `<span class="badge-dot"></span><span>${text}</span>`;
+            };
+
+            // Fetch initial status on load to ensure UI matches backend daemon state
+            getFn().then((st) => {
+                const isEnabled = Boolean(st && (st.is_enabled !== undefined ? st.is_enabled : st.enabled));
+                setBadgeState(isEnabled);
+            }).catch((e) => {
+                console.warn(`[${labelPrefix}] Init status check failed:`, e);
+            });
+
             badge.onclick = async () => {
+                if (isToggling) return;
+                isToggling = true;
+                badge.style.opacity = "0.6";
+                badge.style.pointerEvents = "none";
                 try {
                     const st = await getFn();
-                    const next = !(st && st.enabled);
-                    await toggleFn(next);
-                    badge.className = next ? "chip chip-green" : "chip chip-gray";
-                    badge.textContent = `${labelPrefix}: ${next ? 'ACTIVE' : 'DISABLED'}`;
-                } catch (e) { console.error(`[${labelPrefix}] Toggle error:`, e); }
+                    const current = Boolean(st && (st.is_enabled !== undefined ? st.is_enabled : st.enabled));
+                    const next = !current;
+                    const res = await toggleFn(next);
+                    const finalState = res && (res.is_enabled !== undefined ? res.is_enabled : res.enabled) !== undefined
+                        ? Boolean(res.is_enabled !== undefined ? res.is_enabled : res.enabled)
+                        : next;
+                    setBadgeState(finalState);
+                    UI.toast(`[${labelPrefix}] ${finalState ? 'ACTIVE' : 'DISABLED'}`, finalState ? "success" : "warn");
+                } catch (e) {
+                    console.error(`[${labelPrefix}] Toggle error:`, e);
+                    UI.toast(`[${labelPrefix}] Toggle failed: ${e.message}`, "error");
+                } finally {
+                    isToggling = false;
+                    badge.style.opacity = "";
+                    badge.style.pointerEvents = "";
+                }
             };
         };
-        setupToggleBadge("guardianBadge", () => ApiClient.getGuardianStatus(), (n) => ApiClient.toggleGuardian(n), "GUARDIAN");
-        setupToggleBadge("autopilotBadge", () => ApiClient.getAutoPilotStatus(), (n) => ApiClient.toggleAutoPilot(n), "AUTOPILOT");
+        setupToggleBadge("guardianBadge", () => ApiClient.getGuardianStatus(), (n) => ApiClient.toggleGuardian(n), "GUARDIAN", "active-violet", "-5% / TP");
+        setupToggleBadge("autopilotBadge", () => ApiClient.getAutoPilotStatus(), (n) => ApiClient.toggleAutoPilot(n), "AUTOPILOT", "active-green", "C1-M2");
 
         // Indicator Toggles
         const attachToggle = (id, fn) => {
@@ -527,16 +546,10 @@ export const TerminalApp = {
     },
 
     _setupSearchInput() {
-        const input = document.getElementById("stockSearchInput");
-        const dropdown = document.getElementById("searchDropdown");
-        const spinner = document.getElementById("searchSpinner");
+        const input = document.getElementById("stockSearchInput"), dropdown = document.getElementById("searchDropdown"), spinner = document.getElementById("searchSpinner");
         if (!input || !dropdown) return;
         window.addEventListener("keydown", (e) => {
-            if (e.key === "/" && document.activeElement !== input) {
-                e.preventDefault();
-                input.focus();
-                input.select();
-            }
+            if (e.key === "/" && document.activeElement !== input) { e.preventDefault(); input.focus(); input.select(); }
         });
         let debounceTimer = null;
         input.addEventListener("input", () => {
@@ -554,8 +567,7 @@ export const TerminalApp = {
                         return;
                     }
                     dropdown.innerHTML = results.map((r) => {
-                        const tk = UI.escapeHtml(r.ticker || "");
-                        const nm = UI.escapeHtml(r.name || r.name_kr || "");
+                        const tk = UI.escapeHtml(r.ticker || ""), nm = UI.escapeHtml(r.name || r.name_kr || "");
                         const isKr = (r.ticker || "").endsWith(".KS") || (r.ticker || "").endsWith(".KQ");
                         const px = r.price > 0 ? (isKr ? "₩" + Number(r.price).toLocaleString() : "$" + Number(r.price).toFixed(2)) : "";
                         return `<div class="search-item" data-ticker="${tk}" data-price="${Number(r.price || 0)}" style="padding:8px 12px;border-bottom:1px solid #1e293b;cursor:pointer;display:flex;justify-content:space-between;align-items:center;"><div><strong style="color:#f8fafc;font-family:'JetBrains Mono';">${tk}</strong><span style="color:#94a3b8;font-size:11px;margin-left:6px;">${nm}</span></div><span style="color:#38bdf8;font-weight:700;font-family:'JetBrains Mono';">${px}</span></div>`;
