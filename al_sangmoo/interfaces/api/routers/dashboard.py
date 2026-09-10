@@ -133,6 +133,35 @@ async def get_dashboard_data():
         if "top_conviction_runner_up" in feed_out and feed_out["top_conviction_runner_up"]:
             feed_out["top_conviction_runner_up"] = update_item_live_price(feed_out["top_conviction_runner_up"])
 
+        # 3. Synchronize slot_allocation_summary with live portfolio SSOT
+        slot_sum = dict(feed_out.get("slot_allocation_summary") or {})
+        from al_sangmoo.domain.risk.cash_proxy import satellite_holdings, proxy_holdings
+        sats = satellite_holdings(holdings)
+        proxies = proxy_holdings(holdings)
+        slot_sum["satellite_count"] = len(sats)
+        slot_sum["proxy_holdings"] = [
+            {"ticker": h.get("ticker"), "quantity": h.get("quantity"), "current_price": h.get("current_price")}
+            for h in proxies
+        ]
+        if live_portfolio.get("total_equity_usd"):
+            slot_sum["equity_usd"] = float(live_portfolio["total_equity_usd"])
+        macro = feed_out.get("macro", {})
+        if "is_bull_regime" in macro:
+            slot_sum["is_bull_regime"] = bool(macro["is_bull_regime"])
+        elif "is_bull_regime" not in slot_sum:
+            from al_sangmoo.domain.quant.macro import extract_msi_score, resolve_capital_regime
+            msi = extract_msi_score(macro, default=50.0)
+            spy_c = macro.get("spy_close")
+            spy_s = macro.get("spy_sma200")
+            regime = resolve_capital_regime(
+                msi_score=msi,
+                spy_close=float(spy_c) if spy_c is not None else None,
+                spy_sma200=float(spy_s) if spy_s is not None else None,
+                fetch_spy=False,
+            )
+            slot_sum["is_bull_regime"] = bool(regime["is_bull_regime"])
+        feed_out["slot_allocation_summary"] = slot_sum
+
         # 4. Inject Execution Audit Logs
         try:
             feed_out["execution_logs"] = get_execution_logs(limit=50)

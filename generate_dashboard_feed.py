@@ -7,10 +7,11 @@ import pandas as pd
 import yfinance as yf
 from datetime import datetime, timedelta
 from al_sangmoo.infrastructure.persistence import (
+    get_connection,
     get_daily_recommendation_history,
     get_live_portfolio,
     get_recommendation_streaks,
-    get_recommendations_matrix,
+    init_database,
 )
 from al_sangmoo.infrastructure.atomic_io import atomic_save_json, atomic_read_json
 
@@ -22,7 +23,6 @@ if sys.platform.startswith('win'):
         pass
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-HISTORY_CSV = os.path.join(BASE_DIR, "trade_history.csv")
 OUTPUT_JSON = os.path.join(BASE_DIR, "dashboard_data.json")
 STREAM_CACHE = os.path.join(BASE_DIR, "wepoll_latest_stream.json")
 CHARTS_DIR = os.path.join(BASE_DIR, "data", "charts")
@@ -83,11 +83,11 @@ def compute_all_indicators(ticker, df=None):
                 df.columns = df.columns.get_level_values(1)
             
         df = df.dropna(subset=['Close', 'High', 'Low', 'Volume']).copy()
-        if df is None or len(df) < 200:
+        if df is None or len(df) < 60:
             try:
                 from al_sangmoo.infrastructure.brokers.kis_broker import default_kis_broker
                 kis_df = default_kis_broker.get_daily_ohlcv(ticker, min_bars=500)
-                if kis_df is not None and len(kis_df) > (0 if df is None else len(df)):
+                if kis_df is not None and len(kis_df) >= 60:
                     df = kis_df.dropna(subset=['Close', 'High', 'Low', 'Volume']).copy()
             except Exception:
                 pass
@@ -183,6 +183,12 @@ def compute_all_indicators(ticker, df=None):
         else:
             is_breakout = False
 
+        composite_rs = None
+        try:
+            composite_rs = round(float(latest_composite_rs(df_clean["Close"].values)), 6)
+        except Exception:
+            composite_rs = None
+
         # Construct Intelligence Metadata
         intelligence = dict(quant_eval["intelligence"])
         intelligence.update({
@@ -198,6 +204,7 @@ def compute_all_indicators(ticker, df=None):
             "is_stealth_accum": flow_data["is_stealth_accum"],
             "rs_3m": round(rs_3m, 2),
             "momentum_3m": round(rs_3m, 2),
+            "composite_rs": composite_rs,
             "is_breakout": is_breakout
         })
             
@@ -232,6 +239,7 @@ def compute_all_indicators(ticker, df=None):
             "close_gap_pct": close_gap_pct,
             "rs_3m": round(rs_3m, 2),
             "momentum_3m": round(rs_3m, 2),
+            "composite_rs": composite_rs,
             "is_breakout": is_breakout,
             "intelligence": intelligence,
             "status_tag": quant_type,
@@ -259,14 +267,6 @@ def build_dashboard_data(output_file=None, charts_dir=None):
     active_watchlist = get_active_watchlist()
     print(f"Building full dashboard data feed for {len(active_watchlist)} universe tickers...")
     
-    trades = []
-    if os.path.exists(HISTORY_CSV):
-        try:
-            df_hist = pd.read_csv(HISTORY_CSV)
-            trades = df_hist.to_dict(orient="records")
-        except Exception:
-            pass
-            
     # Macro context from YouTube stream cache
     macro_info = {}
     stream_mentioned_tickers = set()
@@ -291,15 +291,30 @@ def build_dashboard_data(output_file=None, charts_dir=None):
         if res:
             chart_data[res["ticker"]] = res
             
-    total_trades = len(trades)
-    closed = [t for t in trades if str(t.get('status', '')).startswith('CLOSED')]
-    wins = [t for t in closed if float(t.get('pnl_pct', 0)) > 0]
-    win_rate = (len(wins) / len(closed) * 100) if closed else 0.0
-    
+    # Executive KPI metrics from SQLite trades
+    total_trades = 0
+    active_count = 0
+    closed_count = 0
+    win_rate = 0.0
+    try:
+        init_database()
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT status, pnl_pct FROM trades")
+            trade_rows = cursor.fetchall()
+            total_trades = len(trade_rows)
+            closed = [r for r in trade_rows if str(r['status'] or '').startswith('CLOSED')]
+            wins = [r for r in closed if float(r['pnl_pct'] or 0) > 0]
+            win_rate = (len(wins) / len(closed) * 100) if closed else 0.0
+            active_count = len([r for r in trade_rows if str(r['status'] or '') == 'OPEN'])
+            closed_count = len(closed)
+    except Exception:
+        pass
+
     kpis = {
         "total_recommendations": total_trades,
-        "active_positions": len([t for t in trades if t.get('status') == 'OPEN']),
-        "closed_trades": len(closed),
+        "active_positions": active_count,
+        "closed_trades": closed_count,
         "win_rate": f"{win_rate:.1f}%",
         "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
@@ -345,101 +360,7 @@ def build_dashboard_data(output_file=None, charts_dir=None):
             item["streak_days"] = streak_days
             item["streak_label"] = f"[{streak_days}D STREAK]" if streak_days >= 2 else ""
 
-    # Combined full sets for backwards compatibility
-    all_strat1 = dual_consensus_picks + strat1_exclusive
-    all_strat2 = dual_consensus_picks + strat2_exclusive
-
-    # Build Unified Signal Tracker (Tier 1 -> Tier 3 -> Tier 2)
-    today_str = datetime.now().strftime("%Y-%m-%d")
-    signal_tracker = []
-    
-    # 1. Tier 1 Macro Leaders
-    for d in dual_consensus_picks:
-        signal_tracker.append({
-            "date": today_str,
-            "ticker": d["ticker"],
-            "name": d["name"],
-            "sector": d.get("sector", "GENERAL"),
-            "origin": d["origin"],
-            "origin_label": d["origin_label"],
-            "strategy": "Tier 1 (매크로 순풍+잠행매집)",
-            "strategy_code": "TIER_1_LEADER",
-            "entry_price": d["price"],
-            "target_price": d["target_price"],
-            "stop_price": d["stop_price"],
-            "score": d["score"],
-            "flow_ratio": d.get("flow_ratio", 1.0),
-            "obv_status": d.get("obv_status", "NEUTRAL"),
-            "in_wallet": d.get("in_wallet", False),
-            "streak_days": d.get("streak_days", 1),
-            "streak_label": d.get("streak_label", ""),
-            "status": "TIER_1_LEADER",
-            "status_label": "TIER_1_LEADER"
-        })
-        
-    # 2. Tier 3 Sniper Radar
-    for s in strat2_exclusive:
-        signal_tracker.append({
-            "date": today_str,
-            "ticker": s["ticker"],
-            "name": s["name"],
-            "sector": s.get("sector", "GENERAL"),
-            "origin": s["origin"],
-            "origin_label": s["origin_label"],
-            "strategy": "Tier 3 (구름대 스나이퍼)",
-            "strategy_code": "TIER_3_SNIPER",
-            "entry_price": s["price"],
-            "target_price": s["target_price"],
-            "stop_price": s["stop_price"],
-            "score": s["score"],
-            "flow_ratio": s.get("flow_ratio", 1.0),
-            "obv_status": s.get("obv_status", "NEUTRAL"),
-            "in_wallet": s.get("in_wallet", False),
-            "streak_days": s.get("streak_days", 1),
-            "streak_label": s.get("streak_label", ""),
-            "status": "ACTIVE_SNIPER",
-            "status_label": "ACTIVE_SNIPER"
-        })
-        
-    # 3. Tier 2 Structural Pullbacks
-    for p in strat1_exclusive:
-        signal_tracker.append({
-            "date": today_str,
-            "ticker": p["ticker"],
-            "name": p["name"],
-            "sector": p.get("sector", "GENERAL"),
-            "origin": p["origin"],
-            "origin_label": p["origin_label"],
-            "strategy": "Tier 2 (정석 기준선 눌림목)",
-            "strategy_code": "TIER_2_PULLBACK",
-            "entry_price": p["price"],
-            "target_price": p["target_price"],
-            "stop_price": p["stop_price"],
-            "score": p["score"],
-            "flow_ratio": p.get("flow_ratio", 1.0),
-            "obv_status": p.get("obv_status", "NEUTRAL"),
-            "in_wallet": p.get("in_wallet", False),
-            "streak_days": p.get("streak_days", 1),
-            "streak_label": p.get("streak_label", ""),
-            "status": "ACTIVE_BUY",
-            "status_label": "ACTIVE_BUY"
-        })
-
-    # Load 2+2+2 Matrix and Portfolio from DB
-    matrix = get_recommendations_matrix()
-    if not isinstance(matrix, list):
-        matrix = [matrix] if matrix else []
-        
     portfolio = get_live_portfolio()
-    
-    # Ensure any ticker present in matrix is computed in chart_data
-    for m in matrix:
-        for key in ["bull_1", "bull_2", "neutral_1", "neutral_2", "bear_1", "bear_2"]:
-            tk = m.get(key)
-            if tk and tk not in chart_data:
-                d = compute_all_indicators(tk)
-                if d:
-                    chart_data[tk] = d
 
     # 1. Save individual modular chart files into data/charts/{ticker}.json
     os.makedirs(target_charts_dir, exist_ok=True)
@@ -456,23 +377,25 @@ def build_dashboard_data(output_file=None, charts_dir=None):
             else:
                 atomic_save_json(ticker_chart_path, c_obj)
             
-            # Extract lightweight intelligence metadata for instant dashboard loading
+            # Extract lightweight intelligence metadata for instant dashboard loading (<50KB target)
+            bull_score = c_obj.get("bull_score", 0)
+            flow_ratio = round(c_obj.get("flow_ratio", 1.0), 2)
+            obv_status = c_obj.get("obv_status", "NEUTRAL")
+            k_gap = round(c_obj.get("kijun_gap_pct", 0.0), 2)
             chart_intelligence[ticker] = {
-                "intelligence": c_obj.get("intelligence", {}),
-                "latest_close": c_obj.get("latest_close"),
-                "kijun": c_obj.get("kijun"),
-                "tenkan": c_obj.get("tenkan"),
-                "kijun_gap_pct": c_obj.get("kijun_gap_pct"),
-                "vol_ratio": c_obj.get("vol_ratio"),
-                "future_cloud_type": c_obj.get("future_cloud_type"),
-                "future_cloud_gap": c_obj.get("future_cloud_gap"),
-                "future_span_a_latest": c_obj.get("future_span_a_latest"),
-                "future_span_b_latest": c_obj.get("future_span_b_latest"),
-                "status_text": c_obj.get("status_text"),
-                "status_tag": c_obj.get("status_tag"),
-                "bull_score": c_obj.get("bull_score"),
-                "bear_score": c_obj.get("bear_score"),
-                "is_sniper": c_obj.get("is_sniper", False)
+                "gate_score": bull_score,
+                "score": bull_score,
+                "flow_ratio": flow_ratio,
+                "obv_status": obv_status,
+                "kijun_gap": k_gap,
+                "kijun_gap_pct": k_gap,
+                "intelligence": {
+                    "score": bull_score,
+                    "gate_score": bull_score,
+                    "flow_ratio": flow_ratio,
+                    "obv_status": obv_status,
+                    "kijun_gap": k_gap,
+                }
             }
 
     # 2. Build lightweight executive summary payload (under 50KB)
@@ -555,8 +478,6 @@ def build_dashboard_data(output_file=None, charts_dir=None):
         },
         "macro": macro_info,
         "kpis": kpis,
-        "trades": trades,
-        "matrix": matrix,
         "daily_history": daily_history,
         "portfolio": portfolio,
         "top_conviction_pick": conviction_res.get("top_pick"),
@@ -566,19 +487,13 @@ def build_dashboard_data(output_file=None, charts_dir=None):
         "tier1": dual_consensus_picks,
         "tier2": strat1_exclusive,
         "tier3": strat2_exclusive,
-        "dual_consensus": dual_consensus_picks,
-        "strat1_exclusive": strat1_exclusive,
-        "strat2_exclusive": strat2_exclusive,
-        "primary_accumulation": all_strat1,
-        "sniper_radar": all_strat2,
-        "signal_tracker": signal_tracker,
         "chart_intelligence": chart_intelligence,
         "universe_sectors": load_universe_sectors(),
         "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
     
     out_path = target_out_path
-    atomic_save_json(out_path, payload)
+    atomic_save_json(out_path, payload, indent=None)
         
     bar_counts = [len((c or {}).get("candles") or []) for c in chart_data.values()]
     bar_min = min(bar_counts) if bar_counts else 0

@@ -637,6 +637,7 @@ def classify_3tier_candidates(
                 "stop_price": tier_eval.stop_price,
                 "rs_3m": float(c.get("rs_3m", 0.0)),
                 "momentum_3m": float(c.get("rs_3m", 0.0)),
+                "composite_rs": None if c.get("composite_rs") is None else float(c.get("composite_rs")),
                 "is_breakout": bool(c.get("is_breakout", False))
             }
             

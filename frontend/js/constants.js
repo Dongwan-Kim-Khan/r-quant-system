@@ -27,3 +27,47 @@ export function isMarketTicker(ticker) {
     if (!t || t.includes("_")) return false;
     return /^([A-Z]{1,5}|[0-9]{6})(\.(KS|KQ))?$/.test(t);
 }
+
+/** MSI 2.0 is a risk index: higher = more danger. Lockstep with domain/quant/macro.py */
+export function classifyMsiStance(score) {
+    const s = Number(score);
+    if (s >= 75) return "CASH_EXIT";
+    if (s >= 50) return "DEFENSE_HOLD";
+    if (s >= 30) return "SELECTIVE_BUY";
+    return "ACTIVE_BUY";
+}
+
+export function extractMsiScore(macro) {
+    if (!macro || typeof macro !== "object") return 50.0;
+    const climate = (macro.macro_climate && typeof macro.macro_climate === "object") ? macro.macro_climate : {};
+    const candidates = [macro.msi_score, climate.msi_score, macro.msi, climate.msi];
+    for (const raw of candidates) {
+        if (raw === null || raw === undefined || raw === "") continue;
+        const n = Number(raw);
+        if (Number.isFinite(n)) return n;
+    }
+    return 50.0;
+}
+
+/** Top Pick / Runner-up use engine sizing.shares; otherwise next satellite slot NAV / price. */
+export function resolveQuickBuyQty(ticker, price, dashboard, portfolio) {
+    const p = Number(price || 0);
+    if (!(p > 0)) return 1;
+    const data = dashboard || {};
+    const tk = String(ticker || "").toUpperCase();
+    const pick = [data.top_conviction_pick, data.top_conviction_runner_up]
+        .find((x) => x && String(x.ticker || "").toUpperCase() === tk);
+    const sized = pick && pick.sizing ? Number(pick.sizing.shares) : 0;
+    if (sized > 0) return Math.max(1, Math.floor(sized));
+    const port = portfolio || data.portfolio || {};
+    const isBull = (data.slot_allocation_summary && data.slot_allocation_summary.is_bull_regime !== undefined)
+        ? Boolean(data.slot_allocation_summary.is_bull_regime) : true;
+    const sats = (Array.isArray(port.holdings) ? port.holdings : [])
+        .filter((h) => isMarketTicker(h && h.ticker) && !isCashProxyTicker(h.ticker));
+    const equity = Number(port.total_equity_usd !== undefined ? port.total_equity_usd : (port.total_equity || 7500));
+    const weights = isBull ? SLOT_WEIGHTS_BULL : SLOT_WEIGHTS_BEAR;
+    const cap = (weights[sats.length] !== undefined)
+        ? equity * weights[sats.length]
+        : Number(port.free_cash_usd || 0);
+    return Math.max(1, Math.floor(cap / p));
+}

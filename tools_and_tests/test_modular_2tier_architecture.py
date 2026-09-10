@@ -62,8 +62,8 @@ def run_tests():
         print('  - GET /api/dashboard: ' + str(round(t_dash, 1)) + ' ms (Status ' + str(resp.status) + ')')
         assert resp.status == 200
         assert 'macro' in dash_res
-        assert 'primary_accumulation' in dash_res
-        assert 'signal_tracker' in dash_res
+        assert 'tier1' in dash_res
+        assert 'tier2' in dash_res
         assert 'chart_intelligence' in dash_res
         
         t0 = time.time()

@@ -599,15 +599,19 @@ def test_tier3_r4_concurrent_read_vs_price_sync_race():
 # ===========================================================================
 
 def _get_all_dashboard_mirrors():
-    mirrors = [os.path.join(PROJECT_ROOT, "al_sangmoo_dashboard.html")]
-    for sub in ["html_dashboards", "HTML_대시보드_모음"]:
-        sub_dir = os.path.join(PROJECT_ROOT, sub)
-        if os.path.exists(sub_dir):
-            for fn in os.listdir(sub_dir):
-                if fn.endswith(".html") and ("통합_퀀트_대시보드" in fn or "대시보드" in fn):
-                    p = os.path.join(sub_dir, fn)
-                    if p not in mirrors:
-                        mirrors.append(p)
+    root_dash = os.path.join(PROJECT_ROOT, "al_sangmoo_dashboard.html")
+    legacy_dash = os.path.join(PROJECT_ROOT, "backups", "legacy_html", "al_sangmoo_dashboard.html")
+    dash = root_dash if os.path.exists(root_dash) else legacy_dash
+    mirrors = [dash]
+    for base in [PROJECT_ROOT, os.path.join(PROJECT_ROOT, "backups", "legacy_html")]:
+        for sub in ["html_dashboards", "HTML_대시보드_모음"]:
+            sub_dir = os.path.join(base, sub)
+            if os.path.exists(sub_dir):
+                for fn in os.listdir(sub_dir):
+                    if fn.endswith(".html") and ("통합_퀀트_대시보드" in fn or "대시보드" in fn):
+                        p = os.path.join(sub_dir, fn)
+                        if p not in mirrors:
+                            mirrors.append(p)
     return mirrors
 
 def test_tier4_r5_frontend_backoff_and_jitter_static_analysis():

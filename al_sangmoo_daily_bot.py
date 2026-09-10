@@ -26,10 +26,8 @@ if sys.platform.startswith('win'):
         pass
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-HISTORY_CSV = os.path.join(BASE_DIR, "trade_history.csv")
 REPORTS_DIR = os.path.join(BASE_DIR, "daily_reports")
 DASHBOARD_JSON = os.path.join(BASE_DIR, "dashboard_data.json")
-DASHBOARD_HTML = os.path.join(BASE_DIR, "al_sangmoo_dashboard.html")
 os.makedirs(REPORTS_DIR, exist_ok=True)
 
 def load_env_file():
@@ -291,9 +289,13 @@ def evaluate_user_portfolio_positions():
     return portfolio_alerts
 
 def evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, today_str):
-    if os.path.exists(HISTORY_CSV):
-        history_df = pd.read_csv(HISTORY_CSV)
-    else:
+    init_db()
+    try:
+        with get_connection() as conn:
+            history_df = pd.read_sql_query("SELECT * FROM trades", conn)
+    except Exception:
+        history_df = pd.DataFrame()
+    if history_df.empty:
         history_df = pd.DataFrame(columns=[
             "date", "ticker", "type", "entry_price", "current_price",
             "pnl_pct", "max_gain_pct", "status", "days_active", "exit_advice"
@@ -371,9 +373,7 @@ def evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, 
             
         if new_rows:
             history_df = pd.concat([history_df, pd.DataFrame(new_rows)], ignore_index=True)
-            
-    history_df.to_csv(HISTORY_CSV, index=False)
-    
+
     # SQLite sync
     try:
         init_db()

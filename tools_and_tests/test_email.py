@@ -58,9 +58,9 @@ def test_send():
         except Exception:
             pass
             
-    dual_consensus = feed_data.get("dual_consensus", [])
-    strat1_exclusive = feed_data.get("strat1_exclusive", [])
-    strat2_exclusive = feed_data.get("strat2_exclusive", [])
+    dual_consensus = feed_data.get("tier1", feed_data.get("dual_consensus", []))
+    strat1_exclusive = feed_data.get("tier2", feed_data.get("strat1_exclusive", []))
+    strat2_exclusive = feed_data.get("tier3", feed_data.get("strat2_exclusive", []))
     
     portfolio_alerts = al_sangmoo_daily_bot.evaluate_user_portfolio_positions()
     health_status = "전수 포워드 트래킹 정상 가동 중 (17년 퀀트 프레임워크)"

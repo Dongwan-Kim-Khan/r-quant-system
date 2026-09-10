@@ -69,22 +69,6 @@ export const ApiClient = {
         return null;
     },
 
-    /**
-     * Fetch closed trade history and realized PnL
-     */
-    async getPortfolioHistory(limit = 50) {
-        const base = getBaseUrl();
-        try {
-            const res = await fetch(`${base}/api/portfolio/history?limit=${limit}`);
-            if (res.ok) {
-                return await res.json();
-            }
-        } catch (err) {
-            console.warn('[API] /api/portfolio/history fetch failed:', err);
-        }
-        return [];
-    },
-
     // In-memory client cache for instant chart switching (0ms response)
     _chartMemoryCache: new Map(),
 
@@ -176,23 +160,6 @@ export const ApiClient = {
     },
 
     /**
-     * Execute quick buy for #1 Top Conviction Pick with 3-Slot sizing
-     */
-    async buyTopPick() {
-        const base = getBaseUrl();
-        const res = await fetch(`${base}/api/portfolio/buy_top_pick`, {
-            method: 'POST',
-            headers: authHeaders({ 'Content-Type': 'application/json' })
-        });
-        if (!res.ok) {
-            const err = await res.json().catch(() => ({ detail: 'Top pick buy failed' }));
-            throw new Error(err.detail || 'Top pick buy failed');
-        }
-        return await res.json();
-    },
-
-
-    /**
      * Execute portfolio sell/exit
      */
     async sellHolding(id, sellPrice, reason = "MANUAL_SELL") {
@@ -249,20 +216,6 @@ export const ApiClient = {
     },
 
     /**
-     * Fetch KIS Broker live US equity balance and cash
-     */
-    async getBrokerBalance() {
-        try {
-            const base = getBaseUrl();
-            const res = await fetch(`${base}/api/broker/balance`);
-            if (res.ok) return await res.json();
-        } catch (e) {
-            console.warn('[API] Failed to get broker balance:', e);
-        }
-        return null;
-    },
-
-    /**
      * Trigger 1-time daily reconciliation audit (check_sync)
      */
     async triggerReconciliation() {
@@ -304,16 +257,6 @@ export const ApiClient = {
     },
 
     /**
-     * Trigger immediate on-demand guardian check
-     */
-    async checkGuardianNow() {
-        const base = getBaseUrl();
-        const res = await fetch(`${base}/api/guardian/check_now`, { method: 'POST', headers: authHeaders() });
-        if (!res.ok) throw new Error('Failed to run guardian check');
-        return await res.json();
-    },
-
-    /**
      * Fetch Full-Auto Pilot Trader status
      */
     async getAutoPilotStatus() {
@@ -338,16 +281,6 @@ export const ApiClient = {
             body: JSON.stringify({ enabled })
         });
         if (!res.ok) throw new Error('Failed to toggle autopilot');
-        return await res.json();
-    },
-
-    /**
-     * Manually trigger immediate Full-Auto Pilot cycle
-     */
-    async triggerAutoPilotNow() {
-        const base = getBaseUrl();
-        const res = await fetch(`${base}/api/autopilot/trigger_now`, { method: 'POST', headers: authHeaders() });
-        if (!res.ok) throw new Error('Failed to trigger autopilot cycle');
         return await res.json();
     },
 

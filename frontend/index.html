@@ -11,7 +11,7 @@
     <!-- TradingView Lightweight Charts v4 (Local First with Zero Network Lag) -->
     <script src="/static/js/lightweight-charts.standalone.production.js"></script>
     <!-- Modular CSS -->
-    <link rel="stylesheet" href="/static/css/terminal.css?v=4.2.3">
+    <link rel="stylesheet" href="/static/css/terminal.css?v=4.3.2">
     <!-- Non-Blocking Google Fonts with Instant System Fallback -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -48,8 +48,8 @@
             </div>
 
             <!-- Daemon Toggles (Revolut Pill Chips) -->
-            <span id="guardianBadge" class="status-pill-chip active-violet" title="가디언 자동 칼손절(-5%) 및 무제한 트레일링 익절 (+15%→ATR 2.5/기준선)">GUARDIAN: -5% / TP</span>
-            <span id="autopilotBadge" class="status-pill-chip active-green" title="전자동 매수 C1-M2 50/30/20 + QQQ Proxy">AUTOPILOT: C1-M2</span>
+            <span id="guardianBadge" class="status-pill-chip active-violet" title="가디언 자동 칼손절(-5%) 및 무제한 트레일링 익절 (+15%→ATR 2.5/기준선)"><span class="badge-dot"></span><span>GUARDIAN: -5% / TP</span></span>
+            <span id="autopilotBadge" class="status-pill-chip active-green" title="전자동 매수 C1-M2 50/30/20 + QQQ Proxy"><span class="badge-dot"></span><span>AUTOPILOT: C1-M2</span></span>
             <span id="leverageBadge" class="status-pill-chip" title="SPY≥SMA200 & VIX&lt;20 → 1.5x QLD Boost">LEV: --</span>
 
             <div class="status-pill-chip" id="serverStatus">
@@ -151,7 +151,7 @@
                     <span id="slotSummaryText" style="font-size:11px; color:var(--primary-bright); font-weight:700; font-family:'JetBrains Mono';">-- / -- SLOTS</span>
                 </div>
 
-                <div id="slotVisualizerGrid" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;">
+                <div id="slotVisualizerGrid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap:10px;">
                     <!-- Populated dynamically via ui.js -->
                 </div>
 
@@ -325,14 +325,15 @@
                         <div class="indicator-val" id="sigCloudVal">ABOVE CLOUD</div>
                     </div>
 
-                    <!-- 4. Momentum / RS -->
+                    <!-- 4. Composite RS -->
                     <div class="indicator-item">
                         <div class="indicator-head">
-                            <span class="indicator-name">4. 3M RS &amp; BREAKOUT</span>
+                            <span class="indicator-name">4. COMPOSITE RS</span>
                             <span class="status-badge status-good" id="sigRsBadge">[상대강도]</span>
                         </div>
-                        <div class="indicator-val" id="sigRsVal">RS: --%</div>
+                        <div class="indicator-val" id="sigRsVal">CRS: --%</div>
                     </div>
+                </div>
             </div>
             <!-- End Decoder Card -->
 
@@ -376,10 +377,10 @@
 
     <!-- Modular App Scripts -->
     <script type="module">
-        import { TerminalApp } from '/static/js/websocket.js?v=4.2.3';
-        import { UI } from '/static/js/ui.js?v=4.2.3';
-        import { ChartEngine } from '/static/js/chart.js?v=4.2.3';
-        import { ApiClient } from '/static/js/api.js?v=4.2.3';
+        import { TerminalApp } from '/static/js/websocket.js?v=4.3.2';
+        import { UI } from '/static/js/ui.js?v=4.3.2';
+        import { ChartEngine } from '/static/js/chart.js?v=4.3.2';
+        import { ApiClient } from '/static/js/api.js?v=4.3.2';
 
         window.TerminalUI = UI;
         window.ChartEngine = ChartEngine;

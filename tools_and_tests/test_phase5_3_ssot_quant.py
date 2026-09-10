@@ -752,15 +752,14 @@ class TestTier4CQRSSideEffectFreePipeline(unittest.TestCase):
             # Verify payload completeness and structure
             self.assertIsInstance(payload, dict)
             required_keys = [
-                "macro", "kpis", "trades", "matrix", "daily_history", "portfolio",
-                "dual_consensus", "strat1_exclusive", "strat2_exclusive",
-                "primary_accumulation", "sniper_radar", "signal_tracker", "chart_intelligence"
+                "macro", "kpis", "daily_history", "portfolio",
+                "tier1", "tier2", "tier3", "chart_intelligence"
             ]
             for key in required_keys:
                 self.assertIn(key, payload, f"Missing payload root key: {key}")
 
             self.assertIsInstance(payload["chart_intelligence"], dict)
-            self.assertIsInstance(payload["signal_tracker"], list)
+            self.assertIsInstance(payload["tier1"], list)
 
         print("  -> PASSED: Zero write mutations executed. View model build is 100% CQRS read-pure.")
 
@@ -855,8 +854,8 @@ class TestTier4CQRSSideEffectFreePipeline(unittest.TestCase):
             charts_dir=self.temp_charts_dir
         )
         
-        self.assertEqual(len(p1["matrix"]), len(p2["matrix"]))
-        self.assertEqual(len(p1["signal_tracker"]), len(p2["signal_tracker"]))
+        self.assertEqual(len(p1["tier1"]), len(p2["tier1"]))
+        self.assertEqual(len(p1["tier2"]), len(p2["tier2"]))
         self.assertEqual(p1["macro"].get("msi_score"), p2["macro"].get("msi_score"))
         print("  -> PASSED: Dashboard feed pipeline is 100% idempotent.")
 

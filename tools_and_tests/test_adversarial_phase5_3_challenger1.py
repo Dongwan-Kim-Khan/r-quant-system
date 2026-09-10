@@ -637,7 +637,7 @@ class TestAdversarialConcurrencyAndCQRS(unittest.TestCase):
                 self.assertIsInstance(res, dict)
                 self.assertIn("chart_intelligence", res)
                 self.assertIn("macro", res)
-                self.assertIn("signal_tracker", res)
+                self.assertIn("tier1", res)
 
         print("  -> PASSED: 10 concurrent threads completed with zero race conditions or collisions.")
 
