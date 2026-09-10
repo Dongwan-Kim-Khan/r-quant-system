@@ -110,6 +110,11 @@ def rank_and_select_top_picks(
         obv_status = c.get("obv_status", "NEUTRAL")
         flow_score = 95.0 if obv_status == "STEALTH_ACCUM" else (85.0 if flow_ratio >= 1.2 else 60.0)
         kijun_gap = float(c.get("kijun_gap_pct") or 1.0)
+        # Resolve the 26D kijun so downstream consumers (Autopilot Entry Gate) can
+        # verify price >= baseline without a fresh network call.
+        kijun_val = float(c.get("kijun") or c.get("kijun_26") or 0.0)
+        if kijun_val <= 0 and price > 0 and (1.0 + kijun_gap / 100.0) > 0:
+            kijun_val = round(price / (1.0 + kijun_gap / 100.0), 4)
         is_tailwind = c.get("is_macro_tailwind", False)
         vol_ratio = float(c.get("vol_ratio") or 0.80)
         is_weekly_bull = c.get("is_weekly_bull", True)
@@ -148,6 +153,8 @@ def rank_and_select_top_picks(
             "strategy": c.get("strategy", "Tier 1 (거시 주도주)"),
             "strategy_code": c.get("strategy_code", "TIER_1_LEADER"),
             "price": price,
+            "kijun": kijun_val,
+            "kijun_gap_pct": round(kijun_gap, 4),
             "target_price": derive_target_price(price),
             "stop_price": derive_stop_price(price),
             "conviction_score": conviction_score,
