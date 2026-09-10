@@ -4,7 +4,155 @@ Single Source of Truth (SSOT) for Macro Gauges, NLP Sentiment, and Stance Classi
 """
 from typing import Dict, Any, List, Optional
 import re
+import time
 from al_sangmoo.core.constants import MACRO_DEFENSE_KEYWORDS, EXTERNAL_SHOCK_KEYWORDS
+from al_sangmoo.core.feature_flags import use_stream_sentiment
+
+# MSI 2.0 is a RISK index (0-100): higher score = more danger, fewer new buys.
+# Never invert this polarity (do not treat high MSI as bullish).
+MSI_ACTIVE_BUY_MAX = 30.0       # [0, 30)  ACTIVE_BUY
+MSI_SELECTIVE_BUY_MAX = 50.0    # [30, 50) SELECTIVE_BUY
+MSI_DEFENSE_HOLD_MAX = 75.0     # [50, 75) DEFENSE_HOLD
+# >= 75.0 CASH_EXIT
+MSI_DEFAULT_SCORE = 50.0
+
+_SPY_REGIME_CACHE: Dict[str, Any] = {}
+_SPY_REGIME_TTL_SEC = 3600.0
+
+
+def classify_msi_stance(msi_score: float) -> str:
+    """Map MSI risk score to Gate-0 stance. High MSI = cash / defense."""
+    score = float(msi_score)
+    if score >= MSI_DEFENSE_HOLD_MAX:
+        return "CASH_EXIT"
+    if score >= MSI_SELECTIVE_BUY_MAX:
+        return "DEFENSE_HOLD"
+    if score >= MSI_ACTIVE_BUY_MAX:
+        return "SELECTIVE_BUY"
+    return "ACTIVE_BUY"
+
+
+def is_new_buy_blocked(msi_score: float) -> bool:
+    """CASH_EXIT (MSI >= 75): block all new entries."""
+    return classify_msi_stance(msi_score) == "CASH_EXIT"
+
+
+def is_defense_or_worse(msi_score: float) -> bool:
+    """DEFENSE_HOLD or CASH_EXIT (MSI >= 50)."""
+    return float(msi_score) >= MSI_SELECTIVE_BUY_MAX
+
+
+def _with_sentiment(score: float) -> float:
+    if not use_stream_sentiment():
+        return float(score)
+    from al_sangmoo.domain.quant.stream_sentiment_pipeline import get_stream_sentiment_offset
+    return max(0.0, min(100.0, float(score) + get_stream_sentiment_offset()))
+
+
+def extract_msi_score(macro_info: Optional[Dict[str, Any]] = None, default: float = MSI_DEFAULT_SCORE) -> float:
+    """Read MSI from nested dashboard / stream payloads. First valid key wins."""
+    if not isinstance(macro_info, dict):
+        return _with_sentiment(default)
+    climate = macro_info.get("macro_climate") if isinstance(macro_info.get("macro_climate"), dict) else {}
+    candidates = [
+        macro_info.get("msi_score"),
+        climate.get("msi_score") if climate else None,
+        macro_info.get("msi"),
+        climate.get("msi") if climate else None,
+    ]
+    for raw in candidates:
+        if raw is None or raw == "":
+            continue
+        try:
+            return _with_sentiment(raw)
+        except (TypeError, ValueError):
+            continue
+    return _with_sentiment(default)
+
+
+def fetch_spy_trend_regime() -> Dict[str, Any]:
+    """Cached SPY vs SMA200 snapshot. Network failure returns {}."""
+    now = time.time()
+    cached = _SPY_REGIME_CACHE.get("SPY")
+    if cached and (now - cached.get("ts", 0)) < _SPY_REGIME_TTL_SEC:
+        return dict(cached.get("data") or {})
+    try:
+        import pandas as pd
+        import yfinance as yf
+        raw = yf.download("SPY", period="18mo", interval="1d", progress=False, auto_adjust=False)
+        if raw is None or raw.empty:
+            return {}
+        if isinstance(raw.columns, pd.MultiIndex):
+            raw.columns = raw.columns.get_level_values(0)
+        close = raw["Close"].dropna()
+        if len(close) < 30:
+            return {}
+        sma200 = close.rolling(window=200, min_periods=30).mean().iloc[-1]
+        last = float(close.iloc[-1])
+        sma = float(sma200) if sma200 == sma200 else 0.0
+        if last <= 0 or sma <= 0:
+            return {}
+        data = {
+            "spy_close": round(last, 4),
+            "spy_sma200": round(sma, 4),
+            "is_bull_regime": last >= sma,
+            "source": "yahoo",
+        }
+        _SPY_REGIME_CACHE["SPY"] = {"ts": now, "data": data}
+        return dict(data)
+    except Exception:
+        return {}
+
+
+def resolve_capital_regime(
+    msi_score: Optional[float] = None,
+    spy_close: Optional[float] = None,
+    spy_sma200: Optional[float] = None,
+    fetch_spy: bool = False,
+) -> Dict[str, Any]:
+    """
+    3-slot vs 2-slot capital regime.
+
+    Primary (v2 constitution): SPY close >= 200-day SMA → bull (3-slot).
+    Fallback if SPY unavailable: risk-on slots only when MSI < 50 (ACTIVE/SELECTIVE).
+    Never use `msi < 65` — that treated DEFENSE_HOLD (50-74) as bull.
+    """
+    spy_source = "injected"
+    if (spy_close is None or spy_sma200 is None or float(spy_close or 0) <= 0 or float(spy_sma200 or 0) <= 0) and fetch_spy:
+        snap = fetch_spy_trend_regime()
+        spy_close = snap.get("spy_close") or spy_close
+        spy_sma200 = snap.get("spy_sma200") or spy_sma200
+        spy_source = snap.get("source", "fetch")
+
+    has_spy = spy_close is not None and spy_sma200 is not None and float(spy_close) > 0 and float(spy_sma200) > 0
+    score = MSI_DEFAULT_SCORE if msi_score is None else float(msi_score)
+    if has_spy:
+        is_bull = float(spy_close) >= float(spy_sma200)
+        source = f"spy_200sma:{spy_source}"
+    else:
+        is_bull = not is_defense_or_worse(score)
+        source = "msi_fallback_lt_50"
+
+    from al_sangmoo.core.constants import (
+        MAX_SLOTS_BEAR,
+        MAX_SLOTS_BULL,
+        SLOT_WEIGHTS_BEAR,
+        SLOT_WEIGHTS_BULL,
+    )
+
+    weights = list(SLOT_WEIGHTS_BULL if is_bull else SLOT_WEIGHTS_BEAR)
+    return {
+        "is_bull_regime": bool(is_bull),
+        "max_slots": MAX_SLOTS_BULL if is_bull else MAX_SLOTS_BEAR,
+        "slot_weights": weights,
+        "slot_fraction": weights[0] if weights else (0.50 if is_bull else 0.25),
+        "cash_reserve_fraction": 0.0 if is_bull else 0.50,  # idle → QQQ proxy in bull
+        "msi_score": score,
+        "msi_stance": classify_msi_stance(score),
+        "spy_close": float(spy_close) if has_spy else None,
+        "spy_sma200": float(spy_sma200) if has_spy else None,
+        "regime_source": source,
+    }
 
 
 def evaluate_macro_stance(
@@ -130,26 +278,23 @@ def evaluate_macro_stance(
 
     m_shock = min(15.0, round(m_shock, 1))
 
-    # Total MSI Calculation (0.0 ~ 100.0 pt)
+    # Total MSI Calculation (0.0 ~ 100.0 pt) — RISK index, high = danger
     total_msi = round(min(100.0, max(0.0, m_hard + m_nlp + m_shock)), 1)
+    macro_stance = classify_msi_stance(total_msi)
 
-    if total_msi >= 75.0:
-        macro_stance = "CASH_EXIT"
+    if macro_stance == "CASH_EXIT":
         stance_kr = "현금화 / 숏 헤지 주간 (Red 75~100점)"
         headline = f"[거시 게이트 0단계: 위험 경보 (MSI {total_msi}점) / 신규 매수 전면 중단 및 현금 확보]"
         directive = f"거시 위험 지수(MSI {total_msi}점: 10년물 금리 {us10y_val}%, 유가 ${wti_val})가 한계치를 초과했습니다. 신규 매수를 전면 금지하고 비중 축소 및 현금 확보에 집중하십시오."
-    elif total_msi >= 50.0:
-        macro_stance = "DEFENSE_HOLD"
+    elif macro_stance == "DEFENSE_HOLD":
         stance_kr = "신규 매수 보류 / 관망·현금 유지 주간 (Orange 50~74점)"
         headline = f"[거시 게이트 0단계: 거시 위험 지수 {total_msi}점 / 신규 매수 보류 및 관망 권고]"
         directive = f"거시 위험 지수(MSI {total_msi}점: 10년물 금리 {us10y_val}%, 유가 ${wti_val}) 및 방송 지침상, 현재 장세는 신규 매수를 쉬어가고 관망해야 하는 장세입니다. 다만 거시 리스크 진정 시 즉시 공략할 최우선 1순위 후보 종목을 사전 선별합니다."
-    elif total_msi >= 30.0:
-        macro_stance = "SELECTIVE_BUY"
+    elif macro_stance == "SELECTIVE_BUY":
         stance_kr = "선별적 눌림목 분할 매수 주간 (Yellow 30~49점)"
         headline = f"[거시 게이트 0단계: 거시 중립 (MSI {total_msi}점) / 선별적 눌림목 매수 유효]"
         directive = f"거시 위험 지수(MSI {total_msi}점: 10년물 금리 {us10y_val}%, VIX {vix_val})가 중립 범위에 위치합니다. 26일 기준선 지지가 확인된 주도 종목에 한하여 소액 분할 매수가 유효합니다."
     else:
-        macro_stance = "ACTIVE_BUY"
         stance_kr = "최적 매수 기후 / 적극 분할 매수 주간 (Green 0~29점)"
         headline = f"[거시 게이트 0단계: 최적 매수 기후 (MSI {total_msi}점) / 적극 분할 매수 가능]"
         directive = f"거시 지표가 매우 우호적입니다. 17년 퀀트 합격 종목을 적극적으로 포트폴리오에 편입하십시오."
@@ -170,6 +315,7 @@ def evaluate_macro_stance(
             "m_shock": m_shock,
             "m_shock_max": 15
         },
+        "msi_is_risk_index": True,
         "macro_stance": macro_stance,
         "macro_stance_kr": stance_kr,
         "macro_headline": headline,

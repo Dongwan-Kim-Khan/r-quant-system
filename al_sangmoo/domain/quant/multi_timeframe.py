@@ -1,4 +1,4 @@
-﻿"""
+"""
 Multi-Timeframe Consensus Matrix & Pre-Trigger Scanner (Weekly + Daily + Hourly).
 """
 import pandas as pd
@@ -98,5 +98,5 @@ def calculate_mtf_consensus(ticker_or_data: Union[str, Dict[str, pd.DataFrame]])
             "daily": {"pts": daily_score, "max": 50, "kijun_gap_pct": round(d_kijun_gap, 2), "vol_ratio_pct": round(d_vol_ratio * 100, 1)},
             "hourly": {"pts": hourly_pts, "max": 20, "momentum": hourly_momentum}
         },
-        "verdict": "🔥 PRE-TRIGGER ACCUMULATION (Breakout Imminent)" if is_pre_trigger else "CONSOLIDATION_WATCH"
+        "verdict": "PRE-TRIGGER ACCUMULATION (Breakout Imminent)" if is_pre_trigger else "CONSOLIDATION_WATCH"
     }

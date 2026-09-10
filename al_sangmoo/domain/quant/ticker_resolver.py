@@ -84,6 +84,7 @@ STOCK_DIRECTORY = [
     # Korean Global Leaders
     {"ticker": "005930.KS", "name_kr": "삼성전자", "name_en": "Samsung Electronics", "market": "KOSPI"},
     {"ticker": "000660.KS", "name_kr": "SK하이닉스", "name_en": "SK Hynix", "market": "KOSPI"},
+    {"ticker": "012450.KS", "name_kr": "한화에어로스페이스", "name_en": "Hanwha Aerospace", "market": "KOSPI"},
 
     # ETFs & Indexes
     {"ticker": "QQQ", "name_kr": "나스닥 100 ETF", "name_en": "Invesco QQQ Trust", "market": "NASDAQ"},
@@ -92,6 +93,19 @@ STOCK_DIRECTORY = [
 ]
 
 KR_CODE_REGEX = re.compile(r'^\d{6}$')
+
+def _get_cached_price(ticker: str) -> float:
+    try:
+        from pathlib import Path
+        import json
+        c_path = Path(__file__).resolve().parents[2] / "data" / "charts" / f"{ticker.upper()}.json"
+        if c_path.exists():
+            with open(c_path, 'r', encoding='utf-8') as f:
+                c_data = json.load(f)
+                return float(c_data.get("latest_close") or (c_data.get("candles", [])[-1]["close"] if c_data.get("candles") else 0.0))
+    except Exception:
+        pass
+    return 0.0
 
 def resolve_ticker(query: str) -> str:
     """
@@ -108,23 +122,33 @@ def resolve_ticker(query: str) -> str:
 
     # 1. 6-digit Korean code check
     if KR_CODE_REGEX.match(q_raw):
+        # Check if exists in directory with .KQ or .KS
+        for item in STOCK_DIRECTORY:
+            if item["ticker"].startswith(q_raw):
+                return item["ticker"]
         # Default to .KS if not specified
         return f"{q_raw}.KS"
 
-    # 2. Check exact matches in directory
+    # 2. Resolve exact ticker first. Never let a company-name substring
+    # steal a valid symbol (e.g. APP matched "Apple Inc" -> AAPL).
     for item in STOCK_DIRECTORY:
         if q_clean == item["ticker"].upper():
             return item["ticker"]
+
+    # 3. Resolve exact/partial company names only after ticker exact matching.
+    for item in STOCK_DIRECTORY:
         if q_raw == item["name_kr"] or q_raw in item["name_kr"]:
             return item["ticker"]
         if q_clean == item["name_en"].upper() or q_clean in item["name_en"].upper():
             return item["ticker"]
 
-    # 3. Special aliases / colloquial terms
+    # 4. Special aliases / colloquial terms
     alias_map = {
         "삼전": "005930.KS",
         "하이닉스": "000660.KS",
         "에어로": "012450.KS",
+        "한화에어로": "012450.KS",
+        "한화에어로스페이스": "012450.KS",
         "마소": "MSFT",
         "구글": "GOOGL",
         "알파벳": "GOOGL",
@@ -142,39 +166,47 @@ def resolve_ticker(query: str) -> str:
     if q_raw in alias_map:
         return alias_map[q_raw]
 
-    # 4. Fallback to clean uppercase symbol
+    # 5. Fallback to clean uppercase symbol
     return q_clean
 
 def search_ticker_suggestions(query: str, limit: int = 8) -> List[Dict[str, Any]]:
     """
     Returns live autocomplete suggestions matching the query in ticker, Korean name, or English name.
+    Guarantees 'name' and 'price' fields are present for UI compatibility.
     """
     if not query or len(query.strip()) == 0:
-        return STOCK_DIRECTORY[:limit]
+        matches = list(STOCK_DIRECTORY[:limit])
+    else:
+        q_lower = query.strip().lower()
+        q_upper = query.strip().upper()
+
+        matches = []
         
-    q_lower = query.strip().lower()
-    q_upper = query.strip().upper()
-
-    matches = []
-    
-    # Priority 1: Ticker exact/prefix match
-    for item in STOCK_DIRECTORY:
-        if item["ticker"].startswith(q_upper):
-            matches.append(item)
-            
-    # Priority 2: Korean or English name match
-    for item in STOCK_DIRECTORY:
-        if item not in matches:
-            if q_lower in item["name_kr"].lower() or q_lower in item["name_en"].lower():
+        # Priority 1: Ticker exact/prefix match
+        for item in STOCK_DIRECTORY:
+            if item["ticker"].startswith(q_upper):
                 matches.append(item)
+                
+        # Priority 2: Korean or English name match
+        for item in STOCK_DIRECTORY:
+            if item not in matches:
+                if q_lower in item["name_kr"].lower() or q_lower in item["name_en"].lower():
+                    matches.append(item)
 
-    # Priority 3: Fallback custom ticker if valid format
-    if not matches and re.match(r'^[A-Za-z0-9.\^=-]{1,15}$', q_upper):
-        matches.append({
-            "ticker": q_upper,
-            "name_kr": f"직접 검색 ({q_upper})",
-            "name_en": "Custom Global Ticker",
-            "market": "GLOBAL"
-        })
+        # Priority 3: Fallback custom ticker if valid format
+        if not matches and re.match(r'^[A-Za-z0-9.\^=-]{1,15}$', q_upper):
+            matches.append({
+                "ticker": q_upper,
+                "name_kr": f"직접 검색 ({q_upper})",
+                "name_en": "Custom Global Ticker",
+                "market": "GLOBAL"
+            })
 
-    return matches[:limit]
+    enriched = []
+    for item in matches[:limit]:
+        entry = dict(item)
+        entry["name"] = f"{item.get('name_kr', '')} ({item.get('name_en', '')})".strip() or item.get("ticker", "")
+        entry["price"] = _get_cached_price(item["ticker"])
+        enriched.append(entry)
+
+    return enriched

@@ -3,11 +3,23 @@ Canonical 17-Year Proprietary Quant Scoring and 3-Tier Classification Engine.
 Single Source of Truth (SSOT) for Bull Score, Sniper Score, Bear Score, and Tier 1/2/3 Portfolios.
 """
 from dataclasses import dataclass
-from typing import Dict, Any, List, Tuple, Optional, Set, Literal
+from typing import Dict, Any, List, Tuple, Optional, Set, Literal, Sequence
 import pandas as pd
 import numpy as np
 
-from al_sangmoo.core.constants import STOCK_DICT, TICKER_SECTORS
+from al_sangmoo.core.constants import (
+    COMPOSITE_RS_LOOKBACKS,
+    COMPOSITE_RS_W_21,
+    COMPOSITE_RS_W_63,
+    COMPOSITE_RS_W_126,
+    HARD_STOP_PCT,
+    STOCK_DICT,
+    TICKER_SECTORS,
+    TRAILING_ACTIVATE_PCT,
+    derive_partial_tp_price,
+    derive_stop_price,
+    derive_target_price,
+)
 
 
 @dataclass(frozen=True)
@@ -136,12 +148,58 @@ class TierClassification:
     composite_score: float
     entry_price: float
     target_price: float         # +15.0%
-    stop_price: float           # -4.0% Hard Stop
+    stop_price: float           # -5.0% Hard Stop (C1-M2)
     partial_tp_price: float     # +8.0% (50% Take Profit)
     is_tier1_qualified: bool
     is_tier2_qualified: bool
     is_tier3_qualified: bool
     rationale: str
+
+
+def relative_strength(close: np.ndarray, lookback: int) -> np.ndarray:
+    """Simple lookback relative strength: close[t] / close[t-lb] - 1."""
+    n = len(close)
+    out = np.full(n, np.nan, dtype=float)
+    if lookback <= 0 or n <= lookback:
+        return out
+    prev = close[:-lookback]
+    cur = close[lookback:]
+    with np.errstate(divide="ignore", invalid="ignore"):
+        rs = (cur / prev) - 1.0
+    out[lookback:] = rs
+    return out
+
+
+def composite_relative_strength(close: Sequence[float] | np.ndarray) -> np.ndarray:
+    """
+    C1-M2 Composite RS:
+      0.40 * RS_21 + 0.35 * RS_63 + 0.25 * RS_126
+    """
+    c = np.asarray(close, dtype=float)
+    r21 = relative_strength(c, COMPOSITE_RS_LOOKBACKS[0])
+    r63 = relative_strength(c, COMPOSITE_RS_LOOKBACKS[1])
+    r126 = relative_strength(c, COMPOSITE_RS_LOOKBACKS[2])
+    return COMPOSITE_RS_W_21 * r21 + COMPOSITE_RS_W_63 * r63 + COMPOSITE_RS_W_126 * r126
+
+
+def latest_composite_rs(close: Sequence[float] | np.ndarray) -> float:
+    """Latest finite Composite RS value, or 0.0 if unavailable."""
+    series = composite_relative_strength(close)
+    finite = series[np.isfinite(series)]
+    if len(finite) == 0:
+        return 0.0
+    return float(finite[-1])
+
+
+def beats_benchmark_composite_rs(
+    ticker_crs: float,
+    benchmark_crs: float,
+    require_finite: bool = True,
+) -> bool:
+    """Dual-momentum gate: satellite only if ticker Composite RS > QQQ Composite RS."""
+    if require_finite and (not np.isfinite(ticker_crs) or not np.isfinite(benchmark_crs)):
+        return False
+    return float(ticker_crs) > float(benchmark_crs)
 
 
 def calculate_canonical_bull_score(ind: QuantIndicators) -> Tuple[int, Dict[str, int]]:
@@ -294,24 +352,24 @@ def evaluate_quant_score(
 
     if is_strat1_active and is_sniper_active:
         quant_type = "BULL"
-        quant_verdict = "Dual 5-Star (양대 전략 동시 충족 특급 매수)"
-        quant_score_text = "100 / 100 pt (DUAL_5_STAR)"
-        action_directive = f"[황금 교집합] 주봉 정배열 + 구름대 도약({days_ago}일 전) + 26일 기준선({ind.kijun_gap_pct:+.1f}%) 안착."
+        quant_verdict = "3-Gate Triple Alpha (3-Gate 만점 특급 주도주)"
+        quant_score_text = "100 / 100 pt (TRIPLE_ALPHA)"
+        action_directive = f"[3-Gate 만점] 주봉 정배열 + 구름대 도약({days_ago}일 전) + 26일 기준선({ind.kijun_gap_pct:+.1f}%) 안착."
     elif is_sniper_active:
         quant_type = "BULL"
-        quant_verdict = "Sniper Alert (구름대 도약 2단계 특급 매수)"
-        quant_score_text = f"{sniper_score} / 100 pt (SNIPER_BUY)"
-        action_directive = f"[전략 2 스나이퍼] 주봉 상승장 + {days_ago}일 전 구름대 지지 도약 후 상방 시세 분출(기준선 대비 {ind.kijun_gap_pct:+.1f}%). 목표 +15% / 손절 -4%."
+        quant_verdict = "Cloud Trampoline (구름대 지지 도약 진입)"
+        quant_score_text = f"{sniper_score} / 100 pt (TRAMPOLINE_BUY)"
+        action_directive = f"[트램펄린 반등] 주봉 상승장 + {days_ago}일 전 구름대 지지 도약 후 상방 시세 분출(기준선 대비 {ind.kijun_gap_pct:+.1f}%). 목표 +{TRAILING_ACTIVATE_PCT:.0f}% / 손절 -{HARD_STOP_PCT:.1f}%."
     elif is_strat1_active:
         quant_type = "BULL"
-        quant_verdict = "Bull Accumulation (1차 분할 매수 적합)"
+        quant_verdict = "3-Gate Trend Leader (추세 주도주 집중 진입)"
         quant_score_text = f"{bull_score} / 100 pt (BULL_BUY)"
-        action_directive = "주봉 상승장 + 26일 기준선 및 일목 구름대 상단 안착 확인. 1차 분할 매수 적합."
+        action_directive = "주봉 상승장 + 26일 기준선 및 일목 구름대 상단 안착 확인. 3-Slot 균등 진입 적합."
     elif bull_score >= 70:
         quant_type = "BULL"
-        quant_verdict = "Bull Accumulation (1차 분할 매수 적합)"
+        quant_verdict = "3-Gate Sweet Spot (기준선 눌림목 진입)"
         quant_score_text = f"{bull_score} / 100 pt (BULL_BUY)"
-        action_directive = "26일 기준선 및 일목 구름대 상단 안착 확인. 거시 변동성 진정 시 1차 분할 매수 적합."
+        action_directive = "26일 기준선 및 일목 구름대 상단 안착 확인. 3-Slot 분할 진입 적합."
     elif bear_score >= 50:
         quant_type = "BEAR"
         quant_verdict = "Risk Breakdown (생명선 붕괴 / 매수 금지)"
@@ -416,9 +474,9 @@ def classify_quant_tier(
 
     # Standard Target & Stops
     entry_price = ind.close
-    target_price = round(entry_price * 1.15, 2)       # +15.0%
-    stop_price = round(entry_price * 0.96, 2)         # -4.0% Hard Stop
-    partial_tp_price = round(entry_price * 1.08, 2)   # +8.0% Partial TP
+    target_price = derive_target_price(entry_price)
+    stop_price = derive_stop_price(entry_price)
+    partial_tp_price = derive_partial_tp_price(entry_price)
 
     # Tier Qualification Predicates
     is_tier1_qualified = (
@@ -576,7 +634,11 @@ def classify_3tier_candidates(
                 "is_strat1": tier_eval.is_tier2_qualified or (tier_eval.is_tier1_qualified and tier_eval.strategy_code in ["DUAL_5_STAR", "STRAT1_PULLBACK"]),
                 "action": action_desc,
                 "target_price": tier_eval.target_price,
-                "stop_price": tier_eval.stop_price
+                "stop_price": tier_eval.stop_price,
+                "rs_3m": float(c.get("rs_3m", 0.0)),
+                "momentum_3m": float(c.get("rs_3m", 0.0)),
+                "composite_rs": None if c.get("composite_rs") is None else float(c.get("composite_rs")),
+                "is_breakout": bool(c.get("is_breakout", False))
             }
             
             if tier_eval.is_tier1_qualified:

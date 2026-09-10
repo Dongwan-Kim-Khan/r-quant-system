@@ -1,10 +1,14 @@
 import sys
 import asyncio
 from datetime import datetime
-from fastapi import APIRouter, HTTPException
-import db_manager
+from fastapi import APIRouter, Depends, HTTPException
 from al_sangmoo.api.hub import hub
+from al_sangmoo.core.auth import require_mutating_auth
 from al_sangmoo.domain.quant.ticker_resolver import search_ticker_suggestions
+from al_sangmoo.infrastructure.persistence import (
+    get_recommendations_matrix,
+    save_recommendation_matrix_record,
+)
 import generate_dashboard_feed
 
 router = APIRouter(tags=["Scanner"])
@@ -27,6 +31,24 @@ def set_is_scanning(val: bool):
         s = sys.modules["server"]
         setattr(s, "_is_scanning", val)
 
+
+def _picks_from_feed(data: dict, *keys: str) -> list:
+    if not isinstance(data, dict):
+        return []
+    for key in keys:
+        val = data.get(key)
+        if isinstance(val, list) and val:
+            return val
+    return []
+
+
+def persist_v2_recommendation_matrix(today_str: str, data: dict) -> None:
+    """Store Tier-1 / Tier-2 in the historical 2+2 matrix. Snipers are not bears."""
+    tier1 = _picks_from_feed(data, "tier1", "dual_consensus")
+    tier2 = _picks_from_feed(data, "tier2", "strat1_exclusive")
+    save_recommendation_matrix_record(today_str, tier1[:2], tier2[:2], [])
+
+
 async def _run_background_scan_pipeline():
     try:
         set_is_scanning(True)
@@ -36,20 +58,18 @@ async def _run_background_scan_pipeline():
         })
         
         def _sync_worker():
-            import al_sangmoo_daily_bot
-            bull_picks, neutral_picks, bear_picks, macro_climate = al_sangmoo_daily_bot.scan_and_select_2x2x2()
-            today_str = datetime.now().strftime("%Y-%m-%d")
-            db_manager.save_recommendation_matrix_record(today_str, bull_picks, neutral_picks, bear_picks)
-            
-            # Allow mock injection from server or generate_dashboard_feed
+            # Single v2 pipeline: 3y Ichimoku + 3-Gate conviction. Do not call v1 6mo scan.
             server_mod = sys.modules.get("server")
             build_fn = getattr(server_mod, "build_dashboard_data", generate_dashboard_feed.build_dashboard_data)
-            data = build_fn()
-            return today_str, data, macro_climate
+            data = build_fn() or {}
+            today_str = datetime.now().strftime("%Y-%m-%d")
+            persist_v2_recommendation_matrix(today_str, data)
+            macro = data.get("macro") if isinstance(data.get("macro"), dict) else {}
+            macro_climate = macro.get("macro_climate") if isinstance(macro.get("macro_climate"), dict) else macro
+            return today_str, data, macro_climate or {}
 
         today_str, data, macro_climate = await asyncio.to_thread(_sync_worker)
         
-        # Broadcast full dashboard refresh & completion status
         await hub.broadcast("live_feed_update", data)
         await hub.broadcast("scan_status", {
             "status": "completed",
@@ -66,7 +86,7 @@ async def _run_background_scan_pipeline():
         async with _scan_lock:
             set_is_scanning(False)
 
-@router.post("/api/scan_now")
+@router.post("/api/scan_now", dependencies=[Depends(require_mutating_auth)])
 async def trigger_scan_now():
     """Triggers an on-demand live 3-Gate market scan asynchronously."""
     async with _scan_lock:
@@ -94,7 +114,18 @@ def search_stock_suggestions(q: str = ""):
 @router.get("/api/recommendations/matrix")
 def get_recommendation_matrix():
     """Returns today's 2+2+2 quantitative recommendation matrix."""
-    matrix = db_manager.get_recommendations_matrix()
+    matrix = get_recommendations_matrix()
     if not isinstance(matrix, list):
         matrix = [matrix] if matrix else []
     return matrix
+
+
+@router.get("/api/universe/dynamic")
+def get_dynamic_universe_status():
+    """Returns the current dynamic sector-weighted universe snapshot and sector momentum."""
+    try:
+        from al_sangmoo.domain.quant.dynamic_universe import build_dynamic_60_watchlist
+        snapshot = build_dynamic_60_watchlist(force_refresh=False)
+        return {"status": "success", "data": snapshot}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"동적 유니버스 조회 실패: {exc}")

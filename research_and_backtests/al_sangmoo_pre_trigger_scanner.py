@@ -90,7 +90,7 @@ def evaluate_pre_trigger(ticker):
         if not_overbought: score += 10
         
         if score >= 70: # Trigger qualified
-            stop_loss_price = min(kijun * 0.985, close * 0.97) # -3% or below Kijun
+            stop_loss_price = min(kijun * 0.985, close * 0.96)  # -4% hard stop SSOT
             target_price_1 = close * 1.15 # +15% target
             target_price_2 = close * 1.25 # +25% target
             risk_amt = close - stop_loss_price
@@ -105,7 +105,7 @@ def evaluate_pre_trigger(ticker):
                 "kijun_gap": f"{kijun_gap_pct:+.1f}%",
                 "vol_ratio": f"{vol_ratio*100:.0f}%",
                 "entry_price": f"${close:,.2f}" if not ticker.endswith(".KS") else f"{close:,.0f}원",
-                "stop_loss": f"${stop_loss_price:,.2f} (-3.0%)" if not ticker.endswith(".KS") else f"{stop_loss_price:,.0f}원 (-3.0%)",
+                "stop_loss": f"${stop_loss_price:,.2f} (-4.0%)" if not ticker.endswith(".KS") else f"{stop_loss_price:,.0f}원 (-4.0%)",
                 "target_1": f"${target_price_1:,.2f} (+15%)" if not ticker.endswith(".KS") else f"{target_price_1:,.0f}원 (+15%)",
                 "target_2": f"${target_price_2:,.2f} (+25%)" if not ticker.endswith(".KS") else f"{target_price_2:,.0f}원 (+25%)",
                 "rr_ratio": f"1 : {rr_ratio:.1f}",

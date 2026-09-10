@@ -20,7 +20,14 @@ def load_env():
                     line = line.strip()
                     if line and not line.startswith("#") and "=" in line:
                         k, v = line.split("=", 1)
-                        os.environ[k.strip()] = v.strip().strip("\"'")
+                        k = k.strip()
+                        v = v.strip()
+                        if (v.startswith('"') and v.endswith('"')) or (v.startswith("'") and v.endswith("'")):
+                            clean_v = v[1:-1]
+                        else:
+                            clean_v = v.split("#")[0].strip()
+                        if k not in os.environ:
+                            os.environ[k] = clean_v
         except Exception:
             pass
 

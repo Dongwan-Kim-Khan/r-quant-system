@@ -1,6 +1,7 @@
 import os
 import json
 from fastapi import APIRouter, HTTPException
+from al_sangmoo.core.constants import derive_stop_price, derive_target_price, is_market_ticker
 
 router = APIRouter(tags=["Dashboard"])
 
@@ -9,6 +10,25 @@ DASHBOARD_JSON = os.path.join(BASE_DIR, "dashboard_data.json")
 
 FEED_CACHE = {}
 LAST_FEED_MTIME = 0
+LAST_MACRO_TIME = 0.0
+CACHED_MACRO_GAUGES = None
+
+def get_live_macro_gauges():
+    global LAST_MACRO_TIME, CACHED_MACRO_GAUGES
+    import time
+    now = time.time()
+    if CACHED_MACRO_GAUGES and (now - LAST_MACRO_TIME < 30.0):
+        return CACHED_MACRO_GAUGES
+    try:
+        import youtube_stream_scanner
+        gauges = youtube_stream_scanner.fetch_realtime_macro_gauges()
+        if gauges and isinstance(gauges, dict):
+            CACHED_MACRO_GAUGES = gauges
+            LAST_MACRO_TIME = now
+            return CACHED_MACRO_GAUGES
+    except Exception:
+        pass
+    return CACHED_MACRO_GAUGES
 
 def get_feed_cache():
     global FEED_CACHE, LAST_FEED_MTIME
@@ -21,20 +41,136 @@ def get_feed_cache():
                 LAST_FEED_MTIME = mtime
         except Exception:
             pass
+    return FEED_CACHE
+
 def load_feed_cache():
     return get_feed_cache()
 
 @router.get("/api/dashboard")
 async def get_dashboard_data():
-    """Returns the full executive dashboard data payload (sub-millisecond from memory/disk)."""
+    """Returns the full executive dashboard data payload enriched with real-time portfolio & macro in < 1ms."""
     feed = get_feed_cache()
     if not feed:
         if os.path.exists(DASHBOARD_JSON):
-            with open(DASHBOARD_JSON, "r", encoding="utf-8") as f:
-                feed = json.load(f)
+            try:
+                with open(DASHBOARD_JSON, "r", encoding="utf-8") as f:
+                    feed = json.load(f)
+            except Exception:
+                feed = None
     if not feed:
         raise HTTPException(status_code=503, detail="대시보드 피드 데이터가 아직 생성되지 않았습니다.")
-    return feed
+        
+    # Shallow copy dictionary for high-performance non-mutating response
+    feed_out = dict(feed)
+
+    try:
+        from al_sangmoo.domain.quant.dynamic_universe import load_universe_sectors
+        live_sectors = load_universe_sectors()
+        if live_sectors:
+            feed_out["universe_sectors"] = live_sectors
+        else:
+            feed_out.setdefault("universe_sectors", [])
+    except Exception:
+        feed_out.setdefault("universe_sectors", [])
+    
+    # Inject real-time macro gauges (30s TTL cache)
+    try:
+        live_gauges = get_live_macro_gauges()
+        if live_gauges and isinstance(feed_out.get("macro"), dict):
+            feed_out["macro"] = dict(feed_out["macro"])
+            feed_out["macro"]["macro_gauges"] = live_gauges
+    except Exception:
+        pass
+
+    # Inject real-time live portfolio from SQLite SSOT (pure CQRS fast read < 0.5ms)
+    try:
+        from al_sangmoo.infrastructure.persistence import get_execution_logs, get_live_portfolio
+        live_portfolio = get_live_portfolio()
+        if isinstance(live_portfolio, dict) and isinstance(live_portfolio.get("holdings"), list):
+            live_portfolio = dict(live_portfolio)
+            live_portfolio["holdings"] = [
+                h for h in live_portfolio["holdings"]
+                if isinstance(h, dict) and is_market_ticker(h.get("ticker"))
+            ]
+        feed_out["portfolio"] = live_portfolio
+
+        # Build unified live price map across holdings and broker
+        holdings = live_portfolio.get("holdings", [])
+        wallet_map = {h["ticker"].upper(): h for h in holdings if isinstance(h, dict) and "ticker" in h}
+        live_price_map = {h["ticker"].upper(): float(h["current_price"]) for h in holdings if isinstance(h, dict) and "ticker" in h and h.get("current_price")}
+        
+        def update_item_live_price(item):
+            if not isinstance(item, dict):
+                return item
+            tk = str(item.get("ticker", "")).upper()
+            if not tk:
+                return item
+            
+            item_copy = dict(item)
+            # 1. Enrich wallet status
+            if tk in wallet_map:
+                h = wallet_map[tk]
+                item_copy["in_wallet"] = True
+                item_copy["holding_pnl"] = float(h.get("pnl_pct", 0.0))
+                item_copy["holding_qty"] = float(h.get("quantity", 0.0))
+                item_copy["holding_price"] = float(h.get("buy_price", 0.0))
+                if h.get("current_price"):
+                    cur_p = float(h["current_price"])
+                    item_copy["price"] = cur_p
+                    item_copy["target_price"] = derive_target_price(cur_p)
+                    item_copy["stop_price"] = derive_stop_price(cur_p)
+            else:
+                item_copy["in_wallet"] = False
+                item_copy["holding_pnl"] = 0.0
+                item_copy["holding_qty"] = 0.0
+                item_copy["holding_price"] = 0.0
+                
+            return item_copy
+
+        # 2. Enrich Top Conviction Picks
+        if "top_conviction_pick" in feed_out and feed_out["top_conviction_pick"]:
+            feed_out["top_conviction_pick"] = update_item_live_price(feed_out["top_conviction_pick"])
+        if "top_conviction_runner_up" in feed_out and feed_out["top_conviction_runner_up"]:
+            feed_out["top_conviction_runner_up"] = update_item_live_price(feed_out["top_conviction_runner_up"])
+
+        # 3. Synchronize slot_allocation_summary with live portfolio SSOT
+        slot_sum = dict(feed_out.get("slot_allocation_summary") or {})
+        from al_sangmoo.domain.risk.cash_proxy import satellite_holdings, proxy_holdings
+        sats = satellite_holdings(holdings)
+        proxies = proxy_holdings(holdings)
+        slot_sum["satellite_count"] = len(sats)
+        slot_sum["proxy_holdings"] = [
+            {"ticker": h.get("ticker"), "quantity": h.get("quantity"), "current_price": h.get("current_price")}
+            for h in proxies
+        ]
+        if live_portfolio.get("total_equity_usd"):
+            slot_sum["equity_usd"] = float(live_portfolio["total_equity_usd"])
+        macro = feed_out.get("macro", {})
+        if "is_bull_regime" in macro:
+            slot_sum["is_bull_regime"] = bool(macro["is_bull_regime"])
+        elif "is_bull_regime" not in slot_sum:
+            from al_sangmoo.domain.quant.macro import extract_msi_score, resolve_capital_regime
+            msi = extract_msi_score(macro, default=50.0)
+            spy_c = macro.get("spy_close")
+            spy_s = macro.get("spy_sma200")
+            regime = resolve_capital_regime(
+                msi_score=msi,
+                spy_close=float(spy_c) if spy_c is not None else None,
+                spy_sma200=float(spy_s) if spy_s is not None else None,
+                fetch_spy=False,
+            )
+            slot_sum["is_bull_regime"] = bool(regime["is_bull_regime"])
+        feed_out["slot_allocation_summary"] = slot_sum
+
+        # 4. Inject Execution Audit Logs
+        try:
+            feed_out["execution_logs"] = get_execution_logs(limit=50)
+        except Exception:
+            feed_out["execution_logs"] = []
+    except Exception as e:
+        # Fallback gracefully to feed cached portfolio if DB query fails
+        pass
+    return feed_out
 
 @router.get("/api/summary")
 async def get_dashboard_summary():

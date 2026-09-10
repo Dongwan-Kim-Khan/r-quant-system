@@ -1,67 +1,62 @@
-# Project: Al-Sangmoo Quant Trading Platform - Phase 5.3 SSOT Quantitative Consolidation & Clean Architecture
+# Project: Al-Sangmoo Institutional Quant Trading Platform End-to-End Audit & Remediation
 
 ## Architecture
-- **Domain Layer (`al_sangmoo.domain.quant`)**:
-  - `ichimoku.py`: SSOT calculation for all rolling technical indicators (Tenkan 9, Kijun 26, SpanA shift 26, SpanB 52 shift 26, Chikou shift -26, SMA20/50/60/200, Vol_SMA20, Vol_Ratio, future cloud projection, cloud trampoline bounce detection, OBV & 14-day inflow flow indicators).
-  - `scoring.py`: SSOT calculation for 17-Year Quant Scoring matrices (Bull Score 0-100pt, Sniper Score 0-100pt, Bear Score 0-100pt) and deterministic 3-Tier Quant Classification (Tier 1 Macro Leader, Tier 2 Structural Pullback, Tier 3 Cloud Sniper).
-  - `macro.py`: SSOT calculation for Macro Stance Index 2.0 (MSI 2.0) with unified hard-gauge weights (US10Y, VIX, WTI, DXY), NLP sentiment, and geopolitical/economic shocks.
-  - `multi_timeframe.py`: Multi-timeframe consensus matrix (Weekly + Daily + Hourly).
-  - `ticker_resolver.py`: Multi-language symbol & alias resolution.
-- **Application & Presentation Layer**:
-  - `generate_dashboard_feed.py`: Pure, side-effect free view-model builder. Generates `dashboard_data.json` and chart payload caches from domain quant engines. Zero database writes.
-  - `al_sangmoo_daily_bot.py`: Command-line orchestrator and daily reporter. Executes scanning, evaluates portfolio, generates reports, and explicitly persists to SQLite.
-  - `youtube_stream_scanner.py`: YouTube stream analyzer. Delegates MSI 2.0 calculations 100% to `al_sangmoo.domain.quant.macro`.
-  - `server.py`: FastAPI server exposing read-only and background task scanning endpoints.
+The Al-Sangmoo Quant Trading Platform is an institutional-grade algorithmic swing-trading system built on Python/FastAPI with SQLite WAL mode, asynchronous WebSocket broadcast hubs, Korea Investment & Securities (KIS) OpenAPI integration with Yahoo Finance fallback, and a lightweight trading terminal frontend.
+
+- **Presentation / API Layer**: FastAPI (`server.py`, `al_sangmoo/interfaces/api/routers/`), WebSocket Broadcast Hub (`al_sangmoo/api/hub.py`), Frontend Terminal (`frontend/`).
+- **Domain Quant Layer (SSOT)**: Mathematical rolling indicators (`ichimoku.py`), 17-Year Quant Scoring (`scoring.py`), Macro Stance Index 2.0 (`macro.py`), Conviction Ranking (`conviction_engine.py`), Position Sizing & Risk Guardrails (`al_sangmoo/domain/risk/`).
+- **Background Autonomous Daemons**: `PortfolioGuardian` (-4% SL, +15% Trailing TP, 3M RS exit), `AutopilotTrader` (Macro-conditioned autonomous order placement), `Scanner` (Single-flight universe analysis).
+- **Infrastructure Layer**: Unified Database Persistence (`persistence.py`), Atomic File I/O (`atomic_io.py`), Broker Gateways (`kis_broker.py`, `paper_broker.py`).
 
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source |
 |---|---------|-------------|-----------|--------|
-| 1 | SSOT Indicator Math Engine | Consolidate Tenkan, Kijun, SpanA, SpanB, Chikou, SMA20/50/60/200, Vol_Ratio, OBV, Inflow into `ichimoku.py` | M1 | ORIGINAL_REQUEST §R1 |
-| 2 | Pure Chart Series Builder | Extract pure `build_ichimoku_series_payload()` and `project_future_cloud()` into `ichimoku.py` | M1 | Survey Report 1 |
-| 3 | Canonical Scoring Matrix | Consolidate 17-Year graduated Bull (35/25/15), Sniper (40/30/15), Bear scoring into `scoring.py` | M2 | ORIGINAL_REQUEST §R2 |
-| 4 | Canonical 3-Tier Classification | Implement Tier 1 (Sniper Radar), Tier 2 (Structural Pullback), Tier 3 (Cloud Sniper) classification in `scoring.py` | M2 | ORIGINAL_REQUEST §R2 |
-| 5 | Hard Stop & Target Rules | Enforce -4.0% hard stop, +15.0% target, +8.0% partial take-profit across value objects | M2 | Survey Report 2 |
-| 6 | MSI 2.0 Parameter Unification | Unify US10Y (25/18/10/4/0), VIX (15/10/5/0), WTI (10/6/3/0), DXY (10/6/2/0) gauge weights in `macro.py` | M3 | ORIGINAL_REQUEST §R3 |
-| 7 | Pure Macro Stance Evaluation | Refactor `evaluate_macro_stance()` and legacy `calculate_msi_regime()` in `macro.py` | M3 | ORIGINAL_REQUEST §R3 |
-| 8 | Side-Effect Free Feed Pipeline | Strip all SQLite DML writes from `generate_dashboard_feed.build_dashboard_data()` | M4 | ORIGINAL_REQUEST §R4 |
-| 9 | Application Deduplication | Refactor `generate_dashboard_feed.py`, `al_sangmoo_daily_bot.py`, `youtube_stream_scanner.py` to import domain SSOT | M4 | ORIGINAL_REQUEST §R1, R3 |
-| 10 | Comprehensive SSOT Test Suite | Create `tools_and_tests/test_phase5_3_ssot_quant.py` with 6-tier verification assertions | M5 | ORIGINAL_REQUEST §Acceptance |
-| 11 | Full Platform Regression Pass | Verify 100% Green on all regression suites (`test_phase1`, `test_phase2`, `test_phase4`, `test_phase5_1`, `test_phase5_2`, `test_global60`) | M5 | ORIGINAL_REQUEST §Acceptance |
+| 1 | Mutating Route Authentication (SEC-01) | Add API Key validation dependency to all state-mutating endpoints | M1 | Survey |
+| 2 | WebSocket Ping Frame JSON Parsing (SEC-02) | Add missing `import json` to `server.py` for ping keepalive | M1 | Survey |
+| 3 | WebSocket CSWSH Origin Guard (SEC-03) | Enforce strict origin validation for WebSocket connections | M1 | Survey |
+| 4 | Atomic Token Cache Persistence (SEC-04) | Use `atomic_save_json` for `.kis_token_*.json` persistence | M1 | Survey |
+| 5 | Shared Global Order Mutex (BRK-01) | Unify and extend `ORDER_MUTEX` scope across `broker.py` & `portfolio.py` | M2 | Survey |
+| 6 | Non-blocking Broker Async Offloading (BRK-02) | Wrap synchronous broker TR and HTTP requests in `asyncio.to_thread` | M2 | Survey |
+| 7 | Broker Network Timeout Guard (BRK-03) | Protect against duplicate fills during timeout retries | M2 | Survey |
+| 8 | Execution Log Audit Synchronization (SYNC-01) | Add `record_execution_log` to manual buy/sell endpoints | M3 | Survey |
+| 9 | Trade History Record on Position Close (SYNC-02) | Insert closed trades into `trade_history` in `persistence.py` | M3 | Survey |
+| 10 | Frontend WebSocket Event Optimization (SYNC-03) | Prevent redundant full HTTP dashboard re-fetch on WS events | M3 | Survey |
+| 11 | Chart Race Condition Protection (SYNC-04) | Guard against stale ticker updates on asynchronous chart fetch | M3 | Survey |
+| 12 | SQLite Concurrency & Test Isolation (DB-01) | Ensure WAL mode transaction atomicity and Windows test cleanup | M4 | Survey |
+| 13 | Hard Stop-Loss SSOT Calibration (QUANT-01) | Align all -3.0% legacy stop-loss references to institutional -4.0% (`0.96`) | M5 | Survey |
+| 14 | Deduplication & Dead Code Removal (CLEAN-01) | Deduplicate constants, atomic IO, chart router lines, and research test names | M5 | Survey |
+| 15 | E2E Automated Test Suite & Regression (VERIF-01) | 100% pass across all Phase 5 test suites with zero regression | M6 | Survey |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | SSOT Indicator Math Engine | `al_sangmoo/domain/quant/ichimoku.py` | None | PLANNED |
-| M2 | Canonical 3-Tier Quant Scoring Engine | `al_sangmoo/domain/quant/scoring.py` | M1 | PLANNED |
-| M3 | MSI 2.0 Parameter & Logic Unification | `al_sangmoo/domain/quant/macro.py` | None | PLANNED |
-| M4 | Side-Effect Free Pipeline & Feed Integration | `generate_dashboard_feed.py`, `al_sangmoo_daily_bot.py`, `youtube_stream_scanner.py` | M1, M2, M3 | PLANNED |
-| M5 | E2E Verification & Test Suite Hardening | `tools_and_tests/test_phase5_3_ssot_quant.py` & all regression test suites | M4 | PLANNED |
+| M1 | Security & Credential Protection | Fix SEC-01, SEC-02, SEC-03, SEC-04 in `server.py`, `routers/`, `kis_broker.py` | None | PLANNED |
+| M2 | API & Broker Gateway Resilience | Fix BRK-01, BRK-02, BRK-03 in `broker.py`, `portfolio.py`, `kis_broker.py`, `order_guardrail.py` | M1 | PLANNED |
+| M3 | Backend-Frontend Synchronicity | Fix SYNC-01, SYNC-02, SYNC-03, SYNC-04 in `portfolio.py`, `persistence.py`, `websocket.js`, `chart.js` | M1, M2 | PLANNED |
+| M4 | Server Stability & Concurrency | Fix DB-01, ensure lifespan and SQLite WAL concurrency safety | M2 | PLANNED |
+| M5 | Quant SSOT & Code Cleanliness | Fix QUANT-01, CLEAN-01 across `reconciliation.py`, `macro_guardrail.py`, `persistence.py`, `paper_broker.py`, `position_sizer.py`, `al_sangmoo_daily_bot.py`, `charts.py`, `youtube_stream_scanner.py`, `generate_dashboard_feed.py`, research test files | M3, M4 | PLANNED |
+| M6 | Final Verification & Hardening | Run all Phase 5 test suites (`test_phase5_1` to `5_4`, `test_autopilot.py`, adversarial suites), ensure 100% pass | M1, M2, M3, M4, M5 | PLANNED |
 
 ## Interface Contracts
+### Mutating Endpoints Authentication
+- Header: `X-API-Key: <token>` (or optional when `REQUIRE_AUTH=False`, mandatory when configured).
 
-### `al_sangmoo.domain.quant.ichimoku`
-- `calculate_ichimoku_indicators(df: pd.DataFrame) -> pd.DataFrame`
-  - Adds: `Tenkan`, `Kijun`, `RawSpanA`, `RawSpanB`, `SpanA`, `SpanB`, `Chikou`, `SMA20`, `SMA50`, `SMA60`, `SMA200`, `Vol_SMA20`, `Vol_Ratio`.
-  - Handles `min_periods` safely and prevents division-by-zero on `Volume / Vol_SMA20`.
-- `project_future_cloud(df_clean: pd.DataFrame, periods: int = 26, is_weekly: bool = False) -> tuple`
-- `detect_cloud_trampoline_bounce(df_clean: pd.DataFrame, max_lookback: int = 14) -> tuple[bool, int, float, float]`
-- `compute_institutional_flow_indicators(df: pd.DataFrame) -> dict`
-- `build_ichimoku_series_payload(df_clean: pd.DataFrame, is_weekly: bool = False, max_bars: int = 500) -> dict`
+### Order Execution Mutex (`ORDER_MUTEX`)
+- Location: `al_sangmoo.domain.risk.order_guardrail.ORDER_MUTEX`
+- Usage: `async with ORDER_MUTEX:` encompasses pre-trade guardrail checks, broker gateway placement, and SQLite persistence.
 
-### `al_sangmoo.domain.quant.scoring`
-- `evaluate_quant_score(close, kijun, tenkan, span_a, span_b, vol_ratio, trampoline_detected=False, is_weekly_bull=True) -> dict`
-  - Returns dict with keys: `bull_score`, `sniper_score`, `bear_score`, `composite_score`, `cloud_pts`, `kijun_pts`, `vdu_pts`, `tenkan_pts`, `verdict`.
-- `classify_quant_tier(ticker, ind, weekly, flow, trampoline, macro_tailwind_sectors, sector) -> TierClassification`
-- `classify_3tier_candidates(chart_data: dict, tailwind_sectors: list[str], stream_mentioned_tickers: set[str] = None) -> tuple[list[dict], list[dict], list[dict]]`
-  - Returns `(tier1_picks, tier2_picks, tier3_picks)` deterministically.
-
-### `al_sangmoo.domain.quant.macro`
-- `evaluate_macro_stance(gauges=None, defense_count=0, buy_count=0, matched_shocks=None, transcript="", title="") -> dict`
-  - Returns: `msi_score` (0.0~100.0), `macro_stance` (`ACTIVE_BUY`, `SELECTIVE_BUY`, `DEFENSE_HOLD`, `CASH_EXIT`), `m_hard`, `m_nlp`, `m_shock`, `us10y_pts`, `vix_pts`, `wti_pts`, `dxy_pts`, `gauge_breakdown`.
-- `calculate_msi_regime(gauges, defense_count, buy_count, matched_shocks) -> tuple[str, float, dict]` (Legacy adapter).
+### Quant SSOT Rules
+- Hard Stop-Loss: -4.0% (`buy_price * 0.96` / `constants.STOP_LOSS_PCT`)
+- Trailing Take-Profit: +15.0% (`buy_price * 1.15` / `constants.TAKE_PROFIT_PCT`)
+- Capital Allocation: 3-slot integer shares ($7,500 / 10M KRW per slot)
+- Macro Regime: MSI 2.0 is a **risk index** (0-100, higher = more danger) → ACTIVE_BUY (<30), SELECTIVE_BUY (30-50), DEFENSE_HOLD (50-75), CASH_EXIT (>=75). Slot count (3 vs 2) follows SPY ≥ 200 SMA, not inverted MSI.
 
 ## Code Layout
-- `al_sangmoo/domain/quant/`: Pure quantitative algorithms, models, and scoring logic.
-- `al_sangmoo/infrastructure/`: Persistence, database managers, and file storage.
-- `al_sangmoo/api/`: FastAPI server and WebSocket broadcast hubs.
-- `tools_and_tests/`: Automated unit, integration, security, concurrency, and E2E test suites.
+- `server.py`: FastAPI application entry point, lifespan, middleware, WebSocket route.
+- `al_sangmoo/interfaces/api/routers/`: API routers (`broker.py`, `portfolio.py`, `autopilot.py`, `charts.py`, `dashboard.py`, `guardian.py`, `scanner.py`).
+- `al_sangmoo/domain/quant/`: Pure quantitative logic (`ichimoku.py`, `scoring.py`, `macro.py`, `conviction_engine.py`).
+- `al_sangmoo/domain/risk/`: Risk management (`order_guardrail.py`, `portfolio_guardian.py`, `autopilot_trader.py`, `macro_guardrail.py`, `position_sizer.py`).
+- `al_sangmoo/domain/reconciliation.py`: Daily broker-to-local portfolio reconciliation.
+- `al_sangmoo/infrastructure/`: Persistence (`persistence.py`, `atomic_io.py`), Brokers (`kis_broker.py`, `paper_broker.py`).
+- `frontend/`: UI assets (`index.html`, `js/ui.js`, `js/api.js`, `js/websocket.js`, `js/chart.js`).
+- `tools_and_tests/`: Test suites (`test_phase5_1_security.py`, `test_phase5_2_concurrency.py`, `test_phase5_3_ssot_quant.py`, `test_phase5_4_kis_modular.py`).

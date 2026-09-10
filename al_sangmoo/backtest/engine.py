@@ -9,6 +9,7 @@ import yfinance as yf
 from datetime import datetime
 from typing import Dict, Any, List, Union
 
+from al_sangmoo.core.constants import STOP_LOSS_PCT, TAKE_PROFIT_PCT
 from al_sangmoo.domain.quant.ichimoku import calculate_ichimoku_indicators
 
 def run_backtest_simulation(
@@ -17,8 +18,8 @@ def run_backtest_simulation(
     initial_capital: float = 100000.0,
     slippage_bps: float = 0.0010,       # 10 bps (0.10%) bid-ask spread
     fee_rate: float = 0.0008,           # 8 bps (0.08%) commission + regulatory fees
-    stop_loss_pct: float = -0.03,       # -3.0% Alex Oh Strict Hard Stop
-    take_profit_pct: float = 0.15,      # +15.0% Primary Target
+    stop_loss_pct: float = STOP_LOSS_PCT,     # -5.0% C1-M2 hard stop
+    take_profit_pct: float = TAKE_PROFIT_PCT,  # +15.0% trailing latch / primary target
     timeout_bars: int = 60              # 60-bar max swing horizon
 ) -> Dict[str, Any]:
     """
@@ -91,7 +92,9 @@ def run_backtest_simulation(
                 # Enter at Bar i Open (with slippage)
                 raw_fill = opens[i]
                 fill_price = raw_fill * (1.0 + slippage_bps)
-                alloc = cash * 0.95  # Allocate 95% of available cash
+                # Deploy most available cash into the swing sleeve (not a stop multiplier)
+                cash_utilization = 95.0 / 100.0
+                alloc = cash * cash_utilization
                 shares = (alloc * (1.0 - fee_rate)) / fill_price
                 cash -= alloc
                 position_shares = shares
@@ -116,10 +119,11 @@ def run_backtest_simulation(
             if hit_stop or hit_tp or hit_timeout or is_last_bar:
                 if hit_tp:
                     raw_exit = max(opens[i], tp_price)
-                    reason = "TAKE_PROFIT (+15%)"
+                    reason = f"TAKE_PROFIT ({take_profit_pct:+.0%})"
                 elif hit_stop:
                     raw_exit = min(opens[i], stop_price) if cur_low <= stop_price else cur_close
-                    reason = "STOP_LOSS (-3% / Kijun Breakdown)"
+                    sl_label = f"{stop_loss_pct:.0%}"
+                    reason = f"STOP_LOSS ({sl_label} / Kijun Breakdown)"
                 elif hit_timeout:
                     raw_exit = cur_close
                     reason = "TIME_EXIT (60-Bar Timeout)"
@@ -207,7 +211,7 @@ def run_backtest_simulation(
         "friction_modeled": {
             "slippage_bps": slippage_bps * 10000,
             "fee_bps": fee_rate * 10000,
-            "stop_loss_rule": "-3.0% Strict Execution"
+            "stop_loss_rule": f"{stop_loss_pct:.1%} Strict Execution"
         },
         "trades": trades,
         "equity_curve": equity_curve

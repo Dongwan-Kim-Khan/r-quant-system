@@ -4,6 +4,9 @@ import sys
 from youtube_transcript_api import YouTubeTranscriptApi
 import subprocess
 
+# Script utility (not a unit test)
+__test__ = False
+
 def test_download():
     with open("rsangmoo_live_videos.json", "r", encoding="utf-8") as f:
         videos = json.load(f)

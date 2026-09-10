@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>알상무 17년 퀀트 v2 자동매매 아키텍처 및 작동 로직</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 12mm 10mm 12mm 10mm;
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            background-color: #ffffff;
+            color: #1e293b;
+            line-height: 1.6;
+            padding: 24px;
+            max-width: 960px;
+            margin: 0 auto;
+        }
+        h1 {
+            font-size: 20px;
+            font-weight: 900;
+            color: #0f172a;
+            border-bottom: 3px solid #2563eb;
+            padding-bottom: 8px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .subtitle {
+            font-size: 12px;
+            color: #475569;
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+        .section-title {
+            font-size: 15px;
+            font-weight: 800;
+            color: #1e3a8a;
+            background: #eff6ff;
+            border-left: 4px solid #2563eb;
+            padding: 5px 10px;
+            margin: 16px 0 10px 0;
+            border-radius: 0 4px 4px 0;
+        }
+        .diagram-container {
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 14px;
+            margin: 12px 0 16px 0;
+            text-align: center;
+            overflow-x: auto;
+            page-break-inside: avoid;
+        }
+        .mermaid {
+            display: flex;
+            justify-content: center;
+        }
+        .phase-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            margin: 12px 0;
+        }
+        .phase-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 10px 14px;
+            background: #ffffff;
+            page-break-inside: avoid;
+        }
+        .phase-card.bull { border-left: 4px solid #10b981; }
+        .phase-card.quant { border-left: 4px solid #3b82f6; }
+        .phase-card.slot { border-left: 4px solid #8b5cf6; }
+        .phase-card.order { border-left: 4px solid #f59e0b; }
+        .phase-card.guardian { border-left: 4px solid #ef4444; }
+        
+        .phase-head {
+            font-size: 13px;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .phase-tag {
+            font-size: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: 700;
+        }
+        .tag-green { background: #dcfce7; color: #15803d; }
+        .tag-blue { background: #dbeafe; color: #1d4ed8; }
+        .tag-purple { background: #f3e8ff; color: #7e22ce; }
+        .tag-amber { background: #fef3c7; color: #b45309; }
+        .tag-red { background: #fee2e2; color: #b91c1c; }
+
+        ul {
+            padding-left: 18px;
+            margin-top: 2px;
+        }
+        li {
+            font-size: 12px;
+            color: #334155;
+            margin-bottom: 2px;
+        }
+        strong {
+            color: #0f172a;
+        }
+        .rule-box {
+            background: #f1f5f9;
+            border: 1px dashed #94a3b8;
+            border-radius: 6px;
+            padding: 10px 12px;
+            margin-top: 12px;
+            font-size: 11.5px;
+            page-break-inside: avoid;
+        }
+        @media print {
+            body { padding: 0; }
+            .diagram-container { border: 1px solid #94a3b8; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🏛️ 알상무 17년 퀀트 v2 자동매매 아키텍처 및 작동 로직</h1>
+    <div class="subtitle">
+        Goldman Sachs Quant 기반 듀얼 모멘텀 + 무제한 트레일링 익절 & 리스크 가디언 전자동 시스템 명세서
+    </div>
+
+    <div class="section-title">📊 1. 엔드투엔드 전체 작동 로직 다이어그램 (Operational Flowchart)</div>
+    
+    <div class="diagram-container">
+        <pre class="mermaid">
+flowchart TD
+    subgraph S1 ["1. 시장 국면 & 매크로 판별 (Market Regime)"]
+        A[글로벌 60 정예 유니버스 실시간 수집] --> B{SPY 200일선 위치 판별}
+        B -- "SPY >= 200 SMA (상승장)" --> C1["🟢 BULL REGIME: 3-Slot 100% 자본 가동"]
+        B -- "SPY < 200 SMA (하락장)" --> C2["🔴 BEAR REGIME: 2-Slot + 50% 현금 방어"]
+    end
+
+    subgraph S2 ["2. 알상무 17년 퀀트 v2 분석 엔진 (Conviction Engine)"]
+        C1 --> D["3-Gate 정밀 퀀트 필터링"]
+        C2 --> D
+        D --> D1["Gate 1: 일목균형표 양운 상단 안착"]
+        D --> D2["Gate 2: 26일 기준선(생명선) 지지 반등"]
+        D --> D3["Gate 3: 20일 신고가 돌파 or 눌림목 VDU"]
+        D1 & D2 & D3 --> E["GS-Quant 3개월 상대강도(RS) 모멘텀 가산점 산출"]
+        E --> F["오늘의 확신도 랭킹 확정 (Rank #1 Top Pick & Rank #2)"]
+    end
+
+    subgraph S3 ["3. 동적 3-Slot 자본 배분기 (Capital Allocator)"]
+        F --> G{가용 슬롯 존재 여부 체크}
+        G -- "슬롯 만석 (3/3 점유)" --> H["진입 대기 (기존 포지션 홀딩)"]
+        G -- "빈 슬롯 존재 (0~2개 점유)" --> I["슬롯당 33.3% ($2,500 / 약 345만원) 배분"]
+        I --> J{기보유 종목 중복 방지 가드레일}
+        J -- "중복 종목 아님" --> K["최적 매수 수량(주) 확정"]
+    end
+
+    subgraph S4 ["4. KIS 증권사 주문 집행 (Order Execution)"]
+        K --> L["KIS OpenAPI 실시간 호가 조회 (0.1초)"]
+        L --> M["한국투자증권 실계좌 매수 주문 전송"]
+        M --> N["SQLite SSOT DB 포트폴리오 등록<br>(-4% 손절선 & +15% 트레일링 익절선 자동 세팅)"]
+    end
+
+    subgraph S5 ["5. 실시간 리스크 가디언 데몬 (10초 주기 무한 루프)"]
+        N --> O["실시간 현재가 & 손익률 추적"]
+        O --> P{"손익률 감시"}
+        P -- "손익률 <= -4.0%" --> Q["🚨 기계적 칼손절 (Hard Stop-Loss) 즉시 전량 매도"]
+        P -- "수익률 >= +15.0%" --> R["🏆 무제한 트레일링 익절 활성화<br>Trailing Floor = max(26일선, 고점 - 2.5*ATR)"]
+        R --> S{"Trailing Floor 이탈 여부"}
+        S -- "이탈 시" --> T["🎉 고점 트레일링 익절 전량 청산"]
+        S -- "유지 시" --> U["수익 무제한 극대화 (Let Winners Run)"]
+        P -- "-4% ~ +15% 구간" --> V["추세 홀딩 (Holding)"]
+    end
+
+    Q & T --> W["슬롯 반환 (가용 현금 복원) ➔ S3 자본 배분기로 순환"]
+        </pre>
+    </div>
+
+    <div class="section-title">🔍 2. 5대 핵심 서브시스템 상세 명세</div>
+
+    <div class="phase-grid">
+        <!-- Phase 1 -->
+        <div class="phase-card bull">
+            <div class="phase-head">
+                <span>[Phase 1] 시장 국면 판별 엔진 (Market Regime)</span>
+                <span class="phase-tag tag-green">SPY 200 SMA</span>
+            </div>
+            <ul>
+                <li><strong>상승장 (BULL REGIME)</strong>: SPY ≥ 200일선 ➔ <strong>3-Slot 100% 자본 풀가동</strong> ($2,500씩 3종목 분산).</li>
+                <li><strong>하락장 (BEAR REGIME)</strong>: SPY &lt; 200일선 ➔ <strong>2-Slot + 50% 현금 강제 대피</strong> (MDD 철통 방어).</li>
+            </ul>
+        </div>
+
+        <!-- Phase 2 -->
+        <div class="phase-card quant">
+            <div class="phase-head">
+                <span>[Phase 2] 알상무 17년 퀀트 v2 분석 엔진 (Conviction Engine)</span>
+                <span class="phase-tag tag-blue">3-GATE + 3M RS</span>
+            </div>
+            <ul>
+                <li><strong>3-Gate 필터</strong>: ① 일목 양운 상단 안착, ② 26일 기준선(생명선) 지지 반등, ③ 20일 신고가 돌파 or VDU 거래량 마름.</li>
+                <li><strong>3개월 상대강도(RS Momentum)</strong>: 지수 대비 초과수익 주도주를 선별하여 <strong>Rank #1 Top Pick 및 Rank #2</strong> 확정.</li>
+            </ul>
+        </div>
+
+        <!-- Phase 3 -->
+        <div class="phase-card slot">
+            <div class="phase-head">
+                <span>[Phase 3] 동적 3-Slot 자본 배분기 (Capital Allocator)</span>
+                <span class="phase-tag tag-purple">33.3% EQUAL SLOTS</span>
+            </div>
+            <ul>
+                <li><strong>균등 배분</strong>: 1,000만원 ($7,500) 기준 슬롯당 33.3% ($2,500) 자본 자동 배정.</li>
+                <li><strong>중복 매수 원천 차단</strong>: 이미 보유 중인 티커는 재매수하지 않고 다음 순위 탑픽으로 자동 전환.</li>
+            </ul>
+        </div>
+
+        <!-- Phase 4 -->
+        <div class="phase-card order">
+            <div class="phase-head">
+                <span>[Phase 4] 증권사 OpenAPI 주문 집행 (Order Execution)</span>
+                <span class="phase-tag tag-amber">KIS OPENAPI</span>
+            </div>
+            <ul>
+                <li><strong>초고속 주문</strong>: 0.1초 실시간 호가 조회 후 한국투자증권(KIS) OpenAPI로 즉시 매수 주문 전송.</li>
+                <li><strong>SSOT 기록</strong>: 체결 즉시 SQLite <code>my_portfolio</code>에 등록하고 <strong>-4.0% 손절가</strong>와 <strong>+15.0% 익절가</strong>를 세팅.</li>
+            </ul>
+        </div>
+
+        <!-- Phase 5 -->
+        <div class="phase-card guardian">
+            <div class="phase-head">
+                <span>[Phase 5] 실시간 리스크 가디언 데몬 (Risk Guardian)</span>
+                <span class="phase-tag tag-red">10SEC DAEMON</span>
+            </div>
+            <ul>
+                <li><strong>-4.0% 기계적 칼손절</strong>: 감정 배제 즉시 전량 매도하여 손실을 최소화 (손익비 비대칭 확보).</li>
+                <li><strong>+15.0% 돌파 후 무제한 트레일링 익절</strong>: <code>max(26일 기준선, 최근 고점 - 2.5×ATR)</code> 이탈 시까지 <strong>추세를 끝까지 홀딩(Let Winners Run)</strong>.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="rule-box">
+        <strong>💡 운용자 행동 지침</strong><br>
+        1. <strong>평상시 (Zero-Touch)</strong>: 사용자가 수동으로 매매 버튼을 누를 필요가 없으며, 터미널(<code>.bat</code>)만 켜두면 매수/보유/손절/익절 전 과정이 100% 전자동 실행됩니다.<br>
+        2. <strong>수동 버튼의 역할</strong>: 예상치 못한 시장 급변 시 즉시 포지션을 정리할 수 있는 <strong>비상 킬 스위치(Emergency Override)</strong>입니다.
+    </div>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            themeVariables: {
+                fontFamily: 'Pretendard',
+                fontSize: '12px',
+                primaryColor: '#e0f2fe',
+                primaryTextColor: '#0369a1',
+                primaryBorderColor: '#0284c7',
+                lineColor: '#64748b',
+                secondaryColor: '#f1f5f9',
+                tertiaryColor: '#f8fafc'
+            }
+        });
+    </script>
+</body>
+</html>

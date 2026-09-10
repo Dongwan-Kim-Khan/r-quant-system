@@ -8,8 +8,15 @@ from datetime import datetime, timedelta
 import pandas as pd
 import yfinance as yf
 import youtube_stream_scanner
-import db_manager
 import generate_dashboard_feed
+from al_sangmoo.infrastructure.persistence import (
+    archive_daily_recommendations,
+    get_connection,
+    get_live_portfolio,
+    init_db,
+    save_macro_history_record,
+    save_recommendation_matrix_record,
+)
 
 # Windows cp949 terminal encoding fix
 if sys.platform.startswith('win'):
@@ -19,10 +26,8 @@ if sys.platform.startswith('win'):
         pass
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-HISTORY_CSV = os.path.join(BASE_DIR, "trade_history.csv")
 REPORTS_DIR = os.path.join(BASE_DIR, "daily_reports")
 DASHBOARD_JSON = os.path.join(BASE_DIR, "dashboard_data.json")
-DASHBOARD_HTML = os.path.join(BASE_DIR, "al_sangmoo_dashboard.html")
 os.makedirs(REPORTS_DIR, exist_ok=True)
 
 def load_env_file():
@@ -72,19 +77,22 @@ def send_email_report(subject, html_body, receiver=None):
         print(f"[Email Dispatch Error] {e}")
         return False
 
-# Base Universe fallback
-UNIVERSE = [
-    "NVDA", "MSFT", "AMZN", "GOOGL", "META", "TSLA", "AAPL", "AVGO", "COST", "LLY",
-    "AMD", "QCOM", "PLTR", "SMCI", "MU", "ARM", "VST", "CEG", "GEV", "ETN",
-    "005930.KS", "000660.KS", "012450.KS"
-]
+from al_sangmoo.core.constants import (
+    WATCHLIST, STOCK_DICT, TICKER_SECTORS, get_active_watchlist, get_macro_tailwind_sectors,
+    HARD_STOP_PCT, TRAILING_ACTIVATE_PCT, CASH_PROXY_TICKER,
+    derive_partial_tp_price, derive_stop_price, derive_target_price,
+)
+from al_sangmoo.domain.risk.position_sizer import calculate_target_shares
+from al_sangmoo.domain.risk.cash_proxy import satellite_holdings, proxy_holdings
 
-from al_sangmoo.core.constants import WATCHLIST, STOCK_DICT, TICKER_SECTORS, get_macro_tailwind_sectors
+# Global 60 Universe SSOT (Dynamic Sector-Weighted)
+UNIVERSE = get_active_watchlist()
 from al_sangmoo.domain.quant.ichimoku import (
     calculate_ichimoku_indicators,
     detect_cloud_trampoline_bounce,
     compute_institutional_flow_indicators
 )
+from al_sangmoo.domain.risk.trailing_stop import compute_trailing_floor
 from al_sangmoo.domain.quant.scoring import (
     QuantIndicators,
     WeeklyTrendContext,
@@ -99,7 +107,9 @@ from al_sangmoo.domain.quant.scoring import (
 )
 from al_sangmoo.domain.quant.macro import (
     evaluate_macro_stance,
-    calculate_msi_regime
+    calculate_msi_regime,
+    extract_msi_score,
+    resolve_capital_regime,
 )
 
 def scan_and_select_2x2x2(stream_sentiment_list=None):
@@ -125,18 +135,23 @@ def scan_and_select_2x2x2(stream_sentiment_list=None):
     # 1. Macro Climate & Sector Tailwind Gate
     try:
         stream_info = youtube_stream_scanner.fetch_latest_wepoll_stream()
-        macro_climate = stream_info.get("macro_climate", {})
+        macro_climate = stream_info.get("macro_climate", {}) or {}
+        macro_gauges = stream_info.get("macro_gauges", {}) or {}
     except Exception:
-        macro_climate = evaluate_macro_stance()
-        
-    macro_stance = macro_climate.get("macro_stance", "DEFENSE_HOLD")
-    tailwind_sectors = get_macro_tailwind_sectors(macro_stance)
+        macro_climate = evaluate_macro_stance() or {}
+        macro_gauges = {}
+
+    msi_score = extract_msi_score(macro_climate, default=50.0)
+    us10y_val = float(macro_gauges.get("us10y", {}).get("val", 4.4)) if isinstance(macro_gauges.get("us10y"), dict) else 4.4
+    wti_val = float(macro_gauges.get("wti", {}).get("val", 78.0)) if isinstance(macro_gauges.get("wti"), dict) else 78.0
+    vix_val = float(macro_gauges.get("vix", {}).get("val", 16.0)) if isinstance(macro_gauges.get("vix"), dict) else 16.0
+    tailwind_sectors = get_macro_tailwind_sectors(msi_score, us10y_val, wti_val, vix_val)
     
     chart_data = {}
     for ticker in scan_list:
         try:
-            df = yf.download(ticker, period="6mo", interval="1d", progress=False)
-            if df.empty or len(df) < 55:
+            df = yf.download(ticker, period="3y", interval="1d", progress=False)
+            if df.empty or len(df) < 250:
                 continue
             if isinstance(df.columns, pd.MultiIndex):
                 df.columns = df.columns.get_level_values(0)
@@ -222,14 +237,15 @@ def scan_and_select_2x2x2(stream_sentiment_list=None):
         stream_mentioned_tickers=stream_tickers
     )
     
-    bull_picks = (tier1_picks + tier2_picks)[:2]
-    neutral_picks = (tier2_picks + tier1_picks)[2:4]
-    bear_picks = tier3_picks[:2]
+    # v2 3-Gate: Tier-1 leaders, Tier-2 pullbacks. Snipers are not bear picks.
+    bull_picks = tier1_picks[:2]
+    neutral_picks = tier2_picks[:2]
+    bear_picks = []
     
     return bull_picks, neutral_picks, bear_picks, macro_climate
 
 def evaluate_user_portfolio_positions():
-    portfolio_data = db_manager.get_live_portfolio()
+    portfolio_data = get_live_portfolio()
     holdings = portfolio_data.get("holdings", [])
     
     portfolio_alerts = []
@@ -239,25 +255,23 @@ def evaluate_user_portfolio_positions():
         cur_price = float(h['current_price'])
         pnl_pct = float(h['pnl_pct'])
         qty = float(h['quantity'])
-        target_p = float(h.get('target_price', round(buy_price * 1.15, 2)))
-        stop_p = float(h.get('stop_loss_price', round(buy_price * 0.97, 2)))
+        target_p = float(h.get('target_price', derive_target_price(buy_price)))
+        stop_p = float(h.get('stop_loss_price', derive_stop_price(buy_price)))
         
-        is_take_profit = cur_price >= target_p or pnl_pct >= 15.0
-        is_stop_loss = cur_price <= stop_p or pnl_pct <= -3.0
-        is_partial_tp = 8.0 <= pnl_pct < 15.0
+        is_stop_loss = cur_price <= stop_p or pnl_pct <= -HARD_STOP_PCT
+        is_trailing = pnl_pct >= TRAILING_ACTIVATE_PCT or float(h.get("max_gain_pct") or 0.0) >= TRAILING_ACTIVATE_PCT
+        trailing_floor = float(h.get("trailing_floor") or 0.0)
         
-        if is_take_profit:
-            badge = "전량 익절 매도"
-            advice = f"목표 수익률(+15%) 달성에 따른 전량 차익 실현 권고 (수익률 {pnl_pct:+.2f}%)"
-        elif is_stop_loss:
+        if is_stop_loss:
             badge = "칼손절 긴급 매도"
-            advice = f"손절 기준선(-3%) 이탈에 따른 전량 리스크 청산 권고 (손실률 {pnl_pct:+.2f}%)"
-        elif is_partial_tp:
-            badge = "50% 분할 익절"
-            advice = f"1차 분할 익절 구간 진입 (+{pnl_pct:.1f}%). 50% 차익 실현 후 스탑 본절가 상향"
+            advice = f"손절 기준선(-{HARD_STOP_PCT:.0f}%) 이탈에 따른 전량 리스크 청산 권고 (손실률 {pnl_pct:+.2f}%)"
+        elif is_trailing:
+            badge = "무제한 트레일링"
+            floor_txt = f" floor ${trailing_floor:,.2f}" if trailing_floor > 0 else ""
+            advice = f"+{TRAILING_ACTIVATE_PCT:.0f}% 고점 돌파 후 무제한 트레일링 홀딩 (Let Winners Run,{floor_txt} 수익률 {pnl_pct:+.2f}%)"
         else:
             badge = "보유 지속"
-            advice = f"26일 기준선 지지 유효. 손절선 ${stop_p:,.2f} 유지 / 목표가 ${target_p:,.2f}"
+            advice = f"26일 기준선 지지 유효. 손절선 ${stop_p:,.2f} 유지 / +{TRAILING_ACTIVATE_PCT:.0f}% 이후 트레일링 익절"
             
         portfolio_alerts.append({
             "ticker": ticker,
@@ -275,9 +289,13 @@ def evaluate_user_portfolio_positions():
     return portfolio_alerts
 
 def evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, today_str):
-    if os.path.exists(HISTORY_CSV):
-        history_df = pd.read_csv(HISTORY_CSV)
-    else:
+    init_db()
+    try:
+        with get_connection() as conn:
+            history_df = pd.read_sql_query("SELECT * FROM trades", conn)
+    except Exception:
+        history_df = pd.DataFrame()
+    if history_df.empty:
         history_df = pd.DataFrame(columns=[
             "date", "ticker", "type", "entry_price", "current_price",
             "pnl_pct", "max_gain_pct", "status", "days_active", "exit_advice"
@@ -308,20 +326,22 @@ def evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, 
                 new_max = max(prev_max, pnl_pct)
                 days_active = (datetime.now() - datetime.strptime(row['date'], "%Y-%m-%d")).days
                 
-                is_stop_loss = pnl_pct <= -3.0 or (pos_type == 'BULL' and cur_price < kijun)
-                is_take_profit = pnl_pct >= 15.0
-                is_partial_tp = 8.0 <= pnl_pct < 15.0
+                is_stop_loss = pnl_pct <= -HARD_STOP_PCT or (pos_type == 'BULL' and cur_price < kijun and new_max < TRAILING_ACTIVATE_PCT)
+                atr_14 = float(last['ATR14']) if 'ATR14' in last.index and pd.notna(last['ATR14']) else 0.0
+                peak_high = entry_price * (1.0 + new_max / 100.0)
+                trail_floor = compute_trailing_floor(kijun, peak_high, atr_14) if new_max >= TRAILING_ACTIVATE_PCT else 0.0
+                is_trailing_exit = pos_type == 'BULL' and new_max >= TRAILING_ACTIVATE_PCT and trail_floor > 0 and cur_price < trail_floor
                 is_expired = days_active >= 65
                 
-                if is_take_profit:
-                    status = 'CLOSED_PROFIT'
-                    advice = f"목표 수익률(+15%) 달성 (+{pnl_pct:.1f}%)"
-                elif is_stop_loss:
+                if is_stop_loss:
                     status = 'CLOSED_STOP'
-                    advice = f"손절선(-3%) 이탈 ({pnl_pct:.1f}%)"
-                elif is_partial_tp:
+                    advice = f"손절선(-{HARD_STOP_PCT:.0f}%) 또는 기준선 이탈 ({pnl_pct:.1f}%)"
+                elif is_trailing_exit:
+                    status = 'CLOSED_PROFIT'
+                    advice = f"무제한 트레일링 익절 (floor ${trail_floor:,.2f}, +{pnl_pct:.1f}%)"
+                elif new_max >= TRAILING_ACTIVATE_PCT:
                     status = 'OPEN'
-                    advice = f"50% 분할 익절 구간 (+{pnl_pct:.1f}%)"
+                    advice = f"트레일링 홀딩 (Let Winners Run, floor ${trail_floor:,.2f}, +{pnl_pct:.1f}%)"
                 elif is_expired:
                     status = 'CLOSED_EXPIRED'
                     advice = f"3개월 만기 도달 포지션 종료 ({pnl_pct:+.1f}%)"
@@ -342,50 +362,50 @@ def evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, 
     if existing_today.empty:
         new_rows = []
         for b in bull_picks:
-            new_rows.append({"date": today_str, "ticker": b['ticker'], "type": "BULL", "entry_price": b['close'], "current_price": b['close'], "pnl_pct": 0.0, "max_gain_pct": 0.0, "status": "OPEN", "days_active": 0, "exit_advice": "신규 진입 (목표가 +15%, 손절가 -3%)"})
+            b_p = float(b.get('price') or b.get('close') or 100.0)
+            new_rows.append({"date": today_str, "ticker": b['ticker'], "type": "BULL", "entry_price": b_p, "current_price": b_p, "pnl_pct": 0.0, "max_gain_pct": 0.0, "status": "OPEN", "days_active": 0, "exit_advice": f"신규 진입 (목표가 +{TRAILING_ACTIVATE_PCT:.0f}%, 손절가 -{HARD_STOP_PCT:.0f}%)"})
         for n in neutral_picks:
-            new_rows.append({"date": today_str, "ticker": n['ticker'], "type": "NEUTRAL", "entry_price": n['close'], "current_price": n['close'], "pnl_pct": 0.0, "max_gain_pct": 0.0, "status": "OPEN", "days_active": 0, "exit_advice": "중립 관망"})
+            n_p = float(n.get('price') or n.get('close') or 100.0)
+            new_rows.append({"date": today_str, "ticker": n['ticker'], "type": "NEUTRAL", "entry_price": n_p, "current_price": n_p, "pnl_pct": 0.0, "max_gain_pct": 0.0, "status": "OPEN", "days_active": 0, "exit_advice": "중립 관망"})
         for s in bear_picks:
-            new_rows.append({"date": today_str, "ticker": s['ticker'], "type": "BEAR", "entry_price": s['close'], "current_price": s['close'], "pnl_pct": 0.0, "max_gain_pct": 0.0, "status": "OPEN", "days_active": 0, "exit_advice": "리스크 회피 / 숏"})
+            s_p = float(s.get('price') or s.get('close') or 100.0)
+            new_rows.append({"date": today_str, "ticker": s['ticker'], "type": "BEAR", "entry_price": s_p, "current_price": s_p, "pnl_pct": 0.0, "max_gain_pct": 0.0, "status": "OPEN", "days_active": 0, "exit_advice": "리스크 회피 / 숏"})
             
         if new_rows:
             history_df = pd.concat([history_df, pd.DataFrame(new_rows)], ignore_index=True)
-            
-    history_df.to_csv(HISTORY_CSV, index=False)
-    
+
     # SQLite sync
     try:
-        db_manager.init_db()
-        conn = db_manager.get_db()
-        cursor = conn.cursor()
-        for idx, row in history_df.iterrows():
-            e_price = float(row['entry_price'])
-            tgt_p = round(e_price * 1.15, 2)
-            stop_p = round(e_price * 0.97, 2)
-            part_p = round(e_price * 1.08, 2)
-            now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            cursor.execute("""
-            INSERT OR REPLACE INTO trades (
-                id, date, ticker, type, entry_price, current_price,
-                target_price, partial_tp_price, stop_loss_price,
-                pnl_pct, max_gain_pct, status, days_active, exit_advice, updated_at
-            )
-            VALUES (
-                (SELECT id FROM trades WHERE date = ? AND ticker = ?),
-                ?, ?, ?, ?, ?,
-                ?, ?, ?,
-                ?, ?, ?, ?, ?, ?
-            )
-            """, (
-                row['date'], row['ticker'],
-                row['date'], row['ticker'], row['type'], e_price, float(row.get('current_price', e_price)),
-                tgt_p, part_p, stop_p,
-                float(row.get('pnl_pct', 0.0)), float(row.get('max_gain_pct', 0.0)),
-                str(row.get('status', 'OPEN')), int(row.get('days_active', 0)),
-                str(row.get('exit_advice', '보유 지속')), now_str
-            ))
-        conn.commit()
-        conn.close()
+        init_db()
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            for idx, row in history_df.iterrows():
+                e_price = float(row['entry_price'])
+                tgt_p = derive_target_price(e_price)
+                stop_p = derive_stop_price(e_price)
+                part_p = derive_partial_tp_price(e_price)
+                now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                cursor.execute("""
+                INSERT OR REPLACE INTO trades (
+                    id, date, ticker, type, entry_price, current_price,
+                    target_price, partial_tp_price, stop_loss_price,
+                    pnl_pct, max_gain_pct, status, days_active, exit_advice, updated_at
+                )
+                VALUES (
+                    (SELECT id FROM trades WHERE date = ? AND ticker = ?),
+                    ?, ?, ?, ?, ?,
+                    ?, ?, ?,
+                    ?, ?, ?, ?, ?, ?
+                )
+                """, (
+                    row['date'], row['ticker'],
+                    row['date'], row['ticker'], row['type'], e_price, float(row.get('current_price', e_price)),
+                    tgt_p, part_p, stop_p,
+                    float(row.get('pnl_pct', 0.0)), float(row.get('max_gain_pct', 0.0)),
+                    str(row.get('status', 'OPEN')), int(row.get('days_active', 0)),
+                    str(row.get('exit_advice', '보유 지속')), now_str
+                ))
+            conn.commit()
     except Exception as e:
         print(f"[SQLite Sync Warning] {e}")
         
@@ -407,366 +427,516 @@ def generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_e
     if feed_data is None:
         feed_data = {}
         
+    portfolio = feed_data.get("portfolio", {})
+    conviction = feed_data.get("conviction", {})
     macro_info = feed_data.get("macro", {})
     macro_climate = macro_info.get("macro_climate", stream_info.get("macro_climate", {}))
     macro_gauges = macro_info.get("macro_gauges", stream_info.get("macro_gauges", {}))
-    mentioned_stocks = stream_info.get("mentioned_stocks", [])
     
-    stream_title = stream_info.get("title", "바이킹스 데일리 매크로 & 라이브 방송 분석")
-    stream_url = stream_info.get("url", "https://www.youtube.com/@wepoll_original/streams")
+    # 1. Financial & Portfolio Metrics
+    holdings = portfolio.get("holdings", [])
+    tot_equity_usd = float(portfolio.get("total_equity_usd", 7500.0))
+    tot_equity_krw = int(portfolio.get("total_equity_krw", 10_000_000))
+    tot_invested = float(portfolio.get("total_invested", 0.0))
+    overall_pnl_pct = float(portfolio.get("overall_pnl_pct", 0.0) or portfolio.get("unrealized_pnl_pct", 0.0))
+    overall_pnl_amt = float(portfolio.get("overall_pnl_amount", 0.0) or portfolio.get("unrealized_pnl_amount", 0.0))
+    free_cash_usd = float(portfolio.get("free_cash_usd", tot_equity_usd - tot_invested))
+    cash_ratio_pct = float(portfolio.get("cash_ratio_pct", 50.0))
+    active_slots = int(portfolio.get("active_slot_count", len(holdings)))
     
-    vix = macro_gauges.get("vix", {"val": 15.8, "delta": "+0.4%", "status": "NORMAL"})
-    us10y = macro_gauges.get("us10y", {"val": 4.69, "delta": "+0.04%p", "status": "CRITICAL_BURDEN"})
-    dxy = macro_gauges.get("dxy", {"val": 99.5, "delta": "+0.1%", "status": "NEUTRAL"})
-    wti = macro_gauges.get("wti", {"val": 86.2, "delta": "-0.5%", "status": "INFLATION_SHOCK"})
-    
-    macro_stance = macro_climate.get("macro_stance", "DEFENSE_HOLD").replace('_', ' ')
-    msi_score = macro_climate.get("msi_score", 66.9)
-    macro_headline = macro_climate.get("macro_headline", "[거시 게이트 0단계: 거시 위험 지수 경보 / 신규 매수 보류 권고]")
-    macro_directive = macro_climate.get("macro_action_directive", "거시 지표 및 방송 지침상 이번 주는 관망 주간입니다.")
-    external_shocks = ", ".join(macro_climate.get("external_shocks", ["금리 경로 영향권", "인플레이션 변동성"]))
-    
-    rec_list = [f"{m['ticker']}(+{m['net_sentiment']} / 키워드: {', '.join(m.get('positive_reasons', []))})" for m in mentioned_stocks if m.get('host_intent') == 'BULLISH_RECOMMENDED']
-    rec_summary_str = " | ".join(rec_list[:5]) if rec_list else "바이킹스 정규 방송 문맥 분석 완료"
+    pnl_sign = "+" if overall_pnl_pct >= 0 else ""
+    pnl_color = "#10b981" if overall_pnl_pct >= 0 else "#ef4444"
+    pnl_bg = "rgba(16, 185, 129, 0.12)" if overall_pnl_pct >= 0 else "rgba(239, 68, 68, 0.12)"
 
-    html = f"""
-    <!DOCTYPE html>
-    <html lang="ko">
-    <head>
-        <meta charset="utf-8">
-        <style>
-            body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #f1f5f9; color: #0f172a; margin: 0; padding: 24px; line-height: 1.5; }}
-            .container {{ max-width: 740px; margin: 0 auto; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }}
-            .header {{ background: #0f172a; color: #ffffff; padding: 24px 28px; border-bottom: 3px solid #38bdf8; }}
-            .header h1 {{ margin: 0; font-size: 18px; font-weight: 800; letter-spacing: -0.02em; }}
-            .header .meta {{ font-size: 12px; color: #94a3b8; margin-top: 6px; }}
-            
-            .macro-alert-bar {{ background: #fffbeb; border-left: 5px solid #d97706; padding: 14px 18px; font-size: 13px; color: #92400e; font-weight: 600; line-height: 1.5; }}
-            .macro-gauges-grid {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }}
-            .macro-gauge-box {{ background: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px; padding: 8px 10px; font-size: 11px; }}
-            .macro-gauge-title {{ color: #64748b; font-size: 10px; text-transform: uppercase; font-weight: 700; }}
-            .macro-gauge-val {{ font-family: monospace; font-size: 13px; font-weight: 800; color: #0f172a; margin-top: 2px; }}
-            
-            .section {{ padding: 20px 28px; border-bottom: 1px solid #e2e8f0; }}
-            .section-title {{ font-size: 13px; font-weight: 800; color: #1e293b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #0f172a; }}
-            .macro-box {{ background: #f8fafc; border: 1px solid #cbd5e1; border-left: 4px solid #334155; padding: 12px 16px; margin-bottom: 12px; }}
-            .macro-row {{ font-size: 13px; margin-bottom: 6px; }}
-            .macro-row strong {{ color: #0f172a; }}
-            .table {{ width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }}
-            .table th {{ background: #f1f5f9; color: #475569; font-weight: 700; text-align: left; padding: 8px 10px; border: 1px solid #e2e8f0; font-family: monospace; font-size: 11px; }}
-            .table td {{ padding: 8px 10px; border: 1px solid #e2e8f0; color: #1e293b; }}
-            
-            .stock-card {{ background: #ffffff; border: 1px solid #cbd5e1; border-left: 4px solid #0f172a; padding: 12px 16px; margin-bottom: 10px; border-radius: 4px; }}
-            .stock-card-dual {{ border-left-color: #f59e0b; background: #fffdf5; border-color: #fef08a; }}
-            .stock-card-strat1 {{ border-left-color: #059669; }}
-            .stock-card-strat2 {{ border-left-color: #dc2626; }}
-            .stock-head {{ display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 14px; margin-bottom: 6px; }}
-            .stock-meta {{ font-size: 12px; color: #475569; line-height: 1.6; }}
-            .badge {{ display: inline-block; padding: 2px 6px; font-size: 10px; font-weight: 700; border-radius: 2px; font-family: monospace; }}
-            .badge-dual {{ background: #fef08a; color: #854d0e; }}
-            .badge-strat1 {{ background: #dcfce7; color: #166534; }}
-            .badge-strat2 {{ background: #fee2e2; color: #991b1b; }}
-            .badge-hold {{ background: #e0f2fe; color: #075985; }}
-            .footer {{ padding: 16px 28px; font-size: 11px; color: #64748b; background: #f8fafc; text-align: center; border-top: 1px solid #e2e8f0; }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>R-SANGMOO QUANTITATIVE DAILY BRIEFING</h1>
-                <div class="meta">발행일시: {today_str} 12:30 KST | 거시 위험 태세: <strong style="color:#fbbf24;">{macro_stance} (MSI {msi_score:.1f}pt)</strong> | 17년 퀀트 프레임워크</div>
-            </div>
-            
-            <!-- Gate 0: Macro Climate & Weekly Directive -->
-            <div class="macro-alert-bar">
-                <div style="font-size:14px; font-weight:800; color:#b45309; margin-bottom:4px;">{macro_headline}</div>
-                <div>{macro_directive}</div>
-                
-                <!-- Macro 4 Gauges -->
-                <div class="macro-gauges-grid">
-                    <div class="macro-gauge-box">
-                        <div class="macro-gauge-title">10년물 국채금리</div>
-                        <div class="macro-gauge-val">{us10y.get('val', 4.42)}% <span style="font-size:10px; color:#b45309;">({us10y.get('status', 'BURDEN')})</span></div>
-                    </div>
-                    <div class="macro-gauge-box">
-                        <div class="macro-gauge-title">달러 인덱스</div>
-                        <div class="macro-gauge-val">{dxy.get('val', 99.5)} <span style="font-size:10px; color:#64748b;">({dxy.get('status', 'NEUTRAL')})</span></div>
-                    </div>
-                    <div class="macro-gauge-box">
-                        <div class="macro-gauge-title">VIX 공포지수</div>
-                        <div class="macro-gauge-val">{vix.get('val', 15.8)} <span style="font-size:10px; color:#64748b;">({vix.get('status', 'NORMAL')})</span></div>
-                    </div>
-                    <div class="macro-gauge-box">
-                        <div class="macro-gauge-title">WTI 국제유가</div>
-                        <div class="macro-gauge-val">${wti.get('val', 78.5)} <span style="font-size:10px; color:#b45309;">({wti.get('status', 'STABLE')})</span></div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- 1. Vikings Live Broadcast Context -->
-            <div class="section">
-                <div class="section-title">1. Vikings Live Broadcast & Macro Intelligence</div>
-                <div class="macro-box">
-                    <div class="macro-row"><strong>라이브 방송 본문:</strong> <a href="{stream_url}" target="_blank" style="color:#0f172a; text-decoration:underline;">{stream_title}</a></div>
-                    <div class="macro-row"><strong>거시 리스크 요인:</strong> {external_shocks}</div>
-                    <div class="macro-row"><strong>방송 내 추천·순환매 긍정 평가 종목:</strong> <span style="font-family:monospace; font-size:12px; font-weight:600;">{rec_summary_str}</span></div>
-                </div>
-            </div>
+    # 2. Macro & Regime Stance (MSI = risk index; slots = SPY 200 SMA / SSOT fallback)
+    msi_score = extract_msi_score(macro_info)
+    slot_summary = (feed_data or {}).get("slot_allocation_summary") or {}
+    if "is_bull_regime" in macro_info:
+        is_bull = bool(macro_info["is_bull_regime"])
+    elif "is_bull_regime" in slot_summary:
+        is_bull = bool(slot_summary["is_bull_regime"])
+    else:
+        is_bull = bool(resolve_capital_regime(msi_score=msi_score, fetch_spy=False)["is_bull_regime"])
+    max_slots = 3 if is_bull else 2
+    regime_title = "BULL REGIME (강세 국면)" if is_bull else "BEAR REGIME (약세 방어 국면)"
+    regime_desc = "3-Slot 50/30/20 + QQQ Cash Proxy / 1.5x 레버리지 조건부" if is_bull else "2-Slot 25/25 + QQQ 코어 (레버리지 OFF)"
+    regime_badge_color = "#10b981" if is_bull else "#ef4444"
+    regime_badge_bg = "rgba(16, 185, 129, 0.15)" if is_bull else "rgba(239, 68, 68, 0.15)"
+    
+    macro_headline = macro_climate.get("macro_headline", f"[{regime_title}: MSI {msi_score:.1f}pt - {regime_desc}]")
+    macro_directive = macro_climate.get("macro_action_directive", "C1-M2 3-Slot 컨빅션 + QQQ Cash Proxy 자동 자금 관리 가동 중")
+    tailwind_sectors = ", ".join(macro_info.get("tailwind_sectors", ["에너지", "반도체"]))
+    
+    vix = macro_gauges.get("vix", {"val": 15.8, "status": "NORMAL"})
+    us10y = macro_gauges.get("us10y", {"val": 4.42, "status": "BURDEN"})
+    dxy = macro_gauges.get("dxy", {"val": 99.5, "status": "NEUTRAL"})
+    wti = macro_gauges.get("wti", {"val": 78.5, "status": "STABLE"})
 
-            <!-- 2. Real Portfolio Risk & Execution Monitor -->
-            <div class="section">
-                <div class="section-title">2. Real Portfolio Risk & Execution Monitor</div>
+    # 3. Top Conviction Picks
+    top_pick = conviction.get("top_pick")
+    runner_up = conviction.get("runner_up")
+    ranked_candidates = conviction.get("ranked_candidates", [])
+    
+    if not top_pick and dual_consensus:
+        d = dual_consensus[0]
+        p_val = float(d.get("price", 100.0))
+        eq = float(portfolio.get("total_equity_usd") or portfolio.get("total_value") or 7500.0)
+        sz1 = calculate_target_shares(eq, p_val, slot_rank=1, is_bull=is_bull)
+        top_pick = {
+            "ticker": d["ticker"], "name": d.get("name", d["ticker"]),
+            "sector": d.get("sector", "주도 섹터"), "conviction_score": float(d.get("score", 95.0)),
+            "rs_3m": float(d.get("rs_3m", 15.0)), "price": p_val,
+            "target_price": derive_target_price(p_val), "stop_price": derive_stop_price(p_val),
+            "sizing": {
+                "shares": sz1["shares"],
+                "allocated_usd": sz1["allocated_usd"],
+                "weight_pct": round(float(sz1.get("slot_weight") or 0.5) * 100, 1),
+                "slot_weight": sz1.get("slot_weight"),
+                "eligible": sz1.get("eligible", True),
+                "is_bull_regime": is_bull,
+            },
+            "rationale": "26일 기준선 생명선 지지 및 기관 스마트머니 잠행 매집(OBV) 확인. 최우선 집중 진입 대상 (C1-M2 Slot#1 50%)."
+        }
+    if not runner_up and len(dual_consensus) > 1:
+        d2 = dual_consensus[1]
+        p_val2 = float(d2.get("price", 100.0))
+        eq = float(portfolio.get("total_equity_usd") or portfolio.get("total_value") or 7500.0)
+        sz2 = calculate_target_shares(eq, p_val2, slot_rank=2, is_bull=is_bull)
+        runner_up = {
+            "ticker": d2["ticker"], "name": d2.get("name", d2["ticker"]),
+            "sector": d2.get("sector", "주도 섹터"), "conviction_score": float(d2.get("score", 90.0)),
+            "rs_3m": float(d2.get("rs_3m", 12.0)), "price": p_val2,
+            "target_price": derive_target_price(p_val2), "stop_price": derive_stop_price(p_val2),
+            "sizing": {
+                "shares": sz2["shares"],
+                "allocated_usd": sz2["allocated_usd"],
+                "weight_pct": round(float(sz2.get("slot_weight") or 0.3) * 100, 1),
+                "slot_weight": sz2.get("slot_weight"),
+                "eligible": sz2.get("eligible", True),
+                "is_bull_regime": is_bull,
+            },
+            "rationale": "주봉 대세 상승 안착 및 주도 섹터 모멘텀 후속 주자 (C1-M2 Slot#2 30%)."
+        }
+
+    # Build HTML
+    html = f"""<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>알상무 퀀트 데일리 브리핑 ({today_str})</title>
+    <style>
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0b0f19; color: #e2e8f0; margin: 0; padding: 16px; line-height: 1.5; }}
+        .container {{ max-width: 760px; margin: 0 auto; background: #111827; border: 1px solid #1f2937; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }}
+        .header {{ background: #0f172a; padding: 24px 28px; border-bottom: 2px solid #38bdf8; }}
+        .header-title {{ font-size: 18px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em; margin: 0; }}
+        .header-meta {{ font-size: 12px; color: #94a3b8; margin-top: 6px; font-family: monospace; }}
+        
+        .kpi-grid {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 18px 24px; background: #131d31; border-bottom: 1px solid #1f2937; }}
+        .kpi-card {{ background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 12px 14px; }}
+        .kpi-label {{ font-size: 10.5px; font-weight: 700; color: #94a3b8; text-transform: uppercase; }}
+        .kpi-val {{ font-size: 15px; font-weight: 800; color: #ffffff; margin-top: 4px; font-family: monospace; }}
+        
+        .section {{ padding: 22px 28px; border-bottom: 1px solid #1f2937; }}
+        .section-header {{ display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }}
+        .section-title {{ font-size: 13px; font-weight: 800; color: #38bdf8; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 8px; }}
+        
+        .table {{ width: 100%; border-collapse: collapse; font-size: 11.5px; }}
+        .table th {{ background: #1e293b; color: #94a3b8; font-weight: 700; text-align: left; padding: 9px 12px; border-bottom: 1px solid #334155; font-family: monospace; font-size: 10.5px; }}
+        .table td {{ padding: 10px 12px; border-bottom: 1px solid #1f2937; color: #e2e8f0; vertical-align: middle; }}
+        
+        .badge {{ display: inline-block; padding: 2px 7px; font-size: 10px; font-weight: 800; border-radius: 4px; font-family: monospace; }}
+        
+        .macro-box {{ background: #1e293b; border: 1px solid #334155; border-left: 4px solid {regime_badge_color}; border-radius: 8px; padding: 14px 18px; margin-bottom: 14px; }}
+        .macro-gauges {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }}
+        .gauge-item {{ background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 8px 10px; }}
+        .gauge-label {{ font-size: 10px; font-weight: 700; color: #94a3b8; }}
+        .gauge-val {{ font-size: 12.5px; font-weight: 800; color: #ffffff; font-family: monospace; margin-top: 2px; }}
+        
+        .pick-card {{ background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 16px 18px; margin-bottom: 12px; }}
+        .pick-card-top {{ border-left: 4px solid #f59e0b; background: linear-gradient(135deg, rgba(245, 158, 11, 0.06) 0%, rgba(30, 41, 59, 1) 100%); }}
+        .pick-card-runner {{ border-left: 4px solid #38bdf8; background: linear-gradient(135deg, rgba(56, 189, 248, 0.06) 0%, rgba(30, 41, 59, 1) 100%); }}
+        .pick-head {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }}
+        .pick-title {{ font-size: 14px; font-weight: 800; color: #ffffff; font-family: monospace; }}
+        .pick-body {{ font-size: 12px; color: #cbd5e1; line-height: 1.6; }}
+        
+        .footer {{ padding: 20px 28px; font-size: 11px; color: #64748b; background: #0f172a; text-align: center; line-height: 1.6; }}
+        
+        @media only screen and (max-width: 600px) {{
+            body {{ padding: 6px; }}
+            .kpi-grid, .macro-gauges {{ grid-template-columns: repeat(2, 1fr); }}
+            .section {{ padding: 16px 16px; }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1 class="header-title">AL-SANGMOO QUANTITATIVE DAILY COCKPIT</h1>
+            <div class="header-meta">발행일시: {today_str} 12:30 KST | 17년 기관 퀀트 프레임워크 | Global 60 Universe</div>
+        </div>
+
+        <!-- 4 KPI Cockpit Cards -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-label">내 계좌 총 평가액</div>
+                <div class="kpi-val">${tot_equity_usd:,.2f}</div>
+                <div style="font-size:10px; color:#94a3b8; font-family:monospace; margin-top:2px;">약 ₩{tot_equity_krw:,.0f}</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">계좌 전체 수익률</div>
+                <div class="kpi-val" style="color:{pnl_color};">{pnl_sign}{overall_pnl_pct:.2f}%</div>
+                <div style="font-size:10px; color:{pnl_color}; font-family:monospace; margin-top:2px;">{pnl_sign}${overall_pnl_amt:,.2f}</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">오늘의 거시 국면</div>
+                <div class="kpi-val" style="color:{regime_badge_color}; font-size:12.5px;">{regime_title.split(' ')[0]}</div>
+                <div style="font-size:10px; color:#94a3b8; font-family:monospace; margin-top:2px;">MSI {msi_score:.1f}pt</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">3-SLOT 포트폴리오</div>
+                <div class="kpi-val" style="color:#38bdf8;">{active_slots} / {max_slots} Slots</div>
+                <div style="font-size:10px; color:#94a3b8; font-family:monospace; margin-top:2px;">현금 비중 {cash_ratio_pct:.1f}%</div>
+            </div>
+        </div>
+
+        <!-- Section 1: Live Portfolio Risk & Exit Monitor -->
+        <div class="section">
+            <div class="section-header">
+                <div class="section-title">
+                    <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#10b981;"></span>
+                    <span>1. LIVE PORTFOLIO HOLDINGS &amp; RISK MONITOR (내 계좌 보유 현황)</span>
+                </div>
+                <span class="badge" style="background:#1e293b; color:#94a3b8;">{len(holdings)} HOLDINGS ACTIVE</span>
+            </div>
     """
-    if portfolio_alerts:
+
+    if holdings:
         html += """
+            <div style="overflow-x:auto;">
                 <table class="table">
                     <thead>
                         <tr>
                             <th>TICKER</th>
-                            <th>보유수량</th>
-                            <th>매수가</th>
-                            <th>현재가</th>
-                            <th>수익률</th>
-                            <th>목표가(+15%)</th>
-                            <th>손절가(-4%)</th>
-                            <th>실전 대응 지침</th>
+                            <th style="text-align:right;">QTY</th>
+                            <th style="text-align:right;">BUY</th>
+                            <th style="text-align:right;">CURRENT</th>
+                            <th style="text-align:right;">PNL %</th>
+                            <th style="text-align:right;">STOP (-5%)</th>
+                            <th style="text-align:right;">TARGET (+15%)</th>
+                            <th>GUARDIAN ACTION</th>
                         </tr>
                     </thead>
                     <tbody>
         """
-        for p in portfolio_alerts:
-            pnl_color = "#059669" if p['pnl_pct'] > 0 else "#dc2626"
-            badge_class = "badge-strat1" if "익절" in p['badge'] else ("badge-strat2" if "손절" in p['badge'] else "badge-hold")
+        for h in holdings:
+            t = h.get("ticker", "")
+            qty_val = float(h.get("quantity", 0))
+            buy_p = float(h.get("buy_price", 0))
+            cur_p = float(h.get("current_price", buy_p))
+            pnl_val = float(h.get("pnl_pct", 0.0))
+            stop_p = float(h.get("stop_loss_price", derive_stop_price(buy_p)))
+            tgt_p = float(h.get("target_price", derive_target_price(buy_p)))
+            advice = h.get("exit_advice", "보유 지속 (가디언 감시 중)")
+
+            item_color = "#10b981" if pnl_val >= 0 else "#ef4444"
+            item_sign = "+" if pnl_val >= 0 else ""
+            badge_bg = "rgba(16, 185, 129, 0.15)" if pnl_val >= 0 else "rgba(239, 68, 68, 0.15)"
+
             html += f"""
                         <tr>
-                            <td><strong>{p['ticker']}</strong></td>
-                            <td>{f"{p['quantity']:.4f}".rstrip('0').rstrip('.')}주</td>
-                            <td>${p['buy_price']:,.2f}</td>
-                            <td>${p['cur_price']:,.2f}</td>
-                            <td style="color:{pnl_color}; font-weight:700;">{p['pnl_pct']:+.2f}%</td>
-                            <td>${p['target_price']:,.2f}</td>
-                            <td>${p['stop_loss_price']:,.2f}</td>
-                            <td><span class="badge {badge_class}">{p['badge']}</span> {p['advice']}</td>
+                            <td><strong style="color:#ffffff; font-family:monospace; font-size:12px;">{t}</strong></td>
+                            <td style="text-align:right; font-family:monospace; color:#38bdf8; font-weight:700;">{qty_val:,.0f}주</td>
+                            <td style="text-align:right; font-family:monospace;">${buy_p:,.2f}</td>
+                            <td style="text-align:right; font-family:monospace; color:#ffffff; font-weight:700;">${cur_p:,.2f}</td>
+                            <td style="text-align:right; font-family:monospace; font-weight:800; color:{item_color};"><span style="background:{badge_bg}; padding:2px 6px; border-radius:4px;">{item_sign}{pnl_val:.2f}%</span></td>
+                            <td style="text-align:right; font-family:monospace; color:#ef4444;">${stop_p:,.2f}</td>
+                            <td style="text-align:right; font-family:monospace; color:#10b981;">${tgt_p:,.2f}</td>
+                            <td style="font-size:11px; color:#cbd5e1;">{advice}</td>
                         </tr>
             """
         html += """
                     </tbody>
                 </table>
+            </div>
         """
     else:
         html += """
-                <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:14px; font-size:12px; color:#64748b; text-align:center;">
-                    [실계좌 보유 현황: 0 종목] 현재 실제 포트폴리오에 등록된 보유 종목이 없습니다.<br>
-                    웹 대시보드(http://localhost:8000)에서 포지션 진입 시 실시간 손절(-4%) 및 목표가(+15%) 추적 모니터링이 자동 개시됩니다.
-                </div>
-        """
-
-    html += """
+            <div style="background:#1e293b; border:1px dashed #334155; border-radius:8px; padding:20px; text-align:center; color:#94a3b8; font-size:12px;">
+                [보유 종목 없음] 현재 100% 현금 대기 상태입니다.<br>
+                미국장 개장 시 오토파일럿 트레이더가 최우선 확신도 종목으로 3-Slot 분할 진입을 준비합니다.
             </div>
-
-            <!-- 3. Tactical 3-Column Quant Portfolio -->
-            <div class="section">
-                <div class="section-title">3. Tactical 3-Tier Institutional Quant Signals (거시 로테이션 & 기관 수급 잠행 매집 추천주)</div>
-                <div style="font-size:11px; color:#475569; margin:-6px 0 12px 0; font-family:monospace; background:#f1f5f9; padding:6px 10px; border-radius:4px; border:1px solid #cbd5e1;">
-                    • <strong>자산 배분 나침반:</strong> <span style="color:#b45309; font-weight:700;">[Tier 1 집중형 60~70% CORE]</span> | <span style="color:#059669; font-weight:700;">[Tier 2 안정형 20% BASE]</span> | <span style="color:#dc2626; font-weight:700;">[Tier 3 스나이퍼 10% TACTICAL]</span>
-                </div>
-    """
-    
-    # Helper for item badges
-    def format_item_badges(item):
-        badges_str = ""
-        # Sector badge
-        if item.get("sector"):
-            badges_str += f""" &nbsp;<span style="background:#f1f5f9; color:#475569; border:1px solid #94a3b8; padding:1px 5px; font-size:10px; font-weight:700; font-family:monospace; border-radius:3px;">[{item['sector']}]</span>"""
-        # OBV Status
-        if item.get("obv_status") == "STEALTH_ACCUM":
-            badges_str += f""" &nbsp;<span style="background:#dcfce7; color:#15803d; border:1px solid #16a34a; padding:1px 5px; font-size:10px; font-weight:700; font-family:monospace; border-radius:3px;">[OBV: STEALTH ACCUM]</span>"""
-        elif item.get("obv_status") == "BULL_FLOW":
-            badges_str += f""" &nbsp;<span style="background:#e0f2fe; color:#0369a1; border:1px solid #0284c7; padding:1px 5px; font-size:10px; font-weight:700; font-family:monospace; border-radius:3px;">[OBV: INFLOW]</span>"""
-        # Flow Ratio
-        if item.get("flow_ratio") and float(item.get("flow_ratio", 1.0)) >= 1.3:
-            badges_str += f""" &nbsp;<span style="background:#fef3c7; color:#92400e; border:1px solid #d97706; padding:1px 5px; font-size:10px; font-weight:700; font-family:monospace; border-radius:3px;">[FLOW: {item['flow_ratio']:.1f}x]</span>"""
-        # Streak badge
-        if item.get("streak_days", 1) >= 2:
-            badges_str += f""" &nbsp;<span style="background:#fef3c7; color:#92400e; border:1px solid #d97706; padding:1px 5px; font-size:10px; font-weight:700; font-family:monospace; border-radius:3px;">[{item['streak_days']}D STREAK]</span>"""
-        # In Wallet badge
-        if item.get("in_wallet"):
-            pnl = item.get("holding_pnl", 0.0)
-            pnl_sign = "+" if pnl >= 0 else ""
-            badges_str += f""" &nbsp;<span style="background:#e0f2fe; color:#0369a1; border:1px solid #0284c7; padding:1px 5px; font-size:10px; font-weight:700; font-family:monospace; border-radius:3px;">[IN WALLET: {pnl_sign}{pnl:.1f}%]</span>"""
-        return badges_str
-
-    # 3.1. Tier 1: Macro Leader & Smart Money Accumulation
-    if dual_consensus:
-        html += """
-                <div style="font-size:13px; font-weight:800; color:#b45309; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
-                    <span>[TIER 1 최우선 주도주] MACRO & SMART MONEY ACCUMULATION (거시 순풍 + 기관 잠행 매집 4선)</span>
-                </div>
         """
-        for d in dual_consensus:
-            ext_badges = format_item_badges(d)
-            wallet_style = "border-left: 4px solid #0284c7; background: #f0f9ff;" if d.get("in_wallet") else ""
-            html += f"""
-                <div class="stock-card stock-card-dual" style="{wallet_style}">
-                    <div class="stock-head">
-                        <span><strong>{d['ticker']}</strong> &nbsp;<span style="font-size:12px; color:#64748b;">{d.get('name','')}</span> &nbsp;<span class="badge badge-dual">TIER 1 주도주 {d['score']}점</span>{ext_badges}</span>
-                        <span style="font-family:monospace; font-weight:800;">${d['price']:,.2f}</span>
-                    </div>
-                    <div class="stock-meta">
-                        • <strong>26일 기준선 이격:</strong> {d['kijun_gap']:+.2f}% | <strong>20일 거래량 비율:</strong> {d['vol_ratio']}% (수급 마름 확인)<br>
-                        • <strong>1차 목표가(+15%):</strong> <span style="color:#059669; font-weight:700;">${d['target_price']:,.2f}</span> | <strong>칼손절 기준선(-4%):</strong> <span style="color:#dc2626; font-weight:700;">${d['stop_price']:,.2f}</span><br>
-                        • <strong>기관 퀀트 분석:</strong> 거시 순풍 섹터 부합 및 26일 기준선 안전 지지 구역 내 기관 잠행 매집(OBV/양봉수급) 확인 완료. 최우선 집중 공략 대상.
-                    </div>
-                </div>
-            """
-
-    # 3.2. Tier 2: Structural 26D Pullback
-    if strat1_exclusive:
-        html += """
-                <div style="font-size:13px; font-weight:800; color:#059669; margin:16px 0 8px 0;">
-                    [TIER 2 정석 안정주] STRUCTURAL 26D PULLBACK (26일 기준선 지지 1차 분할 매수 적합주)
-                </div>
-        """
-        for p in strat1_exclusive:
-            ext_badges = format_item_badges(p)
-            wallet_style = "border-left: 4px solid #0284c7; background: #f0f9ff;" if p.get("in_wallet") else ""
-            html += f"""
-                <div class="stock-card stock-card-strat1" style="{wallet_style}">
-                    <div class="stock-head">
-                        <span><strong>{p['ticker']}</strong> &nbsp;<span style="font-size:12px; color:#64748b;">{p.get('name','')}</span> &nbsp;<span class="badge badge-strat1">TIER 2 적합도 {p['score']}점</span>{ext_badges}</span>
-                        <span style="font-family:monospace; font-weight:800;">${p['price']:,.2f}</span>
-                    </div>
-                    <div class="stock-meta">
-                        • <strong>26일 기준선 이격:</strong> {p['kijun_gap']:+.2f}% | <strong>20일 거래량 비율:</strong> {p['vol_ratio']}%<br>
-                        • <strong>1차 목표가(+15%):</strong> <span style="color:#059669; font-weight:700;">${p['target_price']:,.2f}</span> | <strong>손절 기준선(-4%):</strong> <span style="color:#dc2626; font-weight:700;">${p['stop_price']:,.2f}</span><br>
-                        • <strong>기관 퀀트 분석:</strong> 주봉 대세 상승 안착 및 26일 기준선 생명선 지지 확인. 거시 변동성 진정 시 1차 분할 매수 진입 대상.
-                    </div>
-                </div>
-            """
-
-    # 3.3. Tier 3: Cloud Bounce Sniper Radar
-    if strat2_exclusive:
-        html += """
-                <div style="font-size:13px; font-weight:800; color:#dc2626; margin:16px 0 8px 0;">
-                    [TIER 3 스나이퍼] CLOUD BOUNCE SNIPER RADAR (일목 구름대 지지 도약 2단계 발사대 모멘텀주)
-                </div>
-        """
-        for s in strat2_exclusive:
-            ext_badges = format_item_badges(s)
-            wallet_style = "border-left: 4px solid #0284c7; background: #f0f9ff;" if s.get("in_wallet") else ""
-            html += f"""
-                <div class="stock-card stock-card-strat2" style="{wallet_style}">
-                    <div class="stock-head">
-                        <span><strong>{s['ticker']}</strong> &nbsp;<span style="font-size:12px; color:#64748b;">{s.get('name','')}</span> &nbsp;<span class="badge badge-strat2">TIER 3 스나이퍼 {s['score']}점</span>{ext_badges}</span>
-                        <span style="font-family:monospace; font-weight:800;">${s['price']:,.2f}</span>
-                    </div>
-                    <div class="stock-meta">
-                        • <strong>26일 기준선 이격:</strong> {s['kijun_gap']:+.2f}% | <strong>20일 거래량 비율:</strong> {s['vol_ratio']}%<br>
-                        • <strong>1차 목표가(+15%):</strong> <span style="color:#059669; font-weight:700;">${s['target_price']:,.2f}</span> | <strong>손절 기준선(-4%):</strong> <span style="color:#dc2626; font-weight:700;">${s['stop_price']:,.2f}</span><br>
-                        • <strong>기관 퀀트 분석:</strong> 일목 구름대 하단 트램펄린 반등 완료 후 상방 탄력 가속 구간. 단기 스윙 공략 대상.
-                    </div>
-                </div>
-            """
 
     html += f"""
+        </div>
+
+        <!-- Section 2: Macro Regime & Climate Diagnosis -->
+        <div class="section">
+            <div class="section-title">
+                <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:{regime_badge_color};"></span>
+                <span>2. MACRO CLIMATE &amp; MSI REGIME (거시 시장 국면 진단)</span>
             </div>
 
-            <!-- 4. Model Governance & Verification -->
-            <div class="section">
-                <div class="section-title">4. Model Governance & Verification</div>
-                <div style="font-size:12px; color:#475569;">
-                    • <strong>전수 포워드 트래킹 상태:</strong> {health_status}<br>
-                    • <strong>시스템 아키텍처:</strong> Gate 0 (거시 기후) ➔ Gate 1 (방송 문맥 NLP) ➔ Gate 2 (R상무 17년 퀀트: 주봉 대세 + 일봉 3단 그리드)<br>
-                    • <strong>웹 대시보드 링크:</strong> <a href="http://localhost:8000" target="_blank" style="color:#0284c7; font-weight:700; text-decoration:underline;">http://localhost:8000 (R상무 퀀트 통합 대시보드)</a>
+            <div class="macro-box">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                    <span style="font-size:13px; font-weight:800; color:#ffffff;">{macro_headline}</span>
+                    <span class="badge" style="background:{regime_badge_bg}; color:{regime_badge_color}; border:1px solid {regime_badge_color};">{regime_title}</span>
+                </div>
+                <div style="font-size:12px; color:#cbd5e1; line-height:1.6;">
+                    • <strong>거시 운용 지침:</strong> {macro_directive}<br>
+                    • <strong>주도 순풍 섹터:</strong> <span style="color:#38bdf8; font-weight:700;">{tailwind_sectors}</span>
+                </div>
+
+                <div class="macro-gauges">
+                    <div class="gauge-item">
+                        <div class="gauge-label">10년물 국채금리</div>
+                        <div class="gauge-val">{us10y.get('val', 4.42)}% <span style="font-size:10px; color:#94a3b8;">({us10y.get('status', 'BURDEN')})</span></div>
+                    </div>
+                    <div class="gauge-item">
+                        <div class="gauge-label">달러 인덱스</div>
+                        <div class="gauge-val">{dxy.get('val', 99.5)} <span style="font-size:10px; color:#94a3b8;">({dxy.get('status', 'NEUTRAL')})</span></div>
+                    </div>
+                    <div class="gauge-item">
+                        <div class="gauge-label">VIX 변동성</div>
+                        <div class="gauge-val">{vix.get('val', 15.8)} <span style="font-size:10px; color:#94a3b8;">({vix.get('status', 'NORMAL')})</span></div>
+                    </div>
+                    <div class="gauge-item">
+                        <div class="gauge-label">WTI 국제유가</div>
+                        <div class="gauge-val">${wti.get('val', 78.5)} <span style="font-size:10px; color:#94a3b8;">({wti.get('status', 'STABLE')})</span></div>
+                    </div>
                 </div>
             </div>
-            
-            <div class="footer">
-                R-Sangmoo Quantitative Risk Engine • Confidential Portfolio Report • Generated Daily at 12:30 KST
+        </div>
+
+        <!-- Section 3: Today's Top Conviction Alpha Picks -->
+        <div class="section">
+            <div class="section-title">
+                <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#f59e0b;"></span>
+                <span>3. TODAY'S TOP CONVICTION ALPHA PICKS (오늘 발굴된 최상위 퀀트 추천주)</span>
+            </div>
+    """
+
+    # Top Pick Card
+    if top_pick:
+        tp_t = top_pick.get("ticker", "")
+        tp_n = top_pick.get("name", tp_t)
+        tp_score = float(top_pick.get("conviction_score", 90.0))
+        tp_rs = float(top_pick.get("rs_3m", 0.0))
+        tp_p = float(top_pick.get("price", 0.0))
+        tp_tgt = float(top_pick.get("target_price", derive_target_price(tp_p)))
+        tp_stp = float(top_pick.get("stop_price", derive_stop_price(tp_p)))
+        tp_sec = top_pick.get("sector", "LEADER")
+        tp_size = top_pick.get("sizing", {})
+        tp_shares = tp_size.get("shares", calculate_target_shares(
+            float(portfolio.get("total_equity_usd") or 7500.0), max(1.0, tp_p), slot_rank=1, is_bull=is_bull
+        ).get("shares", 1))
+        tp_usd = tp_size.get("allocated_usd", round(tp_p * tp_shares, 2))
+        tp_rat = top_pick.get("rationale", "일목균형표 26일 기준선 지지 및 기관 잠행 매집 확인 완료.")
+
+        html += f"""
+            <div class="pick-card pick-card-top">
+                <div class="pick-head">
+                    <div>
+                        <span class="badge" style="background:#f59e0b; color:#0f172a; font-weight:900; margin-right:6px;">🥇 RANK #1 TOP CONVICTION</span>
+                        <span class="pick-title">{tp_t} <span style="font-size:12px; color:#94a3b8; font-weight:normal;">({tp_n})</span></span>
+                        <span class="badge" style="background:#1e293b; color:#cbd5e1; border:1px solid #475569; margin-left:6px;">[{tp_sec}]</span>
+                    </div>
+                    <div style="text-align:right;">
+                        <span style="font-family:monospace; font-size:16px; font-weight:800; color:#f59e0b;">{tp_score:.1f}점</span>
+                        <span style="font-size:10px; color:#94a3b8; display:block; font-family:monospace;">3M RS: {tp_rs:+.1f}%</span>
+                    </div>
+                </div>
+                <div class="pick-body">
+                    • <strong>진입 권장가:</strong> <span style="font-family:monospace; font-weight:700; color:#ffffff;">${tp_p:,.2f}</span> &nbsp;|&nbsp; <strong>목표가(+15%):</strong> <span style="font-family:monospace; font-weight:700; color:#10b981;">${tp_tgt:,.2f}</span> &nbsp;|&nbsp; <strong>손절선(-5%):</strong> <span style="font-family:monospace; font-weight:700; color:#ef4444;">${tp_stp:,.2f}</span><br>
+                    • <strong>1,000만원 기준 권장 수량:</strong> <span style="font-family:monospace; font-weight:700; color:#38bdf8;">{tp_shares}주 (${tp_usd:,.2f} / 포트폴리오 약 33%)</span><br>
+                    • <strong>퀀트 분석 사유:</strong> {tp_rat}
+                </div>
+            </div>
+        """
+
+    # Runner Up Card
+    if runner_up:
+        ru_t = runner_up.get("ticker", "")
+        ru_n = runner_up.get("name", ru_t)
+        ru_score = float(runner_up.get("conviction_score", 85.0))
+        ru_rs = float(runner_up.get("rs_3m", 0.0))
+        ru_p = float(runner_up.get("price", 0.0))
+        ru_tgt = float(runner_up.get("target_price", derive_target_price(ru_p)))
+        ru_stp = float(runner_up.get("stop_price", derive_stop_price(ru_p)))
+        ru_sec = runner_up.get("sector", "RUNNER")
+        ru_size = runner_up.get("sizing", {})
+        ru_shares = ru_size.get("shares", calculate_target_shares(
+            float(portfolio.get("total_equity_usd") or 7500.0), max(1.0, ru_p), slot_rank=2, is_bull=is_bull
+        ).get("shares", 1))
+        ru_usd = ru_size.get("allocated_usd", round(ru_p * ru_shares, 2))
+        ru_rat = runner_up.get("rationale", "주봉 대세 상승 안착 및 주도 섹터 2위 모멘텀 후보.")
+
+        html += f"""
+            <div class="pick-card pick-card-runner">
+                <div class="pick-head">
+                    <div>
+                        <span class="badge" style="background:#38bdf8; color:#0f172a; font-weight:900; margin-right:6px;">🥈 RANK #2 RUNNER UP</span>
+                        <span class="pick-title">{ru_t} <span style="font-size:12px; color:#94a3b8; font-weight:normal;">({ru_n})</span></span>
+                        <span class="badge" style="background:#1e293b; color:#cbd5e1; border:1px solid #475569; margin-left:6px;">[{ru_sec}]</span>
+                    </div>
+                    <div style="text-align:right;">
+                        <span style="font-family:monospace; font-size:16px; font-weight:800; color:#38bdf8;">{ru_score:.1f}점</span>
+                        <span style="font-size:10px; color:#94a3b8; display:block; font-family:monospace;">3M RS: {ru_rs:+.1f}%</span>
+                    </div>
+                </div>
+                <div class="pick-body">
+                    • <strong>진입 권장가:</strong> <span style="font-family:monospace; font-weight:700; color:#ffffff;">${ru_p:,.2f}</span> &nbsp;|&nbsp; <strong>목표가(+15%):</strong> <span style="font-family:monospace; font-weight:700; color:#10b981;">${ru_tgt:,.2f}</span> &nbsp;|&nbsp; <strong>손절선(-5%):</strong> <span style="font-family:monospace; font-weight:700; color:#ef4444;">${ru_stp:,.2f}</span><br>
+                    • <strong>1,000만원 기준 권장 수량:</strong> <span style="font-family:monospace; font-weight:700; color:#38bdf8;">{ru_shares}주 (${ru_usd:,.2f} / 포트폴리오 약 33%)</span><br>
+                    • <strong>퀀트 분석 사유:</strong> {ru_rat}
+                </div>
+            </div>
+        """
+
+    # Top 5 Ranked Candidates Table
+    if ranked_candidates:
+        html += """
+            <div style="font-size:12px; font-weight:800; color:#cbd5e1; margin:16px 0 8px 0; font-family:monospace;">
+                📊 GLOBAL 60 UNIVERSE TOP 5 RANK MATRIX
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th style="width:40px;">순위</th>
+                            <th>TICKER</th>
+                            <th>SECTOR</th>
+                            <th style="text-align:right;">SCORE</th>
+                            <th style="text-align:right;">3M RS</th>
+                            <th style="text-align:right;">PRICE</th>
+                            <th>FLOW / OBV</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        """
+        for c in ranked_candidates[:5]:
+            rk = c.get("conviction_rank", 1)
+            tk = c.get("ticker", "")
+            nm = c.get("name", tk)
+            sc = float(c.get("conviction_score", 0.0))
+            rs = float(c.get("rs_3m", 0.0))
+            pr = float(c.get("price", 0.0))
+            sec = c.get("sector", "GENERAL")
+            obv = c.get("obv_status", "NORMAL")
+            obv_label = "[잠행매집]" if obv == "STEALTH_ACCUM" else "[수급유입]" if obv == "BULL_FLOW" else "[중립]"
+            obv_color = "#10b981" if obv in ("STEALTH_ACCUM", "BULL_FLOW") else "#94a3b8"
+
+            html += f"""
+                        <tr>
+                            <td style="font-family:monospace; font-weight:800; color:#38bdf8;">#{rk}</td>
+                            <td><strong style="color:#ffffff; font-family:monospace;">{tk}</strong> <span style="font-size:10.5px; color:#94a3b8;">({nm})</span></td>
+                            <td style="font-size:11px; color:#cbd5e1;">{sec}</td>
+                            <td style="text-align:right; font-family:monospace; font-weight:800; color:#f59e0b;">{sc:.1f}</td>
+                            <td style="text-align:right; font-family:monospace; color:{'#10b981' if rs>=0 else '#ef4444'};">{rs:+.1f}%</td>
+                            <td style="text-align:right; font-family:monospace; color:#ffffff;">${pr:,.2f}</td>
+                            <td style="font-size:10.5px; color:{obv_color}; font-family:monospace;">{obv_label}</td>
+                        </tr>
+            """
+        html += """
+                    </tbody>
+                </table>
+            </div>
+        """
+
+    html += f"""
+        </div>
+
+        <!-- Section 4: System Governance -->
+        <div class="section">
+            <div class="section-title">
+                <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#38bdf8;"></span>
+                <span>4. 24/7 SYSTEM GOVERNANCE &amp; TERMINAL LINK</span>
+            </div>
+            <div style="font-size:12px; color:#94a3b8; line-height:1.6;">
+                • <strong>포워드 트래킹 상태:</strong> {health_status}<br>
+                • <strong>포트폴리오 가디언:</strong> 10초 주기 실시간 칼손절(-5%) 및 무제한 트레일링 익절(+15%) 무인 감시 가동 중<br>
+                • <strong>오토파일럿 트레이더:</strong> 미국장 개장 시(22:30 KST) 슬롯 여유 확인 후 자동 매수 대기 중<br>
+                • <strong>실시간 터미널 대시보드:</strong> <a href="http://localhost:8000" target="_blank" style="color:#38bdf8; font-weight:700; text-decoration:underline;">http://localhost:8000 (알상무 퀀트 통합 터미널)</a>
             </div>
         </div>
-    </body>
-    </html>
-    """
+
+        <!-- Footer -->
+        <div class="footer">
+            AL-SANGMOO QUANTITATIVE RISK ENGINE • 17-YEAR INSTITUTIONAL ALPHA SYSTEM<br>
+            자동 발행: 매일 12:30 KST (GitHub Actions Forward Pipeline) • Confidential Portfolio Audit
+        </div>
+    </div>
+</body>
+</html>
+"""
     return html
 
-def print_markdown_briefing(today_str, dual_consensus, strat1_exclusive, strat2_exclusive, portfolio_alerts, health_status, stream_info=None):
+def print_markdown_briefing(today_str, dual_consensus, strat1_exclusive, strat2_exclusive, portfolio_alerts, health_status, stream_info=None, feed_data=None):
     if stream_info is None:
         stream_info = {}
+    if feed_data is None:
+        feed_data = {}
         
-    stream_title = stream_info.get("title", "바이킹스 데일리 매크로 & 라이브 방송 분석")
-    stream_url = stream_info.get("url", "https://www.youtube.com/@wepoll_original/streams")
-    macro_climate = stream_info.get("macro_climate", {})
-    macro_gauges = stream_info.get("macro_gauges", {})
+    portfolio = feed_data.get("portfolio", {})
+    conviction = feed_data.get("conviction", {})
+    macro_info = feed_data.get("macro", {})
+    macro_climate = macro_info.get("macro_climate", stream_info.get("macro_climate", {}))
+    macro_gauges = macro_info.get("macro_gauges", stream_info.get("macro_gauges", {}))
+    
+    tot_equity_usd = float(portfolio.get("total_equity_usd", 7500.0))
+    overall_pnl_pct = float(portfolio.get("overall_pnl_pct", 0.0) or portfolio.get("unrealized_pnl_pct", 0.0))
+    msi_score = extract_msi_score(macro_info)
+    slot_summary = feed_data.get("slot_allocation_summary") or {}
+    if "is_bull_regime" in macro_info:
+        is_bull = bool(macro_info["is_bull_regime"])
+    elif "is_bull_regime" in slot_summary:
+        is_bull = bool(slot_summary["is_bull_regime"])
+    else:
+        is_bull = bool(resolve_capital_regime(msi_score=msi_score, fetch_spy=False)["is_bull_regime"])
+    
+    top_pick = conviction.get("top_pick", {})
+    runner_up = conviction.get("runner_up", {})
     
     vix = macro_gauges.get("vix", {"val": 15.8, "status": "NORMAL"})
     us10y = macro_gauges.get("us10y", {"val": 4.42, "status": "BURDEN"})
     wti = macro_gauges.get("wti", {"val": 78.5, "status": "STABLE"})
     
-    macro_headline = macro_climate.get("macro_headline", "[거시 게이트 0단계: 이번 주 신규 매수 보류 / 관망·현금 유지 권고]")
-    macro_directive = macro_climate.get("macro_action_directive", "거시 지표 및 방송 지침상 이번 주는 관망 주간입니다.")
+    md = f"""# 🏛️ AL-SANGMOO QUANT DAILY BRIEFING ({today_str})
 
-    md = f"""# R-SANGMOO QUANTITATIVE TACTICAL REPORT ({today_str})
-
-발행일시: {today_str} 12:30 KST | 3단계 게이트 의사결정 파이프라인 (거시 기후 ➔ 문맥 NLP ➔ 17년 퀀트)
-
----
-
-## 0. Gate-0 Macro Climate & Weekly Directive
-
-* **거시 총평**: {macro_headline}
-* **실전 거시 지침**: {macro_directive}
-* **실시간 거시 지표**: VIX `{vix.get('val', 15.8)}` ({vix.get('status', 'NORMAL')}) | 미국채 10년물 `{us10y.get('val', 4.42)}%` ({us10y.get('status', 'BURDEN')}) | WTI 유가 `${wti.get('val', 78.5)}` ({wti.get('status', 'STABLE')})
+* **발행일시**: {today_str} 12:30 KST
+* **계좌 총 평가액**: ${tot_equity_usd:,.2f} | **계좌 수익률**: {overall_pnl_pct:+.2f}%
+* **시장 국면**: {'[BULL REGIME 강세장 (3-Slot 100%)]' if is_bull else '[BEAR REGIME 약세장 (2-Slot 50% 현금)]'} (MSI: {msi_score:.1f}pt)
+* **거시 4대 지표**: 10Y `{us10y.get('val', 4.42)}%` | VIX `{vix.get('val', 15.8)}` | WTI `${wti.get('val', 78.5)}`
 
 ---
 
-## 1. Vikings Live Broadcast Context & Macro Flow
-
-* **라이브 방송**: [{stream_title}]({stream_url})
-
----
-
-## 2. Real Portfolio Risk & Execution Monitor
-
+## 💼 1. Live Portfolio Holdings
 """
-    if portfolio_alerts:
-        for p in portfolio_alerts:
-            qty_str = f"{p['quantity']:.4f}".rstrip('0').rstrip('.')
-            md += f"* **{p['ticker']}** ({qty_str}주) [{p['badge']}] (수익률 {p['pnl_pct']:+.2f}%)\n"
-            md += f"  - 매수가: ${p['buy_price']:,.2f} | 현재가: ${p['cur_price']:,.2f}\n"
-            md += f"  - 목표가(+15%): ${p['target_price']:,.2f} | 손절가(-4%): ${p['stop_loss_price']:,.2f}\n"
-            md += f"  - 대응 지침: {p['advice']}\n\n"
+    holdings = portfolio.get("holdings", [])
+    if holdings:
+        for h in holdings:
+            md += f"* **{h['ticker']}** ({h.get('quantity', 0):,.0f}주) | 매수가: ${h.get('buy_price', 0):,.2f} | 현재가: ${h.get('current_price', 0):,.2f} | 수익률: **{h.get('pnl_pct', 0):+.2f}%** | 손절: ${h.get('stop_loss_price', 0):,.2f} | 목표: ${h.get('target_price', 0):,.2f}\n"
     else:
-        md += "*[실계좌 보유 현황: 0 종목] 현재 실제 포트폴리오에 등록된 보유 종목이 없습니다.*\n\n"
-
-    md += """---
-
-## 3. Tactical 3-Column Quant Recommendations
-
-### [5-Star Alpha ∩] Dual Consensus Alpha (황금 교집합 100점 만점)
-"""
-    for d in dual_consensus:
-        md += f"* **{d['ticker']}** (${d['price']:,.2f} | 100점 만점) | 26일선 이격: {d['kijun_gap']:+.2f}% | TP(+15%): ${d['target_price']:,.2f} | SL(-4%): ${d['stop_price']:,.2f}\n"
+        md += "*현재 보유 중인 포지션이 없습니다. (100% 현금 대기)*\n"
 
     md += """
-### [Strategy I] Primary Accumulation (기준선 눌림목 1차 분할 매수)
-"""
-    for p in strat1_exclusive:
-        md += f"* **{p['ticker']}** (${p['price']:,.2f} | {p['score']}점) | 26일선 이격: {p['kijun_gap']:+.2f}% | TP(+15%): ${p['target_price']:,.2f} | SL(-4%): ${p['stop_price']:,.2f}\n"
+---
 
-    md += """
-### [Strategy II] Cloud Bounce Sniper Radar (구름대 도약 2단계 발사대)
+## 🥇 2. Today's Top Conviction Picks
 """
-    for s in strat2_exclusive:
-        md += f"* **{s['ticker']}** (${s['price']:,.2f} | {s['score']}점) | 26일선 이격: {s['kijun_gap']:+.2f}% | TP(+15%): ${s['target_price']:,.2f} | SL(-4%): ${s['stop_price']:,.2f}\n"
+    if top_pick:
+        md += f"* **🥇 #1 Top Pick: {top_pick.get('ticker')} ({top_pick.get('name')})** | 점수: **{top_pick.get('conviction_score', 0):.1f}점** (3M RS: {top_pick.get('rs_3m', 0):+.1f}%) | 가격: ${top_pick.get('price', 0):,.2f} | 목표가: ${top_pick.get('target_price', 0):,.2f} | 손절가: ${top_pick.get('stop_price', 0):,.2f}\n"
+        md += f"  - 권장 배정: {top_pick.get('sizing', {}).get('shares', 0)}주 (${top_pick.get('sizing', {}).get('allocated_usd', 0):,.2f})\n"
+    if runner_up:
+        md += f"* **🥈 #2 Runner Up: {runner_up.get('ticker')} ({runner_up.get('name')})** | 점수: **{runner_up.get('conviction_score', 0):.1f}점** (3M RS: {runner_up.get('rs_3m', 0):+.1f}%) | 가격: ${runner_up.get('price', 0):,.2f} | 목표가: ${runner_up.get('target_price', 0):,.2f} | 손절가: ${runner_up.get('stop_price', 0):,.2f}\n"
 
     md += f"""
 ---
 
-## 4. Model Governance & Verification
-
+## 🛠️ 3. System Governance
 * 모델 검증 상태: `{health_status}`
-* 시스템 아키텍처: Gate 0 (거시 기후) ➔ Gate 1 (방송 문맥 NLP) ➔ Gate 2 (R상무 17년 퀀트: 주봉 대세 + 일봉 3단 그리드)
+* 웹 대시보드: http://localhost:8000
 """
     print(md)
 
@@ -787,24 +957,27 @@ def main():
         print(f"[Dashboard Feed Error] {e}")
         feed_data = {}
         
-    dual_consensus = feed_data.get("dual_consensus", [])
-    strat1_exclusive = feed_data.get("strat1_exclusive", [])
-    strat2_exclusive = feed_data.get("strat2_exclusive", [])
+    dual_consensus = feed_data.get("tier1") or feed_data.get("dual_consensus") or []
+    strat1_exclusive = feed_data.get("tier2") or feed_data.get("strat1_exclusive") or []
+    strat2_exclusive = feed_data.get("tier3") or feed_data.get("strat2_exclusive") or []
+    conviction = feed_data.get("conviction", {})
+    portfolio = feed_data.get("portfolio", {})
+    macro_info = feed_data.get("macro", {})
     
     # 3. Evaluate User Real Portfolio Positions
     portfolio_alerts = evaluate_user_portfolio_positions()
     
-    # 4. Update Background History
-    bull_picks = (dual_consensus + strat1_exclusive)[:2]
-    neutral_picks = (strat1_exclusive + dual_consensus)[2:4]
-    bear_picks = strat2_exclusive[:2]
+    # 4. Update Background History (Tier-1 / Tier-2 only; snipers are not bears)
+    bull_picks = dual_consensus[:2]
+    neutral_picks = strat1_exclusive[:2]
+    bear_picks = []
     history_df, health_status = evaluate_active_positions_and_update(bull_picks, neutral_picks, bear_picks, today_str)
     
     # 5. Save Macro Snapshot, Recommendation Matrix, and Archive Daily Recommendations into SQLite
     try:
-        db_manager.save_macro_history_record(today_str, macro_climate, macro_gauges)
-        db_manager.save_recommendation_matrix_record(today_str, bull_picks, neutral_picks, bear_picks)
-        db_manager.archive_daily_recommendations(today_str, dual_consensus, strat1_exclusive, strat2_exclusive)
+        save_macro_history_record(today_str, macro_climate, macro_gauges)
+        save_recommendation_matrix_record(today_str, bull_picks, neutral_picks, bear_picks)
+        archive_daily_recommendations(today_str, dual_consensus, strat1_exclusive, strat2_exclusive)
         print("[SQLite DB] Saved macro history, recommendation matrix, and daily recommendation archive.")
     except Exception as e:
         print(f"[SQLite DB Warning] {e}")
@@ -815,11 +988,19 @@ def main():
     with open(out_html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
         
-    subject = f"[R-Sangmoo Quant Report] {today_str} Tactical 3-Column Quant & Macro Briefing"
+    overall_pnl = float(portfolio.get("overall_pnl_pct", 0.0) or portfolio.get("unrealized_pnl_pct", 0.0))
+    pnl_str = f"{'+' if overall_pnl >= 0 else ''}{overall_pnl:.2f}%"
+    is_bull = bool(macro_info.get("is_bull_regime", resolve_capital_regime(
+        msi_score=extract_msi_score(macro_info), fetch_spy=False
+    )["is_bull_regime"]))
+    regime_str = "BULL REGIME (강세장)" if is_bull else "BEAR REGIME (약세장)"
+    top_t = conviction.get("top_pick", {}).get("ticker") if conviction.get("top_pick") else (dual_consensus[0]["ticker"] if dual_consensus else "MARKET_RADAR")
+    
+    subject = f"[알상무 퀀트] {today_str} 데일리 브리핑 | 계좌 수익률 {pnl_str} | [{regime_str}] Top Pick: {top_t}"
     send_email_report(subject, html_content)
     
     # 7. Print Markdown Briefing
-    print_markdown_briefing(today_str, dual_consensus, strat1_exclusive, strat2_exclusive, portfolio_alerts, health_status, stream_info)
+    print_markdown_briefing(today_str, dual_consensus, strat1_exclusive, strat2_exclusive, portfolio_alerts, health_status, stream_info, feed_data)
 
 if __name__ == "__main__":
     main()

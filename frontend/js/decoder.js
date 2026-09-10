@@ -1,6 +1,7 @@
 /**
- * R QUANT TERMINAL: QUANT DECODER MODULE
- * Updates the 5-Factor Institutional Matrix Decoder Cards, Verdict Banner, and Trading Directives.
+ * R QUANT TERMINAL v2: QUANT DECODER MODULE
+ * Professional Bloomberg Dark Terminal Decoder for Al-Sangmoo v2 Quant Framework.
+ * Pure 3-Gate + Dual Momentum + 20D Breakout Institutional Scoring (Zero Emojis).
  */
 
 export const QuantDecoder = {
@@ -16,112 +17,122 @@ export const QuantDecoder = {
             info = dashboardData.chart_intelligence[ticker].intelligence || {};
         }
 
-        // Determine Tier type from live dashboard signals
-        let tierType = 'TIER_2';
-        if (dashboardData) {
-            const isT1 = (dashboardData.dual_consensus || []).some(x => x.ticker === ticker);
-            const isT3 = (dashboardData.strat2_exclusive || []).some(x => x.ticker === ticker);
-            if (isT1) tierType = 'TIER_1';
-            else if (isT3) tierType = 'TIER_3';
-            else tierType = 'TIER_2';
-        }
+        const topPickTicker = (dashboardData && dashboardData.top_conviction_pick && dashboardData.top_conviction_pick.ticker) || '';
+        const runnerUpTicker = (dashboardData && dashboardData.top_conviction_runner_up && dashboardData.top_conviction_runner_up.ticker) || '';
+        const rankedList = (dashboardData && dashboardData.ranked_conviction_list) || [];
+        const currentItem = rankedList.find(x => x.ticker === ticker)
+            || (dashboardData && dashboardData.top_conviction_pick && dashboardData.top_conviction_pick.ticker === ticker ? dashboardData.top_conviction_pick : null)
+            || (dashboardData && dashboardData.top_conviction_runner_up && dashboardData.top_conviction_runner_up.ticker === ticker ? dashboardData.top_conviction_runner_up : null);
 
+        const isTopPick = (ticker === topPickTicker);
+        const isRunnerUp = (ticker === runnerUpTicker);
+        const isBreakout = Boolean(currentItem && currentItem.is_breakout);
+        const isKijunSupport = Boolean(currentItem && currentItem.is_kijun_pullback);
+        const convictionScore = currentItem ? Number(currentItem.conviction_score || 0) : (info && info.score ? Number(info.score) : 90);
+        const crsRaw = (currentItem && currentItem.composite_rs != null) ? currentItem.composite_rs
+            : (info && info.composite_rs != null) ? info.composite_rs
+            : (liveChartData && liveChartData.composite_rs != null) ? liveChartData.composite_rs
+            : null;
+        const hasCrs = crsRaw !== null && crsRaw !== undefined && crsRaw !== "";
+        const rsRaw = hasCrs ? Number(crsRaw) : Number((currentItem && (currentItem.rs_3m || currentItem.momentum_3m)) || (info && (info.rs_3m || info.momentum_3m)) || 0);
+        const rsPct = (hasCrs && Number.isFinite(rsRaw) && Math.abs(rsRaw) <= 3) ? rsRaw * 100 : rsRaw;
+
+        // 1. Update Institutional Verdict Banner (Revolut Clean Style)
         if (title && score && banner) {
-            if (tierType === 'TIER_1') {
-                title.textContent = `Quant Rating: [Tier 1: 거시 순풍 + 스마트머니 매집 (최우선 주도주)]`;
-                score.textContent = (info && info.score) ? info.score : "100 / 100 pt (TIER_1_LEADER)";
-                score.style.color = "#fbbf24";
-                banner.style.borderLeftColor = "#fbbf24";
-            } else if (tierType === 'TIER_3') {
-                title.textContent = `Quant Rating: [Tier 3: 구름대 도약 스나이퍼 (바닥 변곡 반등)]`;
-                score.textContent = (info && info.score) ? info.score : "100 / 100 pt (TIER_3_SNIPER)";
-                score.style.color = "#f87171";
-                banner.style.borderLeftColor = "#f87171";
+            if (isTopPick) {
+                title.textContent = `QUANT VERDICT: [1위 TOP PICK]`;
+                score.textContent = `${convictionScore.toFixed(1)} PT (최우선 진입)`;
+                score.style.color = "var(--primary-bright)";
+                banner.style.borderLeft = "4px solid var(--primary-bright)";
+            } else if (isRunnerUp) {
+                title.textContent = `QUANT VERDICT: [2위 RUNNER UP]`;
+                score.textContent = `${convictionScore.toFixed(1)} PT (강력 추천)`;
+                score.style.color = "var(--accent-green)";
+                banner.style.borderLeft = "4px solid var(--accent-green)";
+            } else if (isBreakout) {
+                title.textContent = `QUANT VERDICT: [20일 신고가 돌파]`;
+                score.textContent = `${convictionScore.toFixed(1)} PT (돌파 매수)`;
+                score.style.color = "var(--accent-yellow)";
+                banner.style.borderLeft = "4px solid var(--accent-yellow)";
+            } else if (isKijunSupport) {
+                title.textContent = `QUANT VERDICT: [26일 기준선 지지]`;
+                score.textContent = `${convictionScore.toFixed(1)} PT (눌림목 매수)`;
+                score.style.color = "var(--accent-green)";
+                banner.style.borderLeft = "4px solid var(--accent-green)";
             } else {
-                title.textContent = `Quant Rating: [Tier 2: 구조적 26일선 눌림목 (추세 순응 분할 매수)]`;
-                score.textContent = (info && info.score) ? info.score : "95 / 100 pt (TIER_2_PULLBACK)";
-                score.style.color = "#10b981";
-                banner.style.borderLeftColor = "#10b981";
+                title.textContent = `QUANT VERDICT: [관망 / 중립 국면]`;
+                score.textContent = `${convictionScore.toFixed(1)} PT`;
+                score.style.color = "var(--text-muted)";
+                banner.style.borderLeft = "4px solid var(--hairline-strong)";
             }
         }
 
-        if (!liveChartData) return;
-
-        // 1. Future Cloud Decoder (+26D Forward Projection)
-        if (liveChartData.future_cloud_type) {
-            const isBull = liveChartData.future_cloud_type.includes("양운");
-            const fcBadge = document.getElementById("sigFutureCloudBadge");
-            const fcVal = document.getElementById("sigFutureCloudVal");
-            const fcDesc = document.getElementById("sigFutureCloudDesc");
-
-            if (fcBadge) {
-                fcBadge.textContent = liveChartData.future_cloud_type;
-                fcBadge.className = `status-badge ${isBull ? 'status-good' : 'status-bad'}`;
-            }
-            if (fcVal) {
-                fcVal.textContent = `+26일 선행스팬1 $${liveChartData.future_span_a_latest} | 선행스팬2 $${liveChartData.future_span_b_latest} (구름 두께 $${liveChartData.future_cloud_gap})`;
-            }
-            if (fcDesc) {
-                fcDesc.textContent = isBull 
-                    ? `향후 26거래일 미래 선행스팬1이 선행스팬2 위에 위치(양운)하여 하방 지지 매물대를 형성 중입니다.`
-                    : `향후 26거래일 미래 선행스팬2가 선행스팬1 위에 위치(음운)하여 상방 저항 매물대를 형성 중입니다.`;
-            }
+        // Card 4 is feed-driven (Composite RS / 3M RS fallback) and must paint even before candles arrive.
+        const rsBadge = document.getElementById("sigRsBadge") || document.getElementById("sigFutureCloudBadge");
+        const rsVal = document.getElementById("sigRsVal") || document.getElementById("sigFutureCloudVal");
+        if (rsBadge) {
+            const isRsStrong = rsPct >= 0;
+            rsBadge.className = `status-badge ${isRsStrong ? 'status-good' : 'status-bad'}`;
+            rsBadge.textContent = isBreakout ? '[20D BREAKOUT]' : (isRsStrong ? '[RS OUTPERFORM]' : '[RS UNDERPERFORM]');
+        }
+        if (rsVal) {
+            const rsLabel = hasCrs ? "CRS" : "3M RS";
+            rsVal.textContent = `${rsLabel}: ${rsPct >= 0 ? '+' : ''}${Number(rsPct).toFixed(1)}% ${isBreakout ? '| 20D HIGH' : '| IN RANGE'}`;
         }
 
-        // 2. Kijun-sen (26-Day Support)
+        if (!liveChartData || (liveChartData.ticker && String(liveChartData.ticker).toUpperCase() !== String(ticker || "").toUpperCase())) {
+            ["sigKijunVal", "sigTenkanVal", "sigCloudVal"].forEach((id) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = "—";
+            });
+            return;
+        }
+
+        // 2. Card 1: 26D Kijun Support (생명선 지지)
         if (liveChartData.kijun) {
-            const kGap = liveChartData.kijun_gap_pct !== undefined ? liveChartData.kijun_gap_pct : (((liveChartData.latest_close - liveChartData.kijun)/liveChartData.kijun)*100).toFixed(1);
-            const kGood = kGap >= -0.5;
+            const kGap = liveChartData.kijun_gap_pct !== undefined 
+                ? Number(liveChartData.kijun_gap_pct) 
+                : Number(((liveChartData.latest_close - liveChartData.kijun) / liveChartData.kijun) * 100);
+            const isGood = kGap >= -1.0;
             const bEl = document.getElementById("sigKijunBadge");
             const vEl = document.getElementById("sigKijunVal");
-            const dEl = document.getElementById("sigKijunDesc");
 
             if (bEl) {
-                bEl.className = `status-badge ${kGood ? 'status-good' : 'status-bad'}`;
-                bEl.textContent = kGood ? 'SUPPORT INTACT' : 'BREAKDOWN';
+                bEl.className = `status-badge ${isGood ? 'status-good' : 'status-bad'}`;
+                bEl.textContent = isGood ? '[SUPPORT INTACT]' : '[BREAKDOWN]';
             }
-            if (vEl) vEl.textContent = `$${liveChartData.kijun} (${kGap >= 0 ? '+' : ''}${kGap}% 이격)`;
-            if (dEl) dEl.textContent = kGood ? '주가가 26일 기준선(생명선) 위에 위치하여 중기 지지선이 유효합니다.' : '주가가 26일 기준선(생명선)을 이탈하여 추세가 약화되었습니다.';
+            if (vEl) {
+                vEl.textContent = `$${Number(liveChartData.kijun).toFixed(2)} (${kGap >= 0 ? '+' : ''}${kGap.toFixed(1)}% GAP)`;
+            }
         }
 
-        // 3. Tenkan-sen (9-Day Golden Cross)
+        // 3. Card 2: 9D Tenkan Line (단기 전환선)
         if (liveChartData.tenkan) {
-            const tGood = liveChartData.tenkan >= liveChartData.kijun;
+            const isBullCross = Number(liveChartData.tenkan) >= Number(liveChartData.kijun || 0);
             const bEl = document.getElementById("sigTenkanBadge");
             const vEl = document.getElementById("sigTenkanVal");
-            const dEl = document.getElementById("sigTenkanDesc");
 
             if (bEl) {
-                bEl.className = `status-badge ${tGood ? 'status-good' : 'status-bad'}`;
-                bEl.textContent = tGood ? 'BULLISH CROSS' : 'BEARISH';
+                bEl.className = `status-badge ${isBullCross ? 'status-good' : 'status-bad'}`;
+                bEl.textContent = isBullCross ? '[BULLISH CROSS]' : '[BEARISH CROSS]';
             }
-            if (vEl) vEl.textContent = `$${liveChartData.tenkan} (${tGood ? '9일선 > 26일선 골든' : '9일선 < 26일선 데드'})`;
-            if (dEl) dEl.textContent = tGood ? '단기 9일 전환선이 26일 기준선 위에 위치하여 단기 모멘텀이 유지됩니다.' : '단기 9일 전환선이 하락 압력을 나타내고 있습니다.';
+            if (vEl) {
+                vEl.textContent = `$${Number(liveChartData.tenkan).toFixed(2)} (${isBullCross ? '9D >= 26D' : '9D < 26D'})`;
+            }
         }
 
-        // 4. Volume Dry-up Ratio
-        if (liveChartData.vol_ratio !== undefined) {
-            const vPct = (liveChartData.vol_ratio * 100).toFixed(0);
-            const vDry = liveChartData.vol_ratio <= 0.75;
-            const bEl = document.getElementById("sigVolBadge");
-            const vEl = document.getElementById("sigVolVal");
-            const dEl = document.getElementById("sigVolDesc");
+        // 4. Card 3: Ichimoku Cloud (일목 구름대 지지)
+        if (liveChartData.future_cloud_type || liveChartData.status_text) {
+            const isCloudAbove = !String(liveChartData.status_text || '').includes('하회');
+            const bEl = document.getElementById("sigCloudBadge");
+            const vEl = document.getElementById("sigCloudVal");
 
             if (bEl) {
-                bEl.className = `status-badge ${vDry ? 'status-good' : 'status-neutral'}`;
-                bEl.textContent = vDry ? 'OPTIMAL DRY-UP' : 'NORMAL VOLUME';
+                bEl.className = `status-badge ${isCloudAbove ? 'status-good' : 'status-bad'}`;
+                bEl.textContent = isCloudAbove ? '[CLOUD SUPPORT]' : '[CLOUD RESISTANCE]';
             }
-            if (vEl) vEl.textContent = `20일 평균 대비 ${vPct}% (거래량 비율)`;
-            if (dEl) dEl.textContent = vDry ? '눌림목에서 거래량이 75% 이하로 건조되어 매도 압력 소진 및 반등 타점 형성.' : '거래량이 평균 수준을 유지하고 있습니다.';
-        }
-
-        // 5. Cloud Status and Directive
-        if (liveChartData.status_text) {
-            const cVal = document.getElementById("sigCloudVal");
-            const actEl = document.getElementById("actionDirectiveText");
-            if (cVal) cVal.textContent = liveChartData.status_text;
-            if (actEl && liveChartData.latest_close) {
-                actEl.textContent = liveChartData.status_text + ` (목표가: $${(liveChartData.latest_close * 1.15).toFixed(2)} / 손절선: $${(liveChartData.latest_close * 0.97).toFixed(2)})`;
+            if (vEl) {
+                vEl.textContent = isCloudAbove ? 'ABOVE CLOUD (BULLISH)' : 'BELOW CLOUD (BEARISH)';
             }
         }
     }

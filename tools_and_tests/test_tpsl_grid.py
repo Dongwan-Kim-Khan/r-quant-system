@@ -1,4 +1,4 @@
-﻿"""
+"""
 Sensitivity Matrix: TP/SL Grid Parameter Optimization on 45 Institutional Tickers.
 """
 import os
@@ -7,6 +7,9 @@ import numpy as np
 import pandas as pd
 import yfinance as yf
 from concurrent.futures import ThreadPoolExecutor
+
+# Research parameter matrix script (not a unit test)
+__test__ = False
 
 # Windows encoding fix
 if sys.platform.startswith('win'):

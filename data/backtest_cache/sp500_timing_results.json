@@ -1,0 +1,719 @@
+{
+  "meta": {
+    "method": "T1 SMA200→SSO/BIL; T2 VIX bands UPRO/SSO/SPY/BIL; T3 mom60 SSO/SH; vs C1 v1",
+    "friction": {
+      "slippage_bps": 10.0,
+      "fee_bps": 8.0
+    },
+    "etf_ok": {
+      "SPY": true,
+      "SSO": true,
+      "UPRO": true,
+      "SH": true,
+      "BIL": true
+    },
+    "generated": "2026-09-08 13:40 UTC",
+    "elapsed_sec": 2.7
+  },
+  "windows": {
+    "2018-08-31": {
+      "spy_bh": {
+        "final_equity": 265009.81,
+        "total_return_pct": 165.01,
+        "cagr_pct": 13.01,
+        "sharpe": 0.727,
+        "mdd_pct": -34.1,
+        "n_days": 2008,
+        "start": "2018-08-31",
+        "end": "2026-08-28",
+        "calmar": 0.382
+      },
+      "qqq_bh": {
+        "final_equity": 383836.07,
+        "total_return_pct": 283.84,
+        "cagr_pct": 18.39,
+        "sharpe": 0.819,
+        "mdd_pct": -35.62,
+        "n_days": 2008,
+        "start": "2018-08-31",
+        "end": "2026-08-28",
+        "calmar": 0.516
+      },
+      "sso_bh": {
+        "final_equity": 447332.21,
+        "total_return_pct": 347.33,
+        "cagr_pct": 20.68,
+        "sharpe": 0.681,
+        "mdd_pct": -59.34,
+        "n_days": 2008,
+        "start": "2018-08-31",
+        "end": "2026-08-28",
+        "calmar": 0.349
+      },
+      "c1_v1": {
+        "final_equity": 385836.24,
+        "total_return_pct": 285.84,
+        "cagr_pct": 18.47,
+        "sharpe": 0.725,
+        "mdd_pct": -41.71,
+        "n_days": 2008,
+        "start": "2018-08-31",
+        "end": "2026-08-28",
+        "calmar": 0.443,
+        "trades": {
+          "n": 325,
+          "trades_per_year": 40.8,
+          "win_rate": 24.0,
+          "profit_factor": 1.489,
+          "avg_bars": 17.2,
+          "reasons": {
+            "HARD_STOP": {
+              "n": 246,
+              "avg_pnl": -4.916,
+              "share_pct": 75.7
+            },
+            "TRAILING": {
+              "n": 76,
+              "avg_pnl": 22.452,
+              "share_pct": 23.4
+            },
+            "EOB": {
+              "n": 3,
+              "avg_pnl": 31.527,
+              "share_pct": 0.9
+            }
+          }
+        },
+        "traded_names": [
+          "AAPL",
+          "ABBV",
+          "ABNB",
+          "AEP",
+          "ALB",
+          "AMAT",
+          "AMD",
+          "AMZN",
+          "APP",
+          "ARM",
+          "AVGO",
+          "AXON",
+          "AXP",
+          "BA",
+          "BLK",
+          "BMY",
+          "BX",
+          "C",
+          "CAT",
+          "CB",
+          "CCJ",
+          "CEG",
+          "CHTR",
+          "CMG",
+          "CMI",
+          "COIN",
+          "COP",
+          "COST",
+          "CRWD",
+          "CVX",
+          "DD",
+          "DDOG",
+          "DE",
+          "DELL",
+          "DOCU",
+          "EOG",
+          "ETN",
+          "FCX",
+          "FDX",
+          "FTNT",
+          "GE",
+          "GEV",
+          "GILD",
+          "GOOGL",
+          "GWW",
+          "HEI",
+          "HII",
+          "HOOD",
+          "HWM",
+          "INTC",
+          "INTU",
+          "IONQ",
+          "ISRG",
+          "KKR",
+          "LHX",
+          "LLY",
+          "LMT",
+          "LOW",
+          "LRCX",
+          "LULU",
+          "MDB",
+          "META",
+          "MPC",
+          "MPWR",
+          "MRNA",
+          "MRVL",
+          "MS",
+          "MSTR",
+          "NEE",
+          "NEM",
+          "NET",
+          "NFLX",
+          "NOW",
+          "NVDA",
+          "OKLO",
+          "OKTA",
+          "ON",
+          "ORCL",
+          "OXY",
+          "PANW",
+          "PFE",
+          "PG",
+          "PLTR",
+          "PM",
+          "PSX",
+          "PYPL",
+          "RBLX",
+          "REGN",
+          "RKLB",
+          "ROK",
+          "ROST",
+          "SBUX",
+          "SCHW",
+          "SHW",
+          "SLB",
+          "SNOW",
+          "SPOT",
+          "STX",
+          "T",
+          "TEAM",
+          "TER",
+          "TGT",
+          "TMUS",
+          "TSLA",
+          "TSM",
+          "TT",
+          "UNH",
+          "UPS",
+          "VALE",
+          "VLO",
+          "VRTX",
+          "VST",
+          "WBD",
+          "WDC",
+          "WMT",
+          "XOM",
+          "ZM",
+          "ZS"
+        ],
+        "n_traded_stocks": 118,
+        "sleeve": {
+          "avg_stock_occupancy_pct": 65.39,
+          "avg_gross_leverage": 1.178,
+          "qld_day_pct": 59.31,
+          "proxy_trades": 576,
+          "regime_days": {
+            "bull_lowvol": 1196,
+            "bull": 376,
+            "bear": 436
+          }
+        }
+      },
+      "T1": {
+        "final_equity": 224027.04,
+        "total_return_pct": 124.03,
+        "cagr_pct": 10.65,
+        "sharpe": 0.537,
+        "mdd_pct": -43.61,
+        "n_days": 2008,
+        "start": "2018-08-31",
+        "end": "2026-08-28",
+        "calmar": 0.244,
+        "trades": {
+          "n": 110,
+          "trades_per_year": 13.8
+        },
+        "sleeve": {
+          "regime_days": {
+            "bull_sso": 1572,
+            "bear_cash": 436
+          },
+          "hold_share": {
+            "SSO": 78.3,
+            "BIL": 21.7
+          }
+        }
+      },
+      "T2": {
+        "final_equity": 99108.6,
+        "total_return_pct": -0.89,
+        "cagr_pct": -0.11,
+        "sharpe": 0.134,
+        "mdd_pct": -48.45,
+        "n_days": 2008,
+        "start": "2018-08-31",
+        "end": "2026-08-28",
+        "calmar": -0.002,
+        "trades": {
+          "n": 512,
+          "trades_per_year": 64.3
+        },
+        "sleeve": {
+          "regime_days": {
+            "bull_upro": 972,
+            "bull_sso": 442,
+            "bear_cash": 436,
+            "bull_spy": 158
+          },
+          "hold_share": {
+            "UPRO": 48.4,
+            "SSO": 22.0,
+            "BIL": 21.7,
+            "SPY": 7.9
+          }
+        }
+      },
+      "T3": {
+        "final_equity": 200347.02,
+        "total_return_pct": 100.35,
+        "cagr_pct": 9.11,
+        "sharpe": 0.452,
+        "mdd_pct": -45.09,
+        "n_days": 2008,
+        "start": "2018-08-31",
+        "end": "2026-08-28",
+        "calmar": 0.202,
+        "trades": {
+          "n": 150,
+          "trades_per_year": 18.8
+        },
+        "sleeve": {
+          "regime_days": {
+            "mom_long": 1491,
+            "mom_short": 517
+          },
+          "hold_share": {
+            "SSO": 74.3,
+            "SH": 25.7
+          }
+        }
+      },
+      "c1_vs_spy": {
+        "excess_cagr_pct": 5.46,
+        "jensen": {
+          "ann_alpha_pct": 6.83,
+          "t": 0.892,
+          "p": 0.3723,
+          "beta": 1.025,
+          "r2": 0.46,
+          "n": 2007
+        }
+      },
+      "c1_vs_qqq": {
+        "excess_cagr_pct": 0.08,
+        "jensen": {
+          "ann_alpha_pct": 3.88,
+          "t": 0.54,
+          "p": 0.5894,
+          "beta": 0.88,
+          "r2": 0.5256,
+          "n": 2007
+        }
+      },
+      "c1_verdict": "BASELINE",
+      "T1_vs_spy": {
+        "excess_cagr_pct": -2.36,
+        "jensen": {
+          "ann_alpha_pct": 2.07,
+          "t": 0.306,
+          "p": 0.7598,
+          "beta": 0.781,
+          "r2": 0.3869,
+          "n": 2007
+        }
+      },
+      "T1_vs_qqq": {
+        "excess_cagr_pct": -7.74,
+        "jensen": {
+          "ann_alpha_pct": 0.6,
+          "t": 0.088,
+          "p": 0.9297,
+          "beta": 0.631,
+          "r2": 0.3919,
+          "n": 2007
+        }
+      },
+      "T1_verdict": "LOSE_C1",
+      "T2_vs_spy": {
+        "excess_cagr_pct": -13.12,
+        "jensen": {
+          "ann_alpha_pct": -8.01,
+          "t": -1.011,
+          "p": 0.3121,
+          "beta": 0.827,
+          "r2": 0.3415,
+          "n": 2007
+        }
+      },
+      "T2_vs_qqq": {
+        "excess_cagr_pct": -18.5,
+        "jensen": {
+          "ann_alpha_pct": -9.85,
+          "t": -1.26,
+          "p": 0.2078,
+          "beta": 0.682,
+          "r2": 0.36,
+          "n": 2007
+        }
+      },
+      "T2_verdict": "LOSE_C1",
+      "T3_vs_spy": {
+        "excess_cagr_pct": -3.9,
+        "jensen": {
+          "ann_alpha_pct": 11.47,
+          "t": 1.159,
+          "p": 0.2464,
+          "beta": 0.082,
+          "r2": 0.0032,
+          "n": 2007
+        }
+      },
+      "T3_vs_qqq": {
+        "excess_cagr_pct": -9.28,
+        "jensen": {
+          "ann_alpha_pct": 10.13,
+          "t": 1.027,
+          "p": 0.3045,
+          "beta": 0.126,
+          "r2": 0.012,
+          "n": 2007
+        }
+      },
+      "T3_verdict": "LOSE_C1"
+    },
+    "2023-08-31": {
+      "spy_bh": {
+        "final_equity": 170833.79,
+        "total_return_pct": 70.83,
+        "cagr_pct": 19.69,
+        "sharpe": 1.249,
+        "mdd_pct": -19.0,
+        "n_days": 751,
+        "start": "2023-08-31",
+        "end": "2026-08-28",
+        "calmar": 1.036
+      },
+      "qqq_bh": {
+        "final_equity": 189536.76,
+        "total_return_pct": 89.54,
+        "cagr_pct": 23.93,
+        "sharpe": 1.152,
+        "mdd_pct": -22.88,
+        "n_days": 751,
+        "start": "2023-08-31",
+        "end": "2026-08-28",
+        "calmar": 1.046
+      },
+      "sso_bh": {
+        "final_equity": 238946.12,
+        "total_return_pct": 138.95,
+        "cagr_pct": 33.95,
+        "sharpe": 1.128,
+        "mdd_pct": -35.34,
+        "n_days": 751,
+        "start": "2023-08-31",
+        "end": "2026-08-28",
+        "calmar": 0.961
+      },
+      "c1_v1": {
+        "final_equity": 227753.98,
+        "total_return_pct": 127.75,
+        "cagr_pct": 31.81,
+        "sharpe": 1.043,
+        "mdd_pct": -26.96,
+        "n_days": 751,
+        "start": "2023-08-31",
+        "end": "2026-08-28",
+        "calmar": 1.18,
+        "trades": {
+          "n": 129,
+          "trades_per_year": 43.3,
+          "win_rate": 25.58,
+          "profit_factor": 1.76,
+          "avg_bars": 16.9,
+          "reasons": {
+            "HARD_STOP": {
+              "n": 95,
+              "avg_pnl": -4.986,
+              "share_pct": 73.6
+            },
+            "TRAILING": {
+              "n": 31,
+              "avg_pnl": 23.852,
+              "share_pct": 24.0
+            },
+            "EOB": {
+              "n": 3,
+              "avg_pnl": 31.527,
+              "share_pct": 2.3
+            }
+          }
+        },
+        "traded_names": [
+          "AAPL",
+          "AMAT",
+          "AMD",
+          "APP",
+          "ARM",
+          "AXON",
+          "AXP",
+          "BA",
+          "BLK",
+          "BMY",
+          "BX",
+          "C",
+          "CAT",
+          "CB",
+          "CCJ",
+          "CEG",
+          "CHTR",
+          "CMG",
+          "CMI",
+          "COIN",
+          "CRWD",
+          "DD",
+          "DDOG",
+          "DELL",
+          "ETN",
+          "FDX",
+          "FTNT",
+          "GE",
+          "GEV",
+          "GILD",
+          "GOOGL",
+          "GWW",
+          "HEI",
+          "HOOD",
+          "HWM",
+          "INTC",
+          "IONQ",
+          "KKR",
+          "LHX",
+          "LLY",
+          "MPC",
+          "MPWR",
+          "MRNA",
+          "MRVL",
+          "MSTR",
+          "NEE",
+          "NEM",
+          "NET",
+          "NVDA",
+          "OKLO",
+          "OKTA",
+          "ORCL",
+          "PLTR",
+          "PM",
+          "PSX",
+          "RBLX",
+          "REGN",
+          "RKLB",
+          "SLB",
+          "SNOW",
+          "STX",
+          "T",
+          "TEAM",
+          "TER",
+          "TGT",
+          "UNH",
+          "VLO",
+          "VST",
+          "WBD",
+          "WDC",
+          "ZS"
+        ],
+        "n_traded_stocks": 71,
+        "sleeve": {
+          "avg_stock_occupancy_pct": 66.05,
+          "avg_gross_leverage": 1.26,
+          "qld_day_pct": 81.23,
+          "proxy_trades": 232,
+          "regime_days": {
+            "bull_lowvol": 611,
+            "bull": 77,
+            "bear": 63
+          }
+        }
+      },
+      "T1": {
+        "final_equity": 183662.08,
+        "total_return_pct": 83.66,
+        "cagr_pct": 22.63,
+        "sharpe": 1.002,
+        "mdd_pct": -21.94,
+        "n_days": 751,
+        "start": "2023-08-31",
+        "end": "2026-08-28",
+        "calmar": 1.031,
+        "trades": {
+          "n": 22,
+          "trades_per_year": 7.4
+        },
+        "sleeve": {
+          "regime_days": {
+            "bull_sso": 688,
+            "bear_cash": 63
+          },
+          "hold_share": {
+            "SSO": 91.6,
+            "BIL": 8.4
+          }
+        }
+      },
+      "T2": {
+        "final_equity": 139788.81,
+        "total_return_pct": 39.79,
+        "cagr_pct": 11.9,
+        "sharpe": 0.532,
+        "mdd_pct": -29.92,
+        "n_days": 751,
+        "start": "2023-08-31",
+        "end": "2026-08-28",
+        "calmar": 0.398,
+        "trades": {
+          "n": 196,
+          "trades_per_year": 65.8
+        },
+        "sleeve": {
+          "regime_days": {
+            "bull_upro": 507,
+            "bull_sso": 165,
+            "bear_cash": 63,
+            "bull_spy": 16
+          },
+          "hold_share": {
+            "UPRO": 67.5,
+            "SSO": 22.0,
+            "BIL": 8.4,
+            "SPY": 2.1
+          }
+        }
+      },
+      "T3": {
+        "final_equity": 190248.74,
+        "total_return_pct": 90.25,
+        "cagr_pct": 24.09,
+        "sharpe": 1.039,
+        "mdd_pct": -17.84,
+        "n_days": 751,
+        "start": "2023-08-31",
+        "end": "2026-08-28",
+        "calmar": 1.35,
+        "trades": {
+          "n": 30,
+          "trades_per_year": 10.1
+        },
+        "sleeve": {
+          "regime_days": {
+            "mom_long": 620,
+            "mom_short": 131
+          },
+          "hold_share": {
+            "SSO": 82.6,
+            "SH": 17.4
+          }
+        }
+      },
+      "c1_vs_spy": {
+        "excess_cagr_pct": 12.12,
+        "jensen": {
+          "ann_alpha_pct": 6.38,
+          "t": 0.473,
+          "p": 0.6362,
+          "beta": 1.371,
+          "r2": 0.4519,
+          "n": 750
+        }
+      },
+      "c1_vs_qqq": {
+        "excess_cagr_pct": 7.88,
+        "jensen": {
+          "ann_alpha_pct": 6.15,
+          "t": 0.498,
+          "p": 0.6188,
+          "beta": 1.125,
+          "r2": 0.5404,
+          "n": 750
+        }
+      },
+      "c1_verdict": "BASELINE",
+      "T1_vs_spy": {
+        "excess_cagr_pct": 2.94,
+        "jensen": {
+          "ann_alpha_pct": 1.06,
+          "t": 0.122,
+          "p": 0.903,
+          "beta": 1.166,
+          "r2": 0.5872,
+          "n": 750
+        }
+      },
+      "T1_vs_qqq": {
+        "excess_cagr_pct": -1.3,
+        "jensen": {
+          "ann_alpha_pct": 2.44,
+          "t": 0.287,
+          "p": 0.7744,
+          "beta": 0.89,
+          "r2": 0.6075,
+          "n": 750
+        }
+      },
+      "T1_verdict": "LOSE_C1",
+      "T2_vs_spy": {
+        "excess_cagr_pct": -7.79,
+        "jensen": {
+          "ann_alpha_pct": -12.25,
+          "t": -1.031,
+          "p": 0.3028,
+          "beta": 1.492,
+          "r2": 0.5567,
+          "n": 750
+        }
+      },
+      "T2_vs_qqq": {
+        "excess_cagr_pct": -12.03,
+        "jensen": {
+          "ann_alpha_pct": -10.61,
+          "t": -0.917,
+          "p": 0.3591,
+          "beta": 1.143,
+          "r2": 0.5805,
+          "n": 750
+        }
+      },
+      "T2_verdict": "LOSE_C1",
+      "T3_vs_spy": {
+        "excess_cagr_pct": 4.4,
+        "jensen": {
+          "ann_alpha_pct": 15.07,
+          "t": 1.152,
+          "p": 0.2493,
+          "beta": 0.503,
+          "r2": 0.1055,
+          "n": 750
+        }
+      },
+      "T3_vs_qqq": {
+        "excess_cagr_pct": 0.16,
+        "jensen": {
+          "ann_alpha_pct": 14.04,
+          "t": 1.103,
+          "p": 0.2699,
+          "beta": 0.452,
+          "r2": 0.1515,
+          "n": 750
+        }
+      },
+      "T3_verdict": "LOSE_C1"
+    }
+  }
+}

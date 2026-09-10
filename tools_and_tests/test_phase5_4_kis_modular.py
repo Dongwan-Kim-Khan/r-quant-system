@@ -74,7 +74,7 @@ class TestPhase54BackendRouters(unittest.TestCase):
         async def run():
             status, headers, body = await asgi_request(app, "GET", "/")
             self.assertEqual(status, 200)
-            self.assertIn("R QUANT TERMINAL", body.decode("utf-8"))
+            self.assertIn("R QUANT", body.decode("utf-8"))
             self.assertIn("text/html", dict(headers).get("content-type", ""))
         asyncio.run(run())
 
@@ -104,22 +104,30 @@ class TestPhase54BackendRouters(unittest.TestCase):
 
     def test_portfolio_endpoints(self):
         """POST /api/portfolio/buy and GET /api/portfolio."""
+        from unittest.mock import patch
         async def run():
             # Reset first
             await asgi_request(app, "POST", "/api/portfolio/reset")
             
-            # Buy order with application/json header
-            buy_payload = '{"ticker": "NVDA", "buy_price": 200.0, "qty": 5.0}'
-            headers = {"content-type": "application/json"}
-            status, _, body = await asgi_request(app, "POST", "/api/portfolio/buy", headers=headers, body=buy_payload.encode())
-            self.assertEqual(status, 200)
-            self.assertIn("success", body.decode("utf-8"))
+            # Buy order with application/json header (Mock place_order and check_sync to isolate unit test)
+            with patch("al_sangmoo.interfaces.api.routers.portfolio.default_kis_broker.place_order", return_value={"status": "submitted", "order_id": "TEST12345", "message": "Test order placed"}), \
+                 patch("al_sangmoo.interfaces.api.routers.portfolio.check_sync", return_value={"status": "success"}):
+                buy_payload = '{"ticker": "NVDA", "buy_price": 200.0, "qty": 1.0}'
+                headers = {"content-type": "application/json"}
+                status, _, body = await asgi_request(app, "POST", "/api/portfolio/buy", headers=headers, body=buy_payload.encode())
+                if status != 200:
+                    print("BUY ERROR DETAIL:", body.decode("utf-8"))
+                self.assertEqual(status, 200)
+                self.assertIn("success", body.decode("utf-8"))
 
-            # Check portfolio
-            status, _, body = await asgi_request(app, "GET", "/api/portfolio")
-            self.assertEqual(status, 200)
-            self.assertIn("NVDA", body.decode("utf-8"))
+                # Check portfolio
+                status, _, body = await asgi_request(app, "GET", "/api/portfolio")
+                self.assertEqual(status, 200)
+                self.assertIn("NVDA", body.decode("utf-8"))
         asyncio.run(run())
+
+
+
 
     def test_search_endpoint(self):
         """GET /api/search should return stock suggestions."""

@@ -20,5 +20,8 @@ from al_sangmoo.infrastructure.persistence import (
     archive_daily_recommendations,
     get_recommendation_streaks,
     close_portfolio_position,
-    clear_portfolio
+    clear_portfolio,
+    get_trade_history_records,
+    record_execution_log,
+    get_execution_logs
 )

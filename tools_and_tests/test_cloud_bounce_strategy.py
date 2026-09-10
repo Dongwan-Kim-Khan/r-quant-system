@@ -152,7 +152,7 @@ def simulate_alsangmoo_refined(data_dict, mode="CHASE_BREAKOUT"):
                         reason = "TAKE_PROFIT (+15%)"
                     elif hit_sl:
                         raw_exit = min(opens[i], sl_price) if cur_low <= sl_price else cur_close
-                        reason = "STOP_LOSS (Kijun Break / -4%)"
+                        reason = "STOP_LOSS (Kijun Break / -5%)"
                     elif hit_timeout:
                         raw_exit = cur_close
                         reason = "TIME_EXIT"

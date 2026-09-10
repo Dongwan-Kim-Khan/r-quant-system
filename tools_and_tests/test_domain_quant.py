@@ -227,10 +227,10 @@ def test_m2_tier_classification_and_stops():
     assert tier_res.tier == "TIER_1", f"Expected TIER_1, got {tier_res.tier}"
     assert tier_res.entry_price == 100.0
     assert tier_res.target_price == 115.0, f"Expected 115.0 (+15%), got {tier_res.target_price}"
-    assert tier_res.stop_price == 96.0, f"Expected 96.0 (-4%), got {tier_res.stop_price}"
+    assert tier_res.stop_price == 95.0, f"Expected 95.0 (-5%), got {tier_res.stop_price}"
     assert tier_res.partial_tp_price == 108.0, f"Expected 108.0 (+8%), got {tier_res.partial_tp_price}"
     print(f"  - Classified: {tier_res.tier} ({tier_res.tier_name_kr})")
-    print(f"  - Target: ${tier_res.target_price} (+15%), Stop: ${tier_res.stop_price} (-4%), Partial TP: ${tier_res.partial_tp_price} (+8%)")
+    print(f"  - Target: ${tier_res.target_price} (+15%), Stop: ${tier_res.stop_price} (-5%), Partial TP: ${tier_res.partial_tp_price} (+8%)")
     print("  -> PASSED: Standardized stops and Tier 1 classification verified.")
 
 
@@ -260,7 +260,7 @@ def test_m2_classify_3tier_candidates():
     assert len(t1) > 0, "Expected at least 1 Tier 1 pick"
     assert t1[0]["ticker"] == "NVDA"
     assert t1[0]["target_price"] == 138.0 # 120 * 1.15
-    assert t1[0]["stop_price"] == 115.2 # 120 * 0.96
+    assert t1[0]["stop_price"] == 114.0 # 120 * 0.95
     print(f"  - Tier 1 Picks: {[x['ticker'] for x in t1]}")
     print(f"  - Tier 2 Picks: {[x['ticker'] for x in t2]}")
     print(f"  - Tier 3 Picks: {[x['ticker'] for x in t3]}")

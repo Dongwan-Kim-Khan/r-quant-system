@@ -189,13 +189,7 @@ def test_tier1_r1_background_scan_worker():
         server._is_scanning = False
         
         with patch.object(server.hub, "broadcast", side_effect=mock_broadcast), \
-             patch("al_sangmoo_daily_bot.scan_and_select_2x2x2", return_value=(
-                 [{"ticker": "NVDA", "close": 130.0}],
-                 [{"ticker": "AAPL", "close": 220.0}],
-                 [{"ticker": "TSLA", "close": 210.0}],
-                 {"macro_stance": "BULL", "msi_score": 75.0}
-             )), \
-             patch("server.build_dashboard_data", return_value={"charts": {}, "macro": {}}):
+             patch("server.build_dashboard_data", return_value={"charts": {}, "macro": {}, "tier1": [], "tier2": []}):
             
             await server._run_background_scan_pipeline()
             
@@ -211,7 +205,7 @@ def test_tier1_r1_background_scan_worker():
 
             # Test exception resilience in worker
             events_broadcast.clear()
-            with patch("al_sangmoo_daily_bot.scan_and_select_2x2x2", side_effect=RuntimeError("Simulated Scan Failure")):
+            with patch("server.build_dashboard_data", side_effect=RuntimeError("Simulated Scan Failure")):
                 await server._run_background_scan_pipeline()
                 assert server._is_scanning is False, "_is_scanning must reset to False in finally block on exception"
                 err_statuses = [e[1].get("status") for e in events_broadcast if e[0] == "scan_status"]
@@ -343,10 +337,9 @@ def test_tier2_r1_nonblocking_scan_latency():
         
         def mock_heavy_scan():
             time.sleep(1.0)
-            return ([], [], [], {"macro_stance": "NORMAL"})
+            return {"charts": {}, "macro": {}, "tier1": [], "tier2": []}
             
-        with patch("al_sangmoo_daily_bot.scan_and_select_2x2x2", side_effect=mock_heavy_scan), \
-             patch("server.build_dashboard_data", return_value={"charts": {}, "macro": {}}):
+        with patch("server.build_dashboard_data", side_effect=mock_heavy_scan):
             
             t0 = time.time()
             status, headers, body = await asgi_request(app, "POST", "/api/scan_now")
@@ -411,10 +404,9 @@ def test_tier2_r1_concurrent_read_latency_during_scan():
         
         def mock_heavy_scan():
             time.sleep(0.8)
-            return ([], [], [], {"macro_stance": "NORMAL"})
+            return {"charts": {}, "macro": {}, "tier1": [], "tier2": []}
             
-        with patch("al_sangmoo_daily_bot.scan_and_select_2x2x2", side_effect=mock_heavy_scan), \
-             patch("server.build_dashboard_data", return_value={"charts": {}, "macro": {}}):
+        with patch("server.build_dashboard_data", side_effect=mock_heavy_scan):
             
             await asgi_request(app, "POST", "/api/scan_now")
             assert server._is_scanning is True
@@ -458,10 +450,9 @@ def test_tier3_r1_scan_storm_single_flight_lock():
             nonlocal scan_execution_count
             scan_execution_count += 1
             time.sleep(0.4)
-            return ([], [], [], {"macro_stance": "NORMAL"})
+            return {"charts": {}, "macro": {}, "tier1": [], "tier2": []}
             
-        with patch("al_sangmoo_daily_bot.scan_and_select_2x2x2", side_effect=mock_scan), \
-             patch("server.build_dashboard_data", return_value={"charts": {}, "macro": {}}):
+        with patch("server.build_dashboard_data", side_effect=mock_scan):
             
             results = await asyncio.gather(*[asgi_request(app, "POST", "/api/scan_now") for _ in range(20)])
             
@@ -608,15 +599,19 @@ def test_tier3_r4_concurrent_read_vs_price_sync_race():
 # ===========================================================================
 
 def _get_all_dashboard_mirrors():
-    mirrors = [os.path.join(PROJECT_ROOT, "al_sangmoo_dashboard.html")]
-    for sub in ["html_dashboards", "HTML_대시보드_모음"]:
-        sub_dir = os.path.join(PROJECT_ROOT, sub)
-        if os.path.exists(sub_dir):
-            for fn in os.listdir(sub_dir):
-                if fn.endswith(".html") and ("통합_퀀트_대시보드" in fn or "대시보드" in fn):
-                    p = os.path.join(sub_dir, fn)
-                    if p not in mirrors:
-                        mirrors.append(p)
+    root_dash = os.path.join(PROJECT_ROOT, "al_sangmoo_dashboard.html")
+    legacy_dash = os.path.join(PROJECT_ROOT, "backups", "legacy_html", "al_sangmoo_dashboard.html")
+    dash = root_dash if os.path.exists(root_dash) else legacy_dash
+    mirrors = [dash]
+    for base in [PROJECT_ROOT, os.path.join(PROJECT_ROOT, "backups", "legacy_html")]:
+        for sub in ["html_dashboards", "HTML_대시보드_모음"]:
+            sub_dir = os.path.join(base, sub)
+            if os.path.exists(sub_dir):
+                for fn in os.listdir(sub_dir):
+                    if fn.endswith(".html") and ("통합_퀀트_대시보드" in fn or "대시보드" in fn):
+                        p = os.path.join(sub_dir, fn)
+                        if p not in mirrors:
+                            mirrors.append(p)
     return mirrors
 
 def test_tier4_r5_frontend_backoff_and_jitter_static_analysis():

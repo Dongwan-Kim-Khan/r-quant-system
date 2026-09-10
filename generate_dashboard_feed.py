@@ -5,61 +5,15 @@ import json
 import tempfile
 import pandas as pd
 import yfinance as yf
-from datetime import datetime
-import db_manager
-
-def safe_json_default(o):
-    if hasattr(o, 'item'):
-        return o.item()
-    if isinstance(o, (pd.Timestamp, datetime)):
-        return o.strftime("%Y-%m-%d")
-    return str(o)
-
-def atomic_save_json(file_path, data, indent=2, max_retries=10):
-    dir_name = os.path.dirname(os.path.abspath(file_path))
-    os.makedirs(dir_name, exist_ok=True)
-    temp_name = None
-    with tempfile.NamedTemporaryFile("w", dir=dir_name, delete=False, encoding="utf-8") as tf:
-        temp_name = tf.name
-        json.dump(data, tf, ensure_ascii=False, indent=indent, default=safe_json_default)
-        tf.flush()
-        os.fsync(tf.fileno())
-        
-    for attempt in range(max_retries):
-        try:
-            os.replace(temp_name, file_path)
-            return
-        except (PermissionError, OSError):
-            if attempt == max_retries - 1:
-                try:
-                    with open(file_path, "w", encoding="utf-8") as f:
-                        json.dump(data, f, ensure_ascii=False, indent=indent, default=safe_json_default)
-                    if temp_name and os.path.exists(temp_name):
-                        os.remove(temp_name)
-                    return
-                except Exception:
-                    pass
-                raise
-            time.sleep(0.01 * (1.5 ** attempt))
-            
-    if temp_name and os.path.exists(temp_name):
-        try:
-            os.remove(temp_name)
-        except Exception:
-            pass
-
-def atomic_read_json(file_path, default=None, max_retries=5):
-    if not os.path.exists(file_path):
-        return default if default is not None else {}
-    for attempt in range(max_retries):
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except (PermissionError, json.JSONDecodeError, OSError):
-            if attempt == max_retries - 1:
-                return default if default is not None else {}
-            time.sleep(0.01 * (attempt + 1))
-    return default if default is not None else {}
+from datetime import datetime, timedelta
+from al_sangmoo.infrastructure.persistence import (
+    get_connection,
+    get_daily_recommendation_history,
+    get_live_portfolio,
+    get_recommendation_streaks,
+    init_database,
+)
+from al_sangmoo.infrastructure.atomic_io import atomic_save_json, atomic_read_json
 
 # Windows encoding fix
 if sys.platform.startswith('win'):
@@ -69,13 +23,25 @@ if sys.platform.startswith('win'):
         pass
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-HISTORY_CSV = os.path.join(BASE_DIR, "trade_history.csv")
 OUTPUT_JSON = os.path.join(BASE_DIR, "dashboard_data.json")
 STREAM_CACHE = os.path.join(BASE_DIR, "wepoll_latest_stream.json")
 CHARTS_DIR = os.path.join(BASE_DIR, "data", "charts")
 
 from concurrent.futures import ThreadPoolExecutor
-from al_sangmoo.core.constants import WATCHLIST, STOCK_DICT, TICKER_SECTORS, get_macro_tailwind_sectors
+from al_sangmoo.core.constants import (
+    CASH_PROXY_TICKER,
+    HARD_STOP_PCT,
+    SLOT_WEIGHTS_BEAR,
+    SLOT_WEIGHTS_BULL,
+    STOP_LOSS_PCT,
+    TAKE_PROFIT_PCT,
+    TRAILING_ACTIVATE_PCT,
+    WATCHLIST,
+    STOCK_DICT,
+    TICKER_SECTORS,
+    get_active_watchlist,
+    get_macro_tailwind_sectors,
+)
 from al_sangmoo.domain.quant.ichimoku import (
     calculate_ichimoku_indicators,
     detect_cloud_trampoline_bounce,
@@ -84,19 +50,48 @@ from al_sangmoo.domain.quant.ichimoku import (
 )
 from al_sangmoo.domain.quant.scoring import (
     evaluate_quant_score,
-    classify_3tier_candidates
+    classify_3tier_candidates,
+    latest_composite_rs,
 )
+from al_sangmoo.domain.quant.conviction_engine import rank_and_select_top_picks
+from al_sangmoo.domain.quant.macro import extract_msi_score, resolve_capital_regime, fetch_spy_trend_regime
+from al_sangmoo.domain.quant.dynamic_universe import load_universe_sectors
+from al_sangmoo.domain.risk.cash_proxy import proxy_holdings, satellite_holdings
+from al_sangmoo.domain.risk.macro_guardrail import evaluate_dynamic_leverage
 
-def compute_all_indicators(ticker):
+
+def compute_all_indicators(ticker, df=None):
     try:
-        df = yf.download(ticker, period="3y", interval="1d", progress=False)
-        if df.empty:
-            return None
+        if df is None:
+            end = datetime.now()
+            start = end - timedelta(days=365 * 3 + 45)
+            df = yf.download(
+                ticker,
+                start=start.strftime("%Y-%m-%d"),
+                end=(end + timedelta(days=1)).strftime("%Y-%m-%d"),
+                interval="1d",
+                auto_adjust=True,
+                progress=False,
+                threads=False,
+            )
+        else:
+            df = df.copy()
         if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.get_level_values(0)
+            if 'Close' in df.columns.get_level_values(0):
+                df.columns = df.columns.get_level_values(0)
+            elif 'Close' in df.columns.get_level_values(1):
+                df.columns = df.columns.get_level_values(1)
             
         df = df.dropna(subset=['Close', 'High', 'Low', 'Volume']).copy()
-        if len(df) < 60:
+        if df is None or len(df) < 60:
+            try:
+                from al_sangmoo.infrastructure.brokers.kis_broker import default_kis_broker
+                kis_df = default_kis_broker.get_daily_ohlcv(ticker, min_bars=500)
+                if kis_df is not None and len(kis_df) >= 60:
+                    df = kis_df.dropna(subset=['Close', 'High', 'Low', 'Volume']).copy()
+            except Exception:
+                pass
+        if df is None or len(df) < 60:
             return None
             
         # 1. Calculate Daily Ichimoku via SSOT Domain Engine
@@ -172,6 +167,28 @@ def compute_all_indicators(ticker):
         quant_type = quant_eval["quant_type"]
         quant_verdict = quant_eval["quant_verdict"]
         
+        # 3-Month Momentum / RS Calculation & 20D Breakout Detection
+        if len(df_clean) >= 60:
+            close_60d_ago = float(df_clean.iloc[-60]['Close'])
+            rs_3m = ((close - close_60d_ago) / close_60d_ago) * 100.0
+        elif len(df_clean) > 1:
+            close_first = float(df_clean.iloc[0]['Close'])
+            rs_3m = ((close - close_first) / close_first) * 100.0
+        else:
+            rs_3m = 0.0
+
+        if len(df_clean) >= 21:
+            high_20d_max = float(df_clean.iloc[-21:-1]['High'].max())
+            is_breakout = bool(close >= high_20d_max)
+        else:
+            is_breakout = False
+
+        composite_rs = None
+        try:
+            composite_rs = round(float(latest_composite_rs(df_clean["Close"].values)), 6)
+        except Exception:
+            composite_rs = None
+
         # Construct Intelligence Metadata
         intelligence = dict(quant_eval["intelligence"])
         intelligence.update({
@@ -185,6 +202,10 @@ def compute_all_indicators(ticker):
             "flow_label": flow_data["flow_label"],
             "flow_score": flow_data["flow_score"],
             "is_stealth_accum": flow_data["is_stealth_accum"],
+            "rs_3m": round(rs_3m, 2),
+            "momentum_3m": round(rs_3m, 2),
+            "composite_rs": composite_rs,
+            "is_breakout": is_breakout
         })
             
         return {
@@ -216,6 +237,10 @@ def compute_all_indicators(ticker):
             "trampoline_days_ago": trampoline_days_ago,
             "touch_gap_pct": touch_gap_pct,
             "close_gap_pct": close_gap_pct,
+            "rs_3m": round(rs_3m, 2),
+            "momentum_3m": round(rs_3m, 2),
+            "composite_rs": composite_rs,
+            "is_breakout": is_breakout,
             "intelligence": intelligence,
             "status_tag": quant_type,
             "status_text": quant_verdict,
@@ -239,16 +264,9 @@ def compute_all_indicators(ticker):
 def build_dashboard_data(output_file=None, charts_dir=None):
     target_charts_dir = charts_dir or CHARTS_DIR
     target_out_path = output_file or OUTPUT_JSON
-    print(f"Building full dashboard data feed for {len(WATCHLIST)} universe tickers...")
+    active_watchlist = get_active_watchlist()
+    print(f"Building full dashboard data feed for {len(active_watchlist)} universe tickers...")
     
-    trades = []
-    if os.path.exists(HISTORY_CSV):
-        try:
-            df_hist = pd.read_csv(HISTORY_CSV)
-            trades = df_hist.to_dict(orient="records")
-        except Exception:
-            pass
-            
     # Macro context from YouTube stream cache
     macro_info = {}
     stream_mentioned_tickers = set()
@@ -265,23 +283,38 @@ def build_dashboard_data(output_file=None, charts_dir=None):
             
     chart_data = {}
     
-    # Fast Parallel Batch Computation for 60 tickers
-    with ThreadPoolExecutor(max_workers=12) as executor:
-        results = list(executor.map(compute_all_indicators, WATCHLIST))
+    # Parallel Batch Computation for 60 tickers (throttled to 6 workers to avoid HTTP 429)
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        results = list(executor.map(compute_all_indicators, active_watchlist))
         
     for res in results:
         if res:
             chart_data[res["ticker"]] = res
             
-    total_trades = len(trades)
-    closed = [t for t in trades if str(t.get('status', '')).startswith('CLOSED')]
-    wins = [t for t in closed if float(t.get('pnl_pct', 0)) > 0]
-    win_rate = (len(wins) / len(closed) * 100) if closed else 0.0
-    
+    # Executive KPI metrics from SQLite trades
+    total_trades = 0
+    active_count = 0
+    closed_count = 0
+    win_rate = 0.0
+    try:
+        init_database()
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT status, pnl_pct FROM trades")
+            trade_rows = cursor.fetchall()
+            total_trades = len(trade_rows)
+            closed = [r for r in trade_rows if str(r['status'] or '').startswith('CLOSED')]
+            wins = [r for r in closed if float(r['pnl_pct'] or 0) > 0]
+            win_rate = (len(wins) / len(closed) * 100) if closed else 0.0
+            active_count = len([r for r in trade_rows if str(r['status'] or '') == 'OPEN'])
+            closed_count = len(closed)
+    except Exception:
+        pass
+
     kpis = {
         "total_recommendations": total_trades,
-        "active_positions": len([t for t in trades if t.get('status') == 'OPEN']),
-        "closed_trades": len(closed),
+        "active_positions": active_count,
+        "closed_trades": closed_count,
         "win_rate": f"{win_rate:.1f}%",
         "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
@@ -289,7 +322,7 @@ def build_dashboard_data(output_file=None, charts_dir=None):
     # Calculate Macro Tailwind Sectors from Gate-0 Climate
     macro_climate = macro_info.get("macro_climate", {}) if isinstance(macro_info, dict) else {}
     macro_gauges = macro_info.get("macro_gauges", {}) if isinstance(macro_info, dict) else {}
-    msi_score = float(macro_climate.get("msi_score", 65.0))
+    msi_score = extract_msi_score(macro_info, default=50.0)
     us10y_val = float(macro_gauges.get("us10y", {}).get("val", 4.4)) if isinstance(macro_gauges.get("us10y"), dict) else 4.4
     wti_val = float(macro_gauges.get("wti", {}).get("val", 78.0)) if isinstance(macro_gauges.get("wti"), dict) else 78.0
     vix_val = float(macro_gauges.get("vix", {}).get("val", 16.0)) if isinstance(macro_gauges.get("vix"), dict) else 16.0
@@ -304,9 +337,9 @@ def build_dashboard_data(output_file=None, charts_dir=None):
     )
 
     # Load current portfolio & recommendation streaks
-    portfolio = db_manager.get_live_portfolio()
+    portfolio = get_live_portfolio()
     wallet_map = {h['ticker'].upper(): h for h in portfolio.get('holdings', [])}
-    streaks = db_manager.get_recommendation_streaks()
+    streaks = get_recommendation_streaks()
 
     # Tag IN WALLET & STREAK properties onto each candidate
     for group in [dual_consensus_picks, strat1_exclusive, strat2_exclusive]:
@@ -327,101 +360,7 @@ def build_dashboard_data(output_file=None, charts_dir=None):
             item["streak_days"] = streak_days
             item["streak_label"] = f"[{streak_days}D STREAK]" if streak_days >= 2 else ""
 
-    # Combined full sets for backwards compatibility
-    all_strat1 = dual_consensus_picks + strat1_exclusive
-    all_strat2 = dual_consensus_picks + strat2_exclusive
-
-    # Build Unified Signal Tracker (Tier 1 -> Tier 3 -> Tier 2)
-    today_str = datetime.now().strftime("%Y-%m-%d")
-    signal_tracker = []
-    
-    # 1. Tier 1 Macro Leaders
-    for d in dual_consensus_picks:
-        signal_tracker.append({
-            "date": today_str,
-            "ticker": d["ticker"],
-            "name": d["name"],
-            "sector": d.get("sector", "GENERAL"),
-            "origin": d["origin"],
-            "origin_label": d["origin_label"],
-            "strategy": "Tier 1 (매크로 순풍+잠행매집)",
-            "strategy_code": "TIER_1_LEADER",
-            "entry_price": d["price"],
-            "target_price": d["target_price"],
-            "stop_price": d["stop_price"],
-            "score": d["score"],
-            "flow_ratio": d.get("flow_ratio", 1.0),
-            "obv_status": d.get("obv_status", "NEUTRAL"),
-            "in_wallet": d.get("in_wallet", False),
-            "streak_days": d.get("streak_days", 1),
-            "streak_label": d.get("streak_label", ""),
-            "status": "DUAL_5_STAR",
-            "status_label": "DUAL_5_STAR"
-        })
-        
-    # 2. Tier 3 Sniper Radar
-    for s in strat2_exclusive:
-        signal_tracker.append({
-            "date": today_str,
-            "ticker": s["ticker"],
-            "name": s["name"],
-            "sector": s.get("sector", "GENERAL"),
-            "origin": s["origin"],
-            "origin_label": s["origin_label"],
-            "strategy": "Tier 3 (구름대 스나이퍼)",
-            "strategy_code": "TIER_3_SNIPER",
-            "entry_price": s["price"],
-            "target_price": s["target_price"],
-            "stop_price": s["stop_price"],
-            "score": s["score"],
-            "flow_ratio": s.get("flow_ratio", 1.0),
-            "obv_status": s.get("obv_status", "NEUTRAL"),
-            "in_wallet": s.get("in_wallet", False),
-            "streak_days": s.get("streak_days", 1),
-            "streak_label": s.get("streak_label", ""),
-            "status": "ACTIVE_SNIPER",
-            "status_label": "ACTIVE_SNIPER"
-        })
-        
-    # 3. Tier 2 Structural Pullbacks
-    for p in strat1_exclusive:
-        signal_tracker.append({
-            "date": today_str,
-            "ticker": p["ticker"],
-            "name": p["name"],
-            "sector": p.get("sector", "GENERAL"),
-            "origin": p["origin"],
-            "origin_label": p["origin_label"],
-            "strategy": "Tier 2 (정석 기준선 눌림목)",
-            "strategy_code": "TIER_2_PULLBACK",
-            "entry_price": p["price"],
-            "target_price": p["target_price"],
-            "stop_price": p["stop_price"],
-            "score": p["score"],
-            "flow_ratio": p.get("flow_ratio", 1.0),
-            "obv_status": p.get("obv_status", "NEUTRAL"),
-            "in_wallet": p.get("in_wallet", False),
-            "streak_days": p.get("streak_days", 1),
-            "streak_label": p.get("streak_label", ""),
-            "status": "ACTIVE_BUY",
-            "status_label": "ACTIVE_BUY"
-        })
-
-    # Load 2+2+2 Matrix and Portfolio from DB
-    matrix = db_manager.get_recommendations_matrix()
-    if not isinstance(matrix, list):
-        matrix = [matrix] if matrix else []
-        
-    portfolio = db_manager.get_live_portfolio()
-    
-    # Ensure any ticker present in matrix is computed in chart_data
-    for m in matrix:
-        for key in ["bull_1", "bull_2", "neutral_1", "neutral_2", "bear_1", "bear_2"]:
-            tk = m.get(key)
-            if tk and tk not in chart_data:
-                d = compute_all_indicators(tk)
-                if d:
-                    chart_data[tk] = d
+    portfolio = get_live_portfolio()
 
     # 1. Save individual modular chart files into data/charts/{ticker}.json
     os.makedirs(target_charts_dir, exist_ok=True)
@@ -430,52 +369,142 @@ def build_dashboard_data(output_file=None, charts_dir=None):
         if isinstance(c_obj, dict):
             # Save individual ticker chart cache
             ticker_chart_path = os.path.join(target_charts_dir, f"{ticker}.json")
-            atomic_save_json(ticker_chart_path, c_obj)
+            prev = atomic_read_json(ticker_chart_path) or {}
+            prev_n = len(prev.get("candles") or []) if isinstance(prev, dict) else 0
+            new_n = len(c_obj.get("candles") or [])
+            if prev_n >= 250 and new_n < prev_n:
+                c_obj = prev
+            else:
+                atomic_save_json(ticker_chart_path, c_obj)
             
-            # Extract lightweight intelligence metadata for instant dashboard loading
+            # Extract lightweight intelligence metadata for instant dashboard loading (<50KB target)
+            bull_score = c_obj.get("bull_score", 0)
+            flow_ratio = round(c_obj.get("flow_ratio", 1.0), 2)
+            obv_status = c_obj.get("obv_status", "NEUTRAL")
+            k_gap = round(c_obj.get("kijun_gap_pct", 0.0), 2)
             chart_intelligence[ticker] = {
-                "intelligence": c_obj.get("intelligence", {}),
-                "latest_close": c_obj.get("latest_close"),
-                "kijun": c_obj.get("kijun"),
-                "tenkan": c_obj.get("tenkan"),
-                "kijun_gap_pct": c_obj.get("kijun_gap_pct"),
-                "vol_ratio": c_obj.get("vol_ratio"),
-                "future_cloud_type": c_obj.get("future_cloud_type"),
-                "future_cloud_gap": c_obj.get("future_cloud_gap"),
-                "future_span_a_latest": c_obj.get("future_span_a_latest"),
-                "future_span_b_latest": c_obj.get("future_span_b_latest"),
-                "status_text": c_obj.get("status_text"),
-                "status_tag": c_obj.get("status_tag"),
-                "bull_score": c_obj.get("bull_score"),
-                "bear_score": c_obj.get("bear_score"),
-                "is_sniper": c_obj.get("is_sniper", False)
+                "gate_score": bull_score,
+                "score": bull_score,
+                "flow_ratio": flow_ratio,
+                "obv_status": obv_status,
+                "kijun_gap": k_gap,
+                "kijun_gap_pct": k_gap,
+                "intelligence": {
+                    "score": bull_score,
+                    "gate_score": bull_score,
+                    "flow_ratio": flow_ratio,
+                    "obv_status": obv_status,
+                    "kijun_gap": k_gap,
+                }
             }
 
     # 2. Build lightweight executive summary payload (under 50KB)
-    daily_history = db_manager.get_daily_recommendation_history()
+    daily_history = get_daily_recommendation_history()
     
+    # Goldman Sachs-Style Conviction Alpha Ranking & C1-M2 Slot Allocator (50/30/20)
+    all_candidates = dual_consensus_picks + strat1_exclusive + strat2_exclusive
+    msi_val = extract_msi_score(macro_info, default=50.0)
+    capital = resolve_capital_regime(msi_score=msi_val, fetch_spy=True)
+    is_bull_regime = bool(capital["is_bull_regime"])
+    macro_info["msi_score"] = msi_val
+    macro_info["msi_stance"] = capital["msi_stance"]
+    macro_info["is_bull_regime"] = is_bull_regime
+    macro_info["capital_regime_source"] = capital["regime_source"]
+    macro_info["slot_weights"] = list(
+        capital.get("slot_weights") or (SLOT_WEIGHTS_BULL if is_bull_regime else SLOT_WEIGHTS_BEAR)
+    )
+
+    # Dynamic leverage overlay (SPY>=SMA200 & VIX<20 → 1.5x)
+    spy_snap = fetch_spy_trend_regime()
+    vix_val = None
+    try:
+        vix_raw = (macro_info.get("gauges") or {}).get("vix", {})
+        if isinstance(vix_raw, dict):
+            vix_val = float(vix_raw.get("val") or 0) or None
+    except Exception:
+        vix_val = None
+    if vix_val is None:
+        try:
+            hist = yf.Ticker("^VIX").history(period="5d")
+            if hist is not None and not hist.empty:
+                vix_val = float(hist["Close"].iloc[-1])
+        except Exception:
+            vix_val = None
+    leverage = evaluate_dynamic_leverage(
+        spy_close=spy_snap.get("spy_close") or capital.get("spy_close"),
+        spy_sma200=spy_snap.get("spy_sma200") or capital.get("spy_sma200"),
+        vix=vix_val,
+    )
+    macro_info["leverage"] = leverage
+
+    # QQQ Composite RS dual-momentum benchmark
+    qqq_crs = None
+    try:
+        qqq_df = yf.download("QQQ", period="1y", interval="1d", progress=False)
+        if qqq_df is not None and not qqq_df.empty:
+            if isinstance(qqq_df.columns, pd.MultiIndex):
+                qqq_df.columns = qqq_df.columns.get_level_values(0)
+            qqq_crs = latest_composite_rs(qqq_df["Close"].values)
+    except Exception:
+        qqq_crs = None
+
+    conviction_res = rank_and_select_top_picks(
+        candidates=all_candidates,
+        portfolio_equity_usd=float(portfolio.get("total_equity_usd", 7500.0)),
+        msi_score=msi_val,
+        is_bull_regime=is_bull_regime,
+        qqq_composite_rs=qqq_crs,
+    )
+    slot_summary = conviction_res.get("slot_summary", {})
+    slot_summary["qqq_composite_rs"] = qqq_crs
+    slot_summary["leverage"] = leverage
+    slot_summary["cash_proxy_ticker"] = CASH_PROXY_TICKER
+    slot_summary["satellite_count"] = len(satellite_holdings(portfolio.get("holdings") or []))
+    slot_summary["proxy_holdings"] = [
+        {"ticker": h.get("ticker"), "quantity": h.get("quantity"), "current_price": h.get("current_price")}
+        for h in proxy_holdings(portfolio.get("holdings") or [])
+    ]
+
     payload = {
+        "engine": "C1-M2",
+        "risk_constitution": {
+            "stop_loss_pct": STOP_LOSS_PCT,
+            "hard_stop_pct": -HARD_STOP_PCT,
+            "take_profit_activate_pct": TRAILING_ACTIVATE_PCT,
+            "take_profit_pct": TAKE_PROFIT_PCT,
+            "slot_weights_bull": list(SLOT_WEIGHTS_BULL),
+            "slot_weights_bear": list(SLOT_WEIGHTS_BEAR),
+            "cash_proxy": CASH_PROXY_TICKER,
+        },
         "macro": macro_info,
         "kpis": kpis,
-        "trades": trades,
-        "matrix": matrix,
         "daily_history": daily_history,
         "portfolio": portfolio,
-        "dual_consensus": dual_consensus_picks,
-        "strat1_exclusive": strat1_exclusive,
-        "strat2_exclusive": strat2_exclusive,
-        "primary_accumulation": all_strat1,
-        "sniper_radar": all_strat2,
-        "signal_tracker": signal_tracker,
+        "top_conviction_pick": conviction_res.get("top_pick"),
+        "top_conviction_runner_up": conviction_res.get("runner_up"),
+        "ranked_conviction_list": conviction_res.get("ranked_candidates", []),
+        "slot_allocation_summary": slot_summary,
+        "tier1": dual_consensus_picks,
+        "tier2": strat1_exclusive,
+        "tier3": strat2_exclusive,
         "chart_intelligence": chart_intelligence,
+        "universe_sectors": load_universe_sectors(),
         "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
     
     out_path = target_out_path
-    atomic_save_json(out_path, payload)
+    atomic_save_json(out_path, payload, indent=None)
         
-    print(f"Successfully generated modular feed: {out_path} (Size: {os.path.getsize(out_path)/1024:.1f} KB, Charts: {len(chart_data)} saved in {target_charts_dir})")
+    bar_counts = [len((c or {}).get("candles") or []) for c in chart_data.values()]
+    bar_min = min(bar_counts) if bar_counts else 0
+    bar_max = max(bar_counts) if bar_counts else 0
+    print(
+        f"Successfully generated modular feed: {out_path} "
+        f"(Size: {os.path.getsize(out_path)/1024:.1f} KB, Charts: {len(chart_data)} saved in {target_charts_dir}, "
+        f"daily bars min={bar_min} max={bar_max})"
+    )
     return payload
+
 
 if __name__ == "__main__":
     build_dashboard_data()

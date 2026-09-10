@@ -1,0 +1,339 @@
+{
+  "meta": {
+    "html_exit": "-4% hard stop OR +15% peak then trailing. Hold otherwise. No kijun-anytime.",
+    "baseline": "Original HTML backtest universe = today's static WATCHLIST 60",
+    "challenger": "Daily dynamic-60 from prior-close sector 3M RS (listed names only)",
+    "initial": 100000.0,
+    "friction": {
+      "slippage_bps": 10.0,
+      "fee_bps": 8.0
+    },
+    "elapsed_sec": 4.5
+  },
+  "windows": {
+    "2018-08-31": {
+      "html_static": {
+        "final_equity": 1083898.32,
+        "total_return_pct": 983.9,
+        "cagr_pct": 34.86,
+        "sharpe": 1.125,
+        "mdd_pct": -29.16,
+        "n_days": 2008,
+        "start": "2018-08-31",
+        "end": "2026-08-28",
+        "trades": {
+          "n": 262,
+          "win_rate": 30.53,
+          "profit_factor": 2.16,
+          "avg_pnl": 3.91,
+          "median_pnl": -4.096,
+          "avg_bars": 21.1,
+          "reasons": {
+            "HARD_STOP": {
+              "n": 178,
+              "avg_pnl": -4.924,
+              "share_pct": 67.9
+            },
+            "TRAILING": {
+              "n": 81,
+              "avg_pnl": 23.245,
+              "share_pct": 30.9
+            },
+            "EOB": {
+              "n": 3,
+              "avg_pnl": 5.985,
+              "share_pct": 1.1
+            }
+          }
+        },
+        "universe": [
+          "NVDA",
+          "MSFT",
+          "AMZN",
+          "AAPL",
+          "GOOGL",
+          "META",
+          "TSLA",
+          "PLTR",
+          "ORCL",
+          "CRM",
+          "TSM",
+          "AVGO",
+          "AMD",
+          "QCOM",
+          "ARM",
+          "MU",
+          "INTC",
+          "TXN",
+          "005930.KS",
+          "000660.KS",
+          "ASML",
+          "AMAT",
+          "LRCX",
+          "KLAC",
+          "MRVL",
+          "VST",
+          "CEG",
+          "GEV",
+          "ETN",
+          "CCJ",
+          "OKLO",
+          "XOM",
+          "CVX",
+          "CRWD",
+          "PANW",
+          "NOW",
+          "RKLB",
+          "IONQ",
+          "SNOW",
+          "NET",
+          "APP",
+          "JPM",
+          "V",
+          "MA",
+          "COIN",
+          "HOOD",
+          "MSTR",
+          "LMT",
+          "RTX",
+          "NOC",
+          "GE",
+          "LLY",
+          "UNH",
+          "JNJ",
+          "ISRG",
+          "COST",
+          "WMT",
+          "NFLX",
+          "DIS"
+        ]
+      },
+      "html_dynamic": {
+        "final_equity": 403031.24,
+        "total_return_pct": 303.03,
+        "cagr_pct": 19.12,
+        "sharpe": 0.726,
+        "mdd_pct": -40.36,
+        "n_days": 2008,
+        "start": "2018-08-31",
+        "end": "2026-08-28",
+        "trades": {
+          "n": 313,
+          "win_rate": 27.8,
+          "profit_factor": 1.531,
+          "avg_pnl": 1.958,
+          "median_pnl": -4.096,
+          "avg_bars": 17.9,
+          "reasons": {
+            "HARD_STOP": {
+              "n": 222,
+              "avg_pnl": -5.181,
+              "share_pct": 70.9
+            },
+            "TRAILING": {
+              "n": 88,
+              "avg_pnl": 19.898,
+              "share_pct": 28.1
+            },
+            "EOB": {
+              "n": 3,
+              "avg_pnl": 4.063,
+              "share_pct": 1.0
+            }
+          }
+        }
+      },
+      "ols_dynamic_on_static": {
+        "beta": [
+          0.000203,
+          0.492162
+        ],
+        "se": [
+          0.000374,
+          0.019237
+        ],
+        "t": [
+          0.544,
+          25.584
+        ],
+        "p": [
+          0.5864,
+          0.0
+        ],
+        "r2": 0.2461,
+        "n": 2007,
+        "alpha": {
+          "daily_pct": 0.0203,
+          "annualized_pct": 5.12,
+          "t": 0.544,
+          "p": 0.5864
+        },
+        "beta_html": 0.492162,
+        "spec": "R_dynamic = a + b * R_html_static + e"
+      },
+      "verdict": "DYNAMIC_POSITIVE_NS"
+    },
+    "2023-08-31": {
+      "html_static": {
+        "final_equity": 272525.56,
+        "total_return_pct": 172.53,
+        "cagr_pct": 39.99,
+        "sharpe": 1.252,
+        "mdd_pct": -33.13,
+        "n_days": 751,
+        "start": "2023-08-31",
+        "end": "2026-08-28",
+        "trades": {
+          "n": 126,
+          "win_rate": 28.57,
+          "profit_factor": 2.056,
+          "avg_pnl": 3.706,
+          "median_pnl": -4.096,
+          "avg_bars": 17.2,
+          "reasons": {
+            "HARD_STOP": {
+              "n": 88,
+              "avg_pnl": -5.011,
+              "share_pct": 69.8
+            },
+            "TRAILING": {
+              "n": 35,
+              "avg_pnl": 24.269,
+              "share_pct": 27.8
+            },
+            "EOB": {
+              "n": 3,
+              "avg_pnl": 19.519,
+              "share_pct": 2.4
+            }
+          }
+        },
+        "universe": [
+          "NVDA",
+          "MSFT",
+          "AMZN",
+          "AAPL",
+          "GOOGL",
+          "META",
+          "TSLA",
+          "PLTR",
+          "ORCL",
+          "CRM",
+          "TSM",
+          "AVGO",
+          "AMD",
+          "QCOM",
+          "ARM",
+          "MU",
+          "INTC",
+          "TXN",
+          "005930.KS",
+          "000660.KS",
+          "ASML",
+          "AMAT",
+          "LRCX",
+          "KLAC",
+          "MRVL",
+          "VST",
+          "CEG",
+          "GEV",
+          "ETN",
+          "CCJ",
+          "OKLO",
+          "XOM",
+          "CVX",
+          "CRWD",
+          "PANW",
+          "NOW",
+          "RKLB",
+          "IONQ",
+          "SNOW",
+          "NET",
+          "APP",
+          "JPM",
+          "V",
+          "MA",
+          "COIN",
+          "HOOD",
+          "MSTR",
+          "LMT",
+          "RTX",
+          "NOC",
+          "GE",
+          "LLY",
+          "UNH",
+          "JNJ",
+          "ISRG",
+          "COST",
+          "WMT",
+          "NFLX",
+          "DIS"
+        ]
+      },
+      "html_dynamic": {
+        "final_equity": 135139.15,
+        "total_return_pct": 35.14,
+        "cagr_pct": 10.63,
+        "sharpe": 0.476,
+        "mdd_pct": -36.12,
+        "n_days": 751,
+        "start": "2023-08-31",
+        "end": "2026-08-28",
+        "trades": {
+          "n": 129,
+          "win_rate": 23.26,
+          "profit_factor": 1.303,
+          "avg_pnl": 1.269,
+          "median_pnl": -4.096,
+          "avg_bars": 17.0,
+          "reasons": {
+            "HARD_STOP": {
+              "n": 97,
+              "avg_pnl": -5.552,
+              "share_pct": 75.2
+            },
+            "TRAILING": {
+              "n": 29,
+              "avg_pnl": 23.797,
+              "share_pct": 22.5
+            },
+            "EOB": {
+              "n": 3,
+              "avg_pnl": 4.063,
+              "share_pct": 2.3
+            }
+          }
+        }
+      },
+      "ols_dynamic_on_static": {
+        "beta": [
+          -0.000336,
+          0.631105
+        ],
+        "se": [
+          0.000623,
+          0.03212
+        ],
+        "t": [
+          -0.539,
+          19.648
+        ],
+        "p": [
+          0.5897,
+          0.0
+        ],
+        "r2": 0.3404,
+        "n": 750,
+        "alpha": {
+          "daily_pct": -0.0336,
+          "annualized_pct": -8.47,
+          "t": -0.539,
+          "p": 0.5897
+        },
+        "beta_html": 0.631105,
+        "spec": "R_dynamic = a + b * R_html_static + e"
+      },
+      "verdict": "STATIC_HTML_AHEAD"
+    }
+  }
+}

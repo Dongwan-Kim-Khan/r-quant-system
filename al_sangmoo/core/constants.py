@@ -1,6 +1,60 @@
 """
-Centralized Constants & Single Source of Truth for R-Sangmoo Quant Trading Platform.
+Centralized Constants & Single Source of Truth for Al-Sangmoo Quant Trading Platform.
+C1-M2 Production Engine SSOT (see INVESTMENT_PROSPECTUS_C1_M2.md).
 """
+import re
+
+# C1-M2 constitution (fractional). Live buy stop = buy_price * (1 + STOP_LOSS_PCT)
+STOP_LOSS_PCT = -0.05
+TAKE_PROFIT_PCT = 0.15
+PARTIAL_TP_PCT = 0.08  # persisted display only; guardian does not partial-exit
+ATR_MULTIPLIER = 2.5   # trailing floor = max(Kijun-26, peak - ATR_MULTIPLIER * ATR(14))
+
+HARD_STOP_PCT = abs(STOP_LOSS_PCT) * 100.0       # 5.0 percentage points
+TRAILING_ACTIVATE_PCT = TAKE_PROFIT_PCT * 100.0  # 15.0 percentage points
+PARTIAL_TP_DISPLAY_PCT = PARTIAL_TP_PCT * 100.0  # 8.0 percentage points
+
+STOP_LOSS_MULT = 1.0 + STOP_LOSS_PCT             # 0.95
+TAKE_PROFIT_MULT = 1.0 + TAKE_PROFIT_PCT         # 1.15
+PARTIAL_TP_MULT = 1.0 + PARTIAL_TP_PCT           # 1.08
+
+# C1-M2 3-Slot Conviction Matrix (NAV fractions)
+SLOT_WEIGHTS_BULL = [0.50, 0.30, 0.20]  # ranks 1 / 2 / 3
+SLOT_WEIGHTS_BEAR = [0.25, 0.25]        # SPY < SMA200 → max 2 slots
+MAX_SLOTS_BULL = len(SLOT_WEIGHTS_BULL)
+MAX_SLOTS_BEAR = len(SLOT_WEIGHTS_BEAR)
+
+# Cash-proxy overlay & dynamic leverage (QQQ core / QLD boost)
+CASH_PROXY_TICKER = "QQQ"
+LEVERAGE_TICKER = "QLD"
+LEVERAGE_GROSS_TARGET = 1.5
+LEVERAGE_VIX_MAX = 20.0
+
+# Composite Relative Strength weights (dual-momentum satellite filter)
+COMPOSITE_RS_W_21 = 0.40
+COMPOSITE_RS_W_63 = 0.35
+COMPOSITE_RS_W_126 = 0.25
+COMPOSITE_RS_LOOKBACKS = (21, 63, 126)
+
+
+def derive_stop_price(entry: float) -> float:
+    return round(float(entry) * STOP_LOSS_MULT, 2)
+
+
+def derive_target_price(entry: float) -> float:
+    return round(float(entry) * TAKE_PROFIT_MULT, 2)
+
+
+def is_market_ticker(ticker: str) -> bool:
+    """True for exchange symbols like NVDA / 005930.KS. False for test junk (W_0_12, SEED_1)."""
+    t = str(ticker or "").strip().upper()
+    if not t or "_" in t:
+        return False
+    return bool(re.match(r"^([A-Z]{1,5}|[0-9]{6})(\.(KS|KQ))?$", t))
+
+
+def derive_partial_tp_price(entry: float) -> float:
+    return round(float(entry) * PARTIAL_TP_MULT, 2)
 
 WATCHLIST = [
     # Mega Tech & AI Platforms (10)
@@ -20,6 +74,17 @@ WATCHLIST = [
     # Healthcare & Global Consumers (8)
     "LLY", "UNH", "JNJ", "ISRG", "COST", "WMT", "NFLX", "DIS"
 ]
+
+def get_active_watchlist() -> list:
+    """Returns dynamic 60 universe if available, falling back to static WATCHLIST."""
+    try:
+        from al_sangmoo.domain.quant.dynamic_universe import get_dynamic_watchlist
+        w = get_dynamic_watchlist()
+        if w and len(w) == 60:
+            return w
+    except Exception:
+        pass
+    return list(WATCHLIST)
 
 STOCK_DICT = {
     # Mega Tech & AI
@@ -152,9 +217,10 @@ TICKER_SECTORS = {
     "COST": "CONSUMER", "WMT": "CONSUMER", "NFLX": "CONSUMER", "DIS": "CONSUMER"
 }
 
-def get_macro_tailwind_sectors(msi_score: float = 65.0, us10y: float = 4.4, wti: float = 78.0, vix: float = 16.0) -> list:
+def get_macro_tailwind_sectors(msi_score: float = 50.0, us10y: float = 4.4, wti: float = 78.0, vix: float = 16.0) -> list:
     """
     Returns active institutional macro tailwind sectors based on Gate-0 climate.
+    MSI is a RISK index: higher MSI rotates toward defense / value, lower MSI toward growth.
     """
     tailwind = []
     

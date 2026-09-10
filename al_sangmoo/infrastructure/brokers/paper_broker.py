@@ -1,9 +1,10 @@
-﻿"""
+"""
 High-Fidelity Paper Trading Broker Adapter.
 Synchronizes with SQLite portfolio persistence.
 """
 from typing import Dict, Any, List
 from datetime import datetime
+from al_sangmoo.core.constants import derive_stop_price, derive_target_price
 from al_sangmoo.domain.interfaces.execution_gateway import IExecutionGateway
 from al_sangmoo.infrastructure.persistence import add_portfolio_buy, record_portfolio_sell, get_live_portfolio
 
@@ -32,8 +33,8 @@ class PaperTradingBroker(IExecutionGateway):
             "fill_price": fill_price,
             "quantity": quantity,
             "total_cost": total_cost,
-            "target_price": target_price or round(fill_price * 1.15, 2),
-            "stop_loss_price": stop_loss or round(fill_price * 0.97, 2),
+            "target_price": target_price or derive_target_price(fill_price),
+            "stop_loss_price": stop_loss or derive_stop_price(fill_price),
             "execution_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
 

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>C1-M2 투자설명서 (PPM/KIID) | Al-Sangmoo</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --card: #12182a;
+      --line: #243049;
+      --text: #e8eefc;
+      --muted: #93a0b8;
+      --accent: #38bdf8;
+      --green: #34d399;
+      --red: #f87171;
+      --amber: #fbbf24;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Noto Sans KR", sans-serif;
+      background: radial-gradient(1200px 600px at 10% -10%, #1a2744 0%, var(--bg) 55%);
+      color: var(--text);
+      line-height: 1.55;
+    }
+    .wrap { max-width: 920px; margin: 0 auto; padding: 28px 20px 64px; }
+    .topbar { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:22px; flex-wrap:wrap; }
+    .badge { display:inline-flex; align-items:center; gap:8px; padding:6px 12px; border-radius:999px; border:1px solid rgba(56,189,248,.35); background:rgba(56,189,248,.12); color:var(--accent); font-weight:800; font-size:12px; letter-spacing:.04em; }
+    a.btn { text-decoration:none; color:#fff; border:1px solid var(--line); background:#182038; padding:8px 14px; border-radius:999px; font-size:12px; font-weight:700; }
+    a.btn:hover { border-color: var(--accent); color: var(--accent); }
+    h1 { font-size: 28px; margin: 0 0 6px; letter-spacing: -0.03em; }
+    h2 { font-size: 18px; margin: 28px 0 10px; color: var(--accent); border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+    h3 { font-size: 14px; margin: 16px 0 8px; color: #cbd5e1; }
+    p, li { color: var(--muted); font-size: 14px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; margin: 12px 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { border-bottom: 1px solid var(--line); padding: 8px 6px; text-align: left; }
+    th { color: #9fb3d1; font-weight: 700; }
+    td strong { color: var(--green); }
+    .warn { color: var(--amber); }
+    .danger { color: var(--red); }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: #dbeafe; }
+    .footer { margin-top: 28px; font-size: 12px; color: #70809c; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <span class="badge">C1-M2 PRODUCTION ENGINE · PPM / KIID</span>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <a class="btn" href="/static/INVESTMENT_PROSPECTUS_C1_M2.html">English</a>
+        <a class="btn" href="/docs/prospectus.md?lang=ko">Markdown</a>
+        <a class="btn" href="/">← Terminal</a>
+      </div>
+    </div>
+
+    <h1>Al-Sangmoo Dynamic Alpha Hedge Strategy</h1>
+    <p>정식 엔진 코드 <code>C1-M2</code> · Quantitative Systematic Trend-Following &amp; Dynamic Regime Overlay · 기준통화 USD</p>
+
+    <div class="card">
+      <h3>I. 펀드 개요</h3>
+      <ul>
+        <li>벤치마크: NASDAQ-100 (<code>QQQ</code>), S&amp;P 500 (<code>SPY</code>)</li>
+        <li>권장 자본: 초기 <strong>$8,000</strong> + 매월 첫 거래일 <strong>$400</strong> 적립</li>
+        <li>대상: 장기 자본 증식 및 초과 알파를 추구하는 적격 투자자</li>
+      </ul>
+    </div>
+
+    <h2>II. Dual-Alpha &amp; 레버리지</h2>
+    <div class="card">
+      <ul>
+        <li><strong>Base Beta</strong>: 유휴 자본 → <code>QQQ</code> Cash Proxy 상시 파킹</li>
+        <li><strong>Satellite Alpha</strong>: Composite RS 상위 1~3 주도주 (QQQ CRS 상회만)</li>
+        <li><strong>1.5x</strong>: <code>SPY ≥ SMA200</code> AND <code>VIX &lt; 20</code> 시 QQQ+QLD / 이탈 시 즉시 1.0x</li>
+      </ul>
+      <p>Composite RS = <code>0.40×RS21 + 0.35×RS63 + 0.25×RS126</code></p>
+    </div>
+
+    <h2>III. 슬롯 배분 (Conviction Matrix)</h2>
+    <table>
+      <thead><tr><th>슬롯</th><th>강세장</th><th>약세장 (SPY &lt; SMA200)</th></tr></thead>
+      <tbody>
+        <tr><td>Slot 1</td><td><strong>50%</strong></td><td><strong>25%</strong></td></tr>
+        <tr><td>Slot 2</td><td><strong>30%</strong></td><td><strong>25%</strong></td></tr>
+        <tr><td>Slot 3</td><td><strong>20%</strong></td><td>미사용</td></tr>
+      </tbody>
+    </table>
+
+    <h2>IV. 리스크 가드레일</h2>
+    <div class="card">
+      <ul>
+        <li class="danger"><strong>Hard Stop −5.0%</strong> (진입가 × 0.95) — 기계적 전량 청산</li>
+        <li><strong>Trailing TP</strong>: +15% 피크 후 <code>max(26일 기준선, peak − 2.5×ATR14)</code> 이탈 시 전량</li>
+        <li>Order Guard: SQLite WAL + <code>ORDER_MUTEX</code></li>
+      </ul>
+    </div>
+
+    <h2>V. 실측 트랙레코드 (마찰 10bps/8bps, PIT)</h2>
+    <table>
+      <thead><tr><th>구분</th><th>성과</th><th>MDD</th></tr></thead>
+      <tbody>
+        <tr><td>M2 거치식 8y</td><td><strong>CAGR 22.00%</strong></td><td class="danger">−51.13%</td></tr>
+        <tr><td>M2 적립식 ($8k+$400)</td><td><strong>$174,683</strong> / XIRR 27.48%</td><td class="danger">−48.15%</td></tr>
+        <tr><td>vs QQQ 동일 적립</td><td colspan="2">최종 +약 $56,000 초과</td></tr>
+      </tbody>
+    </table>
+
+    <h2>VI. 고지</h2>
+    <p class="warn">과거 백테스트 성과는 미래 수익을 보장하지 않습니다. 본 문서는 공모 청약 권유가 아니며 적격 투자자 한정입니다.</p>
+
+    <div class="footer">
+      Document Date: 2026-09-08 · Source: <code>INVESTMENT_PROSPECTUS_C1_M2_KO.md</code> · Engine SSOT: <code>al_sangmoo/core/constants.py</code>
+    </div>
+  </div>
+</body>
+</html>

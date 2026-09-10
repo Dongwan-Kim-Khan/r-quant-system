@@ -45,8 +45,8 @@ def test_friction_aware_backtester():
         initial_capital=100000.0,
         slippage_bps=0.0010, # 10 bps
         fee_rate=0.0008,     # 8 bps
-        stop_loss_pct=-0.03, # -3% Stop
-        take_profit_pct=0.15 # +15% TP
+        stop_loss_pct=-0.05, # -5% C1-M2 constitution hard stop
+        take_profit_pct=0.15 # +15% TP / trailing latch
     )
 
     assert res["status"] == "success"

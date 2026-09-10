@@ -9,52 +9,8 @@ from datetime import datetime
 import yfinance as yf
 import pandas as pd
 from al_sangmoo.domain.quant.macro import evaluate_macro_stance
-
-def atomic_save_json(file_path, data, indent=2, max_retries=10):
-    dir_name = os.path.dirname(os.path.abspath(file_path))
-    os.makedirs(dir_name, exist_ok=True)
-    temp_name = None
-    with tempfile.NamedTemporaryFile("w", dir=dir_name, delete=False, encoding="utf-8") as tf:
-        temp_name = tf.name
-        json.dump(data, tf, ensure_ascii=False, indent=indent)
-        tf.flush()
-        os.fsync(tf.fileno())
-        
-    for attempt in range(max_retries):
-        try:
-            os.replace(temp_name, file_path)
-            return
-        except (PermissionError, OSError):
-            if attempt == max_retries - 1:
-                try:
-                    with open(file_path, "w", encoding="utf-8") as f:
-                        json.dump(data, f, ensure_ascii=False, indent=indent)
-                    if temp_name and os.path.exists(temp_name):
-                        os.remove(temp_name)
-                    return
-                except Exception:
-                    pass
-                raise
-            time.sleep(0.01 * (1.5 ** attempt))
-            
-    if temp_name and os.path.exists(temp_name):
-        try:
-            os.remove(temp_name)
-        except Exception:
-            pass
-
-def atomic_read_json(file_path, default=None, max_retries=5):
-    if not os.path.exists(file_path):
-        return default if default is not None else {}
-    for attempt in range(max_retries):
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except (PermissionError, json.JSONDecodeError, OSError):
-            if attempt == max_retries - 1:
-                return default if default is not None else {}
-            time.sleep(0.01 * (attempt + 1))
-    return default if default is not None else {}
+from al_sangmoo.infrastructure.atomic_io import atomic_save_json, atomic_read_json
+from al_sangmoo.core.constants import STOCK_DICT
 
 # Windows encoding fix
 if sys.platform.startswith('win'):
@@ -83,33 +39,6 @@ def get_safe_vtt_path(video_id: str) -> str:
     if not vtt_path.startswith(base_dir_abs):
         raise PermissionError("Path traversal attempt detected.")
     return vtt_path
-
-# Stock Dictionary with Korean and English aliases
-STOCK_DICT = {
-    "NVDA": ["엔비디아", "엔비디", "NVIDIA", "NVDA"],
-    "MSFT": ["마이크로소프트", "마이크로 소프트", "마소", "MSFT", "MICROSOFT"],
-    "AMZN": ["아마존", "AMZN", "AMAZON"],
-    "GOOGL": ["구글", "알파벳", "GOOGL", "GOOGLE", "ALPHABET"],
-    "META": ["메타", "페이스북", "META", "FACEBOOK"],
-    "TSLA": ["테슬라", "TSLA", "TESLA"],
-    "AAPL": ["애플", "AAPL", "APPLE"],
-    "AVGO": ["브로드컴", "AVGO", "BROADCOM"],
-    "COST": ["코스트코", "COST", "COSTCO"],
-    "LLY": ["일라이릴리", "일라이 릴리", "릴리", "LLY", "LILLY"],
-    "AMD": ["에이엠디", "AMD"],
-    "QCOM": ["퀄컴", "QCOM", "QUALCOMM"],
-    "PLTR": ["팔란티어", "PLTR", "PALANTIR"],
-    "SMCI": ["슈퍼마이크로", "SMCI", "SUPERMICRO"],
-    "MU": ["마이크론", "마이크론테크", "MU", "MICRON"],
-    "ARM": ["암", "ARM"],
-    "VST": ["비스트라", "비스트라에너지", "VST", "VISTRA"],
-    "CEG": ["콘스텔레이션", "CEG", "CONSTELLATION"],
-    "GEV": ["지이베르노바", "베르노바", "GEV", "VERNOVA"],
-    "ETN": ["이튼", "ETN", "EATON"],
-    "005930.KS": ["삼성전자", "삼전"],
-    "000660.KS": ["SK하이닉스", "하이닉스"],
-    "012450.KS": ["한화에어로스페이스", "한화에어로", "한화에어로스"]
-}
 
 # Positive / Recommendation Context Keywords
 POS_KEYWORDS = [

@@ -1,0 +1,217 @@
+{
+  "meta": {
+    "seed": 8000.0,
+    "monthly": 400.0,
+    "friction": {
+      "slippage_bps": 10.0,
+      "fee_bps": 8.0
+    },
+    "expected_invested_8y": 46400.0,
+    "expected_invested_3y": 22400.0,
+    "qld_available": true,
+    "generated": "2026-09-08 13:50 UTC",
+    "elapsed_sec": 2.8
+  },
+  "windows": {
+    "2018-08-31": {
+      "end": "2026-08-28",
+      "SPY": {
+        "label": "SPY",
+        "total_invested": 46400.0,
+        "final_equity": 93008.72,
+        "net_profit": 46608.72,
+        "roi_pct": 100.45,
+        "xirr_pct": 14.47,
+        "dca_mdd_pct": -32.42,
+        "invested_ratio_mdd_pct": -34.15,
+        "n_deposits": 97,
+        "n_days": 2008,
+        "end": "2026-08-28"
+      },
+      "QQQ": {
+        "label": "QQQ",
+        "total_invested": 46400.0,
+        "final_equity": 118704.6,
+        "net_profit": 72304.6,
+        "roi_pct": 155.83,
+        "xirr_pct": 19.49,
+        "dca_mdd_pct": -28.9,
+        "invested_ratio_mdd_pct": -39.52,
+        "n_deposits": 97,
+        "n_days": 2008,
+        "end": "2026-08-28"
+      },
+      "QLD": {
+        "label": "QLD",
+        "total_invested": 46400.0,
+        "final_equity": 199134.49,
+        "net_profit": 152734.49,
+        "roi_pct": 329.17,
+        "xirr_pct": 30.22,
+        "dca_mdd_pct": -59.37,
+        "invested_ratio_mdd_pct": -66.71,
+        "n_deposits": 97,
+        "n_days": 2008,
+        "end": "2026-08-28"
+      },
+      "C1_v1": {
+        "label": "C1_v1",
+        "total_invested": 46400.0,
+        "final_equity": 147265.48,
+        "net_profit": 100865.48,
+        "roi_pct": 217.38,
+        "xirr_pct": 23.94,
+        "dca_mdd_pct": -39.99,
+        "invested_ratio_mdd_pct": -41.53,
+        "n_deposits": 97,
+        "n_days": 2008,
+        "end": "2026-08-28",
+        "trades_n": 325,
+        "regime_days": {
+          "bull_lowvol": 1196,
+          "bull": 376,
+          "bear_2slot": 436
+        }
+      },
+      "M2": {
+        "label": "M2",
+        "total_invested": 46400.0,
+        "final_equity": 174683.43,
+        "net_profit": 128283.43,
+        "roi_pct": 276.47,
+        "xirr_pct": 27.48,
+        "dca_mdd_pct": -48.15,
+        "invested_ratio_mdd_pct": -49.48,
+        "n_deposits": 97,
+        "n_days": 2008,
+        "end": "2026-08-28",
+        "trades_n": 286,
+        "regime_days": {
+          "bull_lowvol": 1196,
+          "bull": 376,
+          "bear_2slot": 436
+        }
+      },
+      "SPY_vs_QQQ": {
+        "excess_profit_usd": -25695.88,
+        "excess_roi_pp": -55.38,
+        "excess_xirr_pp": -5.02
+      },
+      "QLD_vs_QQQ": {
+        "excess_profit_usd": 80429.89,
+        "excess_roi_pp": 173.34,
+        "excess_xirr_pp": 10.73
+      },
+      "C1_vs_QQQ": {
+        "excess_profit_usd": 28560.88,
+        "excess_roi_pp": 61.55,
+        "excess_xirr_pp": 4.45
+      },
+      "M2_vs_QQQ": {
+        "excess_profit_usd": 55978.83,
+        "excess_roi_pp": 120.64,
+        "excess_xirr_pp": 7.99
+      }
+    },
+    "2023-08-31": {
+      "end": "2026-08-28",
+      "SPY": {
+        "label": "SPY",
+        "total_invested": 22400.0,
+        "final_equity": 32682.16,
+        "net_profit": 10282.16,
+        "roi_pct": 45.9,
+        "xirr_pct": 19.35,
+        "dca_mdd_pct": -15.31,
+        "invested_ratio_mdd_pct": -19.7,
+        "n_deposits": 37,
+        "n_days": 751,
+        "end": "2026-08-28"
+      },
+      "QQQ": {
+        "label": "QQQ",
+        "total_invested": 22400.0,
+        "final_equity": 35593.28,
+        "net_profit": 13193.28,
+        "roi_pct": 58.9,
+        "xirr_pct": 24.01,
+        "dca_mdd_pct": -19.36,
+        "invested_ratio_mdd_pct": -24.08,
+        "n_deposits": 37,
+        "n_days": 751,
+        "end": "2026-08-28"
+      },
+      "QLD": {
+        "label": "QLD",
+        "total_invested": 22400.0,
+        "final_equity": 47433.65,
+        "net_profit": 25033.65,
+        "roi_pct": 111.76,
+        "xirr_pct": 40.52,
+        "dca_mdd_pct": -39.46,
+        "invested_ratio_mdd_pct": -44.05,
+        "n_deposits": 37,
+        "n_days": 751,
+        "end": "2026-08-28"
+      },
+      "C1_v1": {
+        "label": "C1_v1",
+        "total_invested": 22400.0,
+        "final_equity": 45093.43,
+        "net_profit": 22693.43,
+        "roi_pct": 101.31,
+        "xirr_pct": 37.51,
+        "dca_mdd_pct": -23.63,
+        "invested_ratio_mdd_pct": -28.09,
+        "n_deposits": 37,
+        "n_days": 751,
+        "end": "2026-08-28",
+        "trades_n": 129,
+        "regime_days": {
+          "bull_lowvol": 611,
+          "bull": 77,
+          "bear_2slot": 63
+        }
+      },
+      "M2": {
+        "label": "M2",
+        "total_invested": 22400.0,
+        "final_equity": 42195.34,
+        "net_profit": 19795.34,
+        "roi_pct": 88.37,
+        "xirr_pct": 33.63,
+        "dca_mdd_pct": -33.94,
+        "invested_ratio_mdd_pct": -40.38,
+        "n_deposits": 37,
+        "n_days": 751,
+        "end": "2026-08-28",
+        "trades_n": 128,
+        "regime_days": {
+          "bull_lowvol": 611,
+          "bull": 77,
+          "bear_2slot": 63
+        }
+      },
+      "SPY_vs_QQQ": {
+        "excess_profit_usd": -2911.12,
+        "excess_roi_pp": -13.0,
+        "excess_xirr_pp": -4.66
+      },
+      "QLD_vs_QQQ": {
+        "excess_profit_usd": 11840.37,
+        "excess_roi_pp": 52.86,
+        "excess_xirr_pp": 16.51
+      },
+      "C1_vs_QQQ": {
+        "excess_profit_usd": 9500.15,
+        "excess_roi_pp": 42.41,
+        "excess_xirr_pp": 13.5
+      },
+      "M2_vs_QQQ": {
+        "excess_profit_usd": 6602.06,
+        "excess_roi_pp": 29.47,
+        "excess_xirr_pp": 9.62
+      }
+    }
+  }
+}

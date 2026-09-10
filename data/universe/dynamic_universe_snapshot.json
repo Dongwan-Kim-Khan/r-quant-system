@@ -1,0 +1,228 @@
+{
+  "session_date": "2026-08-28",
+  "created_at": "2026-08-28 15:44:46",
+  "total_count": 60,
+  "watchlist": [
+    "NVDA",
+    "TSM",
+    "AVGO",
+    "AMD",
+    "QCOM",
+    "ARM",
+    "MU",
+    "INTC",
+    "TXN",
+    "ASML",
+    "AMAT",
+    "LRCX",
+    "KLAC",
+    "MRVL",
+    "MSFT",
+    "AAPL",
+    "AMZN",
+    "GOOGL",
+    "META",
+    "TSLA",
+    "ORCL",
+    "CRM",
+    "ADBE",
+    "IBM",
+    "NOW",
+    "INTU",
+    "XOM",
+    "CVX",
+    "COP",
+    "SLB",
+    "EOG",
+    "MPC",
+    "PSX",
+    "VLO",
+    "OXY",
+    "VST",
+    "LMT",
+    "RTX",
+    "NOC",
+    "GD",
+    "BA",
+    "GE",
+    "TDG",
+    "HWM",
+    "CRWD",
+    "PANW",
+    "FTNT",
+    "ZS",
+    "NET",
+    "DDOG",
+    "LLY",
+    "UNH",
+    "JNJ",
+    "ABBV",
+    "JPM",
+    "BAC",
+    "COST",
+    "NFLX",
+    "CAT",
+    "LIN"
+  ],
+  "sector_breakdown": [
+    {
+      "sector": "SEMICONDUCTOR",
+      "etf": "SMH",
+      "rank": 1,
+      "rs_3m": 15.0,
+      "quota": 14,
+      "selected_stocks": [
+        "NVDA",
+        "TSM",
+        "AVGO",
+        "AMD",
+        "QCOM",
+        "ARM",
+        "MU",
+        "INTC",
+        "TXN",
+        "ASML",
+        "AMAT",
+        "LRCX",
+        "KLAC",
+        "MRVL"
+      ]
+    },
+    {
+      "sector": "MEGA_TECH",
+      "etf": "XLK",
+      "rank": 2,
+      "rs_3m": 13.0,
+      "quota": 12,
+      "selected_stocks": [
+        "MSFT",
+        "AAPL",
+        "AMZN",
+        "GOOGL",
+        "META",
+        "TSLA",
+        "ORCL",
+        "CRM",
+        "ADBE",
+        "IBM",
+        "NOW",
+        "INTU"
+      ]
+    },
+    {
+      "sector": "POWER_ENERGY",
+      "etf": "XLE",
+      "rank": 3,
+      "rs_3m": 11.0,
+      "quota": 10,
+      "selected_stocks": [
+        "XOM",
+        "CVX",
+        "COP",
+        "SLB",
+        "EOG",
+        "MPC",
+        "PSX",
+        "VLO",
+        "OXY",
+        "VST"
+      ]
+    },
+    {
+      "sector": "DEFENSE_AERO",
+      "etf": "ITA",
+      "rank": 4,
+      "rs_3m": 9.0,
+      "quota": 8,
+      "selected_stocks": [
+        "LMT",
+        "RTX",
+        "NOC",
+        "GD",
+        "BA",
+        "GE",
+        "TDG",
+        "HWM"
+      ]
+    },
+    {
+      "sector": "CYBER_SAAS",
+      "etf": "CIBR",
+      "rank": 5,
+      "rs_3m": 7.0,
+      "quota": 6,
+      "selected_stocks": [
+        "CRWD",
+        "PANW",
+        "FTNT",
+        "ZS",
+        "NET",
+        "DDOG"
+      ]
+    },
+    {
+      "sector": "HEALTHCARE",
+      "etf": "XLV",
+      "rank": 6,
+      "rs_3m": 5.0,
+      "quota": 4,
+      "selected_stocks": [
+        "LLY",
+        "UNH",
+        "JNJ",
+        "ABBV"
+      ]
+    },
+    {
+      "sector": "FINANCIALS",
+      "etf": "XLF",
+      "rank": 7,
+      "rs_3m": 3.0,
+      "quota": 2,
+      "selected_stocks": [
+        "JPM",
+        "BAC"
+      ]
+    },
+    {
+      "sector": "CONSUMER_RETAIL",
+      "etf": "XLY",
+      "rank": 8,
+      "rs_3m": 1.0,
+      "quota": 1,
+      "selected_stocks": [
+        "COST"
+      ]
+    },
+    {
+      "sector": "COMMUNICATION",
+      "etf": "XLC",
+      "rank": 9,
+      "rs_3m": -1.0,
+      "quota": 1,
+      "selected_stocks": [
+        "NFLX"
+      ]
+    },
+    {
+      "sector": "INDUSTRIALS",
+      "etf": "XLI",
+      "rank": 10,
+      "rs_3m": -3.0,
+      "quota": 1,
+      "selected_stocks": [
+        "CAT"
+      ]
+    },
+    {
+      "sector": "MATERIALS",
+      "etf": "XLB",
+      "rank": 11,
+      "rs_3m": -5.0,
+      "quota": 1,
+      "selected_stocks": [
+        "LIN"
+      ]
+    }
+  ]
+}
