@@ -10,7 +10,7 @@ import os
 import json
 import time
 from datetime import datetime
-from typing import Dict, Any, List, Optional, Set
+from typing import Dict, Any, List, Optional, Set, Tuple
 
 from al_sangmoo.infrastructure.persistence import (
     add_portfolio_buy,
@@ -31,6 +31,7 @@ from al_sangmoo.core.constants import (
     derive_stop_price,
     derive_target_price,
 )
+from al_sangmoo.domain.risk import exit_cooldown
 from al_sangmoo.api.hub import hub, EventType
 from al_sangmoo.domain.risk.cash_proxy import (
     build_cash_proxy_plan,
@@ -46,6 +47,71 @@ logger = logging.getLogger(__name__)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 DASHBOARD_JSON = os.path.join(BASE_DIR, "dashboard_data.json")
+
+# Minimum quant conviction required to auto-enter a satellite position.
+ENTRY_GATE_MIN_CONVICTION = 60.0
+
+
+def evaluate_entry_gate(
+    candidate: Dict[str, Any],
+    kijun_26: float,
+    cooldown_tickers: Optional[List[str]] = None,
+    min_conviction: float = ENTRY_GATE_MIN_CONVICTION,
+) -> Dict[str, Any]:
+    """
+    Satellite Entry Gate (SSOT). Decides whether a ranked candidate is eligible
+    for an autonomous buy. A candidate must clear ALL three absolute conditions:
+
+      1. price >= 26D kijun          -> never buy a ticker already below its
+                                        baseline (Guardian would instantly exit it).
+      2. conviction/bull >= 60 OR    -> minimum quant conviction.
+         sizing.eligible == True
+      3. not in re-entry cooldown    -> no same-day re-buy of a force-liquidated name.
+
+    Returns {"eligible": bool, "reason": str, "price": float, "kijun_26": float}.
+    A non-positive kijun is treated as "unknown" (the kijun leg is skipped) so a
+    transient market-data failure cannot silently block every entry.
+    """
+    ticker = str(candidate.get("ticker", "")).upper().strip()
+    price = float(candidate.get("price") or candidate.get("current_price") or 0.0)
+    conviction = float(candidate.get("conviction_score") or 0.0)
+    bull = float(candidate.get("bull_score") or 0.0)
+    sizing = candidate.get("sizing") or {}
+    eligible_flag = bool(sizing.get("eligible", False))
+    kijun = float(
+        kijun_26
+        or candidate.get("kijun")
+        or candidate.get("kijun_26")
+        or 0.0
+    )
+    cooldowns = {str(t).upper().strip() for t in (cooldown_tickers or [])}
+
+    result = {
+        "eligible": False,
+        "reason": "PASS",
+        "ticker": ticker,
+        "price": round(price, 4),
+        "kijun_26": round(kijun, 4),
+    }
+
+    if not ticker or price <= 0:
+        result["reason"] = "INVALID_PRICE"
+        return result
+
+    if ticker in cooldowns:
+        result["reason"] = "RE_ENTRY_COOLDOWN"
+        return result
+
+    if kijun > 0 and price < kijun:
+        result["reason"] = "BELOW_KIJUN"
+        return result
+
+    if not (conviction >= min_conviction or bull >= min_conviction or eligible_flag):
+        result["reason"] = "LOW_CONVICTION"
+        return result
+
+    result["eligible"] = True
+    return result
 
 
 class AutoPilotTrader:
@@ -223,16 +289,17 @@ class AutoPilotTrader:
                 })
                 break
 
-            pick = self._next_unheld_candidate(candidates, held, considered)
+            pick, gate = self._next_unheld_candidate(candidates, held=held, considered=considered)
             if pick is None:
                 skipped.append({
-                    "reason": "NO_MORE_UNHELD_CANDIDATES",
+                    "reason": "NO_ELIGIBLE_CANDIDATE",
                     "message": (
                         f"빈 슬롯 #{next_slot_rank} 남음 — 미보유 적격 주도주 소진. "
                         "잔여 유휴 NAV는 Cash Proxy로 파킹합니다."
                     ),
                     "empty_slots": max_allowed_slots - len(sats),
                     "slot_weight": weights[next_slot_rank - 1] if next_slot_rank <= len(weights) else None,
+                    "gate": gate,
                 })
                 break
 
@@ -348,6 +415,13 @@ class AutoPilotTrader:
         # Backward-compat single-trade field when exactly one buy landed
         if len(entries) == 1 and entries[0].get("trade"):
             res["trade"] = entries[0]["trade"]
+        # Backward-compat single-candidate ticker when simulation skipped under AUTO_BUY_DISABLED
+        first_disabled = next(
+            (s for s in skipped if s.get("reason") == "AUTO_BUY_DISABLED" and s.get("ticker")),
+            None,
+        )
+        if first_disabled:
+            res["ticker"] = first_disabled["ticker"]
         self.last_run_result = res
         self.last_action = action
         logger.info(
@@ -382,18 +456,103 @@ class AutoPilotTrader:
             return bool(macro.get("is_bull_regime"))
         return True
 
+    def _resolve_kijun(self, candidate: Dict[str, Any]) -> float:
+        val = candidate.get("kijun") or candidate.get("kijun_26")
+        if val is not None:
+            try:
+                f = float(val)
+                if f > 0:
+                    return f
+            except (TypeError, ValueError):
+                pass
+        gap = candidate.get("kijun_gap_pct") or candidate.get("kijun_gap")
+        price = candidate.get("price") or candidate.get("entry_price")
+        if gap is not None and price is not None:
+            try:
+                g = float(gap)
+                p = float(price)
+                if p > 0 and (1.0 + g / 100.0) > 0:
+                    return round(p / (1.0 + g / 100.0), 4)
+            except (TypeError, ValueError):
+                pass
+        ticker = str(candidate.get("ticker", "")).upper().strip()
+        if not ticker:
+            return 0.0
+        try:
+            from al_sangmoo.domain.risk.trailing_stop import fetch_trailing_snapshot
+            snap = fetch_trailing_snapshot(ticker)
+            return float(snap.get("kijun_26") or 0.0)
+        except Exception as exc:
+            logger.debug(f"[AutoPilot Entry Gate] kijun snapshot failed for {ticker}: {exc}")
+            return 0.0
+
     def _next_unheld_candidate(
         self,
-        candidates: List[Dict[str, Any]],
-        held: Set[str],
-        considered: Set[str],
-    ) -> Optional[Dict[str, Any]]:
+        feed_or_candidates: Any,
+        active_tickers: Optional[Any] = None,
+        broker_tickers: Optional[List[str]] = None,
+        cooldown_tickers: Optional[List[str]] = None,
+        held: Optional[Set[str]] = None,
+        considered: Optional[Set[str]] = None,
+    ) -> Tuple[Optional[Dict[str, Any]], Dict[str, Any]]:
+        """
+        Walk the ranked conviction list and return the first candidate that is not
+        already held AND passes the Entry Gate.
+
+        Returns (candidate, gate_result) or (None, {"reason": "NO_ELIGIBLE_CANDIDATE", ...}).
+        """
+        if isinstance(feed_or_candidates, dict):
+            ranked = feed_or_candidates.get("ranked_conviction_list") or []
+            if not ranked:
+                top = feed_or_candidates.get("top_conviction_pick")
+                ranked = [top] if top else []
+            candidates = [c for c in ranked if isinstance(c, dict) and c.get("ticker")]
+        elif isinstance(feed_or_candidates, list):
+            candidates = feed_or_candidates
+        else:
+            candidates = []
+
+        held_set: Set[str] = set()
+        if held is not None:
+            held_set.update(str(t).upper().strip() for t in held)
+        if active_tickers is not None:
+            if isinstance(active_tickers, (set, list, tuple)):
+                held_set.update(str(t).upper().strip() for t in active_tickers)
+
+        considered_set: Set[str] = set()
+        if considered is not None:
+            considered_set.update(str(t).upper().strip() for t in considered)
+
+        if broker_tickers is not None:
+            if isinstance(broker_tickers, set):
+                # Positional call: _next_unheld_candidate(candidates, held, considered)
+                considered_set.update(str(t).upper().strip() for t in broker_tickers)
+            elif isinstance(broker_tickers, (list, tuple)):
+                held_set.update(str(t).upper().strip() for t in broker_tickers)
+
+        if cooldown_tickers is not None:
+            cooldowns = list(cooldown_tickers)
+        else:
+            cooldowns = exit_cooldown.cooldown_tickers()
+
+        skipped_cands: List[Dict[str, Any]] = []
         for pick in candidates:
-            ticker = str(pick.get("ticker", "")).upper()
-            if not ticker or ticker in held or ticker in considered or is_proxy_ticker(ticker):
+            if not pick or not isinstance(pick, dict):
                 continue
-            return pick
-        return None
+            ticker = str(pick.get("ticker", "")).upper().strip()
+            if not ticker or ticker in held_set or ticker in considered_set or is_proxy_ticker(ticker):
+                continue
+            kijun = self._resolve_kijun(pick)
+            gate = evaluate_entry_gate(pick, kijun, cooldowns)
+            if gate.get("eligible"):
+                return pick, gate
+            skipped_cands.append({"ticker": ticker, "reason": gate.get("reason")})
+            logger.info(
+                f"[AutoPilot Entry Gate] SKIP {ticker}: {gate.get('reason')} "
+                f"(price=${gate.get('price')}, kijun=${gate.get('kijun_26')})"
+            )
+
+        return None, {"reason": "NO_ELIGIBLE_CANDIDATE", "skipped": skipped_cands}
 
     def _broker_slot_guard(self, ticker: str, max_allowed_slots: int) -> Optional[Dict[str, Any]]:
         if not default_kis_broker.is_configured():

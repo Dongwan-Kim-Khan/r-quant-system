@@ -32,6 +32,7 @@ from al_sangmoo.core.constants import (
     derive_target_price,
     derive_partial_tp_price,
 )
+from al_sangmoo.domain.risk import cash_proxy, exit_cooldown
 from al_sangmoo.domain.risk.trailing_stop import (
     ATR_TRAIL_MULT,
     HARD_STOP_PCT,
@@ -269,10 +270,6 @@ class PortfolioGuardian:
             if buy_price <= 0 or total_qty <= 0:
                 continue
 
-            # Cash Proxy sleeve (QQQ/QLD): never apply satellite −5%/kijun/trailing exits.
-            # Idle-NAV park / 1.5x↔1.0x delever is handled by Cash Proxy overlay alignment.
-            if is_proxy_ticker(ticker):
-                continue
 
             pending_key = f"SELL:{ticker}"
             pending_at = self._pending_broker_orders.get(pending_key, 0.0)
@@ -300,7 +297,14 @@ class PortfolioGuardian:
                 max_gain_pct=float(h.get("max_gain_pct") or 0.0),
             )
             pnl_pct = float(decision["pnl_pct"])
+            # Always mark-to-market so the dashboard/DB show the latest price & PnL.
             self._persist_mark(holding_id, cur_price, total_qty, buy_price, decision)
+
+            # Cash proxy (QLD/QQQ): keep it marked, but the Guardian must NEVER
+            # force-exit it. Dumping the parked proxy on a stop/kijun signal is the
+            # whipsaw source; the sleeve rebalancer owns proxy sizing instead.
+            if cash_proxy.is_proxy_ticker(ticker):
+                continue
 
             action_type = decision.get("action")
             action_reason = decision.get("reason")
@@ -366,6 +370,9 @@ class PortfolioGuardian:
                     sell_price=cur_price,
                     reason=f"{action_type} ({pnl_pct:+.2f}%)"
                 )
+                # Arm the re-entry cooldown so Autopilot cannot instantly re-buy
+                # a name we just force-liquidated (DIS whipsaw root-cause fix).
+                exit_cooldown.record_exit(ticker, action_type)
             else:
                 logger.info(f"[Portfolio Guardian] Signal {action_type} for {ticker} suppressed (auto-exec disabled).")
                 continue

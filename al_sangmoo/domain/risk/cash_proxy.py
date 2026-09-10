@@ -1,23 +1,46 @@
 """
-C1-M2 Cash Proxy Overlay — idle NAV parks in QQQ; leadership entries/exits rebalance.
-"""
-from __future__ import annotations
+AL-SANGMOO QUANT TERMINAL: CASH PROXY SLEEVE SSOT
 
-import logging
+Single Source of Truth for the QLD/QQQ "cash proxy" sleeve that parks idle cash
+between satellite entries. Encodes the anti-whipsaw rules mandated by the
+C1-M2 critical patch:
+
+  1. Execution-order SSOT  -> never park cash until the satellite entry search
+                              has fully finished (no buy/sell on the same tick).
+  2. Sell cooldown         -> a freshly-bought proxy may not be dumped for at
+                              least 300s, killing the 20-second buy->sell->buy churn.
+  3. Rebalance deadband    -> ignore drift below 3 shares AND below $300 notional.
+  4. Single authority      -> Guardian and Autopilot cannot both fire proxy orders
+                              concurrently (shared mutex + authority token).
+"""
+
+import threading
+import time
 from typing import Any, Dict, List, Optional, Tuple
 
 from al_sangmoo.core.constants import (
     CASH_PROXY_TICKER,
-    LEVERAGE_GROSS_TARGET,
     LEVERAGE_TICKER,
+    LEVERAGE_GROSS_TARGET,
     LEVERAGE_VIX_MAX,
 )
 
-logger = logging.getLogger(__name__)
+PROXY_TICKERS = (CASH_PROXY_TICKER, LEVERAGE_TICKER)
+
+# A proxy bought within this window must not be sold to fund a satellite entry.
+PROXY_SELL_COOLDOWN_SEC = 300.0
+
+# Rebalancing noise thresholds: an order fires only when BOTH are exceeded.
+REBALANCE_DEADBAND_SHARES = 3
+REBALANCE_DEADBAND_USD = 300.0
+
+# Shared mutex so only one daemon issues cash-proxy orders at a time.
+PROXY_ORDER_MUTEX = threading.RLock()
 
 
 def is_proxy_ticker(ticker: str) -> bool:
-    t = str(ticker or "").strip().upper()
+    """True when ``ticker`` is a managed cash-proxy instrument (QLD/QQQ)."""
+    t = str(ticker or "").upper().strip()
     return t in {CASH_PROXY_TICKER, LEVERAGE_TICKER}
 
 
@@ -47,12 +70,62 @@ def idle_nav_usd(total_equity_usd: float, holdings: List[Dict[str, Any]]) -> flo
 def proxy_mix_weights(leverage_mode: bool) -> Tuple[float, float]:
     """
     Residual idle capital mix: (QQQ weight, QLD weight) of idle sleeve.
-    1.0x → 100% QQQ; 1.5x → mix so gross ≈ 1.5 via QQQ(1x)+QLD(2x).
-    Solve: q + l = 1, 1*q + 2*l = 1.5 → l = 0.5, q = 0.5.
+    1.0x -> 100% QQQ; 1.5x -> mix so gross ≈ 1.5 via QQQ(1x)+QLD(2x).
+    Solve: q + l = 1, 1*q + 2*l = 1.5 -> l = 0.5, q = 0.5.
     """
     if leverage_mode:
         return 0.50, 0.50
     return 1.0, 0.0
+
+
+def proxy_rebalance_action(
+    current_qty: float,
+    target_qty: float,
+    price: float,
+    deadband_shares: int = REBALANCE_DEADBAND_SHARES,
+    deadband_usd: float = REBALANCE_DEADBAND_USD,
+) -> Optional[Dict[str, object]]:
+    """
+    Decide a proxy rebalance order, applying the deadband.
+
+    Returns ``{"side", "qty", "notional"}`` or ``None`` when the drift is minor
+    noise (fewer than ``deadband_shares`` shares OR less than ``deadband_usd``).
+    """
+    px = float(price or 0.0)
+    if px <= 0:
+        return None
+
+    delta = float(target_qty or 0.0) - float(current_qty or 0.0)
+    qty = int(round(abs(delta)))
+    if qty <= 0:
+        return None
+
+    notional = qty * px
+    # Suppress minor noise: require the move to clear BOTH thresholds.
+    if qty < int(deadband_shares) or notional < float(deadband_usd):
+        return None
+
+    side = "BUY" if delta > 0 else "SELL"
+    return {"side": side, "qty": qty, "notional": round(notional, 2)}
+
+
+def should_park_cash(
+    satellite_search_done: bool,
+    free_cash_usd: float,
+    price: float,
+    min_notional: float = REBALANCE_DEADBAND_USD,
+) -> bool:
+    """
+    Execution-order SSOT gate for parking idle cash into the proxy.
+
+    Cash is parked ONLY after the satellite entry loop has fully completed and
+    only when there is enough idle cash to matter.
+    """
+    return (
+        bool(satellite_search_done)
+        and float(free_cash_usd or 0.0) >= float(min_notional)
+        and float(price or 0.0) > 0
+    )
 
 
 def build_cash_proxy_plan(
@@ -65,7 +138,7 @@ def build_cash_proxy_plan(
 ) -> Dict[str, Any]:
     """
     Plan idle-capital parking into QQQ (+ optional QLD).
-    Does not place orders — callers (autopilot / guardian) execute via broker.
+    Does not place orders - callers (autopilot / guardian) execute via broker.
     """
     idle = idle_nav_usd(total_equity_usd, holdings)
     # Prefer explicit cash when provided; otherwise treat idle sleeve as deployable.
@@ -236,7 +309,7 @@ def resolve_leverage_overlay(
     vix: Optional[float],
 ) -> Dict[str, Any]:
     """
-    `SPY >= SMA200` AND `VIX < 20` → 1.5x QLD mix allowed; else 1.0x QQQ core.
+    `SPY >= SMA200` AND `VIX < 20` -> 1.5x QLD mix allowed; else 1.0x QQQ core.
     """
     has_spy = (
         spy_close is not None
@@ -261,3 +334,108 @@ def resolve_leverage_overlay(
             "1.5x BOOST (QQQ+QLD)" if leverage_on else "1.0x QQQ CORE (delever)"
         ),
     }
+
+
+class CashProxySleeve:
+    """
+    Stateful guard tracking the last proxy buy per ticker. Enforces the sell
+    cooldown and single-authority ownership between Guardian and Autopilot.
+    """
+
+    def __init__(self, cooldown_sec: float = PROXY_SELL_COOLDOWN_SEC):
+        self._cooldown_sec = float(cooldown_sec)
+        self._last_buy_ts: Dict[str, float] = {}
+        self._authority_owner: Optional[str] = None
+        self._lock = threading.Lock()
+
+    def record_buy(self, ticker: str, ts: Optional[float] = None) -> None:
+        """Record a proxy buy so the sell cooldown starts ticking."""
+        sym = str(ticker or "").upper().strip()
+        if not sym:
+            return
+        stamp = float(ts if ts is not None else time.time())
+        with self._lock:
+            self._last_buy_ts[sym] = stamp
+
+    def seconds_until_free(self, ticker: str, now: Optional[float] = None) -> float:
+        """Seconds remaining before ``ticker`` may be sold (0.0 if already free)."""
+        sym = str(ticker or "").upper().strip()
+        now_ts = float(now if now is not None else time.time())
+        with self._lock:
+            last = self._last_buy_ts.get(sym)
+        if last is None:
+            return 0.0
+        remaining = self._cooldown_sec - (now_ts - last)
+        return remaining if remaining > 0.0 else 0.0
+
+    def can_free_proxy(self, ticker: str, now: Optional[float] = None) -> bool:
+        """True when the proxy sell cooldown has elapsed for ``ticker``."""
+        return self.seconds_until_free(ticker, now=now) <= 0.0
+
+    def free_proxy_cash_for_entry(
+        self,
+        ticker: str,
+        needed_usd: float,
+        current_qty: float,
+        price: float,
+        satellite_search_done: bool,
+        now: Optional[float] = None,
+    ) -> Dict[str, object]:
+        """
+        SSOT for ``_free_proxy_cash_for_entry``: decide whether to liquidate part
+        of the proxy to fund a satellite entry.
+        """
+        sym = str(ticker or "").upper().strip()
+        px = float(price or 0.0)
+        held = float(current_qty or 0.0)
+        need = float(needed_usd or 0.0)
+
+        if not satellite_search_done:
+            return {"action": "HOLD", "qty": 0, "reason": "SATELLITE_SEARCH_PENDING"}
+        if px <= 0 or held <= 0:
+            return {"action": "HOLD", "qty": 0, "reason": "NO_PROXY_INVENTORY"}
+        if need <= 0:
+            return {"action": "HOLD", "qty": 0, "reason": "NO_CASH_NEEDED"}
+
+        remaining = self.seconds_until_free(sym, now=now)
+        if remaining > 0.0:
+            return {
+                "action": "HOLD",
+                "qty": 0,
+                "reason": "PROXY_SELL_COOLDOWN",
+                "cooldown_remaining_sec": round(remaining, 1),
+            }
+
+        qty_needed = int(-(-need // px))  # ceil(need / px)
+        qty = min(int(held), max(0, qty_needed))
+        if qty <= 0:
+            return {"action": "HOLD", "qty": 0, "reason": "NEGLIGIBLE_AMOUNT"}
+
+        return {"action": "SELL", "qty": qty, "reason": "FUND_SATELLITE_ENTRY"}
+
+    def acquire_authority(self, owner: str) -> bool:
+        """Claim exclusive proxy-order authority for ``owner``."""
+        with self._lock:
+            if self._authority_owner in (None, owner):
+                self._authority_owner = owner
+                return True
+            return False
+
+    def release_authority(self, owner: str) -> None:
+        """Release authority if ``owner`` currently holds it."""
+        with self._lock:
+            if self._authority_owner == owner:
+                self._authority_owner = None
+
+    def authority_owner(self) -> Optional[str]:
+        with self._lock:
+            return self._authority_owner
+
+    def reset(self) -> None:
+        """Clear all state (test isolation)."""
+        with self._lock:
+            self._last_buy_ts.clear()
+            self._authority_owner = None
+
+
+default_cash_proxy_sleeve = CashProxySleeve()

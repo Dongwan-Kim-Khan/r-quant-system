@@ -475,7 +475,7 @@ class KISBrokerAdapter:
         nyse_tickers = {
             "XOM", "CVX", "TSM", "ORCL", "CRM", "NOW", "JNJ", "UNH", "LLY", "DIS",
             "JPM", "V", "MA", "LMT", "RTX", "NOC", "GE", "GEV", "ETN", "CCJ",
-            "OKLO", "VST", "CEG", "SNOW", "NET", "APP",
+            "OKLO", "VST", "CEG", "SNOW", "NET", "APP", "DELL",
         }
         primary = "NYS" if ticker in nyse_tickers else "NAS"
         secondary = "NAS" if primary == "NYS" else "NYS"
