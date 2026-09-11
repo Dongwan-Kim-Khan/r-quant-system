@@ -148,6 +148,106 @@ class TestPlaceOrderIdempotency(unittest.TestCase):
         self.assertEqual(dup["reason"], "INFLIGHT_DUPLICATE")
         self.assertEqual(results[0]["status"], "submitted")
 
+    def test_order_state_distinguishes_partial_and_terminal_fill(self):
+        adapter = _adapter()
+        partial_row = {
+            "pdno": "QQQ",
+            "sll_buy_dvsn_cd": "01",
+            "ft_ord_qty": "4",
+            "ft_ccld_qty": "2",
+            "nccs_qty": "2",
+            "ft_ccld_unpr3": "99.25",
+            "odno": "SELL-1",
+        }
+        with patch.object(
+            adapter,
+            "query_overseas_day_orders",
+            return_value=[partial_row],
+        ):
+            partial = adapter.get_overseas_order_state(
+                "QQQ", order_id="SELL-1"
+            )
+        self.assertEqual(partial["status"], "PARTIALLY_FILLED")
+        self.assertFalse(partial["terminal"])
+        self.assertEqual(partial["filled_quantity"], 2.0)
+
+        filled_row = dict(
+            partial_row,
+            ft_ccld_qty="4",
+            nccs_qty="0",
+        )
+        with patch.object(
+            adapter,
+            "query_overseas_day_orders",
+            return_value=[filled_row],
+        ):
+            filled = adapter.get_overseas_order_state(
+                "QQQ", order_id="SELL-1"
+            )
+        self.assertEqual(filled["status"], "FILLED")
+        self.assertTrue(filled["terminal"])
+        self.assertEqual(filled["fill_price"], 99.25)
+
+
+class TestBalanceSnapshotSafety(unittest.TestCase):
+    @staticmethod
+    def _success_response(holdings=None):
+        response = MagicMock(status_code=200)
+        response.json.return_value = {
+            "rt_cd": "0",
+            "msg1": "ok",
+            "output1": holdings or [],
+            "output2": {
+                "tot_evlu_amt": "10000",
+                "evlu_amt_smtl_amt": "500",
+                "frcr_dncl_amt_2": "9500",
+            },
+        }
+        return response
+
+    def test_actual_balance_quantity_wins_over_zero_orderable_quantity(self):
+        adapter = _adapter()
+        nasd = self._success_response([{
+            "ovrs_pdno": "DELL",
+            "ord_psbl_qty": "0",
+            "ovrs_cblc_qty": "7",
+            "pchs_avg_pric": "100",
+            "now_pric2": "99",
+        }])
+        empty = self._success_response()
+        with patch.object(adapter, "authenticate", return_value=True), patch(
+            "al_sangmoo.infrastructure.brokers.kis_broker.requests.get",
+            side_effect=[nasd, empty, empty],
+        ):
+            result = adapter.get_overseas_balance()
+
+        self.assertEqual(result["status"], "success")
+        self.assertTrue(result["snapshot_complete"])
+        self.assertEqual(result["holdings"][0]["quantity"], 7.0)
+
+    def test_failed_exchange_marks_snapshot_partial_not_empty_success(self):
+        adapter = _adapter()
+        ok = self._success_response()
+
+        def by_exchange(*_args, **kwargs):
+            if kwargs["params"]["OVRS_EXCG_CD"] == "NASD":
+                return ok
+            raise requests.Timeout("exchange inquiry timeout")
+
+        with patch.object(adapter, "authenticate", return_value=True), patch(
+            "al_sangmoo.infrastructure.brokers.kis_broker.requests.get",
+            side_effect=by_exchange,
+        ), patch("al_sangmoo.infrastructure.brokers.kis_broker.time.sleep"):
+            result = adapter.get_overseas_balance()
+
+        self.assertEqual(result["status"], "partial")
+        self.assertFalse(result["snapshot_complete"])
+        self.assertEqual(result["successful_exchanges"], ["NASD"])
+        self.assertEqual(
+            {item["exchange"] for item in result["failed_exchanges"]},
+            {"NYSE", "AMEX"},
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -166,8 +166,66 @@ def init_database() -> None:
             order_id TEXT
         )
         """)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS exit_cooldowns (
+            ticker TEXT PRIMARY KEY,
+            exited_at REAL NOT NULL,
+            lock_until REAL NOT NULL,
+            trading_day TEXT NOT NULL,
+            reason TEXT,
+            source TEXT DEFAULT 'GUARDIAN',
+            order_id TEXT,
+            updated_at TEXT NOT NULL
+        )
+        """)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS autopilot_entry_sessions (
+            session_date TEXT PRIMARY KEY,
+            claimed_at TEXT NOT NULL,
+            source TEXT DEFAULT 'SCHEDULER'
+        )
+        """)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS proxy_order_intents (
+            ticker TEXT PRIMARY KEY,
+            side TEXT NOT NULL,
+            quantity REAL NOT NULL,
+            price REAL NOT NULL,
+            owner TEXT NOT NULL,
+            status TEXT DEFAULT 'CLAIMED',
+            order_id TEXT,
+            client_order_id TEXT DEFAULT '',
+            exchange TEXT DEFAULT 'NASD',
+            filled_quantity REAL DEFAULT 0,
+            baseline_quantity REAL DEFAULT 0,
+            applied_quantity REAL DEFAULT 0,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS satellite_order_intents (
+            ticker TEXT NOT NULL,
+            side TEXT NOT NULL,
+            quantity REAL NOT NULL,
+            price REAL NOT NULL,
+            owner TEXT NOT NULL,
+            status TEXT DEFAULT 'CLAIMED',
+            order_id TEXT DEFAULT '',
+            client_order_id TEXT DEFAULT '',
+            exchange TEXT DEFAULT 'NASD',
+            filled_quantity REAL DEFAULT 0,
+            baseline_quantity REAL DEFAULT 0,
+            applied_quantity REAL DEFAULT 0,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (ticker, side)
+        )
+        """)
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_execution_logs_ts ON execution_logs(timestamp DESC);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_trade_history_ticker ON trade_history(ticker);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_exit_cooldowns_until ON exit_cooldowns(lock_until);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_exit_cooldowns_day ON exit_cooldowns(trading_day);")
         cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_trades_date_ticker ON trades(date, ticker);")
         
         # Schema migration for existing databases
@@ -181,6 +239,13 @@ def init_database() -> None:
             "ALTER TABLE my_portfolio ADD COLUMN kijun_26 REAL DEFAULT 0",
             "ALTER TABLE my_portfolio ADD COLUMN atr_14 REAL DEFAULT 0",
             "ALTER TABLE my_portfolio ADD COLUMN trailing_floor REAL DEFAULT 0",
+            "ALTER TABLE proxy_order_intents ADD COLUMN client_order_id TEXT DEFAULT ''",
+            "ALTER TABLE proxy_order_intents ADD COLUMN exchange TEXT DEFAULT 'NASD'",
+            "ALTER TABLE proxy_order_intents ADD COLUMN filled_quantity REAL DEFAULT 0",
+            "ALTER TABLE proxy_order_intents ADD COLUMN baseline_quantity REAL DEFAULT 0",
+            "ALTER TABLE proxy_order_intents ADD COLUMN applied_quantity REAL DEFAULT 0",
+            "ALTER TABLE satellite_order_intents ADD COLUMN baseline_quantity REAL DEFAULT 0",
+            "ALTER TABLE satellite_order_intents ADD COLUMN applied_quantity REAL DEFAULT 0",
         ):
             try:
                 cursor.execute(col_sql)
@@ -233,7 +298,8 @@ def add_portfolio_buy(
     buy_date: str = None,
     target_price: float = None,
     stop_loss_price: float = None,
-    partial_tp_price: float = None
+    partial_tp_price: float = None,
+    execution_log: dict = None,
 ) -> int:
     init_database()
     if not buy_date:
@@ -260,32 +326,80 @@ def add_portfolio_buy(
             eff_target_price, eff_stop_loss_price, eff_partial_tp_price, now_str
         ))
         inserted_id = cursor.lastrowid
+        if execution_log:
+            record_execution_log(
+                ticker=ticker,
+                side="BUY",
+                quantity=quantity,
+                price=buy_price,
+                connection=conn,
+                **execution_log,
+            )
         conn.commit()
         return inserted_id
 
-def record_portfolio_sell(holding_id: int, sell_price: float, sell_date: str = None, reason: str = "MANUAL_SELL") -> bool:
-    init_database()
-    if not sell_date:
-        sell_date = datetime.now().strftime("%Y-%m-%d")
-        
-    # Defensive sanitization & length constraint
+def record_portfolio_sell(
+    holding_id: int,
+    sell_price: float,
+    sell_date: str = None,
+    reason: str = "MANUAL_SELL",
+    execution_log: dict = None,
+) -> bool:
+    """Close the full remaining quantity of a portfolio lot."""
+    return record_portfolio_sell_quantity(
+        holding_id=holding_id,
+        sell_price=sell_price,
+        quantity=None,
+        sell_date=sell_date,
+        reason=reason,
+        execution_log=execution_log,
+    )
+
+
+def _clean_trade_reason(reason: str) -> str:
     clean_reason = str(reason).strip()[:100] if reason else "MANUAL_SELL"
     if not REASON_REGEX.match(clean_reason):
-        clean_reason = re.sub(r'[^A-Za-z0-9_\-\s\(\)가-힣.,%]', '', clean_reason).strip() or "MANUAL_SELL"
-        clean_reason = clean_reason[:100]
-        
-    with get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM my_portfolio WHERE id = ?", (holding_id,))
-        row = cursor.fetchone()
-        if not row:
-            return False
-            
-        buy_price = float(row['buy_price'])
-        quantity = float(row['quantity'])
-        pnl_pct = ((sell_price - buy_price) / buy_price) * 100
-        pnl_amt = (sell_price - buy_price) * quantity
-        
+        clean_reason = re.sub(
+            r'[^A-Za-z0-9_\-\s\(\)가-힣.,%]',
+            '',
+            clean_reason,
+        ).strip() or "MANUAL_SELL"
+    return clean_reason[:100]
+
+
+def _record_portfolio_sell_quantity_in_connection(
+    conn: sqlite3.Connection,
+    holding_id: int,
+    sell_price: float,
+    quantity: float = None,
+    sell_date: str = "",
+    reason: str = "MANUAL_SELL",
+) -> float:
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT * FROM my_portfolio WHERE id = ? AND status = 'HOLDING'",
+        (holding_id,),
+    )
+    row = cursor.fetchone()
+    if not row:
+        return 0.0
+
+    clean_reason = _clean_trade_reason(reason)
+    buy_price = float(row['buy_price'])
+    held_quantity = float(row['quantity'])
+    sold_quantity = (
+        held_quantity
+        if quantity is None
+        else min(held_quantity, max(0.0, float(quantity)))
+    )
+    if sold_quantity <= 0:
+        return 0.0
+    remaining_quantity = max(0.0, held_quantity - sold_quantity)
+    is_full_exit = remaining_quantity <= 1e-9
+    pnl_pct = ((sell_price - buy_price) / buy_price) * 100
+    realized_pnl_amt = (sell_price - buy_price) * sold_quantity
+
+    if is_full_exit:
         cursor.execute("""
         UPDATE my_portfolio
         SET status = 'SOLD', sell_date = ?, sell_price = ?, current_price = ?,
@@ -293,22 +407,140 @@ def record_portfolio_sell(holding_id: int, sell_price: float, sell_date: str = N
         WHERE id = ?
         """, (
             sell_date, sell_price, sell_price,
-            sell_price * quantity, pnl_pct, pnl_amt,
+            sell_price * sold_quantity, pnl_pct, realized_pnl_amt,
             f"청산 완료 ({pnl_pct:+.2f}%) - {clean_reason}", holding_id
         ))
-
+    else:
+        remaining_cost = buy_price * remaining_quantity
+        remaining_value = sell_price * remaining_quantity
+        remaining_pnl = (sell_price - buy_price) * remaining_quantity
         cursor.execute("""
-        INSERT INTO trade_history (
-            holding_id, ticker, buy_date, sell_date, buy_price,
-            sell_price, quantity, pnl_pct, pnl_amount, reason, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        UPDATE my_portfolio
+        SET quantity = ?, total_cost = ?, current_price = ?,
+            current_value = ?, pnl_pct = ?, pnl_amount = ?,
+            exit_advice = ?, status = 'HOLDING'
+        WHERE id = ?
         """, (
-            holding_id, str(row['ticker']), str(row['buy_date']), sell_date, buy_price,
-            sell_price, quantity, pnl_pct, pnl_amt, clean_reason, datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            remaining_quantity, remaining_cost, sell_price,
+            remaining_value, pnl_pct, remaining_pnl,
+            (
+                f"부분 매도 {sold_quantity:g}주 / 잔여 {remaining_quantity:g}주 "
+                f"({pnl_pct:+.2f}%) - {clean_reason}"
+            ),
+            holding_id,
         ))
 
+    cursor.execute("""
+    INSERT INTO trade_history (
+        holding_id, ticker, buy_date, sell_date, buy_price,
+        sell_price, quantity, pnl_pct, pnl_amount, reason, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        holding_id, str(row['ticker']), str(row['buy_date']), sell_date, buy_price,
+        sell_price, sold_quantity, pnl_pct, realized_pnl_amt, clean_reason,
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    ))
+    return sold_quantity
+
+
+def record_portfolio_sell_quantity(
+    holding_id: int,
+    sell_price: float,
+    quantity: float = None,
+    sell_date: str = None,
+    reason: str = "MANUAL_SELL",
+    execution_log: dict = None,
+) -> bool:
+    """Atomically record a full/partial sell and optional execution audit."""
+    init_database()
+    effective_sell_date = sell_date or datetime.now().strftime("%Y-%m-%d")
+    with get_connection() as conn:
+        sold_quantity = _record_portfolio_sell_quantity_in_connection(
+            conn=conn,
+            holding_id=holding_id,
+            sell_price=sell_price,
+            quantity=quantity,
+            sell_date=effective_sell_date,
+            reason=reason,
+        )
+        if sold_quantity <= 0:
+            return False
+        if execution_log:
+            ticker_row = conn.cursor().execute(
+                "SELECT ticker FROM my_portfolio WHERE id = ?",
+                (holding_id,),
+            ).fetchone()
+            record_execution_log(
+                ticker=str(ticker_row["ticker"]),
+                side="SELL",
+                quantity=sold_quantity,
+                price=sell_price,
+                connection=conn,
+                **execution_log,
+            )
         conn.commit()
         return True
+
+
+def record_portfolio_ticker_sell_quantity(
+    ticker: str,
+    sell_price: float,
+    quantity: float,
+    sell_date: str = None,
+    reason: str = "PORTFOLIO_REBALANCE",
+    execution_log: dict = None,
+) -> float:
+    """Atomically sell across active lots with one optional execution audit."""
+    sym = str(ticker or "").upper().strip()
+    remaining = max(0.0, float(quantity or 0.0))
+    if not sym or remaining <= 0:
+        return 0.0
+    init_database()
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        lots = cursor.execute(
+            """
+            SELECT id, quantity
+            FROM my_portfolio
+            WHERE UPPER(ticker) = ? AND status = 'HOLDING'
+            ORDER BY id ASC
+            """,
+            (sym,),
+        ).fetchall()
+        sold_total = 0.0
+        effective_sell_date = sell_date or datetime.now().strftime("%Y-%m-%d")
+        for lot in lots:
+            if remaining <= 1e-9:
+                break
+            lot_qty = max(0.0, float(lot["quantity"] or 0.0))
+            sell_qty = min(remaining, lot_qty)
+            if sell_qty <= 0:
+                continue
+            sold = _record_portfolio_sell_quantity_in_connection(
+                conn=conn,
+                holding_id=int(lot["id"]),
+                sell_price=sell_price,
+                quantity=sell_qty,
+                sell_date=effective_sell_date,
+                reason=reason,
+            )
+            if sold <= 0:
+                raise RuntimeError(
+                    f"Failed to update local sell lot {lot['id']} for {sym}"
+                )
+            sold_total += sold
+            remaining -= sold
+        if execution_log and sold_total > 0:
+            record_execution_log(
+                ticker=sym,
+                side="SELL",
+                quantity=sold_total,
+                price=sell_price,
+                connection=conn,
+                **execution_log,
+            )
+        conn.commit()
+        return sold_total
 
 def reset_all_holdings() -> bool:
     init_database()
@@ -388,12 +620,12 @@ def get_live_portfolio() -> dict:
     base_account_usd = 7500.0
     usd_krw_rate = 1380.0
 
-    # 1. Fetch Realized Trading PnL from SQLite SSOT closed records (CQRS Pure Read)
+    # 1. Fetch realized PnL from the sell ledger (includes partial proxy sells).
     realized_pnl_usd = 0.0
     realized_pnl_pct = 0.0
     with get_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT SUM(pnl_amount) FROM my_portfolio WHERE status = 'SOLD'")
+        cursor.execute("SELECT SUM(pnl_amount) FROM trade_history")
         row = cursor.fetchone()
         if row and row[0] is not None:
             realized_pnl_usd = float(row[0])
@@ -753,24 +985,33 @@ def record_execution_log(
     status: str = "FILLED",
     message: str = "",
     order_id: str = "",
-    timestamp: str = None
+    timestamp: str = None,
+    connection: sqlite3.Connection = None,
 ) -> int:
     """Records an executed broker or terminal trade log for the real-time audit trail."""
-    init_database()
     ts = timestamp or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     tot_amt = round(float(price) * float(quantity), 2)
-    with get_connection() as conn:
+    params = (
+        ts, ticker.upper(), side.upper(), float(quantity), float(price),
+        tot_amt, str(order_type), str(status), str(message), str(order_id)
+    )
+
+    def _insert(conn: sqlite3.Connection) -> int:
         cursor = conn.cursor()
         cursor.execute("""
         INSERT INTO execution_logs (
             timestamp, ticker, side, quantity, price, total_amount,
             order_type, status, message, order_id
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            ts, ticker.upper(), side.upper(), float(quantity), float(price),
-            tot_amt, str(order_type), str(status), str(message), str(order_id)
-        ))
-        inserted_id = cursor.lastrowid
+        """, params)
+        return int(cursor.lastrowid)
+
+    if connection is not None:
+        return _insert(connection)
+
+    init_database()
+    with get_connection() as conn:
+        inserted_id = _insert(conn)
         conn.commit()
         return inserted_id
 
@@ -782,6 +1023,312 @@ def get_execution_logs(limit: int = 50) -> list:
         cursor.execute("SELECT * FROM execution_logs ORDER BY timestamp DESC, id DESC LIMIT ?", (limit,))
         rows = cursor.fetchall()
         return [dict(r) for r in rows]
+
+
+def claim_autopilot_entry_session(
+    session_date: str,
+    source: str = "SCHEDULER",
+    claimed_at: str = None,
+) -> bool:
+    """
+    Atomically claim the one allowed satellite-entry cycle for a US session.
+
+    The primary key makes this safe across process restarts and multiple workers.
+    A crash after claiming intentionally fails closed: missing one entry is safer
+    than replaying a full multi-slot buy cycle.
+    """
+    init_database()
+    day = str(session_date or "").strip()
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", day):
+        raise ValueError("session_date must use YYYY-MM-DD")
+    ts = claimed_at or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT OR IGNORE INTO autopilot_entry_sessions (
+                session_date, claimed_at, source
+            ) VALUES (?, ?, ?)
+            """,
+            (day, ts, str(source or "SCHEDULER")),
+        )
+        claimed = cursor.rowcount == 1
+        conn.commit()
+        return claimed
+
+
+def has_autopilot_entry_session(session_date: str) -> bool:
+    """Return whether the daily satellite-entry cycle was already claimed."""
+    init_database()
+    with get_connection() as conn:
+        row = conn.cursor().execute(
+            "SELECT 1 FROM autopilot_entry_sessions WHERE session_date = ? LIMIT 1",
+            (str(session_date or "").strip(),),
+        ).fetchone()
+        return row is not None
+
+
+def claim_proxy_order_intent(
+    ticker: str,
+    side: str,
+    quantity: float,
+    price: float,
+    owner: str,
+    exchange: str = "NASD",
+    client_order_id: str = "",
+    baseline_quantity: float = 0.0,
+) -> bool:
+    """Atomically reserve one proxy ticker across daemons and processes."""
+    init_database()
+    sym = str(ticker or "").upper().strip()
+    direction = str(side or "").upper().strip()
+    if not sym or direction not in {"BUY", "SELL"}:
+        return False
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT OR IGNORE INTO proxy_order_intents (
+                ticker, side, quantity, price, owner, status,
+                order_id, client_order_id, exchange, filled_quantity,
+                baseline_quantity, applied_quantity, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, 'CLAIMED', '', ?, ?, 0, ?, 0, ?, ?)
+            """,
+            (
+                sym,
+                direction,
+                float(quantity),
+                float(price),
+                str(owner or "UNKNOWN"),
+                str(client_order_id or ""),
+                str(exchange or "NASD"),
+                max(0.0, float(baseline_quantity or 0.0)),
+                now_str,
+                now_str,
+            ),
+        )
+        claimed = cursor.rowcount == 1
+        conn.commit()
+        return claimed
+
+
+def mark_proxy_order_submitted(
+    ticker: str,
+    order_id: str = "",
+    client_order_id: str = "",
+) -> None:
+    """Persist broker acceptance until reconciliation observes the fill."""
+    init_database()
+    with get_connection() as conn:
+        conn.cursor().execute(
+            """
+            UPDATE proxy_order_intents
+            SET status = 'SUBMITTED', order_id = ?, client_order_id = ?,
+                updated_at = ?
+            WHERE ticker = ?
+            """,
+            (
+                str(order_id or ""),
+                str(client_order_id or ""),
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                str(ticker or "").upper().strip(),
+            ),
+        )
+        conn.commit()
+
+
+def get_proxy_order_intents() -> list:
+    init_database()
+    with get_connection() as conn:
+        return [
+            dict(row)
+            for row in conn.cursor().execute(
+                "SELECT * FROM proxy_order_intents ORDER BY created_at"
+            ).fetchall()
+        ]
+
+
+def update_proxy_order_intent_state(
+    ticker: str,
+    status: str,
+    filled_quantity: float,
+    applied_quantity: float = 0.0,
+    connection: sqlite3.Connection = None,
+) -> None:
+    params = (
+        str(status or "UNKNOWN"),
+        max(0.0, float(filled_quantity or 0.0)),
+        max(0.0, float(applied_quantity or 0.0)),
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        str(ticker or "").upper().strip(),
+    )
+    sql = """
+        UPDATE proxy_order_intents
+        SET status = ?, filled_quantity = ?, applied_quantity = ?,
+            updated_at = ?
+        WHERE ticker = ?
+    """
+    if connection is not None:
+        connection.cursor().execute(sql, params)
+        return
+    init_database()
+    with get_connection() as conn:
+        conn.cursor().execute(sql, params)
+        conn.commit()
+
+
+def clear_proxy_order_intent(
+    ticker: str,
+    connection: sqlite3.Connection = None,
+) -> None:
+    """Release a proxy reservation after fill, rejection, or reconciliation."""
+    sym = str(ticker or "").upper().strip()
+    if connection is not None:
+        connection.cursor().execute(
+            "DELETE FROM proxy_order_intents WHERE ticker = ?",
+            (sym,),
+        )
+        return
+    init_database()
+    with get_connection() as conn:
+        conn.cursor().execute(
+            "DELETE FROM proxy_order_intents WHERE ticker = ?",
+            (sym,),
+        )
+        conn.commit()
+
+
+def claim_satellite_order_intent(
+    ticker: str,
+    side: str,
+    quantity: float,
+    price: float,
+    owner: str,
+    exchange: str = "NASD",
+    client_order_id: str = "",
+    baseline_quantity: float = 0.0,
+) -> bool:
+    """Durable reservation for Guardian/manual satellite broker orders."""
+    init_database()
+    sym = str(ticker or "").upper().strip()
+    direction = str(side or "").upper().strip()
+    if not sym or direction not in {"BUY", "SELL"}:
+        return False
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT OR IGNORE INTO satellite_order_intents (
+                ticker, side, quantity, price, owner, status, order_id,
+                client_order_id, exchange, filled_quantity,
+                baseline_quantity, applied_quantity, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, 'CLAIMED', '', ?, ?, 0, ?, 0, ?, ?)
+            """,
+            (
+                sym,
+                direction,
+                float(quantity),
+                float(price),
+                str(owner or "UNKNOWN"),
+                str(client_order_id or ""),
+                str(exchange or "NASD"),
+                max(0.0, float(baseline_quantity or 0.0)),
+                now_str,
+                now_str,
+            ),
+        )
+        claimed = cursor.rowcount == 1
+        conn.commit()
+        return claimed
+
+
+def mark_satellite_order_submitted(
+    ticker: str,
+    side: str,
+    order_id: str = "",
+    client_order_id: str = "",
+) -> None:
+    init_database()
+    with get_connection() as conn:
+        conn.cursor().execute(
+            """
+            UPDATE satellite_order_intents
+            SET status = 'SUBMITTED', order_id = ?, client_order_id = ?,
+                updated_at = ?
+            WHERE ticker = ? AND side = ?
+            """,
+            (
+                str(order_id or ""),
+                str(client_order_id or ""),
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                str(ticker or "").upper().strip(),
+                str(side or "").upper().strip(),
+            ),
+        )
+        conn.commit()
+
+
+def get_satellite_order_intents() -> list:
+    init_database()
+    with get_connection() as conn:
+        return [
+            dict(row)
+            for row in conn.cursor().execute(
+                "SELECT * FROM satellite_order_intents ORDER BY created_at"
+            ).fetchall()
+        ]
+
+
+def update_satellite_order_intent_state(
+    ticker: str,
+    side: str,
+    status: str,
+    filled_quantity: float,
+    applied_quantity: float = 0.0,
+    connection: sqlite3.Connection = None,
+) -> None:
+    params = (
+        str(status or "UNKNOWN"),
+        max(0.0, float(filled_quantity or 0.0)),
+        max(0.0, float(applied_quantity or 0.0)),
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        str(ticker or "").upper().strip(),
+        str(side or "").upper().strip(),
+    )
+    sql = """
+        UPDATE satellite_order_intents
+        SET status = ?, filled_quantity = ?, applied_quantity = ?,
+            updated_at = ?
+        WHERE ticker = ? AND side = ?
+    """
+    if connection is not None:
+        connection.cursor().execute(sql, params)
+        return
+    init_database()
+    with get_connection() as conn:
+        conn.cursor().execute(sql, params)
+        conn.commit()
+
+
+def clear_satellite_order_intent(
+    ticker: str,
+    side: str,
+    connection: sqlite3.Connection = None,
+) -> None:
+    params = (
+        str(ticker or "").upper().strip(),
+        str(side or "").upper().strip(),
+    )
+    sql = "DELETE FROM satellite_order_intents WHERE ticker = ? AND side = ?"
+    if connection is not None:
+        connection.cursor().execute(sql, params)
+        return
+    init_database()
+    with get_connection() as conn:
+        conn.cursor().execute(sql, params)
+        conn.commit()
 
 # Aliases
 get_db = get_connection

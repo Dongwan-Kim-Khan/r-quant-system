@@ -34,6 +34,14 @@ async def toggle_autopilot(req: AutoPilotToggleRequest):
 
 @router.post("/trigger_now", dependencies=[Depends(require_mutating_auth)])
 async def trigger_autopilot_now():
-    """Manually triggers a full-auto cycle immediately (scan -> conviction -> slot buy)."""
-    res = await default_autopilot.run_autopilot_cycle(force_scan=True)
+    """
+    Request today's guarded entry cycle.
+
+    This endpoint does not bypass the previous-EOD/next-open schedule and does
+    not rebuild a partial intraday daily-bar scan.
+    """
+    res = await default_autopilot.run_autopilot_cycle(
+        force_scan=False,
+        enforce_entry_schedule=True,
+    )
     return res

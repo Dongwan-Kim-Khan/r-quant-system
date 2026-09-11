@@ -18,14 +18,24 @@ from typing import Dict, Any, List, Optional
 
 from al_sangmoo.core.market_time import is_regular_hours_for_ticker
 from al_sangmoo.infrastructure.persistence import (
+    claim_satellite_order_intent,
+    claim_proxy_order_intent,
+    clear_satellite_order_intent,
+    clear_proxy_order_intent,
     get_connection,
     get_live_portfolio,
+    mark_proxy_order_submitted,
+    mark_satellite_order_submitted,
     record_portfolio_sell,
+    record_portfolio_ticker_sell_quantity,
     add_portfolio_buy,
 )
 from al_sangmoo.infrastructure.brokers.kis_broker import default_kis_broker
 from al_sangmoo.api.hub import hub, EventType
-from al_sangmoo.infrastructure.idempotent_order import is_broker_order_ack
+from al_sangmoo.infrastructure.idempotent_order import (
+    is_broker_order_ack,
+    make_client_order_id,
+)
 from al_sangmoo.core.constants import (
     CASH_PROXY_TICKER,
     derive_stop_price,
@@ -236,6 +246,7 @@ class PortfolioGuardian:
         except Exception as e:
             logger.debug(f"[Guardian DB Update Error] {e}")
 
+    @exit_cooldown.serialized_satellite_transition
     def _sync_check_and_execute_guardian_rules(self) -> Dict[str, Any]:
         """
         1. Query DB for active holdings.
@@ -258,7 +269,25 @@ class PortfolioGuardian:
         portfolio = get_live_portfolio()
         holdings = portfolio.get("holdings", [])
         if not holdings:
-            return {"status": "success", "checked_count": 0, "actions": []}
+            # A just-reconciled final satellite exit leaves an empty local book.
+            # Sleeve alignment must still park the resulting cash in QQQ/QLD.
+            sleeve_actions: List[Dict[str, Any]] = []
+            try:
+                sleeve_actions = self._align_cash_proxy_sleeve()
+                if sleeve_actions:
+                    self.last_actions.extend(sleeve_actions)
+            except Exception as sleeve_err:
+                logger.warning(
+                    f"[Portfolio Guardian] Empty-book cash-proxy align failed: {sleeve_err}"
+                )
+            return {
+                "status": "success",
+                "timestamp": now_str,
+                "checked_count": 0,
+                "actions_count": len(sleeve_actions),
+                "actions": sleeve_actions,
+                "cash_proxy_sleeve_actions": sleeve_actions,
+            }
 
         triggered_actions = []
 
@@ -324,20 +353,48 @@ class PortfolioGuardian:
                         )
                         continue
 
+                    marketable_sell_price = round(cur_price * 0.995, 2)
+                    ex_cd = "NYSE" if ticker in ["CVX", "DELL", "JNJ", "XOM", "UNH", "PG", "JPM", "V", "MA", "LLY"] else "NASD"
+                    client_order_id = make_client_order_id()
+                    if not claim_satellite_order_intent(
+                        ticker=ticker,
+                        side="SELL",
+                        quantity=sell_qty,
+                        price=marketable_sell_price,
+                        owner="GUARDIAN",
+                        exchange=ex_cd,
+                        client_order_id=client_order_id,
+                        baseline_quantity=total_qty,
+                    ):
+                        logger.info(
+                            f"[Portfolio Guardian] Durable SELL intent still active "
+                            f"for {ticker}; duplicate order blocked."
+                        )
+                        continue
                     try:
-                        marketable_sell_price = round(cur_price * 0.995, 2)
-                        ex_cd = "NYSE" if ticker in ["CVX", "DELL", "JNJ", "XOM", "UNH", "PG", "JPM", "V", "MA", "LLY"] else "NASD"
                         broker_res = default_kis_broker.place_order(
                             ticker=ticker,
                             side="SELL",
                             qty=int(sell_qty),
                             price=marketable_sell_price,
                             order_type="00",
-                            exchange=ex_cd
+                            exchange=ex_cd,
+                            client_order_id=client_order_id,
                         )
                         broker_status = broker_res.get("status", "error")
                         order_id = broker_res.get("order_id") or broker_res.get("odno")
                         if not is_broker_order_ack(broker_status):
+                            if "TIMEOUT" in str(
+                                broker_res.get("reason") or ""
+                            ).upper():
+                                mark_satellite_order_submitted(
+                                    ticker,
+                                    "SELL",
+                                    str(order_id or ""),
+                                    str(broker_res.get("client_order_id") or ""),
+                                )
+                            else:
+                                clear_satellite_order_intent(ticker, "SELL")
                             logger.error(
                                 f"[Portfolio Guardian] Broker sell order rejected for {ticker}: "
                                 f"{broker_res.get('message')}. Local DB holding retained."
@@ -347,6 +404,12 @@ class PortfolioGuardian:
                             # KIS "submitted" is only order acceptance, not a fill.
                             # Keep the local position until broker reconciliation confirms it left the account.
                             self._pending_broker_orders[pending_key] = now_ts
+                            mark_satellite_order_submitted(
+                                ticker,
+                                "SELL",
+                                str(order_id or ""),
+                                str(broker_res.get("client_order_id") or ""),
+                            )
                             triggered_actions.append({
                                 "timestamp": now_str,
                                 "holding_id": holding_id,
@@ -361,18 +424,49 @@ class PortfolioGuardian:
                             self.last_actions.append(triggered_actions[-1])
                             continue
                     except Exception as e:
+                        # Unknown POST outcome stays durably claimed. An operator
+                        # or broker-state reconciliation must resolve it.
                         logger.error(f"[Portfolio Guardian Broker Error] {e}")
                         continue
 
                 logger.warning(f"[Portfolio Guardian Triggered] {action_reason}")
-                record_portfolio_sell(
+                # Fail closed across a crash between broker/local-ledger steps:
+                # a false-positive 24h lock is safer than a same-day re-buy.
+                exit_cooldown.record_exit(
+                    ticker,
+                    action_type,
+                    source="GUARDIAN",
+                    order_id=str(order_id or ""),
+                )
+                sold_ok = record_portfolio_sell(
                     holding_id=holding_id,
                     sell_price=cur_price,
-                    reason=f"{action_type} ({pnl_pct:+.2f}%)"
+                    reason=f"{action_type} ({pnl_pct:+.2f}%)",
+                    execution_log={
+                        "order_type": "GUARDIAN_FORCED_EXIT",
+                        "status": (
+                            "SIMULATED"
+                            if broker_status == "LOCAL"
+                            else "FILLED"
+                        ),
+                        "message": (
+                            f"Guardian {action_type} ({pnl_pct:+.2f}%): "
+                            f"{action_reason}"
+                        ),
+                        "order_id": str(
+                            order_id
+                            or f"SIM-GUARDIAN-{ticker}-{int(now_ts * 1000)}"
+                        ),
+                        "timestamp": now_str,
+                    },
                 )
-                # Arm the re-entry cooldown so Autopilot cannot instantly re-buy
-                # a name we just force-liquidated (DIS whipsaw root-cause fix).
-                exit_cooldown.record_exit(ticker, action_type)
+                if not sold_ok:
+                    logger.error(
+                        f"[Portfolio Guardian] Local sell ledger update failed for {ticker}"
+                    )
+                    continue
+                if default_kis_broker.is_configured():
+                    clear_satellite_order_intent(ticker, "SELL")
             else:
                 logger.info(f"[Portfolio Guardian] Signal {action_type} for {ticker} suppressed (auto-exec disabled).")
                 continue
@@ -457,6 +551,7 @@ class PortfolioGuardian:
             pass
         return self._fetch_live_price(ticker, 0.0)
 
+    @cash_proxy.serialized_proxy_orders
     def _align_cash_proxy_sleeve(self) -> List[Dict[str, Any]]:
         """
         Cash Proxy overlay automation (not satellite exits):
@@ -524,6 +619,35 @@ class PortfolioGuardian:
             if default_kis_broker.is_configured():
                 if not is_market_open_for_orders(ticker):
                     continue
+            client_order_id = make_client_order_id()
+            if not claim_proxy_order_intent(
+                ticker=ticker,
+                side=side,
+                quantity=float(qty),
+                price=px,
+                owner="GUARDIAN_ALIGN",
+                exchange="AMEX" if ticker == "QLD" else "NASD",
+                client_order_id=client_order_id,
+                baseline_quantity=sum(
+                    float(h.get("quantity") or 0.0)
+                    for h in holdings
+                    if str(h.get("ticker") or "").upper() == ticker
+                ),
+            ):
+                executed.append({
+                    "timestamp": now_str,
+                    "ticker": ticker,
+                    "action": f"CASH_PROXY_{side}_PENDING",
+                    "side": side,
+                    "qty": qty,
+                    "price": px,
+                    "broker_status": "PERSISTENT_ORDER_PENDING",
+                    "reason": act.get("reason"),
+                })
+                if side == "SELL":
+                    break
+                continue
+            if default_kis_broker.is_configured():
                 try:
                     limit = round(px * (1.005 if side == "BUY" else 0.995), 2)
                     broker_res = default_kis_broker.place_order(
@@ -533,10 +657,24 @@ class PortfolioGuardian:
                         price=limit,
                         order_type="00",
                         exchange="AMEX" if ticker == "QLD" else "NASD",
+                        client_order_id=client_order_id,
                     )
                     broker_status = broker_res.get("status", "error")
                     order_id = broker_res.get("order_id") or broker_res.get("odno")
                     if not is_broker_order_ack(broker_status):
+                        if "TIMEOUT" in str(
+                            broker_res.get("reason") or ""
+                        ).upper():
+                            mark_proxy_order_submitted(
+                                ticker,
+                                str(order_id or ""),
+                                str(
+                                    broker_res.get("client_order_id")
+                                    or client_order_id
+                                ),
+                            )
+                        else:
+                            clear_proxy_order_intent(ticker)
                         logger.error(
                             f"[Guardian CashProxy] {side} {ticker} x{qty} rejected: "
                             f"{broker_res.get('message')}"
@@ -545,6 +683,14 @@ class PortfolioGuardian:
                     if broker_status != "filled":
                         # Accepted is not filled. Broker reconciliation owns the local ledger update.
                         self._pending_broker_orders[pending_key] = now_ts
+                        mark_proxy_order_submitted(
+                            ticker,
+                            str(order_id or ""),
+                            str(
+                                broker_res.get("client_order_id")
+                                or client_order_id
+                            ),
+                        )
                         executed.append({
                             "timestamp": now_str,
                             "ticker": ticker,
@@ -563,6 +709,18 @@ class PortfolioGuardian:
                     logger.error(f"[Guardian CashProxy {side} Error] {e}")
                     continue
 
+            audit_log = {
+                "order_type": "GUARDIAN_CASH_PROXY_REBALANCE",
+                "status": (
+                    "SIMULATED" if broker_status == "SIMULATED" else "FILLED"
+                ),
+                "message": f"Guardian cash-proxy sleeve: {act.get('reason')}",
+                "order_id": str(
+                    order_id
+                    or f"SIM-GUARDIAN-PROXY-{side}-{ticker}-{int(now_ts * 1000)}"
+                ),
+                "timestamp": now_str,
+            }
             if side == "BUY":
                 add_portfolio_buy(
                     ticker=ticker,
@@ -572,27 +730,24 @@ class PortfolioGuardian:
                     target_price=derive_target_price(px),
                     stop_loss_price=derive_stop_price(px),
                     partial_tp_price=derive_partial_tp_price(px),
+                    execution_log=audit_log,
                 )
             else:
-                sold = False
-                for h in list(holdings):
-                    if str(h.get("ticker") or "").upper() != ticker:
-                        continue
-                    hid = h.get("id")
-                    if hid is None:
-                        continue
-                    try:
-                        record_portfolio_sell(
-                            holding_id=int(hid),
-                            sell_price=px,
-                            reason=f"CASH_PROXY_SLEEVE ({act.get('reason')})",
-                        )
-                        sold = True
-                    except Exception as e:
-                        logger.error(f"[Guardian CashProxy Sell Ledger Error] {e}")
-                    break
-                if not sold:
+                try:
+                    ledger_sold = record_portfolio_ticker_sell_quantity(
+                        ticker=ticker,
+                        sell_price=px,
+                        quantity=float(qty),
+                        reason=f"CASH_PROXY_SLEEVE ({act.get('reason')})",
+                        execution_log=audit_log,
+                    )
+                except Exception as e:
+                    logger.error(f"[Guardian CashProxy Sell Ledger Error] {e}")
+                    ledger_sold = 0.0
+                if broker_status == "SIMULATED" and ledger_sold + 1e-9 < qty:
+                    clear_proxy_order_intent(ticker)
                     continue
+            clear_proxy_order_intent(ticker)
 
             rec = {
                 "timestamp": now_str,
@@ -613,6 +768,7 @@ class PortfolioGuardian:
 
         return executed
 
+    @cash_proxy.serialized_proxy_orders
     def _repark_exit_proceeds(self, proceeds_usd: float) -> List[Dict[str, Any]]:
         """Buy QQQ (+ QLD if 1.5x) with satellite exit proceeds."""
         if proceeds_usd <= 0 or not self.is_enabled:
@@ -635,10 +791,43 @@ class PortfolioGuardian:
             px = qqq_px if ticker == CASH_PROXY_TICKER else qld_px
             if px <= 0:
                 continue
+            pending_key = f"BUY:{ticker}"
+            pending_at = self._pending_broker_orders.get(pending_key, 0.0)
+            if pending_at and (time.time() - pending_at) < self._pending_order_ttl_sec:
+                executed.append({
+                    **act,
+                    "status": "SUBMITTED_AWAITING_RECONCILIATION",
+                })
+                continue
+            self._pending_broker_orders.pop(pending_key, None)
             broker_status = "SIMULATED"
+            order_id = None
             if default_kis_broker.is_configured():
                 if not is_market_open_for_orders(ticker):
                     continue
+            client_order_id = make_client_order_id()
+            if not claim_proxy_order_intent(
+                ticker=ticker,
+                side="BUY",
+                quantity=float(qty),
+                price=px,
+                owner="GUARDIAN_REPARK",
+                exchange="AMEX" if ticker == "QLD" else "NASD",
+                client_order_id=client_order_id,
+                baseline_quantity=sum(
+                    float(h.get("quantity") or 0.0)
+                    for h in (
+                        get_live_portfolio().get("holdings") or []
+                    )
+                    if str(h.get("ticker") or "").upper() == ticker
+                ),
+            ):
+                executed.append({
+                    **act,
+                    "status": "PERSISTENT_ORDER_PENDING",
+                })
+                continue
+            if default_kis_broker.is_configured():
                 try:
                     broker_res = default_kis_broker.place_order(
                         ticker=ticker,
@@ -646,10 +835,42 @@ class PortfolioGuardian:
                         qty=qty,
                         price=round(px * 1.005, 2),
                         order_type="00",
-                        exchange="NASD",
+                        exchange="AMEX" if ticker == "QLD" else "NASD",
+                        client_order_id=client_order_id,
                     )
                     broker_status = broker_res.get("status", "error")
+                    order_id = broker_res.get("order_id") or broker_res.get("odno")
                     if not is_broker_order_ack(broker_status):
+                        if "TIMEOUT" in str(
+                            broker_res.get("reason") or ""
+                        ).upper():
+                            mark_proxy_order_submitted(
+                                ticker,
+                                str(order_id or ""),
+                                str(
+                                    broker_res.get("client_order_id")
+                                    or client_order_id
+                                ),
+                            )
+                        else:
+                            clear_proxy_order_intent(ticker)
+                        continue
+                    if broker_status != "filled":
+                        self._pending_broker_orders[pending_key] = time.time()
+                        mark_proxy_order_submitted(
+                            ticker,
+                            str(order_id or ""),
+                            str(
+                                broker_res.get("client_order_id")
+                                or client_order_id
+                            ),
+                        )
+                        executed.append({
+                            **act,
+                            "status": "SUBMITTED_AWAITING_RECONCILIATION",
+                            "order_id": order_id,
+                            "fill_price": None,
+                        })
                         continue
                 except Exception as e:
                     logger.error(f"[Guardian CashProxy Buy Error] {e}")
@@ -662,8 +883,29 @@ class PortfolioGuardian:
                 target_price=derive_target_price(px),
                 stop_loss_price=derive_stop_price(px),
                 partial_tp_price=derive_partial_tp_price(px),
+                execution_log={
+                    "order_type": "GUARDIAN_EXIT_PROCEEDS_PARK",
+                    "status": (
+                        "SIMULATED"
+                        if broker_status == "SIMULATED"
+                        else "FILLED"
+                    ),
+                    "message": (
+                        f"Guardian exit proceeds repark: {act.get('reason')}"
+                    ),
+                    "order_id": str(
+                        order_id
+                        or f"SIM-GUARDIAN-REPARK-{ticker}-{int(time.time() * 1000)}"
+                    ),
+                },
             )
-            executed.append({**act, "broker_status": broker_status, "fill_price": px})
+            clear_proxy_order_intent(ticker)
+            executed.append({
+                **act,
+                "broker_status": broker_status,
+                "order_id": order_id,
+                "fill_price": px,
+            })
             logger.info(
                 f"[Portfolio Guardian] Cash-proxy repark: BUY {ticker} x{qty} @ ${px:.2f} ({act.get('reason')})"
             )

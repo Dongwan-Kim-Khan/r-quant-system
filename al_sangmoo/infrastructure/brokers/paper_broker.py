@@ -6,7 +6,11 @@ from typing import Dict, Any, List
 from datetime import datetime
 from al_sangmoo.core.constants import derive_stop_price, derive_target_price
 from al_sangmoo.domain.interfaces.execution_gateway import IExecutionGateway
-from al_sangmoo.infrastructure.persistence import add_portfolio_buy, record_portfolio_sell, get_live_portfolio
+from al_sangmoo.infrastructure.persistence import (
+    add_portfolio_buy,
+    get_live_portfolio,
+    record_portfolio_sell,
+)
 
 class PaperTradingBroker(IExecutionGateway):
     def __init__(self, initial_cash: float = 100000.0, slippage_bps: float = 0.0010):
@@ -21,7 +25,16 @@ class PaperTradingBroker(IExecutionGateway):
             ticker=ticker.strip().upper(),
             buy_price=fill_price,
             quantity=quantity,
-            buy_date=datetime.now().strftime("%Y-%m-%d")
+            buy_date=datetime.now().strftime("%Y-%m-%d"),
+            execution_log={
+                "order_type": "PAPER_BROKER",
+                "status": "SIMULATED",
+                "message": "Paper broker simulated buy fill",
+                "order_id": (
+                    f"PAPER-BUY-{ticker.strip().upper()}-"
+                    f"{int(datetime.now().timestamp())}"
+                ),
+            },
         )
         
         return {
@@ -40,15 +53,34 @@ class PaperTradingBroker(IExecutionGateway):
 
     def submit_sell_order(self, position_id: int, price: float, reason: str = "MANUAL_SELL") -> Dict[str, Any]:
         fill_price = round(price * (1.0 - self.slippage_bps), 2)
+        holding = next(
+            (
+                item for item in get_live_portfolio().get("holdings", [])
+                if int(item.get("id") or 0) == int(position_id)
+            ),
+            None,
+        )
         success = record_portfolio_sell(
             holding_id=position_id,
             sell_price=fill_price,
             sell_date=datetime.now().strftime("%Y-%m-%d"),
-            reason=reason
+            reason=reason,
+            execution_log=(
+                {
+                    "order_type": "PAPER_BROKER",
+                    "status": "SIMULATED",
+                    "message": f"Paper broker simulated sell fill: {reason}",
+                    "order_id": (
+                        f"PAPER-SELL-{position_id}-"
+                        f"{int(datetime.now().timestamp())}"
+                    ),
+                }
+                if holding
+                else None
+            ),
         )
         if not success:
             return {"status": "REJECTED", "message": f"Position #{position_id} not found."}
-            
         return {
             "status": "FILLED",
             "order_type": "SELL",

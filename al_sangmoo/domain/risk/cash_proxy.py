@@ -16,6 +16,7 @@ C1-M2 critical patch:
 
 import threading
 import time
+from functools import wraps
 from typing import Any, Dict, List, Optional, Tuple
 
 from al_sangmoo.core.constants import (
@@ -36,6 +37,15 @@ REBALANCE_DEADBAND_USD = 300.0
 
 # Shared mutex so only one daemon issues cash-proxy orders at a time.
 PROXY_ORDER_MUTEX = threading.RLock()
+
+
+def serialized_proxy_orders(func):
+    """Serialize proxy plan/read/order/write sequences within this process."""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        with PROXY_ORDER_MUTEX:
+            return func(*args, **kwargs)
+    return wrapper
 
 
 def is_proxy_ticker(ticker: str) -> bool:

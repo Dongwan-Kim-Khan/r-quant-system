@@ -11,6 +11,8 @@ from al_sangmoo.infrastructure.persistence import (
     get_latest_macro_record,
     add_portfolio_buy,
     record_portfolio_sell,
+    record_portfolio_sell_quantity,
+    record_portfolio_ticker_sell_quantity,
     reset_all_holdings,
     get_live_portfolio,
     sync_portfolio_prices,

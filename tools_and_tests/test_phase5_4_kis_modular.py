@@ -109,9 +109,8 @@ class TestPhase54BackendRouters(unittest.TestCase):
             # Reset first
             await asgi_request(app, "POST", "/api/portfolio/reset")
             
-            # Buy order with application/json header (Mock place_order and check_sync to isolate unit test)
-            with patch("al_sangmoo.interfaces.api.routers.portfolio.default_kis_broker.place_order", return_value={"status": "submitted", "order_id": "TEST12345", "message": "Test order placed"}), \
-                 patch("al_sangmoo.interfaces.api.routers.portfolio.check_sync", return_value={"status": "success"}):
+            # Buy order with application/json header (Mock broker to isolate unit test from live KIS API)
+            with patch("al_sangmoo.interfaces.api.routers.portfolio.default_kis_broker.is_configured", return_value=False):
                 buy_payload = '{"ticker": "NVDA", "buy_price": 200.0, "qty": 1.0}'
                 headers = {"content-type": "application/json"}
                 status, _, body = await asgi_request(app, "POST", "/api/portfolio/buy", headers=headers, body=buy_payload.encode())

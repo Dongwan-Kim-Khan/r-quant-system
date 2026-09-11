@@ -8,18 +8,29 @@ import asyncio
 import logging
 import os
 import json
+import re
+import hashlib
 import time
 from datetime import datetime
 from typing import Dict, Any, List, Optional, Set, Tuple
 
 from al_sangmoo.infrastructure.persistence import (
     add_portfolio_buy,
+    claim_autopilot_entry_session,
+    claim_proxy_order_intent,
+    clear_proxy_order_intent,
     get_live_portfolio,
-    record_portfolio_sell,
+    has_autopilot_entry_session,
+    mark_proxy_order_submitted,
+    record_portfolio_ticker_sell_quantity,
     sync_portfolio_prices,
 )
 from al_sangmoo.infrastructure.brokers.kis_broker import default_kis_broker
-from al_sangmoo.infrastructure.idempotent_order import is_broker_order_ack
+from al_sangmoo.infrastructure.idempotent_order import (
+    is_broker_order_ack,
+    make_client_order_id,
+)
+from al_sangmoo.core.market_time import is_us_regular_hours, now_us_eastern
 from al_sangmoo.core.constants import (
     CASH_PROXY_TICKER,
     HARD_STOP_PCT,
@@ -38,6 +49,7 @@ from al_sangmoo.domain.risk.cash_proxy import (
     is_proxy_ticker,
     raise_cash_from_proxy,
     satellite_holdings,
+    serialized_proxy_orders,
 )
 from al_sangmoo.domain.risk.macro_guardrail import evaluate_dynamic_leverage
 from al_sangmoo.domain.quant.macro import fetch_spy_trend_regime
@@ -47,9 +59,113 @@ logger = logging.getLogger(__name__)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 DASHBOARD_JSON = os.path.join(BASE_DIR, "dashboard_data.json")
+CONFIRMED_EOD_JSON = os.path.join(BASE_DIR, "dashboard_data.eod.json")
 
 # Minimum quant conviction required to auto-enter a satellite position.
 ENTRY_GATE_MIN_CONVICTION = 60.0
+# Previous-session EOD signals may open new satellites once, near the next open.
+ENTRY_WINDOW_START_MINUTE_ET = 9 * 60 + 30
+ENTRY_WINDOW_END_MINUTE_ET = 10 * 60
+MAX_EOD_SIGNAL_AGE_DAYS = 4
+
+
+def evaluate_daily_entry_schedule(now: Optional[datetime] = None) -> Dict[str, Any]:
+    """
+    Enforce the live equivalent of the backtest's previous-EOD -> next-open entry.
+
+    New satellite entries are allowed only from 09:30 through 09:59 ET, once per
+    US session. Any satellite exit recorded for that session blocks all refill
+    entries; cash-proxy parking remains independent.
+    """
+    now_et = now_us_eastern(now)
+    session_date = now_et.strftime("%Y-%m-%d")
+    result: Dict[str, Any] = {
+        "eligible": False,
+        "reason": "OUTSIDE_DAILY_ENTRY_WINDOW",
+        "session_date": session_date,
+        "now_et": now_et.isoformat(),
+        "window_et": "09:30-10:00",
+    }
+    if now_et.weekday() >= 5:
+        result["reason"] = "NON_TRADING_DAY"
+        return result
+    minute = now_et.hour * 60 + now_et.minute
+    if not (ENTRY_WINDOW_START_MINUTE_ET <= minute < ENTRY_WINDOW_END_MINUTE_ET):
+        return result
+    if exit_cooldown.has_session_exit(session_date):
+        result["reason"] = "SESSION_EXIT_LOCKOUT"
+        return result
+    if has_autopilot_entry_session(session_date):
+        result["reason"] = "DAILY_ENTRY_ALREADY_CLAIMED"
+        return result
+    result["eligible"] = True
+    result["reason"] = "PASS"
+    return result
+
+
+def validate_confirmed_eod_feed(
+    feed: Dict[str, Any],
+    entry_session_date: str,
+) -> Dict[str, Any]:
+    """Require a feed stamped from a completed session before today's entry."""
+    signal_day = str(feed.get("signal_session_date") or "").strip()
+    result = {
+        "eligible": False,
+        "reason": "EOD_FEED_UNVERIFIED",
+        "signal_session_date": signal_day or None,
+        "entry_session_date": entry_session_date,
+    }
+    if "signal_is_eod_confirmed" not in feed:
+        return result
+    if feed.get("signal_is_eod_confirmed") is not True:
+        result["reason"] = "EOD_FEED_UNCONFIRMED"
+        return result
+    source_hash = str(feed.get("signal_source_hash") or "")
+    source_rows = feed.get("signal_source_rows")
+    if not re.fullmatch(
+        r"[0-9a-f]{64}",
+        source_hash,
+    ):
+        result["reason"] = "EOD_SOURCE_PROVENANCE_INVALID"
+        return result
+    if (
+        not isinstance(source_rows, list)
+        or not source_rows
+        or not all(isinstance(row, dict) for row in source_rows)
+    ):
+        result["reason"] = "EOD_SOURCE_PROVENANCE_INVALID"
+        return result
+    canonical = json.dumps(
+        sorted(source_rows, key=lambda row: str(row.get("ticker") or "")),
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    if hashlib.sha256(canonical.encode("utf-8")).hexdigest() != source_hash:
+        result["reason"] = "EOD_SOURCE_PROVENANCE_INVALID"
+        return result
+    if any(
+        str(row.get("bar_date") or "") != signal_day
+        for row in source_rows
+        if isinstance(row, dict)
+    ):
+        result["reason"] = "EOD_SOURCE_PROVENANCE_INVALID"
+        return result
+    try:
+        signal_dt = datetime.strptime(signal_day, "%Y-%m-%d").date()
+        entry_dt = datetime.strptime(entry_session_date, "%Y-%m-%d").date()
+    except (TypeError, ValueError):
+        return result
+    age_days = (entry_dt - signal_dt).days
+    result["age_days"] = age_days
+    if age_days <= 0:
+        result["reason"] = "INTRADAY_DAILY_BAR_NOT_CONFIRMED"
+        return result
+    if age_days > MAX_EOD_SIGNAL_AGE_DAYS:
+        result["reason"] = "STALE_EOD_FEED"
+        return result
+    result["eligible"] = True
+    result["reason"] = "PASS"
+    return result
 
 
 def evaluate_entry_gate(
@@ -163,28 +279,35 @@ class AutoPilotTrader:
             "last_run_result": self.last_run_result,
             "last_action": self.last_action,
             "trade_logs_count": len(self.trade_logs),
-            "recent_trades": self.trade_logs[-5:]
+            "recent_trades": self.trade_logs[-5:],
+            "entry_policy": {
+                "signal": "PREVIOUS_SESSION_EOD",
+                "window_et": "09:30-10:00",
+                "max_cycles_per_session": 1,
+                "same_session_refill": False,
+                "ticker_cooldown_hours": exit_cooldown.RE_ENTRY_COOLDOWN_SEC / 3600.0,
+            },
         }
 
     async def _scheduler_loop(self):
         """
-        Background scheduler checking for market open window (22:30 ~ 05:00 KST)
-        and executing scheduled quant scans and autonomous entries.
+        DST-aware US regular-session loop. Satellite entry is attempted once
+        during 09:30-10:00 ET; cash-proxy alignment remains intraday-capable.
         """
         while self.is_running:
             try:
-                now = datetime.now()
-                # Run scheduled check during US market hours (22:30 ~ 06:00 KST)
-                is_market_hours = (now.hour >= 22 or now.hour < 6)
-                
-                # Market hours: fill empty satellite slots; always align QQQ/QLD sleeve
-                if self.is_enabled and is_market_hours:
-                    port = get_live_portfolio()
-                    sats = satellite_holdings(port.get("holdings", []))
-                    if len(sats) < MAX_SLOTS_BULL:
-                        await self.run_autopilot_cycle(force_scan=False)
+                # Entries: previous-session EOD signal, once in the next-open window.
+                # Cash-proxy alignment may continue during regular hours.
+                if self.is_enabled and is_us_regular_hours():
+                    schedule = evaluate_daily_entry_schedule()
+                    if schedule.get("eligible"):
+                        # Claiming happens inside the cycle, even when slots are full,
+                        # so a later same-session exit cannot reopen the entry window.
+                        await self.run_autopilot_cycle(
+                            force_scan=False,
+                            enforce_entry_schedule=True,
+                        )
                     else:
-                        # Slots full — still delever/park cash-proxy sleeve
                         await asyncio.to_thread(self._ensure_cash_proxy_parked)
             except asyncio.CancelledError:
                 break
@@ -193,7 +316,11 @@ class AutoPilotTrader:
 
             await asyncio.sleep(self.interval)
 
-    async def run_autopilot_cycle(self, force_scan: bool = True) -> Dict[str, Any]:
+    async def run_autopilot_cycle(
+        self,
+        force_scan: bool = True,
+        enforce_entry_schedule: bool = True,
+    ) -> Dict[str, Any]:
         """
         C1-M2 multi-slot cycle:
           1. Fresh scan (optional) → load dashboard feed
@@ -208,7 +335,87 @@ class AutoPilotTrader:
             f"[AutoPilot Cycle] Multi-slot C1-M2 cycle at {now_str} (Force Scan: {force_scan})"
         )
 
-        if force_scan or not os.path.exists(DASHBOARD_JSON):
+        if enforce_entry_schedule:
+            if force_scan:
+                res = {
+                    "status": "skipped",
+                    "reason": "INTRADAY_RESCAN_FORBIDDEN",
+                    "message": (
+                        "장중 일봉 재스캔은 확정되지 않은 캔들을 사용할 수 있어 금지됩니다. "
+                        "전일 EOD 피드를 사용하세요."
+                    ),
+                    "cash_proxy": {"executed": []},
+                    "timestamp": now_str,
+                }
+                self.last_run_result = res
+                self.last_action = "INTRADAY_RESCAN_FORBIDDEN"
+                return res
+            schedule = evaluate_daily_entry_schedule()
+            if not schedule.get("eligible"):
+                res = {
+                    "status": "skipped",
+                    "reason": schedule.get("reason"),
+                    "message": (
+                        "위성 신규 진입은 전일 EOD 신호로 미국장 09:30~10:00 ET에 "
+                        "세션당 1회만 허용됩니다. 유휴 자본은 Cash Proxy 정책이 담당합니다."
+                    ),
+                    "entry_schedule": schedule,
+                    "cash_proxy": {"executed": []},
+                    "timestamp": now_str,
+                }
+                self.last_run_result = res
+                self.last_action = str(schedule.get("reason"))
+                return res
+            claimed = claim_autopilot_entry_session(
+                str(schedule["session_date"]),
+                source="AUTOPILOT",
+                claimed_at=now_str,
+            )
+            if not claimed:
+                schedule["eligible"] = False
+                schedule["reason"] = "DAILY_ENTRY_ALREADY_CLAIMED"
+                res = {
+                    "status": "skipped",
+                    "reason": "DAILY_ENTRY_ALREADY_CLAIMED",
+                    "message": "오늘의 위성 진입 사이클이 이미 실행 또는 선점되었습니다.",
+                    "entry_schedule": schedule,
+                    "cash_proxy": {"executed": []},
+                    "timestamp": now_str,
+                }
+                self.last_run_result = res
+                self.last_action = "DAILY_ENTRY_ALREADY_CLAIMED"
+                return res
+            if exit_cooldown.has_session_exit(str(schedule["session_date"])):
+                res = {
+                    "status": "skipped",
+                    "reason": "SESSION_EXIT_LOCKOUT",
+                    "message": "진입 세션 선점 중 청산이 감지되어 당일 위성 보충을 차단했습니다.",
+                    "entry_schedule": schedule,
+                    "cash_proxy": {"executed": []},
+                    "timestamp": now_str,
+                }
+                self.last_run_result = res
+                self.last_action = "SESSION_EXIT_LOCKOUT"
+                return res
+
+        entry_feed_path = (
+            CONFIRMED_EOD_JSON
+            if enforce_entry_schedule and os.path.exists(CONFIRMED_EOD_JSON)
+            else DASHBOARD_JSON
+        )
+        if enforce_entry_schedule and not os.path.exists(entry_feed_path):
+            res = {
+                "status": "skipped",
+                "reason": "CONFIRMED_EOD_FEED_MISSING",
+                "message": "확정된 전일 EOD 피드가 없어 오늘의 위성 진입을 건너뜁니다.",
+                "cash_proxy": {"executed": []},
+                "timestamp": now_str,
+            }
+            self.last_run_result = res
+            self.last_action = "CONFIRMED_EOD_FEED_MISSING"
+            return res
+
+        if force_scan or (not os.path.exists(DASHBOARD_JSON) and not enforce_entry_schedule):
             try:
                 from generate_dashboard_feed import build_dashboard_data
                 await asyncio.to_thread(build_dashboard_data)
@@ -216,18 +423,39 @@ class AutoPilotTrader:
             except Exception as scan_err:
                 logger.error(f"[AutoPilot Scan Error] {scan_err}")
 
-        if not os.path.exists(DASHBOARD_JSON):
+        if not os.path.exists(entry_feed_path):
             res = {"status": "error", "message": "Dashboard feed not available", "timestamp": now_str}
             self.last_run_result = res
             return res
 
         try:
-            with open(DASHBOARD_JSON, "r", encoding="utf-8") as f:
+            with open(entry_feed_path, "r", encoding="utf-8") as f:
                 feed = json.load(f)
         except Exception as e:
             res = {"status": "error", "message": f"Failed to read feed: {e}", "timestamp": now_str}
             self.last_run_result = res
             return res
+
+        if enforce_entry_schedule:
+            feed_gate = validate_confirmed_eod_feed(
+                feed,
+                str(schedule["session_date"]),
+            )
+            if not feed_gate.get("eligible"):
+                res = {
+                    "status": "skipped",
+                    "reason": feed_gate.get("reason"),
+                    "message": (
+                        "전일 종가가 확정된 일봉 피드만 신규 위성 진입에 사용할 수 있습니다."
+                    ),
+                    "entry_schedule": schedule,
+                    "feed_gate": feed_gate,
+                    "cash_proxy": {"executed": []},
+                    "timestamp": now_str,
+                }
+                self.last_run_result = res
+                self.last_action = str(feed_gate.get("reason"))
+                return res
 
         candidates = self._collect_ranked_candidates(feed)
         is_bull_regime = self._resolve_bull_regime(feed, candidates)
@@ -237,6 +465,8 @@ class AutoPilotTrader:
         entries: List[Dict[str, Any]] = []
         skipped: List[Dict[str, Any]] = []
         considered: Set[str] = set()
+        pending_entry: Optional[Dict[str, Any]] = None
+        broker_snapshot_block: Optional[Dict[str, Any]] = None
         # Virtual slot cursor for Auto-Buy OFF planning logs (ledger unchanged)
         planning_slot_rank: Optional[int] = None
 
@@ -310,7 +540,12 @@ class AutoPilotTrader:
             broker_block = self._broker_slot_guard(ticker, max_allowed_slots)
             if broker_block:
                 skipped.append(broker_block)
-                if broker_block.get("reason") in ("BROKER_SLOTS_FULL",):
+                if broker_block.get("reason") in {
+                    "BROKER_SLOTS_FULL",
+                    "BROKER_SNAPSHOT_UNVERIFIED",
+                }:
+                    if broker_block.get("reason") == "BROKER_SNAPSHOT_UNVERIFIED":
+                        broker_snapshot_block = broker_block
                     break
                 continue
 
@@ -369,10 +604,36 @@ class AutoPilotTrader:
                 entries.append(entry_res)
             else:
                 skipped.append(entry_res)
-                # Hard broker ack failure: try next candidate for remaining slots
+                if (
+                    entry_res.get("status") == "submitted"
+                    or entry_res.get("reason") in {
+                        "BROKER_BUY_AWAITING_RECONCILIATION",
+                        "BROKER_BUY_PENDING",
+                        "CASH_PROXY_SELL_PENDING",
+                    }
+                ):
+                    # Local holdings/cash are intentionally unchanged until the
+                    # broker fill is reconciled. Submitting another candidate or
+                    # parking proxy now can over-allocate the same slot/cash.
+                    pending_entry = entry_res
+                    break
+                # A confirmed rejection may advance to the next ranked candidate.
                 continue
 
-        proxy_note = self._ensure_cash_proxy_parked(feed)
+        if pending_entry:
+            proxy_note = {
+                "status": "SKIPPED_PENDING_SATELLITE_ORDER",
+                "reason": pending_entry.get("reason"),
+                "executed": [],
+            }
+        elif broker_snapshot_block:
+            proxy_note = {
+                "status": "SKIPPED_BROKER_SNAPSHOT_UNVERIFIED",
+                "reason": "BROKER_SNAPSHOT_UNVERIFIED",
+                "executed": [],
+            }
+        else:
+            proxy_note = self._ensure_cash_proxy_parked(feed)
 
         if entries:
             status = "success"
@@ -389,6 +650,22 @@ class AutoPilotTrader:
             reason = "SLOTS_FULL"
             action = f"SLOTS_FULL_MAX_{max_allowed_slots}"
             message = skipped[0].get("message", "슬롯 만석")
+        elif pending_entry:
+            status = "submitted"
+            reason = str(
+                pending_entry.get("reason")
+                or "BROKER_BUY_AWAITING_RECONCILIATION"
+            )
+            action = "SATELLITE_ORDER_PENDING"
+            message = str(
+                pending_entry.get("message")
+                or "증권사 체결 및 원장 대조 대기 중입니다."
+            )
+        elif broker_snapshot_block:
+            status = "skipped"
+            reason = "BROKER_SNAPSHOT_UNVERIFIED"
+            action = "BROKER_SNAPSHOT_UNVERIFIED"
+            message = str(broker_snapshot_block.get("message") or reason)
         else:
             status = "skipped"
             reason = (skipped[0].get("reason") if skipped else "NO_ACTION")
@@ -559,6 +836,19 @@ class AutoPilotTrader:
             return None
         try:
             broker_bal = default_kis_broker.get_overseas_balance()
+            if (
+                broker_bal.get("status") != "success"
+                or broker_bal.get("snapshot_complete") is not True
+            ):
+                return {
+                    "status": "skipped",
+                    "reason": "BROKER_SNAPSHOT_UNVERIFIED",
+                    "ticker": ticker,
+                    "message": (
+                        "증권사 전 거래소 잔고 스냅샷이 완전하지 않아 "
+                        "신규 위성 주문과 Proxy 파킹을 차단합니다."
+                    ),
+                }
             broker_holdings = broker_bal.get("holdings", [])
             broker_sats = [bh for bh in broker_holdings if not is_proxy_ticker(str(bh.get("ticker", "")))]
             broker_tickers = [str(bh.get("ticker", "")).upper() for bh in broker_holdings]
@@ -577,8 +867,15 @@ class AutoPilotTrader:
                 }
         except Exception as b_err:
             logger.warning(f"[AutoPilot Broker Guardrail Error] {b_err}")
+            return {
+                "status": "skipped",
+                "reason": "BROKER_SNAPSHOT_UNVERIFIED",
+                "ticker": ticker,
+                "message": f"증권사 잔고 확인 실패로 신규 주문 차단: {b_err}",
+            }
         return None
 
+    @exit_cooldown.serialized_async_satellite_transition
     async def _execute_satellite_entry(
         self,
         pick: Dict[str, Any],
@@ -592,6 +889,15 @@ class AutoPilotTrader:
         sizing = pick.get("sizing") or {}
         shares = int(sizing.get("shares", 0) or 0)
         cur_price = float(pick.get("price", 0.0) or 0.0)
+        current_session = now_us_eastern().strftime("%Y-%m-%d")
+        if exit_cooldown.has_session_exit(current_session):
+            return {
+                "status": "skipped",
+                "reason": "SESSION_EXIT_LOCKOUT",
+                "ticker": ticker,
+                "slot_rank": slot_rank,
+                "message": "당일 위성 청산이 감지되어 다음 세션까지 신규 위성 진입을 차단합니다.",
+            }
         pending_key = f"BUY:{ticker}"
         pending_at = self._pending_proxy_orders.get(pending_key, 0.0)
         if pending_at and (time.time() - pending_at) < self._pending_order_ttl_sec:
@@ -606,6 +912,14 @@ class AutoPilotTrader:
 
         live_price = None
         if default_kis_broker.is_configured():
+            if not is_us_regular_hours():
+                return {
+                    "status": "skipped",
+                    "reason": "MARKET_CLOSED",
+                    "ticker": ticker,
+                    "slot_rank": slot_rank,
+                    "message": "미국 정규장 외 신규 위성 주문은 차단됩니다.",
+                }
             try:
                 live_price = default_kis_broker.get_live_price(ticker)
             except Exception:
@@ -700,6 +1014,17 @@ class AutoPilotTrader:
             target_price=target_price,
             stop_loss_price=stop_loss_price,
             partial_tp_price=partial_tp_price,
+            execution_log={
+                "order_type": "AUTOPILOT_SATELLITE_ENTRY",
+                "status": (
+                    "SIMULATED" if broker_status == "SIMULATED" else "FILLED"
+                ),
+                "message": f"Autopilot C1-M2 satellite entry slot #{slot_rank}",
+                "order_id": str(
+                    order_id or f"SIM-AUTOPILOT-{ticker}-{int(time.time() * 1000)}"
+                ),
+                "timestamp": now_str,
+            },
         )
 
         trade_record = {
@@ -792,6 +1117,7 @@ class AutoPilotTrader:
             pass
         return 0.0
 
+    @serialized_proxy_orders
     def _ensure_cash_proxy_parked(self, feed: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Align idle NAV into QQQ (+ QLD if 1.5x).
@@ -833,6 +1159,30 @@ class AutoPilotTrader:
                         break
                     continue
                 self._pending_proxy_orders.pop(pending_key, None)
+                client_order_id = make_client_order_id()
+                if not claim_proxy_order_intent(
+                    ticker=ticker,
+                    side=side,
+                    quantity=float(qty),
+                    price=px,
+                    owner="AUTOPILOT_ALIGN",
+                    exchange="AMEX" if ticker == "QLD" else "NASD",
+                    client_order_id=client_order_id,
+                    baseline_quantity=sum(
+                        float(h.get("quantity") or 0.0)
+                        for h in holdings
+                        if str(h.get("ticker") or "").upper() == ticker
+                    ),
+                ):
+                    executed.append({
+                        **act,
+                        "status": "PERSISTENT_ORDER_PENDING",
+                    })
+                    if side == "SELL":
+                        break
+                    continue
+                broker_status = "SIMULATED"
+                order_id = None
                 if default_kis_broker.is_configured():
                     try:
                         limit = round(px * (1.005 if side == "BUY" else 0.995), 2)
@@ -840,9 +1190,24 @@ class AutoPilotTrader:
                             ticker=ticker, side=side, qty=qty,
                             price=limit, order_type="00",
                             exchange="AMEX" if ticker == "QLD" else "NASD",
+                            client_order_id=client_order_id,
                         )
                         broker_status = broker_res.get("status", "error")
+                        order_id = broker_res.get("order_id") or broker_res.get("odno")
                         if not is_broker_order_ack(broker_status):
+                            if "TIMEOUT" in str(
+                                broker_res.get("reason") or ""
+                            ).upper():
+                                mark_proxy_order_submitted(
+                                    ticker,
+                                    str(order_id or ""),
+                                    str(
+                                        broker_res.get("client_order_id")
+                                        or client_order_id
+                                    ),
+                                )
+                            else:
+                                clear_proxy_order_intent(ticker)
                             logger.error(
                                 f"[AutoPilot CashProxy] {side} {ticker} x{qty} rejected: "
                                 f"{broker_res.get('message')}"
@@ -851,10 +1216,18 @@ class AutoPilotTrader:
                         if broker_status != "filled":
                             # Keep SQLite at broker-confirmed holdings until reconciliation observes the fill.
                             self._pending_proxy_orders[pending_key] = time.time()
+                            mark_proxy_order_submitted(
+                                ticker,
+                                str(order_id or ""),
+                                str(
+                                    broker_res.get("client_order_id")
+                                    or client_order_id
+                                ),
+                            )
                             executed.append({
                                 **act,
                                 "status": "SUBMITTED_AWAITING_RECONCILIATION",
-                                "order_id": broker_res.get("order_id"),
+                                "order_id": order_id,
                                 "fill_price": None,
                             })
                             if side == "SELL":
@@ -863,6 +1236,17 @@ class AutoPilotTrader:
                     except Exception as e:
                         logger.error(f"[AutoPilot CashProxy {side} Error] {e}")
                         continue
+                audit_log = {
+                    "order_type": "AUTOPILOT_CASH_PROXY_REBALANCE",
+                    "status": (
+                        "SIMULATED" if broker_status == "SIMULATED" else "FILLED"
+                    ),
+                    "message": f"Autopilot cash-proxy sleeve: {act.get('reason')}",
+                    "order_id": str(
+                        order_id
+                        or f"SIM-PROXY-{side}-{ticker}-{int(time.time() * 1000)}"
+                    ),
+                }
                 if side == "BUY":
                     add_portfolio_buy(
                         ticker=ticker,
@@ -872,27 +1256,24 @@ class AutoPilotTrader:
                         target_price=derive_target_price(px),
                         stop_loss_price=derive_stop_price(px),
                         partial_tp_price=derive_partial_tp_price(px),
+                        execution_log=audit_log,
                     )
                 else:
-                    sold = False
-                    for h in list(holdings):
-                        if str(h.get("ticker", "")).upper() != ticker:
-                            continue
-                        hid = h.get("id")
-                        if hid is None:
-                            continue
-                        try:
-                            record_portfolio_sell(
-                                holding_id=int(hid),
-                                sell_price=px,
-                                reason=f"CASH_PROXY_SLEEVE ({act.get('reason')})",
-                            )
-                            sold = True
-                        except Exception as e:
-                            logger.error(f"[AutoPilot CashProxy Sell Ledger Error] {e}")
-                        break
-                    if not sold:
+                    try:
+                        ledger_sold = record_portfolio_ticker_sell_quantity(
+                            ticker=ticker,
+                            sell_price=px,
+                            quantity=float(qty),
+                            reason=f"CASH_PROXY_SLEEVE ({act.get('reason')})",
+                            execution_log=audit_log,
+                        )
+                    except Exception as e:
+                        logger.error(f"[AutoPilot CashProxy Sell Ledger Error] {e}")
+                        ledger_sold = 0.0
+                    if broker_status == "SIMULATED" and ledger_sold + 1e-9 < qty:
+                        clear_proxy_order_intent(ticker)
                         continue
+                clear_proxy_order_intent(ticker)
                 executed.append({**act, "fill_price": px})
                 logger.info(
                     f"[AutoPilot] Cash-proxy sleeve: {side} {ticker} x{qty} @ ${px:.2f} "
@@ -901,6 +1282,7 @@ class AutoPilotTrader:
         plan["executed"] = executed
         return plan
 
+    @serialized_proxy_orders
     def _free_proxy_cash_for_entry(
         self, needed_usd: float, holdings: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
@@ -926,42 +1308,105 @@ class AutoPilotTrader:
                 executed.append({**act, "status": "SUBMITTED_AWAITING_RECONCILIATION"})
                 break
             self._pending_proxy_orders.pop(pending_key, None)
+            client_order_id = make_client_order_id()
+            if not claim_proxy_order_intent(
+                ticker=ticker,
+                side="SELL",
+                quantity=float(qty),
+                price=px,
+                owner="AUTOPILOT_FREE_CASH",
+                exchange="AMEX" if ticker == "QLD" else "NASD",
+                client_order_id=client_order_id,
+                baseline_quantity=sum(
+                    float(h.get("quantity") or 0.0)
+                    for h in holdings
+                    if str(h.get("ticker") or "").upper() == ticker
+                ),
+            ):
+                executed.append({
+                    **act,
+                    "status": "PERSISTENT_ORDER_PENDING",
+                })
+                break
+            broker_status = "SIMULATED"
+            order_id = None
             if default_kis_broker.is_configured():
                 try:
                     broker_res = default_kis_broker.place_order(
                         ticker=ticker, side="SELL", qty=qty,
                         price=round(px * 0.995, 2), order_type="00",
                         exchange="AMEX" if ticker == "QLD" else "NASD",
+                        client_order_id=client_order_id,
                     )
                     broker_status = broker_res.get("status", "error")
+                    order_id = broker_res.get("order_id") or broker_res.get("odno")
                     if not is_broker_order_ack(broker_status):
+                        if "TIMEOUT" in str(
+                            broker_res.get("reason") or ""
+                        ).upper():
+                            mark_proxy_order_submitted(
+                                ticker,
+                                str(order_id or ""),
+                                str(
+                                    broker_res.get("client_order_id")
+                                    or client_order_id
+                                ),
+                            )
+                        else:
+                            clear_proxy_order_intent(ticker)
                         continue
                     if broker_status != "filled":
                         self._pending_proxy_orders[pending_key] = time.time()
+                        mark_proxy_order_submitted(
+                            ticker,
+                            str(order_id or ""),
+                            str(
+                                broker_res.get("client_order_id")
+                                or client_order_id
+                            ),
+                        )
                         executed.append({
                             **act,
                             "status": "SUBMITTED_AWAITING_RECONCILIATION",
-                            "order_id": broker_res.get("order_id"),
+                            "order_id": order_id,
                         })
                         break
                 except Exception as e:
                     logger.error(f"[AutoPilot CashProxy Sell Error] {e}")
                     continue
-            # Mark local proxy lots sold (best-effort match by ticker)
-            for h in list(holdings):
-                if str(h.get("ticker", "")).upper() != ticker:
-                    continue
-                hid = h.get("id")
-                if hid is not None:
-                    try:
-                        record_portfolio_sell(
-                            holding_id=int(hid),
-                            sell_price=px,
-                            reason=f"FREE_CASH_FOR_LEADERSHIP ({act.get('reason')})",
-                        )
-                    except Exception:
-                        pass
-                break
+            # Mark only sold proxy shares across all lots; keep residual shares.
+            try:
+                ledger_sold = record_portfolio_ticker_sell_quantity(
+                    ticker=ticker,
+                    sell_price=px,
+                    quantity=float(qty),
+                    reason=f"FREE_CASH_FOR_LEADERSHIP ({act.get('reason')})",
+                    execution_log={
+                        "order_type": "AUTOPILOT_FREE_PROXY_CASH",
+                        "status": (
+                            "SIMULATED"
+                            if broker_status == "SIMULATED"
+                            else "FILLED"
+                        ),
+                        "message": f"Autopilot frees proxy cash: {act.get('reason')}",
+                        "order_id": str(
+                            order_id
+                            or (
+                                f"SIM-PROXY-SELL-{ticker}-"
+                                f"{int(time.time() * 1000)}"
+                            )
+                        ),
+                    },
+                )
+            except Exception as ledger_err:
+                logger.error(
+                    f"[AutoPilot Proxy Partial Sell Ledger Error] {ledger_err}"
+                )
+                ledger_sold = 0.0
+            if broker_status == "SIMULATED" and ledger_sold + 1e-9 < qty:
+                clear_proxy_order_intent(ticker)
+                continue
+            clear_proxy_order_intent(ticker)
             executed.append({**act, "fill_price": px})
             logger.info(f"[AutoPilot] Freed proxy cash: SELL {ticker} x{qty} @ ${px:.2f}")
         return executed

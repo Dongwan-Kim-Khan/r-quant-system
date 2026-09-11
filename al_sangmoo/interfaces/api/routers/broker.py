@@ -6,13 +6,15 @@ from pydantic import BaseModel, Field, field_validator
 from al_sangmoo.core.auth import require_mutating_auth
 from al_sangmoo.infrastructure.brokers.kis_broker import default_kis_broker
 from al_sangmoo.infrastructure.idempotent_order import is_broker_order_ack
+from al_sangmoo.domain.risk import exit_cooldown
+from al_sangmoo.domain.risk.cash_proxy import is_proxy_ticker
 from al_sangmoo.domain.risk.order_guardrail import validate_pre_trade_guardrail, ORDER_MUTEX
 from al_sangmoo.domain.reconciliation import check_sync
 from al_sangmoo.infrastructure.persistence import (
     add_portfolio_buy,
     get_live_portfolio,
     record_execution_log,
-    record_portfolio_sell,
+    record_portfolio_ticker_sell_quantity,
 )
 
 router = APIRouter(prefix="/api/broker", tags=["Broker Execution"])
@@ -81,6 +83,16 @@ async def execute_broker_order(order: BrokerOrderRequest):
         final_qty = int(order.qty if order.qty is not None else (order.quantity or 1))
         final_price = float(order.price if order.price > 0 else (order.buy_price or 0.0))
         final_side = (order.side or "BUY").upper()
+        ticker_clean = order.ticker.upper()
+        if (
+            final_side == "BUY"
+            and not is_proxy_ticker(ticker_clean)
+            and exit_cooldown.is_in_cooldown(ticker_clean)
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail=f"{ticker_clean} is inside the persistent 24-hour exit lockout",
+            )
 
         # 1. Pre-Trade Guardrail Validation
         balance_info = await asyncio.to_thread(default_kis_broker.get_overseas_balance)
@@ -119,39 +131,70 @@ async def execute_broker_order(order: BrokerOrderRequest):
 
         # 3. If Order Submitted / Filled, sync to SQLite
         if is_broker_order_ack(result.get("status")):
+            if result.get("status") != "filled":
+                # Order acceptance is not a fill. Reconciliation will update the
+                # position ledger and execution log after the broker book changes.
+                return result
+            execution_log = {
+                "order_type": (
+                    "MARKETABLE_LIMIT" if order.order_type == "00" else "MARKET"
+                ),
+                "status": (
+                    "SIMULATED"
+                    if str(result.get("mode") or "").upper() == "SIMULATION"
+                    else "FILLED"
+                ),
+                "message": f"Broker {final_side} order executed",
+                "order_id": str(result.get("order_id", "")),
+            }
             if final_side == "BUY":
                 add_portfolio_buy(
                     ticker=order.ticker.upper(),
                     buy_price=final_price if final_price > 0 else 100.0,
                     quantity=float(final_qty),
-                    buy_date=order.buy_date
+                    buy_date=order.buy_date,
+                    execution_log=execution_log,
                 )
             elif final_side == "SELL":
-                # Find active holding ID in SQLite
                 live_port = get_live_portfolio()
-                for h in live_port.get("holdings", []):
-                    if h["ticker"].upper() == order.ticker.upper():
-                        record_portfolio_sell(
-                            holding_id=h["id"],
-                            sell_price=final_price if final_price > 0 else h["current_price"],
-                            reason="BROKER_LIVE_SELL"
-                        )
-                        break
-            
-            # Record execution log for real-time audit log parity
-            try:
-                record_execution_log(
-                    ticker=order.ticker.upper(),
-                    side=final_side,
-                    quantity=float(final_qty),
-                    price=final_price if final_price > 0 else 100.0,
-                    order_type="MARKETABLE_LIMIT" if order.order_type == "00" else "MARKET",
-                    status="FILLED",
-                    message=f"Broker {final_side} order executed",
-                    order_id=str(result.get("order_id", ""))
+                ticker_holdings = [
+                    h for h in live_port.get("holdings", [])
+                    if h["ticker"].upper() == ticker_clean
+                ]
+                local_qty = sum(
+                    float(h.get("quantity") or 0.0) for h in ticker_holdings
                 )
-            except Exception:
-                pass
+                fallback_price = (
+                    float(ticker_holdings[0].get("current_price") or 0.0)
+                    if ticker_holdings
+                    else 0.0
+                )
+                sold_local = record_portfolio_ticker_sell_quantity(
+                    ticker=ticker_clean,
+                    sell_price=final_price if final_price > 0 else fallback_price,
+                    quantity=float(final_qty),
+                    reason="BROKER_LIVE_SELL",
+                    execution_log=execution_log,
+                )
+                if sold_local <= 0:
+                    record_execution_log(
+                        ticker=order.ticker.upper(),
+                        side=final_side,
+                        quantity=float(final_qty),
+                        price=final_price if final_price > 0 else 100.0,
+                        **execution_log,
+                    )
+                if (
+                    local_qty > 0
+                    and final_qty + 1e-9 >= local_qty
+                    and not is_proxy_ticker(ticker_clean)
+                ):
+                    exit_cooldown.record_exit(
+                        ticker_clean,
+                        reason="BROKER_LIVE_SELL",
+                        source="MANUAL_BROKER",
+                        order_id=str(result.get("order_id") or ""),
+                    )
 
             # Broadcast updated portfolio to all connected WebSocket clients
             try:

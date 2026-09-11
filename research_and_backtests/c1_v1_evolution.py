@@ -371,38 +371,9 @@ def run_evo_book(
                     px = pos.entry
                 close_position(book, pos, float(px), dates[i], "SLOT_TRIM", i)
 
-        for tk in list(book.positions.keys()):
-            pos = book.positions[tk]
-            p = panels[tk]
-            if not p["listed"][i]:
-                continue
-            high = p["high"][i]
-            if np.isfinite(high):
-                pos.peak_high = max(pos.peak_high, high)
-            reason = decide_exit_evo(
-                pos.entry,
-                pos.peak_high,
-                p["close"][i],
-                p["low"][i],
-                p["kijun"][i],
-                p["atr"][i],
-                spec.dynamic_trail,
-            )
-            if not reason:
-                continue
-            hard = pos.entry * (1.0 + STOP_LOSS_PCT)
-            if reason == "HARD_STOP":
-                raw = min(p["open"][i], hard) if np.isfinite(p["open"][i]) else p["close"][i]
-                sl.hard_stops += 1
-            else:
-                raw = p["close"][i]
-                sl.trail_exits += 1
-                if reason == "TRAIL_LOCK":
-                    sl.lock_trail_hits += 1
-            if not np.isfinite(raw) or raw <= 0:
-                continue
-            close_position(book, pos, float(raw), dates[i], reason, i)
-
+        # Chronological event order: use yesterday's signal at today's open
+        # before today's low/close is visible. Exiting first leaked future cash
+        # into a same-date open fill and allowed impossible same-day re-entry.
         if len(book.positions) < max_slots and i >= 1:
             scored: List[Tuple[float, str]] = []
             allowed = allowed_by_day[i] if allowed_by_day is not None else None
@@ -460,6 +431,40 @@ def run_evo_book(
                     peak_high=max(fill, p["high"][i] if np.isfinite(p["high"][i]) else fill),
                     entry_date=dates[i],
                 )
+
+        # Intraday hard stops / EOD trailing exits occur after the only open
+        # entry event. Proceeds become available for satellites on i+1.
+        for tk in list(book.positions.keys()):
+            pos = book.positions[tk]
+            p = panels[tk]
+            if not p["listed"][i]:
+                continue
+            high = p["high"][i]
+            if np.isfinite(high):
+                pos.peak_high = max(pos.peak_high, high)
+            reason = decide_exit_evo(
+                pos.entry,
+                pos.peak_high,
+                p["close"][i],
+                p["low"][i],
+                p["kijun"][i],
+                p["atr"][i],
+                spec.dynamic_trail,
+            )
+            if not reason:
+                continue
+            hard = pos.entry * (1.0 + STOP_LOSS_PCT)
+            if reason == "HARD_STOP":
+                raw = min(p["open"][i], hard) if np.isfinite(p["open"][i]) else p["close"][i]
+                sl.hard_stops += 1
+            else:
+                raw = p["close"][i]
+                sl.trail_exits += 1
+                if reason == "TRAIL_LOCK":
+                    sl.lock_trail_hits += 1
+            if not np.isfinite(raw) or raw <= 0:
+                continue
+            close_position(book, pos, float(raw), dates[i], reason, i)
 
         rebalance_proxy(i, lev, "close", force=force_proxy)
         eq = equity_now(i, "close")

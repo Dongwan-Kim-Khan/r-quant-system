@@ -53,6 +53,20 @@ export const ApiClient = {
         return null;
     },
 
+    async getExecutionLogs(limit = 50) {
+        const base = getBaseUrl();
+        try {
+            const res = await fetch(
+                `${base}/api/execution-logs?limit=${encodeURIComponent(limit)}`,
+                { cache: 'no-store' }
+            );
+            if (res.ok) return await res.json();
+        } catch (err) {
+            console.warn('[API] /api/execution-logs fetch failed:', err);
+        }
+        return null;
+    },
+
     /**
      * Fetch active portfolio holdings and financial equity summary
      */

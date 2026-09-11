@@ -16,7 +16,11 @@ import requests
 
 from al_sangmoo.core.config import BASE_DIR, load_env
 from al_sangmoo.infrastructure.atomic_io import atomic_save_json
-from al_sangmoo.infrastructure.idempotent_order import make_client_order_id, match_day_order
+from al_sangmoo.infrastructure.idempotent_order import (
+    make_client_order_id,
+    match_day_order,
+    normalize_kis_day_order,
+)
 
 # Ensure latest .env values are loaded
 load_env()
@@ -101,6 +105,7 @@ class KISBrokerAdapter:
         self._order_lock = threading.Lock()
         self._inflight_keys = set()
         self._unconfirmed: Dict[str, Dict[str, Any]] = {}
+        self._day_order_query_complete: Dict[str, bool] = {}
         self._price_cache: Dict[str, Tuple[float, float]] = {}
         self._price_cache_lock = threading.Lock()
 
@@ -305,8 +310,12 @@ class KISBrokerAdapter:
         total_eval = 0.0
         cash_avail = 0.0
         total_equity = 0.0
+        successful_exchanges: List[str] = []
+        failed_exchanges: List[Dict[str, str]] = []
 
         for ex in target_exchanges:
+            exchange_succeeded = False
+            exchange_error = "NO_SUCCESS_RESPONSE"
             params = {
                 "CANO": self.account_no,
                 "ACNT_PRDT_CD": self.account_code,
@@ -322,11 +331,19 @@ class KISBrokerAdapter:
                     res = requests.get(url, headers=headers, params=params, timeout=3.0)
                     if res.status_code == 200:
                         data = res.json()
+                        exchange_error = str(
+                            data.get("msg1")
+                            or data.get("msg_cd")
+                            or data.get("rt_cd")
+                            or "BROKER_ERROR"
+                        )
                         if data.get("msg_cd") == "EGW00201" and attempt == 0:
                             time.sleep(0.35)
                             continue
 
                         if data.get("rt_cd") == "0":
+                            exchange_succeeded = True
+                            successful_exchanges.append(ex)
                             raw_holdings = data.get("output1", [])
                             if isinstance(raw_holdings, dict):
                                 raw_holdings = [raw_holdings]
@@ -350,7 +367,12 @@ class KISBrokerAdapter:
                                 ticker = str(item.get("ovrs_pdno") or item.get("ovrs_pd_no") or item.get("pdno") or "").strip().upper()
                                 if not ticker or ticker in seen_tickers:
                                     continue
-                                qty = float(item.get("ord_psbl_qty") or item.get("ovrs_cblc_qty") or item.get("cblc_qty13") or 0.0)
+                                # Reconciliation needs settled/held shares, never
+                                # orderable quantity (which can be zero while a
+                                # sell order is merely accepted).
+                                qty = self._parse_balance_quantity(item)
+                                if qty <= 0:
+                                    continue
                                 avg_price = float(item.get("pchs_avg_pric") or 0.0)
                                 cur_price = float(item.get("now_pric2") or item.get("ovrs_now_pric1") or avg_price)
                                 eval_amt = float(item.get("ovrs_stck_evlu_amt") or item.get("evlu_amt2") or (qty * cur_price))
@@ -377,15 +399,22 @@ class KISBrokerAdapter:
                                 continue
                             break
                     else:
+                        exchange_error = f"HTTP_{res.status_code}"
                         if attempt == 0:
                             time.sleep(0.35)
                             continue
                         break
                 except Exception as exc:
+                    exchange_error = str(exc)
                     if attempt == 0:
                         time.sleep(0.35)
                         continue
                     break
+            if not exchange_succeeded:
+                failed_exchanges.append({
+                    "exchange": ex,
+                    "error": exchange_error,
+                })
 
         # Fallback to last known summary if throttled
         if not latest_summary and self._last_overseas_balance and "raw_summary" in self._last_overseas_balance:
@@ -403,8 +432,16 @@ class KISBrokerAdapter:
         tot_pnl_usd = round(rlzt_amt + evlu_amt, 2)
         tot_pnl_pct = round(rlzt_rt + evlu_rt, 2)
 
+        snapshot_complete = len(successful_exchanges) == len(target_exchanges)
+        if not successful_exchanges:
+            snapshot_status = "error"
+        elif not snapshot_complete:
+            snapshot_status = "partial"
+        else:
+            snapshot_status = "success"
+
         res_dict = {
-            "status": "success",
+            "status": snapshot_status,
             "mode": "VIRTUAL_PAPER" if self.is_paper else "REAL_PRODUCTION",
             "account_no": f"{self.account_no}-{self.account_code}",
             "total_equity_usd": total_equity if total_equity > 0 else 100_000.0,
@@ -418,11 +455,14 @@ class KISBrokerAdapter:
             "total_pnl_pct": tot_pnl_pct,
             "holdings_count": len(all_holdings),
             "holdings": all_holdings,
-            "raw_summary": latest_summary
+            "raw_summary": latest_summary,
+            "snapshot_complete": snapshot_complete,
+            "successful_exchanges": successful_exchanges,
+            "failed_exchanges": failed_exchanges,
         }
 
         with self._balance_lock:
-            if len(all_holdings) > 0 or latest_summary:
+            if snapshot_complete and (len(all_holdings) > 0 or latest_summary):
                 self._last_overseas_balance = dict(res_dict)
                 self._last_balance_time = time.time()
 
@@ -439,6 +479,19 @@ class KISBrokerAdapter:
         if val > 0:
             return round(val, 2)
         return None
+
+    @staticmethod
+    def _parse_balance_quantity(item: Dict[str, Any]) -> float:
+        """Parse actual held quantity, preserving numeric/string zero semantics."""
+        for key in ("ovrs_cblc_qty", "cblc_qty13"):
+            raw = item.get(key)
+            if raw is None or str(raw).strip() == "":
+                continue
+            try:
+                return float(str(raw).replace(",", "").strip())
+            except (TypeError, ValueError):
+                return 0.0
+        return 0.0
 
     @classmethod
     def _price_from_kis_output(cls, output: Any) -> Optional[float]:
@@ -707,7 +760,8 @@ class KISBrokerAdapter:
         qty: int,
         price: float = 0.0,
         order_type: str = "00",  # "00": Limit (지정가), "01": Market (시장가)
-        exchange: Optional[str] = None
+        exchange: Optional[str] = None,
+        client_order_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Unified order execution entrypoint for US and Domestic equities.
@@ -725,7 +779,7 @@ class KISBrokerAdapter:
 
         if not self.is_configured():
             order_id = f"SIM-{int(time.time() * 1000)}"
-            client_oid = make_client_order_id()
+            client_oid = client_order_id or make_client_order_id()
             return {
                 "status": "filled",
                 "mode": "SIMULATION",
@@ -780,7 +834,15 @@ class KISBrokerAdapter:
             if is_domestic:
                 result = self._place_domestic_order(ticker_clean, side, qty, price, order_type)
             else:
-                result = self._place_overseas_order(ticker_clean, side, qty, price, exchange or "NASD", order_type)
+                result = self._place_overseas_order(
+                    ticker_clean,
+                    side,
+                    qty,
+                    price,
+                    exchange or "NASD",
+                    order_type,
+                    client_order_id=client_order_id,
+                )
 
             if result.get("status") in ("submitted", "filled", "SUCCESS_VIA_RECHECK"):
                 self._unconfirmed.pop(inflight_key, None)
@@ -800,6 +862,7 @@ class KISBrokerAdapter:
     def query_overseas_day_orders(self, exchange: str = "NASD") -> List[Dict[str, Any]]:
         """Today's overseas unfilled (nccs) + filled (ccnl) rows. Failures return []."""
         rows: List[Dict[str, Any]] = []
+        successful_specs = 0
         nccs_tr = "VTTS3035R" if self.is_paper else "TTTS3035R"
         ccnl_tr = "VTTS3039R" if self.is_paper else "TTTS3039R"
         specs = [
@@ -826,9 +889,9 @@ class KISBrokerAdapter:
                 if res.status_code != 200:
                     continue
                 data = res.json()
-                if data.get("rt_cd") not in ("0", 0, None) and data.get("rt_cd") not in ("0",):
-                    # still collect output if present
-                    pass
+                if data.get("rt_cd") not in ("0", 0):
+                    continue
+                successful_specs += 1
                 payload = data.get("output") or data.get("output1") or data.get("output2") or []
                 if isinstance(payload, dict):
                     payload = [payload]
@@ -836,7 +899,89 @@ class KISBrokerAdapter:
                     rows.extend([p for p in payload if isinstance(p, dict)])
             except Exception as exc:
                 logger.debug(f"[KIS] day-order inquiry skipped ({tr_id}): {exc}")
+        self._day_order_query_complete[str(exchange or "NASD")] = (
+            successful_specs == len(specs)
+        )
         return rows
+
+    def get_overseas_order_state(
+        self,
+        ticker: str,
+        order_id: str = "",
+        client_order_id: str = "",
+        exchange: str = "NASD",
+    ) -> Dict[str, Any]:
+        """Return positive broker evidence for one accepted US order."""
+        wanted_ticker = str(ticker or "").upper().strip()
+        wanted_order_id = str(order_id or "").strip()
+        wanted_client_id = str(client_order_id or "").upper().strip()
+        matched: List[Dict[str, Any]] = []
+        for raw in self.query_overseas_day_orders(exchange=exchange):
+            row = normalize_kis_day_order(raw)
+            if row.get("ticker") != wanted_ticker:
+                continue
+            if wanted_order_id and row.get("order_id") == wanted_order_id:
+                matched.append(row)
+                continue
+            if (
+                wanted_client_id
+                and row.get("client_order_id") == wanted_client_id
+            ):
+                matched.append(row)
+
+        if not matched:
+            query_complete = bool(
+                self._day_order_query_complete.get(str(exchange or "NASD"))
+            )
+            return {
+                "status": "NOT_FOUND" if query_complete else "UNKNOWN",
+                "terminal": False,
+                "ticker": wanted_ticker,
+                "query_complete": query_complete,
+            }
+
+        requested = max(float(row.get("qty") or 0.0) for row in matched)
+        filled = max(float(row.get("filled_qty") or 0.0) for row in matched)
+        remaining = max(
+            float(row.get("remaining_qty") or 0.0) for row in matched
+        )
+        cancelled = any(bool(row.get("is_cancelled")) for row in matched)
+        if cancelled:
+            state = "CANCELLED"
+            terminal = True
+        elif requested > 0 and filled + 1e-9 >= requested and remaining <= 1e-9:
+            state = "FILLED"
+            terminal = True
+        elif remaining > 1e-9:
+            state = "PARTIALLY_FILLED" if filled > 0 else "OPEN"
+            terminal = False
+        elif filled > 0:
+            state = "FILLED"
+            terminal = True
+        else:
+            state = "UNKNOWN"
+            terminal = False
+        fill_price_rows = [
+            row for row in matched
+            if float(row.get("filled_qty") or 0.0) > 0
+            and float(row.get("fill_price") or 0.0) > 0
+        ]
+        fill_price = (
+            float(fill_price_rows[-1]["fill_price"])
+            if len(fill_price_rows) == 1
+            else 0.0
+        )
+        return {
+            "status": state,
+            "terminal": terminal,
+            "ticker": wanted_ticker,
+            "requested_quantity": requested,
+            "filled_quantity": filled,
+            "remaining_quantity": remaining,
+            "fill_price": fill_price,
+            "order_id": wanted_order_id,
+            "client_order_id": wanted_client_id,
+        }
 
     def _recheck_submitted_order(
         self,
@@ -877,7 +1022,8 @@ class KISBrokerAdapter:
         qty: int,
         price: float,
         exchange: str = "NASD",
-        order_type: str = "00"
+        order_type: str = "00",
+        client_order_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Submits US equity cash order via official KIS endpoint.
@@ -895,7 +1041,7 @@ class KISBrokerAdapter:
         url = f"{self.base_url}/uapi/overseas-stock/v1/trading/order"
         headers = self._get_headers(tr_id)
         unpr_str = f"{price:.2f}" if price > 0 else "0"
-        client_oid = make_client_order_id()
+        client_oid = client_order_id or make_client_order_id()
 
         body = {
             "CANO": self.account_no,
@@ -980,20 +1126,9 @@ class KISBrokerAdapter:
                 out = data.get("output", {})
                 odno = out.get("ODNO") or out.get("odno") or f"OD-{int(time.time())}"
                 msg_ok = data.get("msg1", "Order submitted successfully")
-                try:
-                    from al_sangmoo.infrastructure.persistence import record_execution_log
-                    record_execution_log(
-                        ticker=ticker,
-                        side=side.upper(),
-                        quantity=qty,
-                        price=price,
-                        order_type="MARKETABLE_LIMIT" if order_type == "00" else "MARKET",
-                        status="FILLED",
-                        message=f"{msg_ok} (체결단가 ${price:,.2f})",
-                        order_id=odno
-                    )
-                except Exception:
-                    pass
+                # KIS confirms order acceptance here, not execution. The owning
+                # domain service logs immediate fills/simulations; reconciliation
+                # logs fills observed later in the broker position book.
                 return {
                     "status": "submitted",
                     "order_id": odno,

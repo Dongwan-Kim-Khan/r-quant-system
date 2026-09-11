@@ -1,8 +1,4 @@
-/**
- * R QUANT TERMINAL v2: UI RENDERING & EVENT DISPATCHER MODULE
- * Professional Bloomberg Dark Terminal Aesthetic (Zero Emojis).
- * Al-Sangmoo GS-Quant Upgraded 3-Slot Trading Cockpit.
- */
+// R QUANT TERMINAL v2: UI RENDERING & EVENT DISPATCHER MODULE (C1-M2 Cockpit)
 import { ApiClient } from './api.js?v=4.3.3';
 import { ChartEngine } from './chart.js?v=4.3.3';
 import { QuantDecoder } from './decoder.js?v=4.3.3';
@@ -541,11 +537,17 @@ export const UI = {
         tBody.innerHTML = tradeList.map(item => {
             const side = String(item.side || 'BUY').toUpperCase();
             const isBuy = side === 'BUY';
-            const sideColor = isBuy ? '#34d399' : '#f87171';
-            const sideBg = isBuy ? 'rgba(52,211,153,0.15)' : 'rgba(248,113,113,0.15)';
+            const isSell = side === 'SELL';
+            const sideColor = isBuy ? '#34d399' : (isSell ? '#f87171' : '#60a5fa');
+            const sideBg = isBuy
+                ? 'rgba(52,211,153,0.15)'
+                : (isSell ? 'rgba(248,113,113,0.15)' : 'rgba(96,165,250,0.15)');
             const ticker = this.escapeHtml(item.ticker || '');
             const price = Number(item.price || 0);
-            const qty = Number(item.quantity || item.qty || 1);
+            const qtyRaw = item.quantity !== undefined && item.quantity !== null
+                ? item.quantity
+                : (item.qty !== undefined && item.qty !== null ? item.qty : 1);
+            const qty = Number(qtyRaw);
             const totAmt = Number(item.total_amount || (price * qty));
             const rawTs = this.escapeHtml(item.timestamp || '');
             const ts = rawTs.includes(' ') ? rawTs.split(' ')[1] : rawTs;
@@ -554,7 +556,7 @@ export const UI = {
 
             // Parse or compute Trade PnL %
             let pnlDisplay = '<span style="color:var(--text-muted); font-family:\'JetBrains Mono\'; font-size:10px;">[ENTRY]</span>';
-            if (!isBuy) {
+            if (isSell) {
                 let pnlVal = null;
                 if (item.pnl_pct !== undefined && item.pnl_pct !== null && !isNaN(Number(item.pnl_pct))) {
                     pnlVal = Number(item.pnl_pct);
@@ -572,6 +574,8 @@ export const UI = {
                 } else {
                     pnlDisplay = '<span style="color:var(--text-secondary); font-family:\'JetBrains Mono\'; font-size:10.5px;">-</span>';
                 }
+            } else if (!isBuy) {
+                pnlDisplay = '<span style="color:#60a5fa; font-family:\'JetBrains Mono\'; font-size:10px;">[SYNC]</span>';
             }
 
             return `<tr style="border-bottom:1px solid rgba(255,255,255,0.04); transition:background 0.1s ease;">` +

@@ -1,17 +1,9 @@
-/**
- * R QUANT TERMINAL: WebSocket hub, heartbeat, and TerminalApp controller.
- */
+// R QUANT TERMINAL: WebSocket hub, heartbeat, and TerminalApp controller.
 import { ApiClient } from './api.js?v=4.3.3';
 import { UI } from './ui.js?v=4.3.3';
 import { ChartEngine } from './chart.js?v=4.3.3';
 
-export const ConnectionState = {
-    DISCONNECTED: "DISCONNECTED",
-    CONNECTING: "CONNECTING",
-    CONNECTED: "CONNECTED",
-    REAUTHENTICATING: "REAUTHENTICATING",
-    ERROR: "ERROR",
-};
+export const ConnectionState = { DISCONNECTED: "DISCONNECTED", CONNECTING: "CONNECTING", CONNECTED: "CONNECTED", REAUTHENTICATING: "REAUTHENTICATING", ERROR: "ERROR" };
 
 export const WebSocketClient = {
     socket: null,
@@ -19,6 +11,7 @@ export const WebSocketClient = {
     maxReconnectDelay: 10000,
     reconnectTimeoutId: null,
     pollingInterval: null,
+    executionLogInterval: null,
     heartbeatInterval: null,
     lastPongReceived: Date.now(),
     isSocketConnected: false,
@@ -26,6 +19,7 @@ export const WebSocketClient = {
 
     init() {
         this._setupLifecycleListeners();
+        this._startExecutionLogPolling();
         this.connect();
     },
 
@@ -280,6 +274,21 @@ export const WebSocketClient = {
         }, 5000);
     },
 
+    _startExecutionLogPolling() {
+        if (this.executionLogInterval) return;
+        const refresh = async () => {
+            if (document.visibilityState !== "visible") return;
+            try {
+                const payload = await ApiClient.getExecutionLogs(50);
+                if (payload && Array.isArray(payload.execution_logs)) {
+                    UI.renderTradeLogs(payload.execution_logs);
+                }
+            } catch (e) {}
+        };
+        refresh();
+        this.executionLogInterval = setInterval(refresh, 3000);
+    },
+
     _stopHttpPolling() {
         if (this.pollingInterval) {
             clearInterval(this.pollingInterval);
@@ -491,18 +500,10 @@ export const TerminalApp = {
 
             const setBadgeState = (enabled) => {
                 badge.className = enabled ? `status-pill-chip ${activeClass}` : "status-pill-chip disabled";
-                const text = enabled ? `${labelPrefix}: ${activeSuffix}` : `${labelPrefix}: OFF`;
-                badge.innerHTML = `<span class="badge-dot"></span><span>${text}</span>`;
+                badge.innerHTML = `<span class="badge-dot"></span><span>${enabled ? `${labelPrefix}: ${activeSuffix}` : `${labelPrefix}: OFF`}</span>`;
             };
-
-            // Fetch initial status on load to ensure UI matches backend daemon state
-            getFn().then((st) => {
-                const isEnabled = Boolean(st && (st.is_enabled !== undefined ? st.is_enabled : st.enabled));
-                setBadgeState(isEnabled);
-            }).catch((e) => {
-                console.warn(`[${labelPrefix}] Init status check failed:`, e);
-            });
-
+            getFn().then((st) => setBadgeState(Boolean(st && (st.is_enabled !== undefined ? st.is_enabled : st.enabled))))
+                   .catch((e) => console.warn(`[${labelPrefix}] Init status failed:`, e));
             badge.onclick = async () => {
                 if (isToggling) return;
                 isToggling = true;
@@ -510,12 +511,10 @@ export const TerminalApp = {
                 badge.style.pointerEvents = "none";
                 try {
                     const st = await getFn();
-                    const current = Boolean(st && (st.is_enabled !== undefined ? st.is_enabled : st.enabled));
-                    const next = !current;
+                    const next = !Boolean(st && (st.is_enabled !== undefined ? st.is_enabled : st.enabled));
                     const res = await toggleFn(next);
                     const finalState = res && (res.is_enabled !== undefined ? res.is_enabled : res.enabled) !== undefined
-                        ? Boolean(res.is_enabled !== undefined ? res.is_enabled : res.enabled)
-                        : next;
+                        ? Boolean(res.is_enabled !== undefined ? res.is_enabled : res.enabled) : next;
                     setBadgeState(finalState);
                     UI.toast(`[${labelPrefix}] ${finalState ? 'ACTIVE' : 'DISABLED'}`, finalState ? "success" : "warn");
                 } catch (e) {

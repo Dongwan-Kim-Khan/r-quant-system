@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Al-Sangmoo Dynamic Alpha Hedge Strategy (C1-M2 Engine) - Prospectus</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@page {
+    size: A4;
+    margin: 16mm 14mm 16mm 14mm;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', 'Noto Sans KR', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 9pt;
+    line-height: 1.5;
+    color: #1e293b;
+    background-color: #ffffff;
+    margin: 0;
+    padding: 0;
+}
+
+h1 {
+    font-size: 15pt;
+    font-weight: 800;
+    color: #0f2b48;
+    border-bottom: 2px solid #0f2b48;
+    padding-bottom: 4px;
+    margin-top: 18px;
+    margin-bottom: 10px;
+    letter-spacing: -0.01em;
+    page-break-after: avoid;
+}
+
+h2 {
+    font-size: 12pt;
+    font-weight: 700;
+    color: #1e3a8a;
+    border-left: 4px solid #2563eb;
+    padding-left: 8px;
+    margin-top: 18px;
+    margin-bottom: 8px;
+    page-break-after: avoid;
+}
+
+h3 {
+    font-size: 10pt;
+    font-weight: 600;
+    color: #334155;
+    margin-top: 12px;
+    margin-bottom: 4px;
+    page-break-after: avoid;
+}
+
+p, ul, ol {
+    margin-top: 0;
+    margin-bottom: 6px;
+}
+
+li {
+    margin-bottom: 3px;
+}
+
+/* Tables */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+    margin-bottom: 12px;
+    font-size: 8pt;
+    page-break-inside: avoid;
+}
+
+th {
+    background-color: #0f2b48;
+    color: #ffffff;
+    font-weight: 600;
+    text-align: left;
+    padding: 5px 6px;
+    border: 1px solid #0f2b48;
+}
+
+td {
+    padding: 4px 6px;
+    border: 1px solid #cbd5e1;
+    vertical-align: middle;
+}
+
+tr:nth-child(even) {
+    background-color: #f8fafc;
+}
+
+/* Blockquotes / Alerts */
+blockquote {
+    background-color: #f1f5f9;
+    border-left: 4px solid #0284c7;
+    color: #0c4a6e;
+    padding: 8px 12px;
+    margin: 8px 0;
+    border-radius: 0 3px 3px 0;
+    font-size: 8.5pt;
+    page-break-inside: avoid;
+}
+
+blockquote p {
+    margin: 0;
+}
+
+/* Code blocks */
+code {
+    font-family: 'JetBrains Mono', Consolas, monospace;
+    font-size: 7.8pt;
+    background-color: #f1f5f9;
+    color: #0f172a;
+    padding: 1px 3px;
+    border-radius: 2px;
+}
+
+pre {
+    background-color: #0f172a;
+    color: #f8fafc;
+    padding: 8px 10px;
+    border-radius: 4px;
+    overflow-x: auto;
+    font-size: 7.8pt;
+    page-break-inside: avoid;
+    margin: 8px 0;
+}
+
+pre code {
+    background-color: transparent;
+    color: inherit;
+    padding: 0;
+}
+
+hr {
+    border: none;
+    border-top: 1px solid #cbd5e1;
+    margin: 14px 0;
+}
+
+.footer-disclaimer {
+    margin-top: 24px;
+    border-top: 1px solid #94a3b8;
+    padding-top: 8px;
+    font-size: 7pt;
+    color: #64748b;
+    text-align: center;
+    page-break-inside: avoid;
+}
+</style>
+</head>
+<body>
+
+<h1>PRIVATE PLACEMENT MEMORANDUM / KEY INVESTOR INFORMATION</h1>
+<h2>Al-Sangmoo Dynamic Alpha Hedge Strategy</h2>
+<h3><em>(C1–M2 Quantitative Engine)</em></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Specification</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Document Type</strong></td>
+<td>Prospectus / PPM (Private Placement Memorandum) &amp; KIID-style Key Facts</td>
+</tr>
+<tr>
+<td><strong>Strategy Code</strong></td>
+<td><code>C1-M2</code></td>
+</tr>
+<tr>
+<td><strong>Classification</strong></td>
+<td>Quantitative Systematic — Trend-Following &amp; Dynamic Regime Overlay</td>
+</tr>
+<tr>
+<td><strong>Base Currency</strong></td>
+<td>United States Dollar (USD)</td>
+</tr>
+<tr>
+<td><strong>Valuation Frequency</strong></td>
+<td>Daily (mark-to-market, US equity session close)</td>
+</tr>
+<tr>
+<td><strong>Document Date</strong></td>
+<td>8 September 2026</td>
+</tr>
+<tr>
+<td><strong>Backtest Audit Cut-off</strong></td>
+<td>28 August 2026</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td>Research / Simulated Track Record — Not an offer to the public</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>IMPORTANT:</strong> This document describes a <em>systematic trading strategy</em> and its audited historical simulation. It is <strong>not</strong> a registered collective investment scheme prospectus under the U.S. Securities Act, the EU UCITS/AIFMD frameworks, or the Korean FSC public-offering rules, unless and until separately registered. Distribution is limited to <strong>qualified / accredited / professional investors</strong> where permitted by local law.</p>
+</blockquote>
+<hr />
+<h2>I. Executive Summary</h2>
+<h3>1.1 Fund / Strategy Identity</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Legal / Marketing Name</strong></td>
+<td>Al-Sangmoo Dynamic Alpha Hedge Strategy (C1–M2 Engine)</td>
+</tr>
+<tr>
+<td><strong>Strategy Type</strong></td>
+<td>Quantitative Systematic Trend-Following &amp; Dynamic Regime Overlay</td>
+</tr>
+<tr>
+<td><strong>Reference Benchmarks</strong></td>
+<td>NASDAQ-100 (<code>QQQ</code>); S&amp;P 500 (<code>SPY</code>); secondary ceiling check vs ProShares Ultra QQQ (<code>QLD</code>, 2×)</td>
+</tr>
+<tr>
+<td><strong>Target Investor</strong></td>
+<td>Long-horizon capital appreciators seeking <strong>asymmetric payoff</strong> and measurable excess return (<em>alpha</em>) versus NASDAQ-100, comfortable with equity-like drawdowns</td>
+</tr>
+<tr>
+<td><strong>Recommended Capital Plan</strong></td>
+<td>Seed <strong>USD 8,000</strong> + <strong>USD 400</strong> on each month’s first U.S. trading session (<em>DCA / MWRR</em>)</td>
+</tr>
+<tr>
+<td><strong>Minimum Notionals (operational)</strong></td>
+<td>Live KIS brokerage account with sufficient buying power for 1.5× Nasdaq exposure in low-vol bull regimes</td>
+</tr>
+</tbody>
+</table>
+<h3>1.2 One-Sentence Thesis</h3>
+<blockquote>
+<p>Convert Al-Sangmoo’s 17-year proprietary swing constitution (Ichimoku <em>Kijun</em> life-line, volume-dry-up, dual-momentum leadership) into a <strong>fully mechanical</strong>, point-in-time, friction-aware book that <strong>never parks idle cash</strong>, scales conviction 50/30/20 into Composite-RS leaders, and applies a <strong>−5.0% hard stop</strong> with uncapped trailing winners — the C1–M2 engine.</p>
+</blockquote>
+<h3>1.3 Headline Simulated Results (Audited Friction)</h3>
+<p>Friction stack applied uniformly: <strong>next-session open fills</strong>, <strong>10 bps slippage</strong>, <strong>8 bps commission</strong>, <strong>Point-in-Time (PIT) dynamic 60-name universe</strong>.</p>
+<table>
+<thead>
+<tr>
+<th>Mandate</th>
+<th>Window</th>
+<th style="text-align: right;">Net ROI / CAGR</th>
+<th style="text-align: right;">Max Drawdown</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M2 Lump-sum</td>
+<td>2018-08-31 → 2026-08-28</td>
+<td style="text-align: right;"><strong>CAGR 22.00%</strong></td>
+<td style="text-align: right;"><strong>−51.13%</strong></td>
+<td>Beats QQQ B&amp;H CAGR 18.39%</td>
+</tr>
+<tr>
+<td>C1 Lump-sum</td>
+<td>same</td>
+<td style="text-align: right;">CAGR 18.47%</td>
+<td style="text-align: right;">−41.71%</td>
+<td>Baseline champion pre-stop widen</td>
+</tr>
+<tr>
+<td>M2 DCA ($8k + $400/mo)</td>
+<td>same</td>
+<td style="text-align: right;"><strong>ROI +276.5% / XIRR 27.48%</strong></td>
+<td style="text-align: right;"><strong>−48.15%</strong></td>
+<td>Final <strong>$174,683</strong> on $46,400 invested</td>
+</tr>
+<tr>
+<td>QQQ DCA (identical flows)</td>
+<td>same</td>
+<td style="text-align: right;">ROI +155.8% / XIRR 19.49%</td>
+<td style="text-align: right;">−28.90%</td>
+<td>Final $118,705 — M2 excess <strong>≈ +$55,979</strong></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>II. Investment Philosophy &amp; Strategy</h2>
+<h3>2.1 Core Philosophy</h3>
+<ol>
+<li>
+<p><strong>Codified Discretion → Systematic Rules</strong><br />
+   The discretionary framework of Al-Sangmoo (Oh Dong-seok): 17 years of prop/hedge-fund practice distilled into a <strong>3-Gate</strong> entry model — Engine A (20-day breakout above cloud), Engine B (<em>Kijun</em> pullback reclaim), Gate VDU (volume dry-up compression).</p>
+</li>
+<li>
+<p><strong>Asymmetric Payoff (<em>Let Winners Run</em>)</strong><br />
+   Accept a high rate of small, mechanical losses (hard stop) in exchange for <strong>uncapped right-tail</strong> capture via Ichimoku/ATR trailing after a +15% peak trigger. Win rate is intentionally modest; <strong>Profit Factor</strong> and <strong>Calmar</strong> are the primary quality metrics.</p>
+</li>
+<li>
+<p><strong>No Cash Drag</strong><br />
+   Empty conviction slots do <strong>not</strong> accrue idle cash. Residual capital is continuously allocated to a <strong>QQQ cash-proxy overlay</strong>, with conditional QLD mix when gross leverage targets 1.5×.</p>
+</li>
+</ol>
+<h3>2.2 Dual-Alpha Architecture</h3>
+<pre><code class="language-text">┌─────────────────────────────────────────────────────────────┐
+│                    C1–M2 PORTFOLIO NAV                       │
+├──────────────────────────┬──────────────────────────────────┤
+│   SATELLITE ALPHA        │   BASE BETA (Cash Proxy)         │
+│   1–3 leadership slots   │   Idle residual → QQQ (+ QLD)    │
+│   Composite RS ranked    │   Regime-adaptive gross exposure │
+│   PIT Dynamic-60 pool    │   Never 50% cash under SMA200*   │
+└──────────────────────────┴──────────────────────────────────┘
+* Prior experiments showed SMA200 cash sleeves underperform QQQ B&amp;H.
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Sleeve</th>
+<th>Role</th>
+<th>Selection</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Base Beta</strong></td>
+<td>Structural Nasdaq exposure; eliminates cash drag</td>
+<td>Always-on QQQ; QLD overlay only when leverage target &gt; 1.0×</td>
+</tr>
+<tr>
+<td><strong>Satellite Alpha</strong></td>
+<td>Idiosyncratic leadership premium</td>
+<td>Top Composite RS names that <strong>beat QQQ’s own Composite RS</strong> (dual-momentum gate) inside the PIT 11-sector Dynamic-60</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Composite Relative Strength (ranking score):</strong></p>
+<p>[<br />
+\text{CompositeRS}<em>t = 0.40 \cdot RS</em>{21} + 0.35 \cdot RS_{63} + 0.25 \cdot RS_{126}<br />
+]</p>
+<h3>2.3 Dynamic Leverage Module</h3>
+<table>
+<thead>
+<tr>
+<th>Regime Condition</th>
+<th style="text-align: right;">Gross Nasdaq Target</th>
+<th>Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SPY ≥ SMA(200)</code> <strong>and</strong> <code>VIX &lt; 20</code></td>
+<td style="text-align: right;"><strong>1.5×</strong></td>
+<td>Mix residual cash into QQQ (1×) + QLD (2×) without exceeding spendable idle capital</td>
+</tr>
+<tr>
+<td>Otherwise (incl. <code>SPY &lt; SMA(200)</code> or <code>VIX ≥ 20</code>)</td>
+<td style="text-align: right;"><strong>1.0×</strong></td>
+<td>QLD off; QQQ core retained</td>
+</tr>
+</tbody>
+</table>
+<p>Leverage is <strong>not</strong> synthetic margin beyond cash; when fully invested in equities, gross exposure cannot rise further.</p>
+<hr />
+<h2>III. Portfolio Construction &amp; Allocation</h2>
+<h3>3.1 Three-Slot Conviction Matrix (Bull Regime)</h3>
+<table>
+<thead>
+<tr>
+<th>Slot</th>
+<th>Rank by Composite RS</th>
+<th style="text-align: right;">Target Weight</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Slot 1</td>
+<td>#1 leadership name</td>
+<td style="text-align: right;"><strong>50%</strong></td>
+</tr>
+<tr>
+<td>Slot 2</td>
+<td>#2 leadership name</td>
+<td style="text-align: right;"><strong>30%</strong></td>
+</tr>
+<tr>
+<td>Slot 3</td>
+<td>#3 leadership name</td>
+<td style="text-align: right;"><strong>20%</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Bear regime (<code>SPY &lt; SMA200</code>):</strong> new entries capped at <strong>2 slots × 25%</strong> (Baseline C1). Residual weight remains in the QQQ proxy. <em>(Tuning variant M2 historically also tested a soft-bear 2×40% sleeve; production PPM risk section uses the −5% stop as the defining M2 control.)</em></p>
+<h3>3.2 Rebalancing &amp; Execution Protocol</h3>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Timing (US Eastern)</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>15:30 ET</strong> (pre-close scanner window)</td>
+<td>Signal adjudication: 3-Gate + Composite RS on <strong>as-of prior close / same-day bars available at T−30m</strong> (research backtests use <strong>prior close only</strong> — no look-ahead)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Next regular-session <strong>Open</strong></td>
+<td>Mechanical fills with modeled <strong>+10 bps</strong> buy / <strong>−10 bps</strong> sell slippage</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Same bar / EOD</td>
+<td>Proxy rebalance toward leverage target; deposit days force proxy refresh</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Continuous</td>
+<td>HTML-spec exits: hard stop intraday wick; trailing on close</td>
+</tr>
+</tbody>
+</table>
+<p><strong>DCA Protocol:</strong> On each <strong>first trading day of the calendar month</strong>, USD contribution credits cash <em>before</em> exits/entries/proxy rebalance, so new capital immediately funds open slots or the QQQ core.</p>
+<h3>3.3 Universe Construction (Anti-Survivorship)</h3>
+<ul>
+<li><strong>PIT Dynamic-60:</strong> Eleven sector ETFs ranked by Composite RS; quota curve fills ~60 names using only tickers already listed as of the prior close.</li>
+<li>IPOs enter only when listed; delisting incompleteness vs CRSP is disclosed as a residual bias.</li>
+</ul>
+<hr />
+<h2>IV. Risk Management &amp; Exit Discipline</h2>
+<h3>4.1 Hard Stop-Loss (M2 Specification)</h3>
+<p>[<br />
+P_{\text{stop}} = P_{\text{entry}} \times (1 - 0.05)<br />
+]</p>
+<ul>
+<li>Trigger: session <strong>low</strong> ≤ stop price → exit at <code>min(open, stop)</code> path (modeled).</li>
+<li><strong>No discretion.</strong> Earnings gaps may fill <strong>through</strong> the stop (see §VI Gap Risk).</li>
+</ul>
+<h3>4.2 Trailing Take-Profit (Uncapped)</h3>
+<p>Activation when peak unrealized gain ≥ <strong>+15%</strong>:</p>
+<p>[<br />
+\text{TrailFloor} = \max!\big(Kijun_{26},\; PeakHigh - 2.5 \times ATR_{14}\big)<br />
+]</p>
+<p>Exit on <strong>close</strong> below <code>TrailFloor</code>. No artificial profit cap (<em>Let Winners Run</em>).</p>
+<h3>4.3 Operational Guardrails (Live Stack)</h3>
+<table>
+<thead>
+<tr>
+<th>Control</th>
+<th>Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Order idempotency</td>
+<td>SQLite <strong>WAL</strong> mode; persistent order keys</td>
+</tr>
+<tr>
+<td>Concurrency</td>
+<td><code>ORDER_MUTEX</code> / single-writer execution path</td>
+</tr>
+<tr>
+<td>Slot ceiling</td>
+<td>Hard max open names = regime slot count</td>
+</tr>
+<tr>
+<td>Macro overlay (optional live)</td>
+<td>MSI 2.0 risk index available in platform; <strong>C1–M2 backtest core does not cash to 50% on MSI</strong> (prior MSI-gate ablation underperformed)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>V. Historical Track Record &amp; Audit</h2>
+<p><strong>Audit stack (all tables below):</strong> slippage 10 bps · fee 8 bps · next-open · PIT Dynamic-60 · QQQ/QLD proxy as specified.</p>
+<h3>5.1 Lump-Sum Performance — C1 Baseline vs M2 Engine</h3>
+<p><strong>Initial simulated capital:</strong> USD 100,000 (research NAV; scale-invariant to CAGR/MDD/Sharpe).</p>
+<h4>Window A — Full Cycle (2018-08-31 → 2026-08-28)</h4>
+<table>
+<thead>
+<tr>
+<th>Book</th>
+<th style="text-align: right;">CAGR</th>
+<th style="text-align: right;">MDD</th>
+<th style="text-align: right;">Sharpe</th>
+<th style="text-align: right;">Calmar</th>
+<th style="text-align: right;">Trades</th>
+<th style="text-align: right;">Win %</th>
+<th style="text-align: right;">Profit Factor</th>
+<th style="text-align: right;">vs QQQ excess CAGR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>QQQ B&amp;H</td>
+<td style="text-align: right;">18.39%</td>
+<td style="text-align: right;">−35.62%</td>
+<td style="text-align: right;">0.819</td>
+<td style="text-align: right;">0.516</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+</tr>
+<tr>
+<td>QLD B&amp;H</td>
+<td style="text-align: right;">27.90%</td>
+<td style="text-align: right;">−63.79%</td>
+<td style="text-align: right;">0.752</td>
+<td style="text-align: right;">0.437</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+</tr>
+<tr>
+<td><strong>C1 v1 (Baseline)</strong></td>
+<td style="text-align: right;"><strong>18.47%</strong></td>
+<td style="text-align: right;"><strong>−41.71%</strong></td>
+<td style="text-align: right;"><strong>0.725</strong></td>
+<td style="text-align: right;"><strong>0.443</strong></td>
+<td style="text-align: right;">325</td>
+<td style="text-align: right;">24.0%</td>
+<td style="text-align: right;">1.489</td>
+<td style="text-align: right;"><strong>+0.08%p</strong></td>
+</tr>
+<tr>
+<td><strong>M2 Engine</strong></td>
+<td style="text-align: right;"><strong>22.00%</strong></td>
+<td style="text-align: right;"><strong>−51.13%</strong></td>
+<td style="text-align: right;"><strong>0.761</strong></td>
+<td style="text-align: right;"><strong>0.430</strong></td>
+<td style="text-align: right;">286</td>
+<td style="text-align: right;">28.3%</td>
+<td style="text-align: right;">1.825</td>
+<td style="text-align: right;"><strong>+3.61%p</strong></td>
+</tr>
+</tbody>
+</table>
+<h4>Window B — AI Mega-Cycle (2023-08-31 → 2026-08-28)</h4>
+<table>
+<thead>
+<tr>
+<th>Book</th>
+<th style="text-align: right;">CAGR</th>
+<th style="text-align: right;">MDD</th>
+<th style="text-align: right;">Sharpe</th>
+<th style="text-align: right;">Calmar</th>
+<th style="text-align: right;">Trades</th>
+<th style="text-align: right;">Win %</th>
+<th style="text-align: right;">Profit Factor</th>
+<th style="text-align: right;">vs QQQ excess CAGR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>QQQ B&amp;H</td>
+<td style="text-align: right;">23.93%</td>
+<td style="text-align: right;">−22.88%</td>
+<td style="text-align: right;">1.152</td>
+<td style="text-align: right;">1.046</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+</tr>
+<tr>
+<td>QLD B&amp;H</td>
+<td style="text-align: right;">39.92%</td>
+<td style="text-align: right;">−42.34%</td>
+<td style="text-align: right;">1.028</td>
+<td style="text-align: right;">0.943</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+</tr>
+<tr>
+<td><strong>C1 v1 (Baseline)</strong></td>
+<td style="text-align: right;"><strong>31.81%</strong></td>
+<td style="text-align: right;"><strong>−26.96%</strong></td>
+<td style="text-align: right;"><strong>1.043</strong></td>
+<td style="text-align: right;"><strong>1.180</strong></td>
+<td style="text-align: right;">129</td>
+<td style="text-align: right;">25.6%</td>
+<td style="text-align: right;">1.760</td>
+<td style="text-align: right;"><strong>+7.88%p</strong></td>
+</tr>
+<tr>
+<td><strong>M2 Engine</strong></td>
+<td style="text-align: right;"><strong>30.23%</strong></td>
+<td style="text-align: right;"><strong>−39.50%</strong></td>
+<td style="text-align: right;"><strong>0.875</strong></td>
+<td style="text-align: right;"><strong>0.765</strong></td>
+<td style="text-align: right;">128</td>
+<td style="text-align: right;">30.5%</td>
+<td style="text-align: right;">1.931</td>
+<td style="text-align: right;"><strong>+6.30%p</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Interpretation:</strong> M2 raises full-cycle CAGR and Profit Factor at the cost of deeper MDD and a modest AI-window CAGR trade-off versus C1. Selection between C1 and M2 is a <strong>drawdown-budget</strong> decision, not a capital-structure decision (§5.3).</p>
+<h3>5.2 Dollar-Cost Averaging Track Record</h3>
+<p><strong>Cash-flow schedule:</strong> Seed <strong>$8,000</strong> at (T_0) + <strong>$400</strong> on each month’s first U.S. session.<br />
+<strong>Total invested (8y):</strong> <strong>$46,400</strong> (97 cash-flow events including seed).<br />
+<strong>Performance metric:</strong> Money-Weighted Rate of Return (<strong>MWRR / XIRR</strong>).<br />
+<strong>M2 configuration in this table (tuning / DCA audit):</strong> bear sleeve <strong>2 × 40%</strong> + hard stop <strong>−5.0%</strong> (identical to lump-sum M2 that printed 8y CAGR 22.00%).</p>
+<table>
+<thead>
+<tr>
+<th>Book</th>
+<th style="text-align: right;">Total Invested</th>
+<th style="text-align: right;">Final Equity</th>
+<th style="text-align: right;">Net Profit</th>
+<th style="text-align: right;">Net ROI</th>
+<th style="text-align: right;">XIRR (MWRR)</th>
+<th style="text-align: right;">DCA MDD</th>
+<th style="text-align: right;">vs QQQ Profit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SPY DCA</td>
+<td style="text-align: right;">$46,400</td>
+<td style="text-align: right;">$93,009</td>
+<td style="text-align: right;">$46,609</td>
+<td style="text-align: right;">100.5%</td>
+<td style="text-align: right;">14.47%</td>
+<td style="text-align: right;">−32.42%</td>
+<td style="text-align: right;">−$25,696</td>
+</tr>
+<tr>
+<td>QQQ DCA</td>
+<td style="text-align: right;">$46,400</td>
+<td style="text-align: right;">$118,705</td>
+<td style="text-align: right;">$72,305</td>
+<td style="text-align: right;">155.8%</td>
+<td style="text-align: right;">19.49%</td>
+<td style="text-align: right;">−28.90%</td>
+<td style="text-align: right;">—</td>
+</tr>
+<tr>
+<td>QLD DCA</td>
+<td style="text-align: right;">$46,400</td>
+<td style="text-align: right;">$199,134</td>
+<td style="text-align: right;">$152,734</td>
+<td style="text-align: right;">329.2%</td>
+<td style="text-align: right;">30.22%</td>
+<td style="text-align: right;">−59.37%</td>
+<td style="text-align: right;">+$80,430</td>
+</tr>
+<tr>
+<td><strong>C1 v1 DCA</strong></td>
+<td style="text-align: right;">$46,400</td>
+<td style="text-align: right;">$147,265</td>
+<td style="text-align: right;">$100,865</td>
+<td style="text-align: right;">217.4%</td>
+<td style="text-align: right;">23.94%</td>
+<td style="text-align: right;">−39.99%</td>
+<td style="text-align: right;"><strong>+$28,561</strong></td>
+</tr>
+<tr>
+<td><strong>M2 DCA</strong></td>
+<td style="text-align: right;">$46,400</td>
+<td style="text-align: right;"><strong>$174,683</strong></td>
+<td style="text-align: right;"><strong>+$128,283</strong></td>
+<td style="text-align: right;"><strong>+276.5%</strong></td>
+<td style="text-align: right;"><strong>27.48%</strong></td>
+<td style="text-align: right;"><strong>−48.15%</strong></td>
+<td style="text-align: right;"><strong>+$55,979</strong></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>M2 DCA vs QQQ DCA:</strong> approximately <strong>+$56,000</strong> excess terminal wealth on identical contributions.</p>
+</blockquote>
+<h3>5.3 Capital-Structure Sensitivity (Stress)</h3>
+<p><em>Question tested:</em> Does changing seed vs contribution mix flip C1 vs M2 terminal ranking?<br />
+<em>Answer:</em> <strong>No.</strong> Across all three stressed schedules, <strong>M2 leads final equity; C1 leads DCA MDD.</strong></p>
+<blockquote>
+<p><strong>Definition note:</strong> Sensitivity runs isolate the stop change — <strong>M2 = C1 slot/leverage identical + hard stop −5% only</strong> (bear weights remain Baseline 2 × 25%). Terminal figures below are therefore <em>not</em> mechanically identical to §5.2’s bear-40/40 M2; both audits still rank M2 first on final equity.</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Seed / Contribution</th>
+<th style="text-align: right;">Total Invested</th>
+<th style="text-align: right;">M2 Final Equity</th>
+<th style="text-align: right;">C1 Final Equity</th>
+<th style="text-align: right;">Gap (M2 − C1)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Heavy DCA</strong></td>
+<td>$3,000 + $600/mo</td>
+<td style="text-align: right;">$60,600</td>
+<td style="text-align: right;"><strong>$246,778</strong></td>
+<td style="text-align: right;">$186,047</td>
+<td style="text-align: right;"><strong>+$60,732</strong></td>
+</tr>
+<tr>
+<td><strong>Heavy Lump-sum</strong></td>
+<td>$30,000 + $300/mo</td>
+<td style="text-align: right;">$58,800</td>
+<td style="text-align: right;"><strong>$282,133</strong></td>
+<td style="text-align: right;">$202,594</td>
+<td style="text-align: right;"><strong>+$79,539</strong></td>
+</tr>
+<tr>
+<td><strong>Step-up DCA</strong></td>
+<td>$8,000; $300/mo → $800/mo after 2022-09-01</td>
+<td style="text-align: right;">$60,800</td>
+<td style="text-align: right;"><strong>$219,158</strong></td>
+<td style="text-align: right;">$173,492</td>
+<td style="text-align: right;"><strong>+$45,666</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Investor implication:</strong> Choose <strong>C1</strong> if the mandate’s <em>hard</em> drawdown tolerance is ≈ −40%; choose <strong>M2</strong> if the mandate prioritizes terminal wealth and accepts ≈ −45% to −51% path MDD.</p>
+<h3>5.4 Rejected / Ablated Designs (Transparency)</h3>
+<p>The following were tested under identical friction and <strong>permanently discarded</strong> for the production C1–M2 engine:</p>
+<table>
+<thead>
+<tr>
+<th>Ablation</th>
+<th>Result</th>
+<th>Decision</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SMA200 50% cash sleeve</td>
+<td>Underperformed QQQ B&amp;H</td>
+<td>Rejected</td>
+</tr>
+<tr>
+<td>High-hurdle solo satellite (+10pt RS)</td>
+<td>8y CAGR ~7%</td>
+<td>Rejected</td>
+</tr>
+<tr>
+<td>Weekly 3–5d mean-reversion</td>
+<td>Negative CAGR</td>
+<td>Rejected</td>
+</tr>
+<tr>
+<td>PEAD (+15% surprise, pure 60d hold)</td>
+<td>Lost to C1 both windows</td>
+<td><strong>PEAD research closed</strong></td>
+</tr>
+<tr>
+<td>MSI climate gate (stocks → QQQ/cash)</td>
+<td>Cut V-recoveries; 8y ~2%</td>
+<td>Rejected as C1 replacement</td>
+</tr>
+<tr>
+<td>Entry squeeze (kijun≤3.5% + ATR contraction)</td>
+<td>Over-filtered leaders; CAGR collapsed</td>
+<td>Rejected</td>
+</tr>
+<tr>
+<td>Early trail (+12%) / Wide trail (+18%, ATR 3)</td>
+<td>Destroyed or diluted right tail</td>
+<td>Rejected</td>
+</tr>
+<tr>
+<td>Pure S&amp;P timing (SSO/UPRO/SH switches)</td>
+<td>All lost to C1 on 8y CAGR</td>
+<td>Index timing not a substitute</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>VI. Risk Factors &amp; Disclosures</h2>
+<h3>6.1 Market Risk</h3>
+<p>Nasdaq and S&amp;P drawdowns can and will produce <strong>losses of invested capital</strong>. Simulated peak-to-trough declines of approximately <strong>−40% (C1)</strong> to <strong>−51% (M2 lump-sum)</strong> have already been observed in-sample.</p>
+<h3>6.2 Leverage &amp; Volatility Decay</h3>
+<p>The 1.5× module (QQQ+QLD) introduces <strong>path-dependent decay</strong> in choppy bull regimes even when the spot index is flat-to-up. Gross exposure is cash-constrained but still amplifies left-tail events while QLD is held.</p>
+<h3>6.3 Execution, Gap &amp; Model Risk</h3>
+<ul>
+<li>Pre-market earnings/news gaps may fill <strong>beyond</strong> the −5% hard stop.  </li>
+<li>Slippage may exceed the audited 10 bps in stress liquidity.  </li>
+<li>PIT Dynamic-60 is <strong>not</strong> CRSP-complete; missing bankrupt/acquired names bias results.  </li>
+<li>Parameter choices (stop −5%, trail +15%, RS weights) were researched in-sample; <strong>overfitting risk remains</strong>.</li>
+</ul>
+<h3>6.4 Liquidity &amp; Concentration</h3>
+<p>Three-name conviction sizing implies <strong>issuer concentration</strong>. A single leadership name at 50% NAV can dominate P&amp;L.</p>
+<h3>6.5 Operational &amp; Technology Risk</h3>
+<p>Live deployment depends on Korea Investment &amp; Securities (KIS) API availability, process uptime of <code>PortfolioGuardian</code>, and correct clock synchronization to US cash equity sessions.</p>
+<h3>6.6 Past Performance Disclaimer</h3>
+<blockquote>
+<p><strong>PAST SIMULATED PERFORMANCE IS NOT INDICATIVE OF FUTURE RESULTS.</strong><br />
+No representation is made that any account will or is likely to achieve profits or losses similar to those shown. Hypothetical results have inherent limitations, including the benefit of hindsight in rule selection. Live trading involves risk of loss <strong>greater than or equal to</strong> the entire amount invested.</p>
+</blockquote>
+<h3>6.7 No Offer; Eligibility</h3>
+<p>This PPM/KIID-style memorandum does <strong>not</strong> constitute an offer to sell or a solicitation to buy any security or fund interest in any jurisdiction where such offer would be unlawful. Interests, if any, would be offered only via definitive subscription documents to eligible investors.</p>
+<hr />
+<h2>VII. Technology &amp; Infrastructure Specification</h2>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Specification</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Language / Runtime</strong></td>
+<td>Python 3.11+</td>
+</tr>
+<tr>
+<td><strong>API Surface</strong></td>
+<td>FastAPI service plane (<code>server.py</code>)</td>
+</tr>
+<tr>
+<td><strong>State / Orders</strong></td>
+<td>SQLite 3 with <strong>WAL</strong> mode; idempotent order keys</td>
+</tr>
+<tr>
+<td><strong>Broker Connectivity</strong></td>
+<td>Korea Investment &amp; Securities (<strong>KIS</strong>) OpenAPI + WebSocket market data</td>
+</tr>
+<tr>
+<td><strong>Risk Daemon</strong></td>
+<td>24/7 background monitor — <code>PortfolioGuardian</code> (stop/trail/slot enforcement)</td>
+</tr>
+<tr>
+<td><strong>Research SSOT</strong></td>
+<td><code>research_and_backtests/</code> engines: <code>qqq_beat_alpha_backtester.py</code> (C1), <code>c1_v1_tuning.py</code> (M2 controls), <code>c1_v1_dca_simulation.py</code>, <code>dca_capital_sensitivity.py</code></td>
+</tr>
+<tr>
+<td><strong>Artifact Audit Trail</strong></td>
+<td>JSON caches under <code>data/backtest_cache/</code> (<code>c1_v1_tuning_results.json</code>, <code>c1_v1_dca_results.json</code>, <code>dca_capital_sensitivity_results.json</code>)</td>
+</tr>
+</tbody>
+</table>
+<h3>7.1 High-Water Mark (Conceptual Reporting)</h3>
+<p>For investor reporting, strategy NAV high-water mark (HWM) is defined as:</p>
+<p>[<br />
+HWM_t = \max_{0 \le s \le t} NAV_s<br />
+]</p>
+<p>Drawdown at (t):</p>
+<p>[<br />
+DD_t = \frac{NAV_t}{HWM_t} - 1<br />
+]</p>
+<p>DCA mandates additionally report <strong>invested-capital ratio</strong> (NAV_t / \sum \text{Contributions}_{0..t}) and its drawdown (see research artifacts: <code>invested_ratio_mdd_pct</code>).</p>
+<hr />
+<h2>VIII. Appendix — Glossary</h2>
+<table>
+<thead>
+<tr>
+<th>Term</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Alpha</strong></td>
+<td>Excess return vs a stated benchmark after beta adjustment (here also shown as excess CAGR and Jensen α in research JSON)</td>
+</tr>
+<tr>
+<td><strong>Asymmetric Payoff</strong></td>
+<td>Limited loss per trade (−5% stop) vs uncapped gain via trailing</td>
+</tr>
+<tr>
+<td><strong>Calmar Ratio</strong></td>
+<td>CAGR / |MDD|</td>
+</tr>
+<tr>
+<td><strong>Composite RS</strong></td>
+<td>Multi-horizon relative strength blend (21/63/126d)</td>
+</tr>
+<tr>
+<td><strong>DCA</strong></td>
+<td>Dollar-cost averaging — fixed contributions on a schedule</td>
+</tr>
+<tr>
+<td><strong>HWM</strong></td>
+<td>High-Water Mark</td>
+</tr>
+<tr>
+<td><strong>KIID</strong></td>
+<td>Key Investor Information Document (UCITS-style factsheet format)</td>
+</tr>
+<tr>
+<td><strong>MDD</strong></td>
+<td>Maximum peak-to-trough drawdown</td>
+</tr>
+<tr>
+<td><strong>MWRR / XIRR</strong></td>
+<td>Money-weighted rate of return for irregular cash flows</td>
+</tr>
+<tr>
+<td><strong>PIT</strong></td>
+<td>Point-in-Time universe — no future listings</td>
+</tr>
+<tr>
+<td><strong>PPM</strong></td>
+<td>Private Placement Memorandum</td>
+</tr>
+<tr>
+<td><strong>Sharpe Ratio</strong></td>
+<td>Annualized mean excess return / volatility (rf ≈ 0 in research tables)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>IX. Document Control</h2>
+<table>
+<thead>
+<tr>
+<th>Version</th>
+<th>Date</th>
+<th>Authoring Context</th>
+<th>Change</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1.0</td>
+<td>2026-09-08</td>
+<td>Al-Sangmoo Quant Research / Cloud Agent audit chain</td>
+<td>Initial C1–M2 PPM incorporating lump-sum, DCA, and capital-sensitivity audits</td>
+</tr>
+</tbody>
+</table>
+<p><strong>End of Memorandum</strong></p>
+
+<div class="footer-disclaimer">
+    CONFIDENTIAL & PROPRIETARY — FOR QUALIFIED / ACCREDITED INVESTORS ONLY.<br>
+    Al-Sangmoo Quant Systematic Investment Program (C1-M2 Engine). Past performance is simulated and does not guarantee future results.
+</div>
+
+</body>
+</html>

@@ -57,18 +57,50 @@ def normalize_kis_day_order(raw: Dict[str, Any]) -> Dict[str, Any]:
 
     qty = _num("ft_ord_qty", "ord_qty", "nccs_qty", "qty", "FT_ORD_QTY", "ORD_QTY")
     filled = _num("ft_ccld_qty", "ccld_qty", "FT_CCLD_QTY")
+    remaining = _num("nccs_qty", "ft_nccs_qty", "NCCS_QTY", "FT_NCCS_QTY")
     if qty <= 0 and filled > 0:
         qty = filled
     price = _num("ft_ord_unpr3", "ft_ccld_unpr3", "ovrs_ord_unpr", "price", "FT_ORD_UNPR3")
+    fill_price = _num(
+        "ft_ccld_unpr3",
+        "ccld_unpr",
+        "avg_prvs",
+        "FT_CCLD_UNPR3",
+        "CCLD_UNPR",
+    )
     order_id = str(raw.get("odno") or raw.get("ODNO") or raw.get("order_id") or "").strip()
     client_oid = str(
         raw.get("mgco_aptm_odno") or raw.get("MGCO_APTM_ODNO") or raw.get("client_order_id") or ""
     ).strip().upper()
+    status_text = str(
+        raw.get("ord_stat_name")
+        or raw.get("ord_stat")
+        or raw.get("status")
+        or raw.get("rjct_rson_name")
+        or ""
+    ).strip().upper()
+    cancel_text = str(
+        raw.get("cncl_yn")
+        or raw.get("rvse_cncl_dvsn_name")
+        or ""
+    ).strip().upper()
+    is_cancelled = (
+        cancel_text in {"Y", "CANCEL", "CANCELLED", "취소"}
+        or "취소" in status_text
+        or "CANCEL" in status_text
+        or "REJECT" in status_text
+        or "거부" in status_text
+    )
     return {
         "ticker": ticker,
         "side": side,
         "qty": qty,
         "price": price,
+        "fill_price": fill_price,
+        "filled_qty": filled,
+        "remaining_qty": remaining,
+        "is_cancelled": is_cancelled,
+        "status_text": status_text,
         "order_id": order_id,
         "client_order_id": client_oid,
         "raw": raw,

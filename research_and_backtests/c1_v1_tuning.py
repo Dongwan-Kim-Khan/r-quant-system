@@ -322,38 +322,9 @@ def run_tune_book(
                     px = pos.entry
                 close_position(book, pos, float(px), dates[i], "SLOT_TRIM", i)
 
-        for tk in list(book.positions.keys()):
-            pos = book.positions[tk]
-            p = panels[tk]
-            if not p["listed"][i]:
-                continue
-            high = p["high"][i]
-            if np.isfinite(high):
-                pos.peak_high = max(pos.peak_high, high)
-            reason = decide_exit_tune(
-                pos.entry,
-                pos.peak_high,
-                p["close"][i],
-                p["low"][i],
-                p["kijun"][i],
-                p["atr"][i],
-                spec.stop_pct,
-                spec.trail_trigger,
-                spec.atr_mult,
-            )
-            if not reason:
-                continue
-            hard = pos.entry * (1.0 + spec.stop_pct)
-            if reason == "HARD_STOP":
-                raw = min(p["open"][i], hard) if np.isfinite(p["open"][i]) else p["close"][i]
-                sl.hard_stops += 1
-            else:
-                raw = p["close"][i]
-                sl.trail_exits += 1
-            if not np.isfinite(raw) or raw <= 0:
-                continue
-            close_position(book, pos, float(raw), dates[i], reason, i)
-
+        # Chronological event order: previous-EOD signals enter at today's open
+        # before today's low/close can trigger an exit. Processing exits first
+        # would release future intraday cash and then back-fill at the past open.
         if len(book.positions) < max_slots and i >= 1:
             scored: List[Tuple[float, str]] = []
             allowed = allowed_by_day[i] if allowed_by_day is not None else None
@@ -412,6 +383,40 @@ def run_tune_book(
                     peak_high=max(fill, p["high"][i] if np.isfinite(p["high"][i]) else fill),
                     entry_date=dates[i],
                 )
+
+        # Intraday hard stops / EOD trailing exits run after the single open
+        # entry event. Cash released here cannot refill a satellite until i+1.
+        for tk in list(book.positions.keys()):
+            pos = book.positions[tk]
+            p = panels[tk]
+            if not p["listed"][i]:
+                continue
+            high = p["high"][i]
+            if np.isfinite(high):
+                pos.peak_high = max(pos.peak_high, high)
+            reason = decide_exit_tune(
+                pos.entry,
+                pos.peak_high,
+                p["close"][i],
+                p["low"][i],
+                p["kijun"][i],
+                p["atr"][i],
+                spec.stop_pct,
+                spec.trail_trigger,
+                spec.atr_mult,
+            )
+            if not reason:
+                continue
+            hard = pos.entry * (1.0 + spec.stop_pct)
+            if reason == "HARD_STOP":
+                raw = min(p["open"][i], hard) if np.isfinite(p["open"][i]) else p["close"][i]
+                sl.hard_stops += 1
+            else:
+                raw = p["close"][i]
+                sl.trail_exits += 1
+            if not np.isfinite(raw) or raw <= 0:
+                continue
+            close_position(book, pos, float(raw), dates[i], reason, i)
 
         rebalance_proxy(i, lev, "close", force=force_proxy)
         eq = equity_now(i, "close")

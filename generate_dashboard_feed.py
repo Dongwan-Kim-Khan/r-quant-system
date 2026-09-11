@@ -2,10 +2,11 @@ import os
 import sys
 import time
 import json
+import hashlib
 import tempfile
 import pandas as pd
 import yfinance as yf
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from al_sangmoo.infrastructure.persistence import (
     get_connection,
     get_daily_recommendation_history,
@@ -14,6 +15,7 @@ from al_sangmoo.infrastructure.persistence import (
     init_database,
 )
 from al_sangmoo.infrastructure.atomic_io import atomic_save_json, atomic_read_json
+from al_sangmoo.core.market_time import now_us_eastern
 
 # Windows encoding fix
 if sys.platform.startswith('win'):
@@ -24,6 +26,7 @@ if sys.platform.startswith('win'):
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_JSON = os.path.join(BASE_DIR, "dashboard_data.json")
+CONFIRMED_EOD_JSON = os.path.join(BASE_DIR, "dashboard_data.eod.json")
 STREAM_CACHE = os.path.join(BASE_DIR, "wepoll_latest_stream.json")
 CHARTS_DIR = os.path.join(BASE_DIR, "data", "charts")
 
@@ -58,6 +61,107 @@ from al_sangmoo.domain.quant.macro import extract_msi_score, resolve_capital_reg
 from al_sangmoo.domain.quant.dynamic_universe import load_universe_sectors
 from al_sangmoo.domain.risk.cash_proxy import proxy_holdings, satellite_holdings
 from al_sangmoo.domain.risk.macro_guardrail import evaluate_dynamic_leverage
+
+
+def derive_signal_provenance(
+    chart_data,
+    ranked_candidates,
+    signal_clock_et=None,
+):
+    """Prove that every ranked signal was computed from one closed daily bar."""
+    clock = now_us_eastern(signal_clock_et)
+    source_rows = []
+    seen = set()
+    candidates = list(ranked_candidates or [])
+    strict_ranked_sources = bool(candidates)
+    if not candidates:
+        candidates = [{"ticker": ticker} for ticker in sorted(chart_data)]
+    for candidate in candidates:
+        ticker = str((candidate or {}).get("ticker") or "").upper().strip()
+        if not ticker or ticker in seen:
+            continue
+        seen.add(ticker)
+        candles = (chart_data.get(ticker) or {}).get("candles") or []
+        if not candles:
+            if strict_ranked_sources:
+                return {
+                    "session_date": "",
+                    "is_confirmed": False,
+                    "source_hash": "",
+                    "source_tickers": sorted(seen),
+                    "source_rows": [],
+                }
+            continue
+        dict_candles = [bar for bar in candles if isinstance(bar, dict)]
+        last_bar = max(
+            dict_candles,
+            key=lambda bar: str(bar.get("time") or bar.get("date") or ""),
+            default={},
+        )
+        bar_date = str(
+            last_bar.get("time") or last_bar.get("date") or ""
+        )[:10]
+        if len(bar_date) != 10:
+            return {
+                "session_date": "",
+                "is_confirmed": False,
+                "source_hash": "",
+                "source_tickers": sorted(seen),
+                "source_rows": [],
+            }
+        source_rows.append({
+            "ticker": ticker,
+            "bar_date": bar_date,
+            "close": float(last_bar.get("close") or 0.0),
+        })
+
+    source_dates = [row["bar_date"] for row in source_rows]
+    if strict_ranked_sources:
+        distinct_dates = set(source_dates)
+        source_session = (
+            next(iter(distinct_dates)) if len(distinct_dates) == 1 else ""
+        )
+    else:
+        source_session = (
+            max(set(source_dates), key=source_dates.count)
+            if source_dates
+            else ""
+        )
+        agreeing = sum(
+            1 for row in source_rows
+            if row["bar_date"] == source_session
+        )
+        if not source_rows or agreeing / len(source_rows) < 0.8:
+            source_session = ""
+        source_rows = [
+            row for row in source_rows
+            if row["bar_date"] == source_session
+        ]
+    minute = clock.hour * 60 + clock.minute
+    current_date = clock.date().isoformat()
+    if source_session and source_session < current_date:
+        clock_confirms_close = True
+    elif source_session and source_session == current_date and minute >= (16 * 60 + 15):
+        clock_confirms_close = True
+    else:
+        clock_confirms_close = False
+    is_confirmed = bool(source_rows and source_session and clock_confirms_close)
+    canonical = json.dumps(
+        sorted(source_rows, key=lambda row: row["ticker"]),
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return {
+        "session_date": source_session,
+        "is_confirmed": is_confirmed,
+        "source_hash": (
+            hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+            if source_rows
+            else ""
+        ),
+        "source_tickers": sorted(seen),
+        "source_rows": sorted(source_rows, key=lambda row: row["ticker"]),
+    }
 
 
 def compute_all_indicators(ticker, df=None):
@@ -465,8 +569,23 @@ def build_dashboard_data(output_file=None, charts_dir=None):
         for h in proxy_holdings(portfolio.get("holdings") or [])
     ]
 
+    signal_clock_et = now_us_eastern()
+    signal_provenance = derive_signal_provenance(
+        chart_data=chart_data,
+        ranked_candidates=conviction_res.get("ranked_candidates", []),
+        signal_clock_et=signal_clock_et,
+    )
+
     payload = {
         "engine": "C1-M2",
+        # Autopilot accepts this feed only on a later US session, preventing a
+        # partially formed intraday daily candle from driving entries.
+        "signal_session_date": signal_provenance["session_date"],
+        "signal_is_eod_confirmed": signal_provenance["is_confirmed"],
+        "signal_source_hash": signal_provenance["source_hash"],
+        "signal_source_tickers": signal_provenance["source_tickers"],
+        "signal_source_rows": signal_provenance["source_rows"],
+        "signal_generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "risk_constitution": {
             "stop_loss_pct": STOP_LOSS_PCT,
             "hard_stop_pct": -HARD_STOP_PCT,
@@ -494,6 +613,13 @@ def build_dashboard_data(output_file=None, charts_dir=None):
     
     out_path = target_out_path
     atomic_save_json(out_path, payload, indent=None)
+    if (
+        signal_provenance["is_confirmed"]
+        and os.path.abspath(out_path) == os.path.abspath(OUTPUT_JSON)
+    ):
+        # Intraday dashboard refreshes may update dashboard_data.json, but can
+        # never overwrite the last immutable confirmed-EOD entry artifact.
+        atomic_save_json(CONFIRMED_EOD_JSON, payload, indent=None)
         
     bar_counts = [len((c or {}).get("candles") or []) for c in chart_data.values()]
     bar_min = min(bar_counts) if bar_counts else 0

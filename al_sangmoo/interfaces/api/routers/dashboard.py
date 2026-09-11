@@ -46,6 +46,16 @@ def get_feed_cache():
 def load_feed_cache():
     return get_feed_cache()
 
+
+@router.get("/api/execution-logs")
+async def get_dashboard_execution_logs(limit: int = 50):
+    """Lightweight real-time audit feed used while WebSocket mode is active."""
+    from al_sangmoo.infrastructure.persistence import get_execution_logs
+
+    safe_limit = max(1, min(int(limit), 200))
+    return {"execution_logs": get_execution_logs(limit=safe_limit)}
+
+
 @router.get("/api/dashboard")
 async def get_dashboard_data():
     """Returns the full executive dashboard data payload enriched with real-time portfolio & macro in < 1ms."""

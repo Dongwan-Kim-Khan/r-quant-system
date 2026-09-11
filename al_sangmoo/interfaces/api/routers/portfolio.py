@@ -15,11 +15,12 @@ from al_sangmoo.infrastructure.persistence import (
     add_portfolio_buy,
     get_live_portfolio,
     get_trade_history_records,
-    record_execution_log,
     record_portfolio_sell,
     reset_all_holdings,
 )
 from al_sangmoo.infrastructure.brokers.kis_broker import default_kis_broker
+from al_sangmoo.domain.risk import exit_cooldown
+from al_sangmoo.domain.risk.cash_proxy import is_proxy_ticker
 from al_sangmoo.domain.risk.order_guardrail import validate_pre_trade_guardrail, ORDER_MUTEX
 from al_sangmoo.domain.reconciliation import check_sync
 from al_sangmoo.infrastructure.idempotent_order import is_broker_order_ack
@@ -120,6 +121,14 @@ async def buy_stock(order: BuyOrder):
         ticker_clean = order.ticker.strip().upper()
         qty = float(order.quantity if order.quantity is not None else (order.qty or 1.0))
         price = float(order.buy_price)
+        if (
+            not is_proxy_ticker(ticker_clean)
+            and exit_cooldown.is_in_cooldown(ticker_clean)
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail=f"{ticker_clean} 종목은 최근 청산 후 24시간 재진입 잠금 상태입니다.",
+            )
 
         broker_status = default_kis_broker.get_status()
         order_id = None
@@ -165,21 +174,35 @@ async def buy_stock(order: BuyOrder):
             )
             if not is_broker_order_ack(broker_res.get("status")):
                 reason = broker_res.get("reason", "증권사 주문 전송 실패")
-                if any(kw in str(reason) for kw in ["초당 거래건수", "EGW00201", "장종료", "모의투자", "40580000", "ORDER_TIMEOUT_UNCONFIRMED", "TIMEOUT", "주문시간", "장시작전"]):
-                    logger.warning(f"Broker buy warning ({reason}). Proceeding with local SQLite order.")
-                    broker_msg = f"증권사 경고: {reason}"
-                else:
-                    raise HTTPException(status_code=400, detail=f"증권사 주문 거부: {reason}")
-            else:
-                order_id = broker_res.get("order_id")
-                broker_msg = broker_res.get("message")
+                raise HTTPException(status_code=400, detail=f"증권사 주문 거부: {reason}")
+            order_id = broker_res.get("order_id")
+            broker_msg = broker_res.get("message")
+            if broker_res.get("status") != "filled":
+                return {
+                    "status": "submitted",
+                    "order_id": order_id,
+                    "message": "증권사 매수 주문 접수 완료. 체결 후 대조 작업이 원장과 로그를 갱신합니다.",
+                    "broker_message": broker_msg,
+                }
 
         # 2. Record to local SQLite SSOT portfolio
         inserted_id = add_portfolio_buy(
             ticker=ticker_clean,
             buy_price=price,
             quantity=qty,
-            buy_date=order.buy_date
+            buy_date=order.buy_date,
+            execution_log={
+                "order_type": "MARKETABLE_LIMIT",
+                "status": (
+                    "FILLED"
+                    if default_kis_broker.is_configured()
+                    else "SIMULATED"
+                ),
+                "message": f"Manual buy: {ticker_clean} {qty:g} shares",
+                "order_id": str(
+                    order_id or f"MANUAL-{int(datetime.now().timestamp())}"
+                ),
+            },
         )
 
         p_data = get_live_portfolio()
@@ -189,21 +212,6 @@ async def buy_stock(order: BuyOrder):
         msg = f"[{mode_label}] {ticker_clean} {qty}주 매수 완료"
         if order_id:
             msg += f" (주문번호: {order_id})"
-
-        # Record execution audit log
-        try:
-            record_execution_log(
-                ticker=ticker_clean,
-                side="BUY",
-                quantity=qty,
-                price=price,
-                order_type="MARKETABLE_LIMIT",
-                status="FILLED",
-                message=msg,
-                order_id=str(order_id or f"MANUAL-{int(datetime.now().timestamp())}")
-            )
-        except Exception:
-            pass
 
         return {
             "status": "success",
@@ -253,26 +261,45 @@ async def sell_stock(position_id: int, order: SellOrder):
             )
             if not is_broker_order_ack(broker_res.get("status")):
                 reason = broker_res.get("reason", "증권사 매도 주문 전송 실패")
-                # If broker reports no broker balance or rate limit glitch (e.g. unfilled limit order or paper discrepancy),
-                # allow local ledger liquidation to prevent frozen UI positions
-                if any(kw in str(reason) for kw in ["잔고", "40240000", "초당 거래건수", "EGW00201", "장종료", "모의투자", "40580000", "ORDER_TIMEOUT_UNCONFIRMED", "TIMEOUT", "주문시간", "장시작전"]):
-                    logger.warning(f"Broker sell rejected due to broker warning ({reason}). Proceeding with local liquidation.")
-                    broker_msg = f"증권사 경고: {reason}"
-                else:
-                    raise HTTPException(status_code=400, detail=f"증권사 매도 거부: {reason}")
-            else:
-                order_id = broker_res.get("order_id")
-                broker_msg = broker_res.get("message")
+                raise HTTPException(status_code=400, detail=f"증권사 매도 거부: {reason}")
+            order_id = broker_res.get("order_id")
+            broker_msg = broker_res.get("message")
+            if broker_res.get("status") != "filled":
+                return {
+                    "status": "submitted",
+                    "order_id": order_id,
+                    "message": "증권사 매도 주문 접수 완료. 체결 후 대조 작업이 원장과 로그를 갱신합니다.",
+                    "broker_message": broker_msg,
+                }
 
         # 3. Update SQLite portfolio to SOLD
         success = record_portfolio_sell(
             holding_id=position_id,
             sell_price=price,
             sell_date=order.sell_date,
-            reason=order.reason
+            reason=order.reason,
+            execution_log={
+                "order_type": "MARKETABLE_LIMIT",
+                "status": (
+                    "FILLED"
+                    if default_kis_broker.is_configured()
+                    else "SIMULATED"
+                ),
+                "message": f"Manual liquidation: {order.reason}",
+                "order_id": str(
+                    order_id or f"MANUAL-{int(datetime.now().timestamp())}"
+                ),
+            },
         )
         if not success:
             raise HTTPException(status_code=404, detail="포지션 청산 기록에 실패했습니다.")
+        if not is_proxy_ticker(ticker_clean):
+            exit_cooldown.record_exit(
+                ticker_clean,
+                reason=str(order.reason or "MANUAL_SELL"),
+                source="MANUAL_PORTFOLIO",
+                order_id=str(order_id or ""),
+            )
 
         p_data = get_live_portfolio()
         await hub.broadcast("portfolio_update", p_data)
@@ -280,21 +307,6 @@ async def sell_stock(position_id: int, order: SellOrder):
         msg = f"포지션 #{position_id} ({ticker_clean} {qty}주) 매도 청산 완료"
         if order_id:
             msg += f" (주문번호: {order_id})"
-
-        # Record execution audit log
-        try:
-            record_execution_log(
-                ticker=ticker_clean,
-                side="SELL",
-                quantity=float(qty),
-                price=price,
-                order_type="MARKETABLE_LIMIT",
-                status="FILLED",
-                message=f"Manual liquidation: {order.reason}",
-                order_id=str(order_id or f"MANUAL-{int(datetime.now().timestamp())}")
-            )
-        except Exception:
-            pass
 
         return {
             "status": "success",

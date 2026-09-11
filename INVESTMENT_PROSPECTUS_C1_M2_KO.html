@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>알상무 동적 알파 헤지 전략 (C1-M2 엔진) - 투자설명서</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@page {
+    size: A4;
+    margin: 16mm 14mm 16mm 14mm;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Noto Sans KR', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 8.8pt;
+    line-height: 1.55;
+    color: #1e293b;
+    background-color: #ffffff;
+    margin: 0;
+    padding: 0;
+}
+
+h1 {
+    font-size: 15pt;
+    font-weight: 800;
+    color: #0f2b48;
+    border-bottom: 2px solid #0f2b48;
+    padding-bottom: 4px;
+    margin-top: 18px;
+    margin-bottom: 10px;
+    letter-spacing: -0.02em;
+    page-break-after: avoid;
+}
+
+h2 {
+    font-size: 11.5pt;
+    font-weight: 700;
+    color: #1e3a8a;
+    border-left: 4px solid #2563eb;
+    padding-left: 8px;
+    margin-top: 16px;
+    margin-bottom: 8px;
+    page-break-after: avoid;
+}
+
+h3 {
+    font-size: 9.8pt;
+    font-weight: 600;
+    color: #334155;
+    margin-top: 12px;
+    margin-bottom: 4px;
+    page-break-after: avoid;
+}
+
+p, ul, ol {
+    margin-top: 0;
+    margin-bottom: 6px;
+}
+
+li {
+    margin-bottom: 3px;
+}
+
+/* Tables */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+    margin-bottom: 12px;
+    font-size: 7.8pt;
+    page-break-inside: avoid;
+}
+
+th {
+    background-color: #0f2b48;
+    color: #ffffff;
+    font-weight: 600;
+    text-align: left;
+    padding: 5px 6px;
+    border: 1px solid #0f2b48;
+}
+
+td {
+    padding: 4px 6px;
+    border: 1px solid #cbd5e1;
+    vertical-align: middle;
+}
+
+tr:nth-child(even) {
+    background-color: #f8fafc;
+}
+
+/* Blockquotes / Alerts */
+blockquote {
+    background-color: #f1f5f9;
+    border-left: 4px solid #0284c7;
+    color: #0c4a6e;
+    padding: 8px 12px;
+    margin: 8px 0;
+    border-radius: 0 3px 3px 0;
+    font-size: 8.3pt;
+    page-break-inside: avoid;
+}
+
+blockquote p {
+    margin: 0;
+}
+
+/* Code blocks */
+code {
+    font-family: 'JetBrains Mono', Consolas, monospace;
+    font-size: 7.5pt;
+    background-color: #f1f5f9;
+    color: #0f172a;
+    padding: 1px 3px;
+    border-radius: 2px;
+}
+
+pre {
+    background-color: #0f172a;
+    color: #f8fafc;
+    padding: 8px 10px;
+    border-radius: 4px;
+    overflow-x: auto;
+    font-size: 7.5pt;
+    page-break-inside: avoid;
+    margin: 8px 0;
+}
+
+pre code {
+    background-color: transparent;
+    color: inherit;
+    padding: 0;
+}
+
+hr {
+    border: none;
+    border-top: 1px solid #cbd5e1;
+    margin: 14px 0;
+}
+
+.footer-disclaimer {
+    margin-top: 24px;
+    border-top: 1px solid #94a3b8;
+    padding-top: 8px;
+    font-size: 7pt;
+    color: #64748b;
+    text-align: center;
+    page-break-inside: avoid;
+}
+</style>
+</head>
+<body>
+
+<h1>사모 투자설명서 및 핵심투자정보서 (PPM / KIID)</h1>
+<h2>알상무 동적 알파 헤지 전략</h2>
+<h3><em>(C1–M2 계량 퀀트 트레이딩 엔진)</em></h3>
+<table>
+<thead>
+<tr>
+<th>항목</th>
+<th>상세 규격</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>문서 유형</strong></td>
+<td>사모 투자설명서 (PPM: Private Placement Memorandum) 및 핵심투자정보서 (KIID)</td>
+</tr>
+<tr>
+<td><strong>전략 코드</strong></td>
+<td><code>C1-M2</code></td>
+</tr>
+<tr>
+<td><strong>운용 유형</strong></td>
+<td>계량 퀀트 시스템 — 추세추종 및 동적 국면 오버레이 (Trend-Following &amp; Dynamic Regime Overlay)</td>
+</tr>
+<tr>
+<td><strong>기준 통화</strong></td>
+<td>미국 달러 (USD)</td>
+</tr>
+<tr>
+<td><strong>기준가 산정 주기</strong></td>
+<td>매일 (미국 정규 주식시장 마감 종가 기준 시가평가)</td>
+</tr>
+<tr>
+<td><strong>문서 발행일</strong></td>
+<td>2026년 9월 8일</td>
+</tr>
+<tr>
+<td><strong>백테스트 감사 기준일</strong></td>
+<td>2026년 8월 28일</td>
+</tr>
+<tr>
+<td><strong>문서 법적 성격</strong></td>
+<td>연구용 시뮬레이션 성과 보고서 — 대고객 공모 청약 권유 문서가 아님</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>중요 법적 고지:</strong> 본 문서는 <em>시스템 퀀트 트레이딩 전략</em>의 구조와 회계 감사 수준의 역사적 시뮬레이션 결과를 설명합니다. 본 문서는 별도의 공모 등록이 완료되기 전까지 미국 증권법, EU UCITS/AIFMD, 또는 대한민국 자본시장법상의 공모 집합투자증권 투자설명서가 아닙니다. 본 문서의 배포 및 열람은 관련 법률이 허용하는 <strong>전문투자자 및 적격투자자</strong>로 엄격히 제한됩니다.</p>
+</blockquote>
+<hr />
+<h2>I. 총괄 요약 (Executive Summary)</h2>
+<h3>1.1 펀드 및 전략 정체성</h3>
+<table>
+<thead>
+<tr>
+<th>구분</th>
+<th>세부 내용</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>공식 명칭</strong></td>
+<td>알상무 동적 알파 헤지 전략 (Al-Sangmoo Dynamic Alpha Hedge Strategy, C1–M2 엔진)</td>
+</tr>
+<tr>
+<td><strong>전략 구조</strong></td>
+<td>계량 퀀트 시스템 추세추종 및 동적 국면 레버리지 오버레이</td>
+</tr>
+<tr>
+<td><strong>비교 벤치마크</strong></td>
+<td>나스닥 100 지수 (<code>QQQ</code>); S&amp;P 500 지수 (<code>SPY</code>); 보조 상한선 점검용 ProShares Ultra QQQ (<code>QLD</code>, 2배 레버리지)</td>
+</tr>
+<tr>
+<td><strong>적합한 투자자</strong></td>
+<td>나스닥 100 대비 검증된 초과 수익(<em>알파</em>)과 <strong>비대칭 손익비</strong>를 추구하며, 주식형 자산의 고변동성 낙폭을 감내할 수 있는 장기 자본 증식 투자자</td>
+</tr>
+<tr>
+<td><strong>권장 자본 계획</strong></td>
+<td>초기 시드 <strong>USD 8,000</strong> + 매월 첫 미국 거래일 <strong>USD 400</strong> 정기 적립 (<em>DCA / MWRR</em>)</td>
+</tr>
+<tr>
+<td><strong>최소 운용 요건</strong></td>
+<td>저변동성 강세장 국면에서 1.5배 나스닥 노출을 감당할 수 있는 한투(KIS) 실계좌 매수 여력</td>
+</tr>
+</tbody>
+</table>
+<h3>1.2 핵심 투자 테제</h3>
+<blockquote>
+<p>17년 프랍 트레이더 오동석(알상무)의 실전 매매 헌법(일목균형표 26일 기준선 생명선, 거래량 마름 VDU, 듀얼 모멘텀 주도주 포착)을 <strong>100% 기계적 룰</strong>로 계량화하고, <strong>현금 방치(Cash Drag)를 원천 차단</strong>하며, 복합 상대강도(Composite RS) 1~3위 주도주에 50/30/20으로 자본을 집중 배치하고, <strong>−5.0% 기계적 칼손절</strong>과 무제한 트레일링 익절을 결합한 최적화 엔진 — C1–M2.</p>
+</blockquote>
+<h3>1.3 감사 완료된 핵심 실측 성과 (실전 마찰 전수 반영)</h3>
+<p><em>전체 백테스트에는 실전 마찰이 엄격히 적용됨: </em><em>익일 시가 체결</em><em>, </em><em>슬리피지 10 bps</em><em>, </em><em>거래 수수료 8 bps</em><em>, </em><em>생존자 편향이 제거된 PIT(Point-in-Time) 60개 동적 유니버스</em><em>.</em></p>
+<table>
+<thead>
+<tr>
+<th>운용 방식</th>
+<th>검증 기간</th>
+<th style="text-align: right;">순수익률 / 연복리(CAGR)</th>
+<th style="text-align: right;">최대 낙폭 (MDD)</th>
+<th>비고</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M2 거치식 (Lump-sum)</td>
+<td>2018-08-31 → 2026-08-28</td>
+<td style="text-align: right;"><strong>CAGR 22.00%</strong></td>
+<td style="text-align: right;"><strong>−51.13%</strong></td>
+<td>QQQ 단순 보유(CAGR 18.39%) 압도</td>
+</tr>
+<tr>
+<td>C1 거치식 (Baseline)</td>
+<td>동일 기간</td>
+<td style="text-align: right;">CAGR 18.47%</td>
+<td style="text-align: right;">−41.71%</td>
+<td>손절 완화 전 챔피언 기준선</td>
+</tr>
+<tr>
+<td>M2 적립식 ($8,000 + 월 $400)</td>
+<td>동일 기간</td>
+<td style="text-align: right;"><strong>순수익률 +276.5% / XIRR 27.48%</strong></td>
+<td style="text-align: right;"><strong>−48.15%</strong></td>
+<td>원금 $46,400 투자 ➔ <strong>최종 $174,683</strong> 달성</td>
+</tr>
+<tr>
+<td>QQQ 적립식 (동일 입금 조건)</td>
+<td>동일 기간</td>
+<td style="text-align: right;">순수익률 +155.8% / XIRR 19.49%</td>
+<td style="text-align: right;">−28.90%</td>
+<td>최종 $118,705 — M2 초과 성과 <strong>≈ +$55,979</strong></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>II. 운용 철학 및 전략 구조 (Investment Philosophy &amp; Strategy)</h2>
+<h3>2.1 3대 핵심 운용 철학</h3>
+<ol>
+<li>
+<p><strong>재량 매매의 계량화 (Codified Discretion → Systematic Rules)</strong><br />
+   알상무(오동석)의 17년 프랍/헤지펀드 실전 노하우를 <strong>3-Gate</strong> 진입 모델(엔진 A: 20일 신고가 구름대 돌파, 엔진 B: 26일 기준선 눌림목 반등, 게이트 VDU: 거래량 마름 응축)로 완전히 정량화하여 주관적 감정을 배제함.</p>
+</li>
+<li>
+<p><strong>비대칭 손익 구조 (Asymmetric Payoff: Let Winners Run)</strong><br />
+   낮은 승률을 감수하고 잦은 소액 손절(-5.0%)로 하방을 막되, +15% 고점 돌파 후 일목 기준선 및 ATR 트레일링 스탑을 통해 <strong>우측 꼬리(Right-tail, 텐배거 대세 상승)를 무제한 포획</strong>함. 승률보다 <strong>손익비(Profit Factor 1.83)</strong>와 <strong>칼마 비율(Calmar)</strong>이 핵심 품질 척도임.</p>
+</li>
+<li>
+<p><strong>현금 방치 0% 원칙 (No Cash Drag)</strong><br />
+   확신도 슬롯에 주도주 매수 신호가 없을 때 현금을 놀리지 않음. 유휴 자본은 상시 <strong>QQQ 인덱스 파킹(Cash Proxy Overlay)</strong>에 100% 배치되며, 레버리지 목표 1.5배 시 QLD(2배)를 동적으로 혼합함.</p>
+</li>
+</ol>
+<h3>2.2 듀얼 알파 아키텍처 (Dual-Alpha Architecture)</h3>
+<pre><code class="language-text">┌─────────────────────────────────────────────────────────────┐
+│                    C1–M2 포트폴리오 순자산 (NAV)              │
+├──────────────────────────┬──────────────────────────────────┤
+│   새틀라이트 알파 (Satellite)  │   베이스 베타 (Base Beta, 파킹)   │
+│   1~3개 주도주 집중 슬롯   │   유휴 자본 ➔ QQQ (+ QLD 혼합)    │
+│   복합 상대강도(RS) 랭킹    │   국면 적응형 총 노출도 조절       │
+│   PIT 동적 60개 종목 풀     │   SMA200 아래 50% 현금화 금지*    │
+└──────────────────────────┴──────────────────────────────────┘
+* 이전 실험에서 200일선 아래 50% 현금화는 래그로 인해 V자 반등을 놓쳐 QQQ에 패배함을 실측 입증.
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>슬리브</th>
+<th>역할</th>
+<th>선정 기준</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>베이스 베타</strong></td>
+<td>나스닥 구조적 상승 참여, 현금 드래그 원천 제거</td>
+<td>상시 100% QQQ 보유; 레버리지 타겟 1.5배 시에만 QLD 혼합</td>
+</tr>
+<tr>
+<td><strong>새틀라이트 알파</strong></td>
+<td>개별 주도주의 독보적 초과수익(알파) 획득</td>
+<td>PIT 11개 섹터 동적 60개 종목 중 <strong>QQQ 자체의 복합 RS보다 높은</strong> 최상위 종목 (듀얼 모멘텀 게이트)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>복합 상대강도 계산식 (Composite RS Ranking Score):</strong></p>
+<p>$$<br />
+    ext{Composite RS}<em>t = 0.40 \cdot RS</em>{21} + 0.35 \cdot RS_{63} + 0.25 \cdot RS_{126}<br />
+$$</p>
+<h3>2.3 동적 국면 레버리지 모듈 (Dynamic Leverage Module)</h3>
+<table>
+<thead>
+<tr>
+<th>시장 국면 조건</th>
+<th style="text-align: right;">나스닥 목표 총 노출도</th>
+<th>실행 방식</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SPY ≥ SMA(200)</code> <strong>및</strong> <code>VIX &lt; 20</code></td>
+<td style="text-align: right;"><strong>1.5배</strong></td>
+<td>가용 유휴 현금 내에서 QQQ (1배) + QLD (2배)를 혼합 매수하여 총 1.5배 레버리지 달성</td>
+</tr>
+<tr>
+<td>기타 국면 (<code>SPY &lt; SMA(200)</code> 또는 <code>VIX ≥ 20</code>)</td>
+<td style="text-align: right;"><strong>1.0배</strong></td>
+<td>QLD 전량 매도; QQQ 1.0배 코어만 유지</td>
+</tr>
+</tbody>
+</table>
+<p><em>레버리지는 순현금 내 ETF 비중 조절 방식으로 구현되며, 미수/마진 대출을 쓰지 않으므로 주식 완전 보유 시 추가 레버리지가 발생하지 않습니다.</em></p>
+<hr />
+<h2>III. 포트폴리오 구성 및 자본 배치 (Portfolio Construction)</h2>
+<h3>3.1 3-슬롯 확신도 매트릭스 (강세장 기준)</h3>
+<table>
+<thead>
+<tr>
+<th>슬롯 구분</th>
+<th>복합 상대강도 순위</th>
+<th style="text-align: right;">목표 배분 비중</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>제1슬롯</td>
+<td>1순위 대장주</td>
+<td style="text-align: right;"><strong>50%</strong></td>
+</tr>
+<tr>
+<td>제2슬롯</td>
+<td>2순위 주도주</td>
+<td style="text-align: right;"><strong>30%</strong></td>
+</tr>
+<tr>
+<td>제3슬롯</td>
+<td>3순위 보조주</td>
+<td style="text-align: right;"><strong>20%</strong></td>
+</tr>
+</tbody>
+</table>
+<p><em>약세장 국면(<code>SPY &lt; SMA200</code>):</em> 신규 진입을 <strong>최대 2슬롯 × 25%</strong>로 제한(C1 원본). 나머지 자본은 QQQ 파킹 유지.</p>
+<h3>3.2 리밸런싱 및 주문 체결 프로토콜</h3>
+<table>
+<thead>
+<tr>
+<th>단계</th>
+<th>실행 시점 (미국 동부시각)</th>
+<th>실행 내역</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>15:30 ET</strong> (장 마감 30분 전 스캐너)</td>
+<td>시그널 판정: 3-Gate + 복합 RS 판정 (백테스트는 미래참조를 완벽 차단하기 위해 <strong>전일 종가 데이터만 사용</strong>)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>익일 정규장 <strong>시가 (Open)</strong></td>
+<td>기계적 체결 (매수 <strong>+10 bps</strong>, 매도 <strong>−10 bps</strong> 슬리피지 모델링 반영)</td>
+</tr>
+<tr>
+<td>3</td>
+<td>동일 거래일 마감</td>
+<td>레버리지 타겟에 맞춰 QQQ/QLD 프록시 리밸런싱; 입금일에는 프록시 즉시 갱신</td>
+</tr>
+<tr>
+<td>4</td>
+<td>상시 장중</td>
+<td>청산 규정 집행: -5% 하드스탑 장중 도달 시 즉시 청산, 트레일링은 종가 기준 청산</td>
+</tr>
+</tbody>
+</table>
+<p><strong>적립식(DCA) 프로토콜:</strong> 매월 <strong>첫 거래일 장 시작 전</strong> 입금액이 현금 계좌에 우선 반영된 후 청산/신규진입/파킹 리밸런싱이 집행되므로, 유입 자본이 당일 즉시 100% 운용에 참여함.</p>
+<h3>3.3 유니버스 구축 기준 (생존자 편향 원천 차단)</h3>
+<ul>
+<li><strong>PIT Dynamic-60:</strong> 11개 섹터 ETF의 복합 RS 순위에 따라 슬롯 쿼터를 배정하고, 전일 종가 기준 이미 상장되어 거래 중인 종목으로만 약 60개 유니버스를 매일 아침 재구축.</li>
+<li>신규 상장주(IPO)는 상장 완료 후에만 편입 가능하며, 과거 상장폐지/피인수 종목의 부재는 잔여 편향으로 투명하게 공시함.</li>
+</ul>
+<hr />
+<h2>IV. 리스크 관리 및 청산 원칙 (Risk Management &amp; Exit Discipline)</h2>
+<h3>4.1 기계적 칼손절 (M2 규격)</h3>
+<p>$$<br />
+P_{ ext{손절선}} = P_{ ext{진입가}}   imes (1 - 0.05)<br />
+$$</p>
+<ul>
+<li>발동 조건: 당일 장중 <strong>저가(Low)</strong> $\le$ 손절가 도달 시 즉시 <code>min(시가, 손절가)</code> 가격으로 전량 청산.</li>
+<li><strong>예외 없는 기계적 집행.</strong> 어닝 쇼크 등 개장 갭하락 시 손절선보다 낮은 가격에 체결될 수 있음 (§VI 갭 리스크 참조).</li>
+</ul>
+<h3>4.2 무제한 트레일링 익절 (Let Winners Run)</h3>
+<p>진입 후 미실현 최고 수익률이 <strong>+15.0%</strong>에 도달하는 즉시 트레일링 모드가 활성화됨:</p>
+<p>$$<br />
+    ext{익절 하한선 (TrailFloor)} = \max!ig(   ext{기준선}<em>{26},\;    ext{최고가} - 2.5  imes    ext{ATR}</em>{14}ig)<br />
+$$</p>
+<p>당일 <strong>종가(Close)</strong>가 <code>TrailFloor</code>를 하향 이탈할 경우 익일 시가에 전량 차익 실현. 인위적인 수익 상한선 없이 텐배거 대세 상승을 끝까지 추종함.</p>
+<h3>4.3 시스템 인프라 안전장치</h3>
+<table>
+<thead>
+<tr>
+<th>통제 항목</th>
+<th>구현 방식</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>주문 멱등성 (Idempotency)</td>
+<td>SQLite <strong>WAL</strong> 모드; 주문 고유 키 중복 방지</td>
+</tr>
+<tr>
+<td>동시성 레이스 방지</td>
+<td><code>ORDER_MUTEX</code> 단일 실행 스레드 락</td>
+</tr>
+<tr>
+<td>슬롯 한도 초과 방지</td>
+<td>국면별 최대 보유 종목 수 하드코딩 통제</td>
+</tr>
+<tr>
+<td>매크로 충격 필터</td>
+<td>MSI 2.0 매크로 지수 감시 (백테스트 코어는 래그 방지를 위해 50% 현금화 미적용)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>V. 역사적 성과 감사 보고서 (Historical Track Record &amp; Audit)</h2>
+<p><em>감사 환경: 슬리피지 10 bps · 수수료 8 bps · 익일 시가 체결 · PIT Dynamic-60 동적 유니버스 전수 적용.</em></p>
+<h3>5.1 거치식(Lump-sum) 운용 성과 — C1 Baseline vs M2 Engine</h3>
+<p><strong>초기 시뮬레이션 자본:</strong> USD 100,000 (연구용 NAV; CAGR/MDD/Sharpe 비율은 규모 무관 동일).</p>
+<h4>구간 A — 8개년 전주기 (2018-08-31 → 2026-08-28)</h4>
+<table>
+<thead>
+<tr>
+<th>포트폴리오 북</th>
+<th style="text-align: right;">연복리수익률 (CAGR)</th>
+<th style="text-align: right;">최대 낙폭 (MDD)</th>
+<th style="text-align: right;">샤프 지수 (Sharpe)</th>
+<th style="text-align: right;">칼마 비율 (Calmar)</th>
+<th style="text-align: right;">총 거래수</th>
+<th style="text-align: right;">승률 (%)</th>
+<th style="text-align: right;">손익비 (PF)</th>
+<th style="text-align: right;">vs QQQ 초과 CAGR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>QQQ 단순 보유</td>
+<td style="text-align: right;">18.39%</td>
+<td style="text-align: right;">−35.62%</td>
+<td style="text-align: right;">0.819</td>
+<td style="text-align: right;">0.516</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+</tr>
+<tr>
+<td>QLD 단순 보유 (2배)</td>
+<td style="text-align: right;">27.90%</td>
+<td style="text-align: right;">−63.79%</td>
+<td style="text-align: right;">0.752</td>
+<td style="text-align: right;">0.437</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+</tr>
+<tr>
+<td><strong>C1 v1 (Baseline)</strong></td>
+<td style="text-align: right;"><strong>18.47%</strong></td>
+<td style="text-align: right;"><strong>−41.71%</strong></td>
+<td style="text-align: right;"><strong>0.725</strong></td>
+<td style="text-align: right;"><strong>0.443</strong></td>
+<td style="text-align: right;">325회</td>
+<td style="text-align: right;">24.0%</td>
+<td style="text-align: right;">1.489</td>
+<td style="text-align: right;"><strong>+0.08%p</strong></td>
+</tr>
+<tr>
+<td><strong>M2 최종 엔진</strong></td>
+<td style="text-align: right;"><strong>22.00%</strong></td>
+<td style="text-align: right;"><strong>−51.13%</strong></td>
+<td style="text-align: right;"><strong>0.761</strong></td>
+<td style="text-align: right;"><strong>0.430</strong></td>
+<td style="text-align: right;">286회</td>
+<td style="text-align: right;">28.3%</td>
+<td style="text-align: right;">1.825</td>
+<td style="text-align: right;"><strong>+3.61%p</strong></td>
+</tr>
+</tbody>
+</table>
+<h4>구간 B — AI 메가 사이클 3개년 (2023-08-31 → 2026-08-28)</h4>
+<table>
+<thead>
+<tr>
+<th>포트폴리오 북</th>
+<th style="text-align: right;">연복리수익률 (CAGR)</th>
+<th style="text-align: right;">최대 낙폭 (MDD)</th>
+<th style="text-align: right;">샤프 지수 (Sharpe)</th>
+<th style="text-align: right;">칼마 비율 (Calmar)</th>
+<th style="text-align: right;">총 거래수</th>
+<th style="text-align: right;">승률 (%)</th>
+<th style="text-align: right;">손익비 (PF)</th>
+<th style="text-align: right;">vs QQQ 초과 CAGR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>QQQ 단순 보유</td>
+<td style="text-align: right;">23.93%</td>
+<td style="text-align: right;">−22.88%</td>
+<td style="text-align: right;">1.152</td>
+<td style="text-align: right;">1.046</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+</tr>
+<tr>
+<td>QLD 단순 보유 (2배)</td>
+<td style="text-align: right;">39.92%</td>
+<td style="text-align: right;">−42.34%</td>
+<td style="text-align: right;">1.028</td>
+<td style="text-align: right;">0.943</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+</tr>
+<tr>
+<td><strong>C1 v1 (Baseline)</strong></td>
+<td style="text-align: right;"><strong>31.81%</strong></td>
+<td style="text-align: right;"><strong>−26.96%</strong></td>
+<td style="text-align: right;"><strong>1.043</strong></td>
+<td style="text-align: right;"><strong>1.180</strong></td>
+<td style="text-align: right;">129회</td>
+<td style="text-align: right;">25.6%</td>
+<td style="text-align: right;">1.760</td>
+<td style="text-align: right;"><strong>+7.88%p</strong></td>
+</tr>
+<tr>
+<td><strong>M2 최종 엔진</strong></td>
+<td style="text-align: right;"><strong>30.23%</strong></td>
+<td style="text-align: right;"><strong>−39.50%</strong></td>
+<td style="text-align: right;"><strong>0.875</strong></td>
+<td style="text-align: right;"><strong>0.765</strong></td>
+<td style="text-align: right;">128회</td>
+<td style="text-align: right;">30.5%</td>
+<td style="text-align: right;">1.931</td>
+<td style="text-align: right;"><strong>+6.30%p</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>결과 해석:</strong> M2는 -5.0% 손절 완화를 통해 노이즈 털림을 44건 줄여 8개년 CAGR을 22.00%로 끌어올렸으며 손익비를 1.83으로 극대화함. 대신 MDD가 -51.13%로 확대되므로, C1과 M2의 선택은 자본 구조의 문제가 아니라 <strong>투자자의 최대낙폭(MDD) 감내 예산에 따른 선택</strong>임.</p>
+<h3>5.2 정기 적립식(DCA) 실측 성과표</h3>
+<p><strong>현금 흐름 계획:</strong> 초기 시드 <strong>$8,000</strong> + 매월 첫 거래일 <strong>$400</strong> 적립.<br />
+<strong>총 납입 원금 (8개년):</strong> <strong>$46,400</strong> (시드 포함 총 97회 현금 유입).<br />
+<strong>수익률 평가 지표:</strong> 금액가중 내부수익률 (<strong>MWRR / XIRR</strong>).  </p>
+<table>
+<thead>
+<tr>
+<th>포트폴리오 북</th>
+<th style="text-align: right;">총 투자원금</th>
+<th style="text-align: right;">최종 평가 자산</th>
+<th style="text-align: right;">순이익금</th>
+<th style="text-align: right;">총 누적수익률</th>
+<th style="text-align: right;">내부수익률 (XIRR)</th>
+<th style="text-align: right;">적립식 MDD</th>
+<th style="text-align: right;">vs QQQ 초과이익</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SPY DCA</td>
+<td style="text-align: right;">$46,400</td>
+<td style="text-align: right;">$93,009</td>
+<td style="text-align: right;">$46,609</td>
+<td style="text-align: right;">+100.5%</td>
+<td style="text-align: right;">14.47%</td>
+<td style="text-align: right;">−32.42%</td>
+<td style="text-align: right;">−$25,696</td>
+</tr>
+<tr>
+<td>QQQ DCA</td>
+<td style="text-align: right;">$46,400</td>
+<td style="text-align: right;">$118,705</td>
+<td style="text-align: right;">$72,305</td>
+<td style="text-align: right;">+155.8%</td>
+<td style="text-align: right;">19.49%</td>
+<td style="text-align: right;">−28.90%</td>
+<td style="text-align: right;">—</td>
+</tr>
+<tr>
+<td>QLD DCA (2배)</td>
+<td style="text-align: right;">$46,400</td>
+<td style="text-align: right;">$199,134</td>
+<td style="text-align: right;">$152,734</td>
+<td style="text-align: right;">+329.2%</td>
+<td style="text-align: right;">30.22%</td>
+<td style="text-align: right;">−59.37%</td>
+<td style="text-align: right;">+$80,430</td>
+</tr>
+<tr>
+<td><strong>C1 v1 DCA</strong></td>
+<td style="text-align: right;">$46,400</td>
+<td style="text-align: right;">$147,265</td>
+<td style="text-align: right;">$100,865</td>
+<td style="text-align: right;">+217.4%</td>
+<td style="text-align: right;">23.94%</td>
+<td style="text-align: right;">−39.99%</td>
+<td style="text-align: right;"><strong>+$28,561</strong></td>
+</tr>
+<tr>
+<td><strong>M2 DCA 최종</strong></td>
+<td style="text-align: right;">$46,400</td>
+<td style="text-align: right;"><strong>$174,683</strong></td>
+<td style="text-align: right;"><strong>+$128,283</strong></td>
+<td style="text-align: right;"><strong>+276.5%</strong></td>
+<td style="text-align: right;"><strong>27.48%</strong></td>
+<td style="text-align: right;"><strong>−48.15%</strong></td>
+<td style="text-align: right;"><strong>+$55,979</strong></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>핵심 감사 결론:</strong> M2 적립식은 동일한 원금($46,400)을 투자했을 때 QQQ 적립식 대비 <strong>약 +$56,000 (한화 약 7,500만 원 상당)의 추가 순이익</strong>을 창출함.</p>
+</blockquote>
+<h3>5.3 자본 구조 민감도 스트레스 테스트 결과</h3>
+<p><em>검증 질문:</em> 초기 시드와 월 적립금의 비율이 바뀌거나 중간에 증액되더라도 M2의 우위가 유지되는가?<br />
+<em>실측 결론:</em> <strong>완벽히 유지됨.</strong> 3가지 극단적 스트레스 시나리오 전반에서 <strong>최종 자산은 M2가 전승</strong>함.</p>
+<table>
+<thead>
+<tr>
+<th>테스트 시나리오</th>
+<th>시드 / 적립금 구조</th>
+<th style="text-align: right;">총 납입원금</th>
+<th style="text-align: right;">M2 최종 자산</th>
+<th style="text-align: right;">C1 최종 자산</th>
+<th style="text-align: right;">격차 (M2 − C1)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>고적립형 (Heavy DCA)</strong></td>
+<td>$3,000 + 월 $600</td>
+<td style="text-align: right;">$60,600</td>
+<td style="text-align: right;"><strong>$246,778</strong></td>
+<td style="text-align: right;">$186,047</td>
+<td style="text-align: right;"><strong>+$60,732</strong></td>
+</tr>
+<tr>
+<td><strong>거치우선형 (Heavy Lump)</strong></td>
+<td>$30,000 + 월 $300</td>
+<td style="text-align: right;">$58,800</td>
+<td style="text-align: right;"><strong>$282,133</strong></td>
+<td style="text-align: right;">$202,594</td>
+<td style="text-align: right;"><strong>+$79,539</strong></td>
+</tr>
+<tr>
+<td><strong>소득증가형 (Step-up DCA)</strong></td>
+<td>$8,000 (전반 월$300 ➔ 후반 월$800)</td>
+<td style="text-align: right;">$60,800</td>
+<td style="text-align: right;"><strong>$219,158</strong></td>
+<td style="text-align: right;">$173,492</td>
+<td style="text-align: right;"><strong>+$45,666</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>투자자 지침:</strong> 확정적인 최대낙폭 한도가 -40% 이내여야 한다면 <strong>C1</strong>을 선택하고, 최종 자산 극대화가 최우선이며 -45%~-50% 수준의 경로 낙폭을 감내할 수 있다면 <strong>M2</strong>를 선택하는 것이 최선임.</p>
+<h3>5.4 기각 및 폐기된 대안 전략 공시 (투명성)</h3>
+<p>동일한 마찰 환경에서 검증 후 <strong>최종 C1-M2 엔진에서 영구 기각·폐기된 전략들</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>기각된 전략</th>
+<th>실측 검증 결과</th>
+<th>기각 사유</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SMA200 아래 50% 현금화</td>
+<td>QQQ 단순보유 대비 언더퍼폼</td>
+<td>V자 반등 놓침으로 장기 CAGR 훼손</td>
+</tr>
+<tr>
+<td>고허들 위성 (+10pt RS)</td>
+<td>8개년 CAGR 약 7%로 추락</td>
+<td>모멘텀 꼭지 매수 후 평균회귀 손절 누적</td>
+</tr>
+<tr>
+<td>위클리 3~5일 단기 스윙</td>
+<td>8개년 CAGR -8.62% 붕괴</td>
+<td>잦은 거래 마찰 및 노이즈 손절로 알파 소멸</td>
+</tr>
+<tr>
+<td>PEAD 실적 퀀트 (Pure 60일)</td>
+<td>전 구간 C1 대비 열위</td>
+<td>실적 갭 상승 안착 시점 이미 가격 반영됨</td>
+</tr>
+<tr>
+<td>MSI 매크로 게이트</td>
+<td>8개년 CAGR 2.22% 붕괴</td>
+<td>거시지표 지연으로 V자 반등 초입 절단</td>
+</tr>
+<tr>
+<td>진입 수축 필터 (이격 3.5% 제한)</td>
+<td>8개년 CAGR 4.36%로 붕괴</td>
+<td>대장주 대세 돌파를 사전에 거세해버림</td>
+</tr>
+<tr>
+<td>순수 S&amp;P 레버리지 타이밍 (T1~T3)</td>
+<td>전 모델 8개년 CAGR 10% 이하</td>
+<td>변동성 감쇄와 타이밍 래그로 C1에 완패</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>VI. 주요 투자 위험 고지 (Risk Factors &amp; Disclosures)</h2>
+<h3>6.1 시장 위험 (Market Risk)</h3>
+<p>나스닥 및 S&amp;P 500 지수의 급락 시 포트폴리오 평가 자산의 손실이 발생합니다. 역사적 시뮬레이션 상에서 최대 <strong>−40% (C1)</strong>에서 <strong>−51% (M2 거치식)</strong> 수준의 자산 감소가 실측되었습니다.</p>
+<h3>6.2 레버리지 및 변동성 감쇄 위험 (Leverage &amp; Volatility Decay)</h3>
+<p>강세장에서 1.5배 레버리지(QQQ+QLD) 운용 시, 지수가 횡보 등락을 거듭할 경우 경로 의존적 변동성 감쇄(Volatility Drag)로 인해 기초지수 대비 손실이 확대될 수 있습니다.</p>
+<h3>6.3 체결 지연, 갭하락 및 모델 위험 (Execution, Gap &amp; Model Risk)</h3>
+<ul>
+<li>장전 어닝 쇼크나 지정학적 악재로 인한 시가 갭하락 발생 시 -5.0% 손절선보다 훨씬 불리한 가격에 체결될 수 있습니다.</li>
+<li>유동성 경색 국면에서는 실측 슬리피지(10 bps)를 초과하는 비용이 발생할 수 있습니다.</li>
+<li>과거 데이터에 기반한 파라미터(-5% 손절, +15% 트레일링)는 과적합(Overfitting) 위험이 존재합니다.</li>
+</ul>
+<h3>6.4 포지션 집중 위험 (Concentration Risk)</h3>
+<p>3개 종목 확신도 사이징 구조상, 1순위 대장주(50% 비중) 단일 종목의 급변동이 전체 포트폴리오 수익률을 좌우할 수 있습니다.</p>
+<h3>6.5 기술 인프라 위험 (Operational &amp; Technology Risk)</h3>
+<p>실전 자동매매는 한국투자증권(KIS) OpenAPI 서버 가동 상태, <code>PortfolioGuardian</code> 데몬 프로세스의 무중단 유지, 미국 정규장 시계 동기화의 정확성에 의존합니다.</p>
+<h3>6.6 과거 성과에 대한 면책 고지</h3>
+<blockquote>
+<p><strong>과거의 시뮬레이션 성과는 미래의 수익을 보장하지 않습니다.</strong><br />
+제시된 수치는 과거 가상 백테스트 결과이며, 실제 투자 시에는 시장 환경의 변화, 유동성 문제, 예기치 못한 시스템 오류로 인해 예상치 못한 원금 손실이 발생할 수 있습니다. 주식 투자는 원금의 전액 손실 위험을 수반합니다.</p>
+</blockquote>
+<hr />
+<h2>VII. 기술 및 시스템 아키텍처 규격 (Technology Stack)</h2>
+<table>
+<thead>
+<tr>
+<th>레이어</th>
+<th>기술 규격</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>개발 언어 및 런타임</strong></td>
+<td>Python 3.11+</td>
+</tr>
+<tr>
+<td><strong>API 서비스 프레임워크</strong></td>
+<td>FastAPI 고성능 비동기 웹 서비스 (<code>server.py</code>)</td>
+</tr>
+<tr>
+<td><strong>상태 관리 및 데이터베이스</strong></td>
+<td>SQLite 3 (WAL 동시성 모드); 멱등 주문 고유 키</td>
+</tr>
+<tr>
+<td><strong>증권사 브로커 인터페이스</strong></td>
+<td>한국투자증권 (<strong>KIS</strong>) OpenAPI + 실시간 WebSocket 데이터 수신</td>
+</tr>
+<tr>
+<td><strong>리스크 관리 데몬</strong></td>
+<td>24시간 백그라운드 리스크 감시 데몬 — <code>PortfolioGuardian</code> (손절/트레일/슬롯 강제)</td>
+</tr>
+<tr>
+<td><strong>연구 백테스팅 엔진 (SSOT)</strong></td>
+<td><code>qqq_beat_alpha_backtester.py</code> (C1), <code>c1_v1_tuning.py</code> (M2), <code>c1_v1_dca_simulation.py</code>, <code>dca_capital_sensitivity.py</code></td>
+</tr>
+<tr>
+<td><strong>감사 산출물 아카이브</strong></td>
+<td><code>data/backtest_cache/</code> 내 JSON 원본 데이터 보존</td>
+</tr>
+</tbody>
+</table>
+<h3>7.1 최고점 기준 자산 평가 (High-Water Mark)</h3>
+<p>투자자 성과 보고 시 순자산가치 최고점(HWM) 및 최대낙폭(DD)은 다음과 같이 산출됩니다:</p>
+<p>$$<br />
+HWM_t = \max_{0 \le s \le t} NAV_s,\quad DD_t = rac{NAV_t}{HWM_t} - 1<br />
+$$</p>
+<p>적립식(DCA)의 경우 투자원금 대비 배수($NAV_t / \sum   ext{Contributions}$) 및 원금 기준 낙폭을 병행 공시합니다.</p>
+<hr />
+<h2>VIII. 부록 — 전문 금융 용어 해설 (Glossary)</h2>
+<table>
+<thead>
+<tr>
+<th>용어</th>
+<th>정의 및 설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>알파 (Alpha)</strong></td>
+<td>시장 베타(위험)를 조정한 후 특정 전략이 창출한 초과 수익률</td>
+</tr>
+<tr>
+<td><strong>비대칭 손익비 (Asymmetric Payoff)</strong></td>
+<td>손실은 -5%로 제한하고 이익은 트레일링 스탑으로 무제한 열어두는 손익 구조</td>
+</tr>
+<tr>
+<td><strong>칼마 비율 (Calmar Ratio)</strong></td>
+<td>연복리수익률(CAGR)을 최대낙폭(MDD)의 절댓값으로 나눈 위험조정 지표</td>
+</tr>
+<tr>
+<td><strong>복합 상대강도 (Composite RS)</strong></td>
+<td>21일(40%), 63일(35%), 126일(25%) 가중 다중 룩백 모멘텀 랭킹</td>
+</tr>
+<tr>
+<td><strong>DCA (분할 적립식)</strong></td>
+<td>정해진 주기마다 일정 금액을 지속적으로 매수하는 정기 적립식 투자</td>
+</tr>
+<tr>
+<td><strong>HWM (High-Water Mark)</strong></td>
+<td>펀드 또는 포트폴리오가 기록한 역사상 최고 자산 가치</td>
+</tr>
+<tr>
+<td><strong>KIID</strong></td>
+<td>유럽 UCITS 표준 핵심투자자정보서 양식의 요약 투자설명서</td>
+</tr>
+<tr>
+<td><strong>MDD (Maximum Drawdown)</strong></td>
+<td>특정 기간 동안 전고점 대비 하락한 최대 자산 낙폭 비율</td>
+</tr>
+<tr>
+<td><strong>MWRR / XIRR</strong></td>
+<td>비정기적 현금 유출입을 정확히 반영하는 금액가중 내부수익률</td>
+</tr>
+<tr>
+<td><strong>PIT (Point-in-Time)</strong></td>
+<td>과거 해당 시점에 실제로 존재했던 데이터만 사용하여 생존 편향을 없앤 데이터</td>
+</tr>
+<tr>
+<td><strong>PPM (Private Placement Memo)</strong></td>
+<td>사모 헤지펀드가 발행하는 공식 투자설명서</td>
+</tr>
+<tr>
+<td><strong>샤프 지수 (Sharpe Ratio)</strong></td>
+<td>무위험수익률 초과 수익을 변동성(표준편차)으로 나눈 효율성 지표</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>IX. 문서 관리 이력 (Document Control)</h2>
+<table>
+<thead>
+<tr>
+<th>버전</th>
+<th>일자</th>
+<th>작성 주체</th>
+<th>주요 변경 내역</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1.0 (KO)</strong></td>
+<td>2026-09-08</td>
+<td>알상무 퀀트 연구팀 (Al-Sangmoo Quant Research)</td>
+<td>C1–M2 공식 사모 투자설명서 한국어 정식 발행 (거치식, 적립식, 자본민감도 감사 성과 반영)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>투자설명서 종료 (End of Memorandum)</strong></p>
+
+<div class="footer-disclaimer">
+    본 문서는 기밀 문서이며 적격투자자 정보 제공용으로만 사용됩니다.<br>
+    알상무 퀀트 시스템 투자 프로그램 (C1-M2 엔진). 과거의 시뮬레이션 성과는 미래의 수익을 보장하지 않습니다.
+</div>
+
+</body>
+</html>

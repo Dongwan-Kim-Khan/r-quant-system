@@ -84,7 +84,10 @@ class TestAutoPilotTrader(unittest.IsolatedAsyncioTestCase):
                 ]
             },
         ):
-            res = await self.autopilot.run_autopilot_cycle(force_scan=False)
+            res = await self.autopilot.run_autopilot_cycle(
+                force_scan=False,
+                enforce_entry_schedule=False,
+            )
             self.assertIn(res.get("status"), ["skipped", "success"])
             if res.get("status") == "skipped":
                 self.assertIn(
@@ -98,6 +101,8 @@ class TestAutoPilotTrader(unittest.IsolatedAsyncioTestCase):
                         "NO_MORE_UNHELD_CANDIDATES",
                         "AUTO_BUY_DISABLED",
                         "NO_ACTION",
+                        "MARKET_CLOSED",
+                        "BROKER_SNAPSHOT_UNVERIFIED",
                     ],
                 )
             self.assertIn("cash_proxy", res)
@@ -164,7 +169,10 @@ class TestAutoPilotTrader(unittest.IsolatedAsyncioTestCase):
              patch.object(self.autopilot, "_ensure_cash_proxy_parked", return_value={"idle_nav_usd": 2000.0, "executed": []}), \
              patch.object(self.autopilot, "_free_proxy_cash_for_entry", return_value=[{"ticker": "QQQ", "qty": 5}]) as free_proxy:
             self.autopilot.set_enabled(True)
-            res = await self.autopilot.run_autopilot_cycle(force_scan=False)
+            res = await self.autopilot.run_autopilot_cycle(
+                force_scan=False,
+                enforce_entry_schedule=False,
+            )
 
         self.assertEqual(res.get("status"), "success")
         self.assertEqual(res.get("reason"), "MULTI_SLOT_ENTRIES")
@@ -203,7 +211,10 @@ class TestAutoPilotTrader(unittest.IsolatedAsyncioTestCase):
              patch("al_sangmoo.domain.risk.autopilot_trader.default_kis_broker.is_configured", return_value=False), \
              patch.object(self.autopilot, "_ensure_cash_proxy_parked", park):
             self.autopilot.set_enabled(True)
-            res = await self.autopilot.run_autopilot_cycle(force_scan=False)
+            res = await self.autopilot.run_autopilot_cycle(
+                force_scan=False,
+                enforce_entry_schedule=False,
+            )
 
         park.assert_called_once()
         self.assertIn("cash_proxy", res)
@@ -229,13 +240,100 @@ class TestAutoPilotTrader(unittest.IsolatedAsyncioTestCase):
              patch("al_sangmoo.domain.risk.autopilot_trader.default_kis_broker.is_configured", return_value=False), \
              patch.object(self.autopilot, "_ensure_cash_proxy_parked", park):
             self.autopilot.set_enabled(False)
-            res = await self.autopilot.run_autopilot_cycle(force_scan=False)
+            res = await self.autopilot.run_autopilot_cycle(
+                force_scan=False,
+                enforce_entry_schedule=False,
+            )
 
         park.assert_called_once()
         self.assertEqual(res.get("reason"), "AUTO_BUY_DISABLED")
         disabled = [s for s in res.get("skipped", []) if s.get("reason") == "AUTO_BUY_DISABLED"]
         self.assertGreaterEqual(len(disabled), 2)
         self.assertEqual([s.get("slot_rank") for s in disabled[:2]], [1, 2])
+
+    async def test_submitted_buy_stops_candidate_fanout_and_proxy_parking(self):
+        """One accepted live order owns the slot/cash until reconciliation."""
+        ranked = [
+            _cand("AAA", 100.0, 1),
+            _cand("BBB", 50.0, 2),
+            _cand("CCC", 25.0, 3),
+        ]
+        self._write_feed(_feed(ranked))
+        portfolio_state = {
+            "holdings": [],
+            "total_equity_usd": 10000.0,
+            "cash_usd": 10000.0,
+        }
+        park = MagicMock(return_value={"executed": []})
+
+        with patch(
+            "al_sangmoo.domain.risk.autopilot_trader.DASHBOARD_JSON",
+            self._feed_path,
+        ), patch(
+            "al_sangmoo.domain.risk.autopilot_trader.get_live_portfolio",
+            return_value=portfolio_state,
+        ), patch(
+            "al_sangmoo.domain.risk.autopilot_trader.default_kis_broker.is_configured",
+            return_value=True,
+        ), patch(
+            "al_sangmoo.domain.risk.autopilot_trader.default_kis_broker.get_overseas_balance",
+            return_value={
+                "status": "success",
+                "snapshot_complete": True,
+                "holdings": [],
+                "total_equity_usd": 10000.0,
+                "cash_available_usd": 10000.0,
+            },
+        ), patch(
+            "al_sangmoo.domain.risk.autopilot_trader.default_kis_broker.place_order",
+            return_value={
+                "status": "submitted",
+                "order_id": "LIVE-ACK-1",
+                "message": "accepted",
+            },
+        ) as place_order, patch(
+            "al_sangmoo.domain.risk.autopilot_trader.is_us_regular_hours",
+            return_value=True,
+        ), patch.object(
+            self.autopilot,
+            "_free_proxy_cash_for_entry",
+            return_value=[],
+        ), patch.object(
+            self.autopilot,
+            "_ensure_cash_proxy_parked",
+            park,
+        ):
+            self.autopilot.set_enabled(True)
+            res = await self.autopilot.run_autopilot_cycle(
+                force_scan=False,
+                enforce_entry_schedule=False,
+            )
+
+        self.assertEqual(res["status"], "submitted")
+        self.assertEqual(place_order.call_count, 1)
+        self.assertEqual(place_order.call_args.kwargs["ticker"], "AAA")
+        park.assert_not_called()
+        self.assertEqual(
+            res["cash_proxy"]["status"],
+            "SKIPPED_PENDING_SATELLITE_ORDER",
+        )
+
+    def test_broker_slot_guard_fails_closed_on_partial_snapshot(self):
+        with patch(
+            "al_sangmoo.domain.risk.autopilot_trader.default_kis_broker.is_configured",
+            return_value=True,
+        ), patch(
+            "al_sangmoo.domain.risk.autopilot_trader.default_kis_broker.get_overseas_balance",
+            return_value={
+                "status": "partial",
+                "snapshot_complete": False,
+                "holdings": [],
+                "failed_exchanges": [{"exchange": "NYSE"}],
+            },
+        ):
+            blocked = self.autopilot._broker_slot_guard("DELL", 3)
+
+        self.assertEqual(blocked["reason"], "BROKER_SNAPSHOT_UNVERIFIED")
 
 
 if __name__ == "__main__":
