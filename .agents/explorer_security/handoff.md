@@ -32,7 +32,7 @@ Direct static code observations with exact line numbers and quotations:
    - `kis_broker.py:66` saves token to `data/.kis_token_prod.json` and `data/.kis_token_vps.json`.
    - `.gitignore` does not ignore `data/` or `.kis_token_*.json`, creating risk of committing live 24h OAuth tokens.
    - `kis_broker.py:345`: `get_overseas_balance()` returns unmasked `f"{self.account_no}-{self.account_code}"` over `GET /api/broker/balance`.
-   - `al_sangmoo_daily_bot.py:42` contains hardcoded email `kdw58170425@gmail.com`.
+   - `al_sangmoo_daily_bot.py:42` contained hardcoded email `developer@example.com`.
 
 4. **SQL Injection Vectors (`persistence.py`, `reconciliation.py`, `portfolio_guardian.py`)**:
    - All dynamic SQL statements across `persistence.py`, `reconciliation.py`, and `portfolio_guardian.py` use parameterized `?` bindings. Zero string formatting/f-string injections detected.

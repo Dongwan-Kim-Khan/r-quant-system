@@ -6,8 +6,9 @@ if sys.platform.startswith('win'):
     try: sys.stdout.reconfigure(encoding='utf-8')
     except Exception: pass
 
-token = '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'
-repo = 'DoDuekChill/al-sangmoo-quant-bot'
+import os
+token = os.environ.get('GITHUB_TOKEN', '')
+repo = 'DoDuekChill/r-quant-system'
 run_id = 32095532217
 
 req = urllib.request.Request(f'https://api.github.com/repos/{repo}/actions/runs/{run_id}/jobs', headers={

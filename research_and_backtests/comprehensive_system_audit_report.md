@@ -221,12 +221,12 @@ This master audit synthesized exhaustive evaluations across four specialized tec
 1. **Plaintext Gmail SMTP Credentials**:
    - File: `.env`, Lines 6-14:
      ```env
-     GMAIL_USER=kdw58170425@gmail.com
-     GMAIL_APP_PASSWORD=xsnu umrz lvlp ifgw
-     ALERT_EMAIL_RECEIVER=kdw58170425@gmail.com
+     GMAIL_USER=user@example.com
+     GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx
+     ALERT_EMAIL_RECEIVER=user@example.com
      ```
    - Hardcoded fallback in `al_sangmoo_daily_bot.py:42`:
-     `DEFAULT_EMAIL_RECEIVER = "kdw58170425@gmail.com"`
+     `DEFAULT_EMAIL_RECEIVER = "user@example.com"`
    - Storing plaintext application passwords on disk without encryption or file ACL restrictions exposes the email account to any local process or unintentional backup leakage.
 
 2. **Unhandled Exception Information Disclosure**:

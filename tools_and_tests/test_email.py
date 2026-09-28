@@ -36,7 +36,7 @@ def test_send():
     load_env()
     gmail_user = os.environ.get("GMAIL_USER")
     gmail_pass = os.environ.get("GMAIL_APP_PASSWORD")
-    receiver = os.environ.get("ALERT_EMAIL_RECEIVER", "kdw58170425@gmail.com")
+    receiver = os.environ.get("ALERT_EMAIL_RECEIVER", "user@example.com")
     today_str = datetime.now().strftime("%Y-%m-%d")
     
     print("=" * 65)

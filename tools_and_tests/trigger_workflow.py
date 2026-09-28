@@ -7,8 +7,9 @@ if sys.platform.startswith('win'):
     try: sys.stdout.reconfigure(encoding='utf-8')
     except Exception: pass
 
-token = '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'
-repo = 'DoDuekChill/al-sangmoo-quant-bot'
+import os
+token = os.environ.get('GITHUB_TOKEN', '')
+repo = 'DoDuekChill/r-quant-system'
 workflow_file = 'daily_al_sangmoo_briefing.yml'
 
 url = f'https://api.github.com/repos/{repo}/actions/workflows/{workflow_file}/dispatches'

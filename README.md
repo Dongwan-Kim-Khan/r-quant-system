@@ -1,4 +1,4 @@
-# R-Quant System: Al-Sangmoo Institutional Quant Platform
+# R-Quant System: Al-Sangmoo Systematic Quant Trading Platform
 
 [English](README.md) | [한국어](README.ko.md)
 
@@ -9,58 +9,58 @@
 ![KIS OpenAPI](https://img.shields.io/badge/Broker-KIS%20OpenAPI-darkblue.svg)
 ![CI/CD](https://img.shields.io/badge/GitHub%20Actions-Daily%20Tracker-lightgrey.svg)
 
-An institutional-grade algorithmic swing-trading and risk management platform designed for US equity markets. The system digitizes the 17-year quantitative investment doctrine of former Wall Street proprietary trader and hedge fund manager Alex Oh (알상무). It is built on an asynchronous FastAPI backend, an SQLite Write-Ahead Logging (WAL) single-source-of-truth persistence layer, a real-time WebSocket broadcast hub, a Korea Investment & Securities (KIS) OpenAPI broker gateway, and a low-latency Bloomberg-style web trading terminal.
+A systematic algorithmic swing-trading and risk management platform designed for US equity markets. The system digitizes the 17-year quantitative trading doctrine of former proprietary trader Alex Oh (알상무)—featuring Ichimoku Cloud crossovers, 3-Month Relative Strength (RS), macroeconomic regime filtering, strict integer position sizing, and disciplined stop-loss execution to eliminate emotional trading errors.
+
+---
+
+## 30-Second Overview (TL;DR)
+
+1. **What is this project?**  
+   A practical algorithmic swing-trading system that scans top Nasdaq/S&P momentum leaders, automatically manages disciplined entries, and enforces strict risk controls (-7% End-of-Day stop, -10% Emergency stop, and +18% trailing profit).
+
+2. **Why is it named 'Al-Sangmoo'?**  
+   It was born from reverse-engineering over 50 livestream trading sessions from veteran trader 'Al-Sangmoo' (Alex Oh) using audio transcript (VTT) and NLP mining to build an emotion-free **"Digital Twin"** that executes his rules 24/7.
+
+3. **How can I run it right now?**  
+   On Windows, double-click `run_terminal.bat` (or run `python server.py`). It starts the backend on port 8000 and launches the live web dashboard in your browser.
+
+4. **Why is the directory structured this way?**  
+   - `al_sangmoo/`: Core trading logic, risk guardrails, and backend API.
+   - `frontend/`: Real-time web trading dashboard.
+   - `archive/`: Historical research corpus (50+ YouTube transcripts and early distillations).
+   - `docs/`: System specifications and investment prospectuses.
+   - `research_and_backtests/`: SEC Form N-PORT filings parser and backtesting engine.
 
 ---
 
 ## 1. Background & The Origin of 'Al-Sangmoo'
 
-### Who is 'Al-Sangmoo' (Alex Oh)?
-'Al-Sangmoo' is the professional pseudonym of Alex Oh, a veteran quant portfolio manager and proprietary trader with over 17 years of experience on Wall Street and global hedge funds. Throughout his career, he emphasized that retail investors consistently suffer losses due to human emotional biases, panic selling, and unstructured intuition. On his market livestreams, he advocated for a purely mechanical, rules-based trading philosophy targeting leading momentum stocks with high relative strength and structural trend support.
+### Alex Oh's Trading Philosophy
+Alex Oh (알상무) is a veteran trader with over 17 years of experience in proprietary trading and quant fund management. He advocates that retail investors consistently lose money due to emotional biases—chasing spikes, hesitating on stops, and averaging down losers. His framework focuses exclusively on leading stocks exhibiting strong Relative Strength (RS) above the benchmark (SPY), executed with pre-defined rules.
 
-### The Genesis: Building the 'Al-Sangmoo Digital Twin'
-Because oral insights from 50+ extensive livestream broadcasts are ephemeral and prone to being forgotten, this project was initiated to **reverse-engineer Alex Oh's entire investment philosophy into an algorithmic "Digital Twin"**. By extracting raw audio subtitles (VTT) and running NLP text analysis across his entire video corpus, his trading rules—Ichimoku Cloud breakouts, Tenkan-Kijun golden crosses, 3-Month Relative Strength (RS), Macro Stance Index (MSI), and asymmetric stop/trailing profit rules—were formalized into mathematical code that operates 24/7 without emotional hesitation.
+### The Genesis: Building the 'Digital Twin'
+To preserve and operationalize the insights shared across 50+ extensive livestreams, this project began by extracting audio subtitles (VTT) and NLP analysis to **translate Alex Oh's investment doctrine into an emotionless algorithmic "Digital Twin"**.
 
 ### Why 'R-Quant System'?
 - **R (Al / 알)**: Honors the core doctrine and founding vision of Al-Sangmoo.
-- **R (Relative Strength)**: Highlights the primary alpha driver—ranking the top momentum stocks that outperform the benchmark (SPY).
-- **R (Rule-based & Robustness)**: Represents the strict execution discipline enforced by mathematical guardrails.
+- **R (Relative Strength)**: Highlights the primary alpha factor—ranking stocks that outperform the benchmark.
+- **R (Rule-based Robustness)**: Represents strict execution discipline enforced by mathematical guardrails.
 
 ---
 
 ## 2. Five-Phase Evolutionary History
 
-The platform evolved across five distinct engineering milestones, transitioning from a video knowledge distillation project into an institutional algorithmic trading platform:
-
 ```
-[Phase 1: Genesis & Distillation] --> [Phase 2: Forward Tracker]  --> [Phase 3: Quant SSOT Engine]  --> [Phase 4: Full-Stack Platform] --> [Phase 5: C-2 Hardening]
+[Phase 1: Genesis & Distillation] --> [Phase 2: Forward Tracker]  --> [Phase 3: Quant SSOT Engine]  --> [Phase 4: Web Terminal]      --> [Phase 5: Hardened Verification]
 50+ Livestream VTT NLP Analysis       GitHub Actions Daily Bot        Domain Quant & Risk Library       FastAPI Backend & Web Terminal   SEC N-PORT Hedge Fund Filings
 Doctrine Reverse-Engineered (archive) Out-of-sample Testing (history) Concurrency ORDER_MUTEX & WAL     KIS OpenAPI Broker Gateway       Zero-bias PIT Backtester & 50+ E2E
 ```
 
-### Phase 1: Genesis & Knowledge Distillation (`archive/`)
-- Ingested over 50 livestream audio subtitles (VTT) and market discussions from Alex Oh.
-- Extracted and codified the mathematical conditions for Ichimoku Cloud crossovers, 3-Month Relative Strength (RS) momentum, and macroeconomic risk factors.
-- Archived the entire raw corpus, NLP scripts, and distillation documents permanently in the `archive/` directory.
-
-### Phase 2: Autonomous Forward Tracking & Self-Verification (`al_sangmoo_daily_bot.py`)
-- Established an automated daily pipeline via GitHub Actions (`daily_al_sangmoo_briefing.yml`) executing after US market close.
-- Tracked post-recommendation performance dynamically (`trade_history.csv`), compiling an empirical, survivorship-bias-free track record of strategy effectiveness.
-
-### Phase 3: Domain Quant Engine & SSOT Risk Guardrails (`al_sangmoo/domain/`)
-- Decoupled quantitative logic into modular packages: `macro.py`, `scoring.py`, `conviction_engine.py`, and `position_sizer.py`.
-- Introduced the global asynchronous `ORDER_MUTEX` to prevent race conditions during rapid concurrent fill events.
-- Hardened database persistence with SQLite WAL mode and atomic transaction management.
-
-### Phase 4: Full-Stack Real-Time Platform (`server.py`, `frontend/`)
-- Built an asynchronous FastAPI REST API and WebSocket broadcast hub (`al_sangmoo/api/hub.py`) for live balance and order streaming.
-- Developed an institutional gateway for Korea Investment & Securities (KIS) OpenAPI supporting live and paper trading accounts with automated token lifecycle handling.
-- Designed and launched a zero-dependency HTML5/Canvas Bloomberg/TradingView style web terminal (`frontend/`).
-
-### Phase 5: C-2 Institutional Expansion & Hardened Verification (`research_and_backtests/`, `tools_and_tests/`)
-- Engineered an SEC Form N-PORT filing parser tracking quarterly holdings across 500 top US hedge funds.
-- Built a Point-in-Time (PIT) backtester with zero lookahead bias.
-- Established 50+ automated test suites covering security authorization, multi-threaded concurrency, order idempotency, and quantitative SSOT invariants.
+1. **Phase 1 (Genesis & Knowledge Distillation)**: Codified Ichimoku Cloud crossovers, 3M RS momentum, and macroeconomic risk factors from 50+ livestream transcripts. Preserved permanently in `archive/`.
+2. **Phase 2 (Autonomous Forward Tracker)**: Implemented an automated daily GitHub Actions pipeline (`daily_al_sangmoo_briefing.yml`) compiling a survivorship-bias-free empirical track record (`trade_history.csv`).
+3. **Phase 3 (Domain Quant Engine & Risk Guardrails)**: Modularized quant logic, introduced the asynchronous `ORDER_MUTEX` to prevent race conditions, and hardened database persistence with SQLite WAL mode.
+4. **Phase 4 (Web Trading Terminal)**: Developed an asynchronous FastAPI backend with WebSocket streaming, integrated Korea Investment & Securities (KIS) OpenAPI, and launched a zero-dependency HTML5/Canvas web terminal (`frontend/`).
+5. **Phase 5 (Hardened Verification)**: Parsed SEC Form N-PORT filings, built a lookahead-bias-free PIT backtester, and implemented 50+ automated test suites.
 
 ---
 
@@ -165,38 +165,19 @@ flowchart TD
 
 ```
 r-quant-system/
-|-- al_sangmoo/                 # Production backend core package
-|   |-- api/                    # WebSocket connection hub and broadcaster
-|   |-- backtest/               # Strategy backtesting engine
-|   |-- core/                   # Constants, US market calendar, config loader
-|   |-- domain/                 # Pure quantitative models (Macro, RS, Ichimoku)
-|   |   `-- risk/               # Risk guardrails (Mutex, Guardian, Autopilot, Proxy)
-|   |-- infrastructure/         # SQLite persistence, atomic file I/O, KIS broker
-|   `-- interfaces/api/routers/ # FastAPI REST API routers
-|-- frontend/                   # Real-time Bloomberg-style trading terminal
-|   |-- css/                    # Dark terminal styling (terminal.css)
-|   `-- js/                     # Modular JavaScript (ui.js, api.js, websocket.js, chart.js)
+|-- al_sangmoo/                 # Core backend package (quant algorithms, risk guardrails, broker)
+|-- frontend/                   # Real-time web trading dashboard (HTML, CSS, JS, Canvas chart)
 |-- docs/                       # Official system documentation and audit records
-|   |-- archive/                # Legacy architecture notes and design audits
-|   |-- handoffs/               # Engineering session handoff documents
-|   |-- prospectus/             # Investment prospectuses (C1/M2, C2) in EN and KO
-|   `-- superpowers/            # Architecture specifications and implementation plans
-|-- research_and_backtests/     # SEC Form N-PORT institutional filing parser & backtester
-|-- tests/                      # Core integration tests
-|-- tools_and_tests/            # 50+ E2E, security, concurrency, and quant unit tests
-|-- data/                       # Local universe snapshots, chart data, SQLite database files
-|-- daily_reports/              # Markdown archives of daily quant briefing runs
-|-- archive/                    # Historical research corpus (YouTube subtitles, NLP distillations)
-|   |-- al_sangmoo_distill/     # 50-episode live transcript NLP extractions and notes
-|   |-- al_sangmoo_transcripts/ # Raw VTT subtitles from initial research
-|   `-- transcripts_and_raw_data/# Corpus text files and video index metadata
-|-- server.py                   # FastAPI backend application entrypoint
-|-- al_sangmoo_daily_bot.py     # GitHub Actions morning scanner and forward tracker bot
-|-- generate_dashboard_feed.py  # Dashboard precomputed JSON feed generator
-|-- run_terminal.bat            # Cross-platform Windows execution launcher
+|-- research_and_backtests/     # SEC Form N-PORT filings parser & backtesting engine
+|-- tests/                      # Core unit tests
+|-- tools_and_tests/            # 50+ security, concurrency, idempotency, and quant tests
+|-- data/                       # Chart data cache and SQLite database files
+|-- daily_reports/              # Daily quant scan markdown archives
+|-- archive/                    # Historical research corpus (50+ YouTube subtitles & NLP notes)
+|-- server.py                   # FastAPI backend application entrypoint (port 8000)
+|-- al_sangmoo_daily_bot.py     # Automated daily scanner and forward tracker bot
+|-- run_terminal.bat            # One-click Windows terminal execution launcher
 |-- 알상무_퀀트_터미널_실행.bat    # Korean console launcher with automatic port recovery
-|-- PROJECT.md                  # System architecture inventory and milestone tracking
-|-- TEST_INFRA.md               # Test infrastructure guidelines
 |-- README.md                   # Primary system documentation (English)
 `-- README.ko.md                # Primary system documentation (Korean)
 ```
@@ -229,19 +210,19 @@ pip install -r requirements.txt
 ```
 
 ### 6.3 Environment Configuration
-Copy the template configuration file to `.env`:
+Copy `.env.example` to `.env`:
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` with your broker credentials and operational settings. **Never commit `.env` or personal credentials to version control.**
+Configure with your broker API keys. **Never commit `.env` or personal credentials to version control.**
 
 ```ini
-# Environment Mode: 'paper' (Mock/Simulation) or 'live' (Real Trading)
+# Environment Mode: 'paper' (Simulation) or 'live' (Real Trading)
 ENVIRONMENT=paper
 
-# Korea Investment & Securities (KIS) OpenAPI Credentials
+# Korea Investment & Securities (KIS) OpenAPI Credentials (Dummy placeholders)
 KIS_APP_KEY=your_kis_app_key_here
 KIS_APP_SECRET=your_kis_app_secret_here
 KIS_CANO=12345678
@@ -260,7 +241,7 @@ TAKE_PROFIT_PCT=0.18
 ### 6.4 Running the Platform
 
 #### Method 1: One-Click Windows Launcher
-Double-click `run_terminal.bat` (or execute it via PowerShell / Command Prompt). The script automatically clears stale listeners on port 8000, launches the FastAPI server, and opens the trading terminal in your default browser.
+Double-click `run_terminal.bat`. It clears stale processes on port 8000, starts the server, and opens the dashboard in your default browser.
 
 ```cmd
 run_terminal.bat
@@ -271,48 +252,32 @@ run_terminal.bat
 python server.py
 ```
 
-Once started, access the web trading terminal at:
-```
-http://localhost:8000
-```
+Access the trading terminal at: `http://localhost:8000`
 
 ---
 
 ## 7. Verification & Automated Testing
 
-The platform maintains an automated test suite covering security authorization, SQLite WAL concurrency, order idempotency, and quantitative SSOT invariants.
-
-### Running Core Unit Tests
 ```bash
-# Quant domain scoring & MSI validation
+# Quant scoring & MSI unit tests
 pytest tools_and_tests/test_domain_quant.py -v
 
-# Risk constants and SSOT invariants
+# SSOT risk constant invariants
 pytest tools_and_tests/test_risk_constants_ssot.py -v
 
 # Stop-loss and trailing take-profit mechanics
 pytest tools_and_tests/test_backtest_stop_ssot.py -v
-```
 
-### Running Concurrency & Broker Tests
-```bash
 # Order idempotency under network retry
 pytest tools_and_tests/test_idempotent_kis_order.py -v
-
-# Multi-threaded SQLite transaction integrity
-pytest tools_and_tests/test_phase5_2_concurrency.py -v
-
-# Autopilot macro slot allocation & portfolio sync
-pytest tests/test_autopilot.py -v
 ```
 
 ---
 
-## 8. Security & Compliance Notice
+## 8. Security & Disclaimer
 
-- **No Financial Advice**: This software is engineered for educational and research purposes. Algorithmic trading entails substantial risk of capital loss.
-- **Credential Protection**: API keys, broker app secrets, and account numbers must remain confined to `.env` and environment variables. The `.gitignore` configuration excludes all credential files and token caches.
-- **Idempotency Safeguards**: The trading engine enforces local and broker-side deduplication keys to protect against duplicate fills during network timeouts.
+- **No Investment Advice**: This software is developed for personal research and educational purposes. Algorithmic trading involves financial risk.
+- **Credential Protection**: Broker API keys, secrets, and account numbers must remain confined to `.env`. The repository's `.gitignore` strictly excludes all credential and token files.
 
 ---
 

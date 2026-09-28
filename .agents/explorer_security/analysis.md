@@ -487,11 +487,11 @@ def get_portfolio_history():
 #### Vulnerable Code Snippet
 ```python
 # File: al_sangmoo_daily_bot.py (line 42)
-DEFAULT_EMAIL_RECEIVER = os.environ.get("ALERT_EMAIL_RECEIVER") or os.environ.get("EMAIL_RECEIVER") or "kdw58170425@gmail.com"
+DEFAULT_EMAIL_RECEIVER = os.environ.get("ALERT_EMAIL_RECEIVER") or os.environ.get("EMAIL_RECEIVER") or "developer@example.com"
 ```
 
 #### Detailed Explanation & Exploit Scenario
-1. A personal developer email address (`kdw58170425@gmail.com`) is hardcoded as the default fallback recipient for daily quant briefing emails.
+1. A personal developer email address (`developer@example.com`) is hardcoded as the default fallback recipient for daily quant briefing emails.
 2. In public or shared repositories, hardcoding developer email addresses exposes Personally Identifiable Information (PII) and risks spam, targeted phishing, or credential stuffing attacks against developer accounts.
 
 #### Actionable Remediation

@@ -1,8 +1,9 @@
 import urllib.request
 import json
 
-token = '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'
-req = urllib.request.Request('https://api.github.com/repos/DoDuekChill/al-sangmoo-quant-bot/actions/runs', headers={
+import os
+token = os.environ.get('GITHUB_TOKEN', '')
+req = urllib.request.Request('https://api.github.com/repos/DoDuekChill/r-quant-system/actions/runs', headers={
     'Authorization': f'Bearer {token}',
     'Accept': 'application/vnd.github+json',
     'User-Agent': 'Antigravity-Agent'
