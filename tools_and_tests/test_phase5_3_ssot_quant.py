@@ -428,10 +428,9 @@ class TestTier2QuantScoringAndClassification(unittest.TestCase):
         self.assertEqual(t1_class.tier, "TIER_1")
         self.assertTrue(t1_class.is_tier1_qualified)
         self.assertEqual(t1_class.entry_price, 200.0)
-        self.assertEqual(t1_class.target_price, 230.0)  # +15.0%
-        self.assertEqual(t1_class.stop_price, 190.0)    # -5.0% Hard Stop
+        self.assertEqual(t1_class.target_price, 236.0)  # +18.0% C-2 Target
+        self.assertEqual(t1_class.stop_price, 186.0)    # -7.0% C-2 EOD Hard Stop
         self.assertEqual(t1_class.partial_tp_price, 216.0) # +8.0% Partial TP
-
         # Test Symbol 2: Tier 2 Structural Pullback (Strat 1, Safe Entry, VDU <= 0.85, Not in Tailwind, Score 90 < 100)
         ind_t2 = QuantIndicators.from_values(
             close=116.0, kijun=114.0, tenkan=113.0, span_a=115.0, span_b=105.0, vol_ratio=0.75
@@ -466,7 +465,7 @@ class TestTier2QuantScoringAndClassification(unittest.TestCase):
         self.assertEqual(t3_class.tier, "TIER_3")
         self.assertTrue(t3_class.is_tier3_qualified)
 
-        print("  -> PASSED: 3-Tier classification predicates and -5% / +15% risk guardrails verified.")
+        print("  -> PASSED: 3-Tier classification predicates and -7% / +18% risk guardrails verified.")
 
     def test_classify_3tier_candidates_batch_determinism(self):
         """Verify classify_3tier_candidates produces disjoint, deterministically sorted candidate sets."""

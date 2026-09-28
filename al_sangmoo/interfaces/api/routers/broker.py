@@ -1,8 +1,12 @@
 import re
 import asyncio
+import logging
 from typing import Optional, Literal
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator
+
+logger = logging.getLogger(__name__)
 from al_sangmoo.core.auth import require_mutating_auth
 from al_sangmoo.infrastructure.brokers.kis_broker import default_kis_broker
 from al_sangmoo.infrastructure.idempotent_order import is_broker_order_ack
@@ -69,7 +73,13 @@ def run_reconciliation(auto_calibrate: bool = True):
     Executes a 1-time daily reconciliation audit between KIS Broker and local SQLite DB.
     Calibrates corporate actions (splits, dividend shares) and manual trades.
     """
-    return check_sync(auto_calibrate=auto_calibrate)
+    report = check_sync(auto_calibrate=auto_calibrate)
+    if isinstance(report, dict) and report.get("status") != "success":
+        return JSONResponse(
+            status_code=502,
+            content={"detail": report.get("message", "대조 실패"), "report": report}
+        )
+    return report
 
 @router.post("/order", dependencies=[Depends(require_mutating_auth)])
 async def execute_broker_order(order: BrokerOrderRequest):
@@ -200,8 +210,8 @@ async def execute_broker_order(order: BrokerOrderRequest):
             try:
                 from al_sangmoo.api.hub import hub
                 await hub.broadcast("portfolio_update", get_live_portfolio())
-            except Exception:
-                pass
+            except Exception as e:
+                logger.exception("Failed to broadcast portfolio_update: %s", e)
 
         return result
 

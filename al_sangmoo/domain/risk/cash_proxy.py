@@ -10,7 +10,10 @@ C1-M2 critical patch:
   2. Sell cooldown         -> a freshly-bought proxy may not be dumped for at
                               least 300s, killing the 20-second buy->sell->buy churn.
   3. Rebalance deadband    -> ignore drift below 3 shares AND below $300 notional.
-  4. Single authority      -> Guardian and Autopilot cannot both fire proxy orders
+  4. Slots-full freeze     -> when satellite slots are full, hold existing QQQ/QLD;
+                              never LIQUIDATE_PROXY_SLEEVE and never micro-rebalance.
+                              Only raise_cash_from_proxy may sell to fund a new slot.
+  5. Single authority      -> Guardian and Autopilot cannot both fire proxy orders
                               concurrently (shared mutex + authority token).
 """
 
@@ -24,6 +27,8 @@ from al_sangmoo.core.constants import (
     LEVERAGE_TICKER,
     LEVERAGE_GROSS_TARGET,
     LEVERAGE_VIX_MAX,
+    MAX_SLOTS_BEAR,
+    MAX_SLOTS_BULL,
 )
 
 PROXY_TICKERS = (CASH_PROXY_TICKER, LEVERAGE_TICKER)
@@ -67,14 +72,108 @@ def proxy_holdings(holdings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return [h for h in (holdings or []) if is_proxy_ticker(str(h.get("ticker") or ""))]
 
 
-def idle_nav_usd(total_equity_usd: float, holdings: List[Dict[str, Any]]) -> float:
-    """NAV not currently allocated to satellite leadership names."""
+def idle_nav_usd(
+    total_equity_usd: float,
+    holdings: List[Dict[str, Any]],
+    is_bull: Optional[bool] = None,
+    max_slots: Optional[int] = None,
+) -> float:
+    """NAV not currently allocated to satellite leadership names. Returns 0.0 when slots are full."""
+    sats = satellite_holdings(holdings)
+    if is_bull is not None or max_slots is not None:
+        eff_max_slots = max_slots if max_slots is not None else (MAX_SLOTS_BULL if is_bull else MAX_SLOTS_BEAR)
+        if len(sats) >= eff_max_slots:
+            return 0.0
     sat_val = 0.0
-    for h in satellite_holdings(holdings):
+    for h in sats:
         px = float(h.get("current_price") or h.get("buy_price") or 0.0)
         qty = float(h.get("quantity") or 0.0)
         sat_val += max(0.0, px * qty)
     return max(0.0, float(total_equity_usd or 0.0) - sat_val)
+
+
+NAV_DIVERGENCE_MAX = 3.0
+KRW_FX_MIN = 900.0
+KRW_FX_MAX = 2000.0
+
+
+def holdings_mark_usd(holdings: List[Dict[str, Any]]) -> float:
+    """Sum USD notional of lots using price*qty, falling back to current_value/eval_amount."""
+    total = 0.0
+    for h in holdings or []:
+        if not isinstance(h, dict):
+            continue
+        qty = float(h.get("quantity") or 0.0)
+        px = float(h.get("current_price") or h.get("buy_price") or 0.0)
+        marked = qty * px if qty > 0 and px > 0 else 0.0
+        if marked <= 0:
+            marked = float(h.get("current_value") or h.get("eval_amount") or 0.0)
+        total += max(0.0, marked)
+    return total
+
+
+def reconcile_overseas_nav(
+    holdings_eval: float,
+    equity: float,
+    cash: float,
+    stock_eval: float,
+    usd_krw_rate: float = 1380.0,
+) -> Dict[str, Any]:
+    """
+    KIS output2 tot_evlu_amt is sometimes KRW or a whole-account figure that
+    dwarfs the actual overseas lots. Keep broker NAV only when it reconciles
+    with USD holdings; otherwise fall back to lots + cash.
+    """
+    h = max(0.0, float(holdings_eval or 0.0))
+    eq = max(0.0, float(equity or 0.0))
+    cash_v = max(0.0, float(cash or 0.0))
+    stock = max(0.0, float(stock_eval or 0.0))
+    fx = float(usd_krw_rate or 1380.0) or 1380.0
+    source = "BROKER"
+
+    def _krw_to_usd(value: float) -> float:
+        if h > 1.0 and value > 0:
+            ratio = value / h
+            if KRW_FX_MIN <= ratio <= KRW_FX_MAX:
+                return value / fx
+        return value
+
+    eq = _krw_to_usd(eq)
+    stock = _krw_to_usd(stock)
+
+    if cash_v > 10000 and (h == 0 or cash_v > 10 * h):
+        cash_v = cash_v / fx
+
+
+    implied = h + cash_v
+    if h > 1.0:
+        if stock > 0:
+            stock_ratio = stock / h
+            if stock_ratio > NAV_DIVERGENCE_MAX or stock_ratio < (1.0 / NAV_DIVERGENCE_MAX):
+                stock = h
+                source = "HOLDINGS"
+        else:
+            stock = h
+        if eq > 0:
+            eq_ratio = eq / max(implied, h)
+            if eq_ratio > NAV_DIVERGENCE_MAX or (implied > 1.0 and implied / eq > NAV_DIVERGENCE_MAX):
+                eq = implied
+                source = "HOLDINGS"
+        else:
+            eq = implied
+            source = "HOLDINGS"
+    elif eq <= 0:
+        eq = cash_v
+        stock = 0.0
+        source = "HOLDINGS" if eq > 0 else "LOCAL"
+
+    return {
+        "total_equity_usd": round(eq, 2),
+        "cash_available_usd": round(cash_v, 2),
+        "stock_eval_usd": round(stock if stock > 0 else h, 2),
+        "source": source,
+        "sane": source == "BROKER",
+    }
 
 
 def proxy_mix_weights(leverage_mode: bool) -> Tuple[float, float]:
@@ -111,9 +210,16 @@ def proxy_rebalance_action(
         return None
 
     notional = qty * px
-    # Suppress minor noise: require the move to clear BOTH thresholds.
-    if qty < int(deadband_shares) or notional < float(deadband_usd):
-        return None
+    cur_q = float(current_qty or 0.0)
+    # Suppress minor noise:
+    # If opening a position from 0, require notional >= deadband_usd ($300).
+    # If adjusting an existing position (drift), require BOTH >= deadband_shares AND >= deadband_usd.
+    if cur_q <= 0:
+        if notional < float(deadband_usd):
+            return None
+    else:
+        if qty < int(deadband_shares) or notional < float(deadband_usd):
+            return None
 
     side = "BUY" if delta > 0 else "SELL"
     return {"side": side, "qty": qty, "notional": round(notional, 2)}
@@ -145,14 +251,21 @@ def build_cash_proxy_plan(
     leverage_mode: bool = False,
     qqq_price: float = 0.0,
     qld_price: float = 0.0,
+    is_bull: Optional[bool] = None,
+    max_slots: Optional[int] = None,
 ) -> Dict[str, Any]:
     """
     Plan idle-capital parking into QQQ (+ optional QLD).
     Does not place orders - callers (autopilot / guardian) execute via broker.
+    When satellite slots are full, actions is empty (hold existing QQQ/QLD).
     """
-    idle = idle_nav_usd(total_equity_usd, holdings)
+    idle = idle_nav_usd(total_equity_usd, holdings, is_bull=is_bull, max_slots=max_slots)
     # Prefer explicit cash when provided; otherwise treat idle sleeve as deployable.
-    deployable = max(float(cash_usd or 0.0), idle) if cash_usd else idle
+    # When slots are full (idle <= 0), proxy target is 0.
+    if (is_bull is not None or max_slots is not None) and idle <= 0.0:
+        deployable = 0.0
+    else:
+        deployable = max(float(cash_usd or 0.0), idle) if cash_usd else idle
     q_w, l_w = proxy_mix_weights(bool(leverage_mode))
     qqq_alloc = deployable * q_w
     qld_alloc = deployable * l_w
@@ -161,6 +274,23 @@ def build_cash_proxy_plan(
         if alloc <= 0 or px <= 0:
             return 0
         return int(alloc // px)
+    raw_actions = _proxy_rebalance_actions(
+        holdings=holdings,
+        qqq_target_shares=_shares(qqq_alloc, float(qqq_price or 0.0)),
+        qld_target_shares=_shares(qld_alloc, float(qld_price or 0.0)),
+        leverage_mode=bool(leverage_mode),
+        qqq_price=float(qqq_price or 0.0),
+        qld_price=float(qld_price or 0.0),
+        is_bull=is_bull,
+        max_slots=max_slots,
+    )
+
+    clamped_actions = _clamp_proxy_buy_actions_to_cash(
+        actions=raw_actions,
+        cash_usd=float(cash_usd or 0.0) if cash_usd is not None else None,
+        qqq_price=float(qqq_price or 0.0),
+        qld_price=float(qld_price or 0.0),
+    )
 
     return {
         "proxy_ticker": CASH_PROXY_TICKER,
@@ -175,13 +305,64 @@ def build_cash_proxy_plan(
         "qld_alloc_usd": round(qld_alloc, 2),
         "qqq_shares": _shares(qqq_alloc, float(qqq_price or 0.0)),
         "qld_shares": _shares(qld_alloc, float(qld_price or 0.0)),
-        "actions": _proxy_rebalance_actions(
-            holdings=holdings,
-            qqq_target_shares=_shares(qqq_alloc, float(qqq_price or 0.0)),
-            qld_target_shares=_shares(qld_alloc, float(qld_price or 0.0)),
-            leverage_mode=bool(leverage_mode),
-        ),
+        "actions": clamped_actions,
     }
+
+
+def _clamp_proxy_buy_actions_to_cash(
+    actions: List[Dict[str, Any]],
+    cash_usd: Optional[float],
+    qqq_price: float,
+    qld_price: float,
+    buffer_factor: float = 1.005,
+) -> List[Dict[str, Any]]:
+    """
+    Ensure the sum of BUY actions does not exceed available cash_usd.
+    Protects against broker-side margin / unwanted currency credit borrowing.
+    """
+    if cash_usd is None:
+        return actions
+
+    max_cash = max(0.0, float(cash_usd))
+    if max_cash <= 0.0:
+        return [a for a in actions if a.get("side") != "BUY"]
+
+    sells = [a for a in actions if a.get("side") == "SELL"]
+    buys = [a for a in actions if a.get("side") == "BUY"]
+    if not buys:
+        return actions
+
+    rem_cash = max_cash
+    clamped_buys: List[Dict[str, Any]] = []
+
+    # Priority order: QQQ core anchor first, QLD boost second
+    ordered_buys = sorted(
+        buys,
+        key=lambda x: 0 if str(x.get("ticker") or "").upper() == CASH_PROXY_TICKER else 1,
+    )
+
+    for b in ordered_buys:
+        ticker = str(b.get("ticker") or "").upper()
+        qty = int(b.get("qty") or 0)
+        px = float(qqq_price if ticker == CASH_PROXY_TICKER else qld_price)
+        if qty <= 0 or px <= 0:
+            continue
+
+        unit_cost = round(px * buffer_factor, 2)
+        total_cost = qty * unit_cost
+
+        if total_cost <= rem_cash:
+            clamped_buys.append(dict(b))
+            rem_cash -= total_cost
+        else:
+            affordable_qty = int(rem_cash // unit_cost)
+            if affordable_qty > 0:
+                b_copy = dict(b)
+                b_copy["qty"] = affordable_qty
+                clamped_buys.append(b_copy)
+                rem_cash -= (affordable_qty * unit_cost)
+
+    return sells + clamped_buys
 
 
 def _holding_qty(holdings: List[Dict[str, Any]], ticker: str) -> float:
@@ -198,50 +379,61 @@ def _proxy_rebalance_actions(
     qqq_target_shares: int,
     qld_target_shares: int,
     leverage_mode: bool,
+    qqq_price: float = 0.0,
+    qld_price: float = 0.0,
+    is_bull: Optional[bool] = None,
+    max_slots: Optional[int] = None,
 ) -> List[Dict[str, Any]]:
     actions: List[Dict[str, Any]] = []
     cur_q = int(_holding_qty(holdings, CASH_PROXY_TICKER))
     cur_l = int(_holding_qty(holdings, LEVERAGE_TICKER))
+    sats = satellite_holdings(holdings)
+    slots_full = False
+    if is_bull is not None or max_slots is not None:
+        eff_max_slots = max_slots if max_slots is not None else (MAX_SLOTS_BULL if is_bull else MAX_SLOTS_BEAR)
+        slots_full = len(sats) >= eff_max_slots
 
-    # Delever first: cut QLD when leverage mode off
-    if not leverage_mode and cur_l > 0:
-        actions.append({
-            "ticker": LEVERAGE_TICKER,
-            "side": "SELL",
-            "qty": cur_l,
-            "reason": "DELEVERAGE_TO_1X_QQQ_CORE",
-        })
-        cur_l = 0
+    # Full satellite book: hold parked QQQ/QLD until a slot frees.
+    # Do not liquidate the sleeve and do not chase leftover-cash 1-share noise.
+    if slots_full:
+        return []
 
-    if leverage_mode:
-        if qld_target_shares > cur_l:
-            actions.append({
-                "ticker": LEVERAGE_TICKER,
-                "side": "BUY",
-                "qty": qld_target_shares - cur_l,
-                "reason": "LEVERAGE_BOOST_QLD",
-            })
-        elif cur_l > qld_target_shares:
+    # Regime delever (overlay off) is a policy flatten, not a 1-share rebalance.
+    if not leverage_mode:
+        if cur_l > 0:
             actions.append({
                 "ticker": LEVERAGE_TICKER,
                 "side": "SELL",
-                "qty": cur_l - qld_target_shares,
-                "reason": "TRIM_QLD_TO_TARGET",
+                "qty": cur_l,
+                "reason": "DELEVERAGE_TO_1X_QQQ_CORE",
+            })
+            cur_l = 0
+    else:
+        act_l = proxy_rebalance_action(
+            current_qty=cur_l,
+            target_qty=qld_target_shares,
+            price=qld_price,
+        )
+        if act_l:
+            actions.append({
+                "ticker": LEVERAGE_TICKER,
+                "side": act_l["side"],
+                "qty": act_l["qty"],
+                "reason": "LEVERAGE_BOOST_QLD" if act_l["side"] == "BUY" else "TRIM_QLD_TO_TARGET",
             })
 
-    if qqq_target_shares > cur_q:
+    # Target 0 still goes through the deadband — never dump 1–2 leftover shares.
+    act_q = proxy_rebalance_action(
+        current_qty=cur_q,
+        target_qty=qqq_target_shares,
+        price=qqq_price,
+    )
+    if act_q:
         actions.append({
             "ticker": CASH_PROXY_TICKER,
-            "side": "BUY",
-            "qty": qqq_target_shares - cur_q,
-            "reason": "PARK_IDLE_IN_QQQ",
-        })
-    elif cur_q > qqq_target_shares:
-        actions.append({
-            "ticker": CASH_PROXY_TICKER,
-            "side": "SELL",
-            "qty": cur_q - qqq_target_shares,
-            "reason": "FREE_CASH_FROM_QQQ_FOR_SATELLITE",
+            "side": act_q["side"],
+            "qty": act_q["qty"],
+            "reason": "PARK_IDLE_IN_QQQ" if act_q["side"] == "BUY" else "FREE_CASH_FROM_QQQ_FOR_SATELLITE",
         })
     return actions
 

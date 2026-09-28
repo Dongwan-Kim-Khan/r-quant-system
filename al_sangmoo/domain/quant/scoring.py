@@ -147,9 +147,9 @@ class TierClassification:
     score: int
     composite_score: float
     entry_price: float
-    target_price: float         # +15.0%
-    stop_price: float           # -5.0% Hard Stop (C1-M2)
-    partial_tp_price: float     # +8.0% (50% Take Profit)
+    target_price: float         # +18.0% (C-2)
+    stop_price: float           # -7.0% EOD Stop / -10.0% Emergency Stop (C-2)
+    partial_tp_price: float     # +8.0% (50% Take Profit display)
     is_tier1_qualified: bool
     is_tier2_qualified: bool
     is_tier3_qualified: bool
@@ -172,7 +172,7 @@ def relative_strength(close: np.ndarray, lookback: int) -> np.ndarray:
 
 def composite_relative_strength(close: Sequence[float] | np.ndarray) -> np.ndarray:
     """
-    C1-M2 Composite RS:
+    C-2 Composite RS:
       0.40 * RS_21 + 0.35 * RS_63 + 0.25 * RS_126
     """
     c = np.asarray(close, dtype=float)

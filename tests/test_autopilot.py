@@ -15,6 +15,7 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 from al_sangmoo.domain.risk.autopilot_trader import AutoPilotTrader
+from al_sangmoo.domain.risk import exit_cooldown
 import db_manager
 
 
@@ -23,13 +24,17 @@ def _cand(ticker: str, price: float, rank: int) -> dict:
         "ticker": ticker,
         "name": ticker,
         "price": price,
+        "kijun": round(price * 0.9, 2),
+        "kijun_26": round(price * 0.9, 2),
+        "composite_rs": 85.0 - rank,
         "conviction_score": 90 - rank,
+        "bull_score": 90 - rank,
         "conviction_rank": rank,
         "sizing": {
             "eligible": True,
             "shares": 10,
             "is_bull_regime": True,
-            "slot_weight": [0.50, 0.30, 0.20][rank - 1],
+            "slot_weight": [0.34, 0.33, 0.33][rank - 1],
             "slot_rank": rank,
         },
     }
@@ -40,20 +45,40 @@ def _feed(ranked):
         "ranked_conviction_list": ranked,
         "top_conviction_pick": ranked[0] if ranked else None,
         "top_conviction_runner_up": ranked[1] if len(ranked) > 1 else None,
-        "macro": {"is_bull_regime": True, "leverage": {"leverage_mode": False}},
-        "slot_allocation_summary": {"is_bull_regime": True},
+        "macro": {
+            "is_bull_regime": True,
+            "qqq_close": 500.0,
+            "qqq_sma20": 480.0,
+            "qqq_composite_rs": 70.0,
+            "leverage": {"leverage_mode": False},
+        },
+        "slot_allocation_summary": {
+            "is_bull_regime": True,
+            "qqq_close": 500.0,
+            "qqq_sma20": 480.0,
+            "qqq_composite_rs": 70.0,
+        },
     }
 
 
 class TestAutoPilotTrader(unittest.IsolatedAsyncioTestCase):
 
     async def asyncSetUp(self):
-        db_manager.init_database()
-        self.autopilot = AutoPilotTrader(check_interval_seconds=10)
+        self._prev_db = os.environ.get("AL_SANGMOO_DB_PATH")
         self._tmpdir = tempfile.TemporaryDirectory()
+        self._test_db_path = os.path.join(self._tmpdir.name, "test_autopilot.db")
+        os.environ["AL_SANGMOO_DB_PATH"] = self._test_db_path
+        db_manager.init_database()
+        exit_cooldown.clear()
+        self.autopilot = AutoPilotTrader(check_interval_seconds=10)
         self._feed_path = os.path.join(self._tmpdir.name, "dashboard_data.json")
 
     async def asyncTearDown(self):
+        exit_cooldown.clear()
+        if self._prev_db is None:
+            os.environ.pop("AL_SANGMOO_DB_PATH", None)
+        else:
+            os.environ["AL_SANGMOO_DB_PATH"] = self._prev_db
         self._tmpdir.cleanup()
 
     def _write_feed(self, payload: dict):
@@ -103,6 +128,7 @@ class TestAutoPilotTrader(unittest.IsolatedAsyncioTestCase):
                         "NO_ACTION",
                         "MARKET_CLOSED",
                         "BROKER_SNAPSHOT_UNVERIFIED",
+                        "QQQ_BELOW_20MA",
                     ],
                 )
             self.assertIn("cash_proxy", res)
@@ -179,9 +205,9 @@ class TestAutoPilotTrader(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(bought, ["BBB", "CCC"])
         entry_ranks = [e.get("slot_rank") for e in res.get("entries", [])]
         self.assertEqual(entry_ranks, [2, 3])
-        # Slot weights for ranks 2/3 in bull
+        # Slot weights for ranks 2/3 in bull (C-2: 34/33/33)
         weights = [e["trade"].get("slot_weight") for e in res.get("entries", [])]
-        self.assertEqual(weights, [0.30, 0.20])
+        self.assertEqual(weights, [0.33, 0.33])
         self.assertTrue(free_proxy.called)
         self.assertIn("cash_proxy", res)
         # Must never short-circuit as ALREADY_IN_WALLET for the whole cycle

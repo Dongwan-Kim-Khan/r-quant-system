@@ -78,6 +78,8 @@ class TestFrontendSynchronicity(unittest.TestCase):
         src = _read("frontend/js/websocket.js")
         self.assertIn("ConnectionState.CONNECTED", src)
         self.assertIn("_stopHttpPolling", src)
+        self.assertIn("preferLivePortfolio", src)
+        self.assertIn("live_feed_update", src)
         self.assertIn("_hydrateFromHttp", src)
         # Visibility/focus must not HTTP-refresh while the hub is live.
         self.assertRegex(
@@ -90,7 +92,13 @@ class TestFrontendSynchronicity(unittest.TestCase):
         src = _read("frontend/js/ui.js")
         self.assertIn("MAX_LOGS: 300", src)
         self.assertIn("childElementCount > this.MAX_LOGS", src)
-        self.assertIn("slice(-this.MAX_LOGS)", src)
+        self.assertIn("slice(0, this.MAX_LOGS)", src)
+        self.assertNotIn("logHidden", src)
+        self.assertIn("formatExecutionTs", src)
+        self.assertIn("[접수]", src)
+        self.assertNotIn("rawTs.split(' ')[1]", src)
+        self.assertIn("formatExecutionTs", src)
+        self.assertIn("[접수]", src)
 
     def test_chart_request_seq_guard(self):
         src = _read("frontend/js/chart.js")
@@ -109,6 +117,8 @@ class TestFrontendSynchronicity(unittest.TestCase):
         ui = _read("frontend/js/ui.js")
         self.assertIn("defaultChartTarget", ui)
         self.assertIn("isMarketTicker", ui)
+        self.assertIn("preferLivePortfolio", ui)
+        self.assertIn("latestPortfolioData", ui)
 
     def test_chart_api_rejects_mismatched_payload(self):
         api = _read("frontend/js/api.js")
@@ -164,7 +174,8 @@ class TestLivePriceHarmonize(unittest.TestCase):
         }
         from al_sangmoo.interfaces.api.routers.charts import _enrich_chart_with_realtime_price
         from unittest.mock import patch
-        with patch("db_manager.get_live_portfolio", return_value={"holdings": []}):
+        with patch("al_sangmoo.infrastructure.persistence.get_live_portfolio", return_value={"holdings": []}), \
+             patch("db_manager.get_live_portfolio", return_value={"holdings": []}):
             with patch("al_sangmoo.infrastructure.brokers.kis_broker.default_kis_broker") as broker:
                 broker.get_live_price.return_value = 22612.0
                 out = _enrich_chart_with_realtime_price(payload, "NVDA")

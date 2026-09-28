@@ -45,15 +45,15 @@ def resolve_guardrail_max_allocation_pct(
     2. Cash Proxy (QQQ, QLD):
        - Core / unleveraged: up to 100% (1.00)
        - Leveraged mode or QLD: up to 150% (1.50)
-    3. C1-M2 Satellite Slots:
+    3. C-2 Satellite Slots (34/33/33 bull · 25/25 bear):
        - Bull regime (SPY >= SMA200 or MSI < 50):
-         Slot 1: 50% target + 5% buffer -> 55% (0.55)
-         Slot 2: 30% target + 5% buffer -> 35% (0.35)
-         Slot 3: 20% target + 5% buffer -> 25% (0.25)
+         Slot 1: 34% target + 5% buffer -> 39% (0.39)
+         Slot 2: 33% target + 5% buffer -> 38% (0.38)
+         Slot 3: 33% target + 5% buffer -> 38% (0.38)
        - Bear regime (MSI >= 50 or SPY < SMA200):
          Slot 1: 25% target + 5% buffer -> 30% (0.30)
          Slot 2: 25% target + 5% buffer -> 30% (0.30)
-       - Other / fallback / unranked: 25% (0.25)
+       - Other / fallback / unranked: 38% (0.38) in bull, 25% (0.25) in bear
     """
     if explicit_max_pct is not None and explicit_max_pct > 0.0:
         return float(explicit_max_pct)
@@ -133,16 +133,14 @@ def resolve_guardrail_max_allocation_pct(
         else:
             target_rank = len(distinct_sats) + 1
 
-    # 4. Apply C1-M2 Limits with buffer
+    # 4. Apply C-2 Limits with buffer (34/33/33 bull -> 39%/38%/38%)
     if is_bull:
         if target_rank == 1:
-            return 0.55  # 50% + 5% buffer
-        elif target_rank == 2:
-            return 0.35  # 30% + 5% buffer
-        elif target_rank == 3:
-            return 0.25  # 20% + 5% buffer
+            return 0.39  # 34% + 5% buffer
+        elif target_rank in (2, 3):
+            return 0.38  # 33% + 5% buffer
         else:
-            return 0.25
+            return 0.38
     else:
         if target_rank in (1, 2):
             return 0.30  # 25% + 5% buffer
@@ -156,6 +154,8 @@ def validate_pre_trade_guardrail(
     quantity: float,
     total_equity: float,
     active_holdings: List[Dict[str, Any]],
+    available_cash: Optional[float] = None,
+    cash_buffer_pct: float = 0.005,
     msi_score: Optional[float] = None,
     max_single_asset_pct: Optional[float] = None,
     min_order_dollar: float = 10.0,
@@ -168,7 +168,7 @@ def validate_pre_trade_guardrail(
 ) -> Dict[str, Any]:
     """
     Executes mandatory pre-trade sanity & risk boundary checks.
-    Supports C1-M2 dynamic conviction slot sizing and Cash Proxy (QQQ/QLD) limits.
+    Supports C-2 dynamic conviction slot sizing, available cash validation, and Cash Proxy (QQQ/QLD) limits.
     """
     ticker_clean = ticker.strip().upper()
     
@@ -182,6 +182,20 @@ def validate_pre_trade_guardrail(
     order_value = price * quantity
     if order_value < min_order_dollar:
         return {"allowed": False, "reason": f"최소 주문 금액(${min_order_dollar}) 미만입니다."}
+
+    # Available Cash Hard Guardrail
+    if available_cash is not None:
+        cash_avail = max(0.0, float(available_cash))
+        buffer_mult = 1.0 + max(0.0, float(cash_buffer_pct))
+        needed_cash = round(order_value * buffer_mult, 2)
+        if needed_cash > (cash_avail + 1e-4):
+            return {
+                "allowed": False,
+                "reason": (
+                    f"가용 현금 부족: 주문 금액 ${needed_cash:,.2f}(버퍼 {cash_buffer_pct*100:.1f}% 포함)가 "
+                    f"가용 현금 ${cash_avail:,.2f}을 초과합니다."
+                ),
+            }
 
     # 2. Systemic Macro Guardrail (CASH_EXIT Rule) — MSI is a risk index
     if msi_score is None:

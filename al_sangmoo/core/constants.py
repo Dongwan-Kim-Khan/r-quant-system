@@ -1,32 +1,41 @@
 """
 Centralized Constants & Single Source of Truth for Al-Sangmoo Quant Trading Platform.
-C1-M2 Production Engine SSOT (see INVESTMENT_PROSPECTUS_C1_M2.md).
+C-2 Production Engine SSOT (see HANDOFF_ANTIGRAVITY_C2_VERDICT.md).
 """
 import re
 
-# C1-M2 constitution (fractional). Live buy stop = buy_price * (1 + STOP_LOSS_PCT)
-STOP_LOSS_PCT = -0.05
-TAKE_PROFIT_PCT = 0.15
-PARTIAL_TP_PCT = 0.08  # persisted display only; guardian does not partial-exit
-ATR_MULTIPLIER = 2.5   # trailing floor = max(Kijun-26, peak - ATR_MULTIPLIER * ATR(14))
+# C-2 constitution (fractional).
+# Dual-clock stop: EOD Hard Stop (-7.0%) and Intraday Emergency Stop (-10.0%)
+EOD_STOP_LOSS_PCT = -0.07
+EMERGENCY_STOP_LOSS_PCT = -0.10
+STOP_LOSS_PCT = EOD_STOP_LOSS_PCT  # Primary EOD stop loss fraction (-0.07)
+TAKE_PROFIT_PCT = 0.18             # Trailing stop activation threshold (+18.0%)
+PARTIAL_TP_PCT = 0.08              # persisted display only; guardian does not partial-exit
+ATR_MULTIPLIER = 3.0               # C-2 trailing floor = max(Kijun-26, peak - ATR_MULTIPLIER * ATR(14))
+STANDALONE_KIJUN_EXIT_ENABLED = False  # C-2: standalone kijun exit permanently disabled
 
-HARD_STOP_PCT = abs(STOP_LOSS_PCT) * 100.0       # 5.0 percentage points
-TRAILING_ACTIVATE_PCT = TAKE_PROFIT_PCT * 100.0  # 15.0 percentage points
-PARTIAL_TP_DISPLAY_PCT = PARTIAL_TP_PCT * 100.0  # 8.0 percentage points
+HARD_STOP_PCT = round(abs(STOP_LOSS_PCT) * 100.0, 2)                 # 7.0 percentage points
+EOD_HARD_STOP_PCT = round(abs(EOD_STOP_LOSS_PCT) * 100.0, 2)         # 7.0 percentage points
+EMERGENCY_STOP_PCT = round(abs(EMERGENCY_STOP_LOSS_PCT) * 100.0, 2)  # 10.0 percentage points
+TRAILING_ACTIVATE_PCT = round(TAKE_PROFIT_PCT * 100.0, 2)            # 18.0 percentage points
+PARTIAL_TP_DISPLAY_PCT = round(PARTIAL_TP_PCT * 100.0, 2)            # 8.0 percentage points
 
-STOP_LOSS_MULT = 1.0 + STOP_LOSS_PCT             # 0.95
-TAKE_PROFIT_MULT = 1.0 + TAKE_PROFIT_PCT         # 1.15
-PARTIAL_TP_MULT = 1.0 + PARTIAL_TP_PCT           # 1.08
+STOP_LOSS_MULT = round(1.0 + STOP_LOSS_PCT, 4)                       # 0.93
+EOD_STOP_LOSS_MULT = round(1.0 + EOD_STOP_LOSS_PCT, 4)               # 0.93
+EMERGENCY_STOP_LOSS_MULT = round(1.0 + EMERGENCY_STOP_LOSS_PCT, 4)   # 0.90
+TAKE_PROFIT_MULT = round(1.0 + TAKE_PROFIT_PCT, 4)                   # 1.18
+PARTIAL_TP_MULT = round(1.0 + PARTIAL_TP_PCT, 4)                     # 1.08
 
-# C1-M2 3-Slot Conviction Matrix (NAV fractions)
-SLOT_WEIGHTS_BULL = [0.50, 0.30, 0.20]  # ranks 1 / 2 / 3
+# C-2 3-Slot Conviction Matrix (NAV fractions: equalized 34/33/33)
+SLOT_WEIGHTS_BULL = [0.34, 0.33, 0.33]  # ranks 1 / 2 / 3
 SLOT_WEIGHTS_BEAR = [0.25, 0.25]        # SPY < SMA200 → max 2 slots
 MAX_SLOTS_BULL = len(SLOT_WEIGHTS_BULL)
 MAX_SLOTS_BEAR = len(SLOT_WEIGHTS_BEAR)
 
-# Cash-proxy overlay & dynamic leverage (QQQ core / QLD boost)
+# Cash-proxy overlay & dynamic leverage (1.0x QQQ core overlay / conditional 1.5x QLD boost)
 CASH_PROXY_TICKER = "QQQ"
 LEVERAGE_TICKER = "QLD"
+PROXY_CORE_TARGET = 1.0
 LEVERAGE_GROSS_TARGET = 1.5
 LEVERAGE_VIX_MAX = 20.0
 
@@ -36,9 +45,23 @@ COMPOSITE_RS_W_63 = 0.35
 COMPOSITE_RS_W_126 = 0.25
 COMPOSITE_RS_LOOKBACKS = (21, 63, 126)
 
+# Baseline Initial Investment SSOT (Commit 1bdc693 Inception Anchor: 10,000,000 KRW = $7,500.00)
+DEFAULT_BASE_ACCOUNT_USD = 7500.0
+
 
 def derive_stop_price(entry: float) -> float:
+    """Primary EOD stop price: entry * 0.93 (-7.0%)."""
     return round(float(entry) * STOP_LOSS_MULT, 2)
+
+
+def derive_eod_stop_price(entry: float) -> float:
+    """EOD closing-window hard stop price: entry * 0.93 (-7.0%)."""
+    return round(float(entry) * EOD_STOP_LOSS_MULT, 2)
+
+
+def derive_emergency_stop_price(entry: float) -> float:
+    """Intraday RTH emergency stop price: entry * 0.90 (-10.0%)."""
+    return round(float(entry) * EMERGENCY_STOP_LOSS_MULT, 2)
 
 
 def derive_target_price(entry: float) -> float:

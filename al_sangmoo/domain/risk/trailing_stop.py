@@ -1,11 +1,11 @@
 """
-Al-Sangmoo C1-M2 uncapped trailing-stop SSOT.
+Al-Sangmoo C-2 uncapped trailing-stop SSOT.
 
 Constitution:
-  - Hard stop: entry -5.0%
-  - Kijun close breakdown: 26-day baseline exit
-  - After peak gain >= +15%: trailing floor = max(Kijun-26, peak_high - 2.5 * ATR(14))
-  - Full exit only (no 50% partial take-profit)
+  - Dual-clock stop: EOD Hard Stop (-7.0%) and Intraday Emergency Stop (-10.0%)
+  - Standalone kijun close breakdown: permanently disabled (trail floor candidate only)
+  - After peak gain >= +18%: trailing floor = max(Kijun-26, peak_high - 3.0 * ATR(14))
+  - Full exit only (no partial take-profit)
 """
 from __future__ import annotations
 
@@ -16,19 +16,29 @@ import pandas as pd
 
 from al_sangmoo.core.constants import (
     ATR_MULTIPLIER,
+    EOD_HARD_STOP_PCT,
+    EMERGENCY_STOP_PCT,
     HARD_STOP_PCT,
+    STANDALONE_KIJUN_EXIT_ENABLED,
     TRAILING_ACTIVATE_PCT,
+    derive_eod_stop_price,
+    derive_emergency_stop_price,
     derive_stop_price,
 )
 
-ATR_TRAIL_MULT = ATR_MULTIPLIER  # C1-M2 SSOT alias
+ATR_TRAIL_MULT = ATR_MULTIPLIER  # C-2 SSOT: 3.0
 MARKET_CACHE_TTL_SEC = 300.0
 
 _MARKET_CACHE: Dict[str, Dict[str, Any]] = {}
 
 
-def compute_trailing_floor(kijun_26: float, peak_high: float, atr_14: float) -> float:
-    """max(26-day kijun, peak high - 2.5 * ATR(14)). Returns 0.0 if both legs are unusable."""
+def compute_trailing_floor(
+    kijun_26: float,
+    peak_high: float,
+    atr_14: float,
+    atr_multiplier: Optional[float] = None,
+) -> float:
+    """max(26-day kijun, peak high - multiplier * ATR(14)). Returns 0.0 if both legs are unusable."""
     candidates = []
     kijun = float(kijun_26 or 0.0)
     if kijun > 0:
@@ -36,8 +46,9 @@ def compute_trailing_floor(kijun_26: float, peak_high: float, atr_14: float) -> 
 
     peak = float(peak_high or 0.0)
     atr = float(atr_14 or 0.0)
+    mult = float(atr_multiplier if atr_multiplier is not None and atr_multiplier > 0 else ATR_TRAIL_MULT)
     if peak > 0 and atr > 0:
-        atr_leg = peak - ATR_TRAIL_MULT * atr
+        atr_leg = peak - mult * atr
         if atr_leg > 0:
             candidates.append(atr_leg)
 
@@ -47,7 +58,7 @@ def compute_trailing_floor(kijun_26: float, peak_high: float, atr_14: float) -> 
 
 
 def latch_peak_gain(buy_price: float, current_price: float, peak_high: float = 0.0, max_gain_pct: float = 0.0) -> Dict[str, float]:
-    """Running peak price / gain since entry. Trailing stays armed after +15% even if PnL pulls back."""
+    """Running peak price / gain since entry. Trailing stays armed after +18% even if PnL pulls back."""
     buy = float(buy_price or 0.0)
     cur = float(current_price or 0.0)
     peak = max(buy, float(peak_high or 0.0), cur)
@@ -69,14 +80,18 @@ def evaluate_guardian_exit(
     atr_14: float = 0.0,
     peak_high: float = 0.0,
     max_gain_pct: float = 0.0,
+    is_eod_window: bool = False,
+    stop_loss_price: Optional[float] = None,
+    allow_standalone_kijun: bool = STANDALONE_KIJUN_EXIT_ENABLED,
 ) -> Dict[str, Any]:
     """
-    Decide a full-exit action (or HOLD) for one position.
+    Decide a full-exit action (or HOLD) for one position under C-2 dual-clock rules.
 
     Priority:
-      1. Hard stop (STOP_LOSS_PCT / derive_stop_price)
-      2. Uncapped trailing after TRAILING_ACTIVATE_PCT peak gain
-      3. 26-day kijun close breakdown
+      1. Intraday Emergency Stop (-10.0% / derive_emergency_stop_price) — fires anytime during RTH.
+      2. EOD Hard Stop (-7.0% / derive_eod_stop_price) — fires ONLY during EOD closing window.
+      3. Uncapped trailing after TRAILING_ACTIVATE_PCT (+18%) peak gain: max(Kijun-26, peak - 3.0*ATR14).
+      4. Legacy lot ticket-stop / kijun breakdown compatibility if lot was created under C1-M2.
     """
     buy = float(buy_price or 0.0)
     cur = float(current_price or 0.0)
@@ -84,17 +99,34 @@ def evaluate_guardian_exit(
         return {"action": None, "reason": "invalid_price", "trailing_active": False, "trailing_floor": 0.0}
 
     latched = latch_peak_gain(buy, cur, peak_high, max_gain_pct)
-    hard_stop_price = derive_stop_price(buy)
     pnl_pct = latched["pnl_pct"]
-    trailing_active = latched["trailing_active"]
     kijun = float(kijun_26 or 0.0)
-    floor = compute_trailing_floor(kijun, latched["peak_high"], atr_14) if trailing_active else 0.0
+
+    eod_stop = derive_eod_stop_price(buy)
+    emerg_stop = derive_emergency_stop_price(buy)
+    ticket_stop = float(stop_loss_price or 0.0) if stop_loss_price is not None and float(stop_loss_price or 0.0) > 0 else eod_stop
+
+    # Check for legacy lot compatibility (C1-M2 ticket stop ~0.95 vs C-2 0.93)
+    # Must have an explicit stop_loss_price from an older open position and ratio >= 0.945
+    is_legacy_c1 = bool(
+        stop_loss_price is not None
+        and float(stop_loss_price or 0.0) > 0
+        and buy > 0
+        and (float(stop_loss_price) / buy) >= 0.945
+    )
+
+    arm_threshold = 15.0 if is_legacy_c1 else TRAILING_ACTIVATE_PCT
+    trailing_active = latched["max_gain_pct"] >= arm_threshold
+    effective_atr_mult = 2.5 if is_legacy_c1 else ATR_TRAIL_MULT
+    floor = compute_trailing_floor(kijun, latched["peak_high"], atr_14, atr_multiplier=effective_atr_mult) if trailing_active else 0.0
 
     result = {
         "action": None,
         "reason": None,
         "pnl_pct": pnl_pct,
-        "hard_stop_price": hard_stop_price,
+        "hard_stop_price": ticket_stop if is_legacy_c1 else eod_stop,
+        "emergency_stop_price": emerg_stop,
+        "eod_stop_price": eod_stop,
         "trailing_active": trailing_active,
         "trailing_floor": floor,
         "peak_high": latched["peak_high"],
@@ -104,14 +136,36 @@ def evaluate_guardian_exit(
         "is_full_exit": True,
     }
 
-    if pnl_pct <= -HARD_STOP_PCT or cur <= hard_stop_price:
-        result["action"] = "AUTO_STOP_LOSS"
+    # 1. Intraday Emergency Stop (-10.0%) — ALWAYS active during market session
+    if pnl_pct <= -EMERGENCY_STOP_PCT or cur <= emerg_stop:
+        result["action"] = "AUTO_EMERGENCY_STOP"
         result["reason"] = (
-            f"[가디언 칼손절] 손절선(-{HARD_STOP_PCT:.1f}% / ${hard_stop_price:,.2f}) 도달 "
+            f"[가디언 비상손절] 비상 손절선(-{EMERGENCY_STOP_PCT:.1f}% / ${emerg_stop:,.2f}) 이탈 "
             f"(수익률: {pnl_pct:+.2f}%, 현재가: ${cur:,.2f})"
         )
         return result
 
+    # 2. Legacy lot ticket-stop (-5.0%) handling
+    if is_legacy_c1 and (cur <= ticket_stop or pnl_pct <= -5.0):
+        result["action"] = "AUTO_STOP_LOSS"
+        result["reason"] = (
+            f"[가디언 레거시 칼손절] 손절선(-5.0% / ${ticket_stop:,.2f}) 도달 "
+            f"(수익률: {pnl_pct:+.2f}%, 현재가: ${cur:,.2f})"
+        )
+        return result
+
+    # 3. EOD Hard Stop (-7.0%) — active ONLY during closing window
+    if is_eod_window:
+        effective_eod_stop = ticket_stop if (ticket_stop > 0 and not is_legacy_c1) else eod_stop
+        if pnl_pct <= -EOD_HARD_STOP_PCT or cur <= effective_eod_stop:
+            result["action"] = "AUTO_STOP_LOSS"
+            result["reason"] = (
+                f"[가디언 EOD 종가 손절] 종가 손절선(-{EOD_HARD_STOP_PCT:.1f}% / ${effective_eod_stop:,.2f}) 도달 "
+                f"(수익률: {pnl_pct:+.2f}%, 현재가: ${cur:,.2f})"
+            )
+            return result
+
+    # 4. Trailing Stop (Arms at +18.0%, floor = max(kijun, peak - 3.0*ATR))
     if trailing_active:
         if floor > 0 and cur < floor:
             result["action"] = "AUTO_TRAILING_TP"
@@ -122,7 +176,8 @@ def evaluate_guardian_exit(
             )
         return result
 
-    if kijun > 0 and cur < kijun:
+    # 5. Standalone Kijun Exit (Disabled in C-2; enabled only for legacy C1 lots or explicit opt-in)
+    if (allow_standalone_kijun or is_legacy_c1) and kijun > 0 and cur < kijun:
         result["action"] = "AUTO_KIJUN_EXIT"
         result["reason"] = (
             f"[가디언 기준선 이탈] 26일 기준선(${kijun:,.2f}) 종가 하회 "
@@ -134,11 +189,15 @@ def evaluate_guardian_exit(
 
 
 def format_holding_advice(eval_result: Dict[str, Any], buy_price: float) -> str:
-    """Human-readable exit_advice for the portfolio row (no 50% partial language)."""
+    """Human-readable exit_advice for the portfolio row."""
     action = eval_result.get("action")
     pnl = float(eval_result.get("pnl_pct") or 0.0)
+    if action == "AUTO_EMERGENCY_STOP":
+        emerg_stop = derive_emergency_stop_price(buy_price)
+        return f"비상 손절 긴급 매도 권고 (비상손절선 ${emerg_stop:,.2f} 이탈 {pnl:+.2f}%)"
     if action == "AUTO_STOP_LOSS":
-        return f"칼손절 긴급 매도 권고 (손절선 이탈 {pnl:+.2f}%)"
+        eod_stop = derive_eod_stop_price(buy_price)
+        return f"EOD 종가 손절 매도 권고 (손절선 ${eod_stop:,.2f} 이탈 {pnl:+.2f}%)"
     if action == "AUTO_TRAILING_TP":
         floor = float(eval_result.get("trailing_floor") or 0.0)
         return f"트레일링 익절 전량 청산 (floor ${floor:,.2f}, {pnl:+.2f}%)"
@@ -150,8 +209,9 @@ def format_holding_advice(eval_result: Dict[str, Any], buy_price: float) -> str:
         if floor > 0:
             return f"무제한 트레일링 익절 홀딩 (Let Winners Run, floor ${floor:,.2f}, {pnl:+.2f}%)"
         return f"무제한 트레일링 익절 홀딩 (Let Winners Run, {pnl:+.2f}%)"
-    hard = derive_stop_price(buy_price)
-    return f"보유 지속 (손절선 ${hard:,.2f} / +{TRAILING_ACTIVATE_PCT:.0f}% 이후 무제한 트레일링)"
+    eod_stop = derive_eod_stop_price(buy_price)
+    emerg_stop = derive_emergency_stop_price(buy_price)
+    return f"보유 지속 (종가손절 ${eod_stop:,.2f} / 비상손절 ${emerg_stop:,.2f} / +{TRAILING_ACTIVATE_PCT:.0f}% 트레일링)"
 
 
 def snapshot_from_indicator_df(df: pd.DataFrame, buy_date: Optional[str] = None) -> Dict[str, float]:

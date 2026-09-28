@@ -94,42 +94,42 @@ class TestPreTradeGuardrailDynamicSizing(unittest.TestCase):
         self.assertFalse(res_fail["allowed"])
         self.assertIn("초과", res_fail["reason"])
 
-    def test_c1_m2_bull_slot_1_allows_up_to_55_percent(self):
-        """Slot 1 in Bull regime (50% target) allows up to 55% buffer."""
+    def test_c2_bull_slot_1_allows_up_to_39_percent(self):
+        """Slot 1 in Bull regime (34% target) allows up to 39% buffer."""
         limit = resolve_guardrail_max_allocation_pct("NVDA", active_holdings=[], slot_rank=1, is_bull=True)
-        self.assertEqual(limit, 0.55)
+        self.assertEqual(limit, 0.39)
 
-        # 50% order ($50,000) - Previously REJECTED with 25% hardcap - MUST NOW PASS
-        res_50 = validate_pre_trade_guardrail("NVDA", 100.0, 500.0, self.equity, [], slot_rank=1, is_bull=True, msi_score=40.0)
-        self.assertTrue(res_50["allowed"], f"50% Slot 1 buy must be allowed: {res_50.get('reason')}")
+        # 34% order ($34,000) - MUST PASS
+        res_34 = validate_pre_trade_guardrail("NVDA", 100.0, 340.0, self.equity, [], slot_rank=1, is_bull=True, msi_score=40.0)
+        self.assertTrue(res_34["allowed"], f"34% Slot 1 buy must be allowed: {res_34.get('reason')}")
 
-        # 54% order ($54,000) - Buffer range - MUST PASS
-        res_54 = validate_pre_trade_guardrail("NVDA", 100.0, 540.0, self.equity, [], slot_rank=1, is_bull=True, msi_score=40.0)
-        self.assertTrue(res_54["allowed"])
+        # 38% order ($38,000) - Buffer range - MUST PASS
+        res_38 = validate_pre_trade_guardrail("NVDA", 100.0, 380.0, self.equity, [], slot_rank=1, is_bull=True, msi_score=40.0)
+        self.assertTrue(res_38["allowed"])
 
-        # 56% order ($56,000) - Exceeds 55% cap - MUST BE REJECTED
-        res_56 = validate_pre_trade_guardrail("NVDA", 100.0, 560.0, self.equity, [], slot_rank=1, is_bull=True, msi_score=40.0)
-        self.assertFalse(res_56["allowed"])
-        self.assertIn("초과", res_56["reason"])
+        # 40% order ($40,000) - Exceeds 39% cap - MUST BE REJECTED
+        res_40 = validate_pre_trade_guardrail("NVDA", 100.0, 400.0, self.equity, [], slot_rank=1, is_bull=True, msi_score=40.0)
+        self.assertFalse(res_40["allowed"])
+        self.assertIn("초과", res_40["reason"])
 
-    def test_c1_m2_bull_slot_2_and_3_buffer_limits(self):
-        """Slot 2 allows up to 35%, Slot 3 allows up to 25%."""
+    def test_c2_bull_slot_2_and_3_buffer_limits(self):
+        """Slot 2 allows up to 38%, Slot 3 allows up to 38%."""
         limit_s2 = resolve_guardrail_max_allocation_pct("AMZN", slot_rank=2, is_bull=True)
-        self.assertEqual(limit_s2, 0.35)
+        self.assertEqual(limit_s2, 0.38)
 
         limit_s3 = resolve_guardrail_max_allocation_pct("AAPL", slot_rank=3, is_bull=True)
-        self.assertEqual(limit_s3, 0.25)
+        self.assertEqual(limit_s3, 0.38)
 
-        # Slot 2: 32% passes, 36% fails
-        res_s2_ok = validate_pre_trade_guardrail("AMZN", 100.0, 320.0, self.equity, [], slot_rank=2, is_bull=True, msi_score=40.0)
+        # Slot 2: 35% passes, 40% fails
+        res_s2_ok = validate_pre_trade_guardrail("AMZN", 100.0, 350.0, self.equity, [], slot_rank=2, is_bull=True, msi_score=40.0)
         self.assertTrue(res_s2_ok["allowed"])
-        res_s2_fail = validate_pre_trade_guardrail("AMZN", 100.0, 360.0, self.equity, [], slot_rank=2, is_bull=True, msi_score=40.0)
+        res_s2_fail = validate_pre_trade_guardrail("AMZN", 100.0, 400.0, self.equity, [], slot_rank=2, is_bull=True, msi_score=40.0)
         self.assertFalse(res_s2_fail["allowed"])
 
-        # Slot 3: 22% passes, 26% fails
-        res_s3_ok = validate_pre_trade_guardrail("AAPL", 100.0, 220.0, self.equity, [], slot_rank=3, is_bull=True, msi_score=40.0)
+        # Slot 3: 35% passes, 40% fails
+        res_s3_ok = validate_pre_trade_guardrail("AAPL", 100.0, 350.0, self.equity, [], slot_rank=3, is_bull=True, msi_score=40.0)
         self.assertTrue(res_s3_ok["allowed"])
-        res_s3_fail = validate_pre_trade_guardrail("AAPL", 100.0, 260.0, self.equity, [], slot_rank=3, is_bull=True, msi_score=40.0)
+        res_s3_fail = validate_pre_trade_guardrail("AAPL", 100.0, 400.0, self.equity, [], slot_rank=3, is_bull=True, msi_score=40.0)
         self.assertFalse(res_s3_fail["allowed"])
 
     def test_c1_m2_bear_regime_limits(self):
@@ -153,39 +153,39 @@ class TestPreTradeGuardrailDynamicSizing(unittest.TestCase):
 
     def test_automatic_slot_rank_detection_from_holdings(self):
         """If slot_rank is None, detects slot rank from existing active satellite holdings."""
-        # 0 satellites -> Slot 1 (55%)
-        res_slot1 = validate_pre_trade_guardrail("NVDA", 100.0, 500.0, self.equity, [], is_bull=True, msi_score=40.0)
+        # 0 satellites -> Slot 1 (39%)
+        res_slot1 = validate_pre_trade_guardrail("NVDA", 100.0, 340.0, self.equity, [], is_bull=True, msi_score=40.0)
         self.assertTrue(res_slot1["allowed"])
 
-        # 1 existing satellite -> Slot 2 (35%)
-        holdings_1 = [{"ticker": "NVDA", "current_value": 50000.0}]
-        res_slot2 = validate_pre_trade_guardrail("AMZN", 100.0, 320.0, self.equity, holdings_1, is_bull=True, msi_score=40.0)
+        # 1 existing satellite -> Slot 2 (38%)
+        holdings_1 = [{"ticker": "NVDA", "current_value": 34000.0}]
+        res_slot2 = validate_pre_trade_guardrail("AMZN", 100.0, 350.0, self.equity, holdings_1, is_bull=True, msi_score=40.0)
         self.assertTrue(res_slot2["allowed"])
 
-        res_slot2_over = validate_pre_trade_guardrail("AMZN", 100.0, 370.0, self.equity, holdings_1, is_bull=True, msi_score=40.0)
+        res_slot2_over = validate_pre_trade_guardrail("AMZN", 100.0, 400.0, self.equity, holdings_1, is_bull=True, msi_score=40.0)
         self.assertFalse(res_slot2_over["allowed"])
 
     def test_quick_buy_slot_1_auto_detect_from_feed_without_explicit_params(self):
         """
         Critical P0 Bug Repro: Quick Buy of Slot 1 directly from dashboard
         called without explicit is_bull, slot_rank, or max_pct must NOT be rejected.
-        DELL is Slot 1 (50% target in feed). Sizing: 7 shares * 533.88 = $3,737.16 on $7,477.18 equity (49.98%).
+        DELL is Slot 1 (34% target in C-2). Sizing: 5 shares * 533.88 = $2,669.40 on $7,477.18 equity (35.7% <= 39%).
         """
-        res = validate_pre_trade_guardrail("DELL", 533.88, 7.0, 7477.18, [])
+        res = validate_pre_trade_guardrail("DELL", 533.88, 5.0, 7477.18, [])
         self.assertTrue(res["allowed"], f"Quick buy of Slot 1 must pass guardrail: {res.get('reason')}")
-        self.assertEqual(res.get("max_single_asset_pct"), 0.55)
+        self.assertEqual(res.get("max_single_asset_pct"), 0.39)
 
     def test_runner_up_and_ranked_conviction_candidates_auto_detect(self):
-        """Runner-up (CRWD) gets 35% buffer, ranked candidate (REGN) gets 25% buffer."""
+        """Runner-up (CRWD) gets 38% buffer, ranked candidate (REGN) gets 38% buffer in C-2."""
         # Runner-up (CRWD)
         res_crwd = validate_pre_trade_guardrail("CRWD", 210.02, 10.0, 7477.18, [])
         self.assertTrue(res_crwd["allowed"])
-        self.assertEqual(res_crwd.get("max_single_asset_pct"), 0.35)
+        self.assertEqual(res_crwd.get("max_single_asset_pct"), 0.38)
 
         # Ranked list Slot 3 candidate (REGN)
         res_regn = validate_pre_trade_guardrail("REGN", 100.0, 15.0, 7477.18, [])
         self.assertTrue(res_regn["allowed"])
-        self.assertEqual(res_regn.get("max_single_asset_pct"), 0.25)
+        self.assertEqual(res_regn.get("max_single_asset_pct"), 0.38)
 
     def test_deduplicate_holdings_preserves_slot_rank(self):
         """Multiple lots of the same ticker in active_holdings must not skew slot ranking."""
@@ -193,9 +193,9 @@ class TestPreTradeGuardrailDynamicSizing(unittest.TestCase):
             {"ticker": "NVDA", "current_value": 15000.0},
             {"ticker": "NVDA", "current_value": 15000.0},
         ]
-        # A new ticker should take Slot 2 (35% in bull regime), NOT Slot 3 (25%)
+        # A new ticker should take Slot 2 (38% in C-2 bull regime)
         pct = resolve_guardrail_max_allocation_pct("UNKNOWN_CO", active_holdings=multi_lot_nvda, is_bull=True)
-        self.assertEqual(pct, 0.35)
+        self.assertEqual(pct, 0.38)
 
 
 class TestDashboardMsiPolarityFix(unittest.IsolatedAsyncioTestCase):
@@ -245,15 +245,15 @@ class TestDashboardMsiPolarityFix(unittest.IsolatedAsyncioTestCase):
 class TestOrderSchemasAndBuyTopPick(unittest.IsolatedAsyncioTestCase):
     def test_buy_order_schema_accepts_slot_rank_and_max_pct(self):
         """BuyOrder accepts optional slot_rank and max_single_asset_pct."""
-        bo = BuyOrder(ticker="NVDA", buy_price=100.0, qty=5.0, slot_rank=1, max_single_asset_pct=0.55)
+        bo = BuyOrder(ticker="NVDA", buy_price=100.0, qty=5.0, slot_rank=1, max_single_asset_pct=0.39)
         self.assertEqual(bo.slot_rank, 1)
-        self.assertEqual(bo.max_single_asset_pct, 0.55)
+        self.assertEqual(bo.max_single_asset_pct, 0.39)
 
     def test_broker_order_request_schema_accepts_slot_rank_and_max_pct(self):
         """BrokerOrderRequest accepts optional slot_rank and max_single_asset_pct."""
-        bor = BrokerOrderRequest(ticker="NVDA", price=100.0, qty=5, slot_rank=1, max_single_asset_pct=0.55)
+        bor = BrokerOrderRequest(ticker="NVDA", price=100.0, qty=5, slot_rank=1, max_single_asset_pct=0.39)
         self.assertEqual(bor.slot_rank, 1)
-        self.assertEqual(bor.max_single_asset_pct, 0.55)
+        self.assertEqual(bor.max_single_asset_pct, 0.39)
 
     @patch("al_sangmoo.domain.risk.order_guardrail.load_feed_snapshot", return_value=MOCK_BULL_FEED)
     async def test_buy_stock_slot1_without_explicit_params_succeeds(self, mock_feed):
@@ -261,33 +261,32 @@ class TestOrderSchemasAndBuyTopPick(unittest.IsolatedAsyncioTestCase):
         order = BuyOrder(
             ticker="DELL",
             buy_price=533.88,
-            quantity=7.0,
+            quantity=5.0,
             buy_date="2026-09-10"
         )
         mock_port = {"total_equity_usd": 7477.18, "holdings": []}
         with patch("al_sangmoo.interfaces.api.routers.portfolio.add_portfolio_buy", return_value=999), \
-             patch("al_sangmoo.interfaces.api.routers.portfolio.record_execution_log"), \
              patch("al_sangmoo.interfaces.api.routers.portfolio.hub.broadcast"), \
              patch("al_sangmoo.interfaces.api.routers.portfolio.get_live_portfolio", return_value=mock_port), \
              patch("al_sangmoo.interfaces.api.routers.portfolio.default_kis_broker.get_overseas_balance", return_value={"status": "success", "mode": "SIMULATED", "total_equity_usd": 7477.18, "holdings": []}), \
-             patch("al_sangmoo.interfaces.api.routers.portfolio.default_kis_broker.place_order", return_value={"status": "success", "order_id": "TEST-123", "message": "OK"}):
+             patch("al_sangmoo.interfaces.api.routers.portfolio.default_kis_broker.place_order", return_value={"status": "filled", "order_id": "TEST-123", "message": "OK"}):
             res = await buy_stock(order)
             self.assertEqual(res.get("status"), "success")
             self.assertEqual(res.get("id"), 999)
 
     @patch("al_sangmoo.domain.risk.order_guardrail.load_feed_snapshot", return_value=MOCK_BULL_FEED)
     async def test_buy_stock_slot1_combined_exposure_exceeds_cap_rejected(self, mock_feed):
-        """If existing holding + new buy exceeds 55% cap, buy_stock correctly rejects with HTTP 400."""
+        """If existing holding + new buy exceeds 39% cap, buy_stock correctly rejects with HTTP 400."""
         order = BuyOrder(
             ticker="DELL",
             buy_price=533.88,
-            quantity=7.0,
+            quantity=5.0,
             buy_date="2026-09-10"
         )
-        # Existing $2,500 + new $3,737 = $6,237 on $7,477 equity (83.4% > 55%)
+        # Existing $1,500 + new $2,669.40 = $4,169.40 on $7,477 equity (55.8% > 39%)
         mock_port = {
             "total_equity_usd": 7477.18,
-            "holdings": [{"ticker": "DELL", "quantity": 5.0, "current_value": 2500.0}]
+            "holdings": [{"ticker": "DELL", "quantity": 3.0, "current_value": 1500.0}]
         }
         with patch("al_sangmoo.interfaces.api.routers.portfolio.get_live_portfolio", return_value=mock_port), \
              patch("al_sangmoo.interfaces.api.routers.portfolio.default_kis_broker.get_overseas_balance", return_value={"status": "success", "mode": "SIMULATED", "total_equity_usd": 7477.18, "holdings": []}):

@@ -4,32 +4,32 @@
   "url": "https://www.youtube.com/watch?v=68t7GAFXnP8",
   "macro_gauges": {
     "us10y": {
-      "val": 4.639,
-      "delta": "-0.07%p",
+      "val": 4.961,
+      "delta": "-0.05%p",
       "status": "CRITICAL_BURDEN",
       "label": "미국채 10년물"
     },
     "dxy": {
-      "val": 99.02,
-      "delta": "+0.1%",
-      "status": "SOFT_DOLLAR",
+      "val": 100.1,
+      "delta": "-0.2%",
+      "status": "NEUTRAL",
       "label": "달러 인덱스(DXY)"
     },
     "vix": {
-      "val": 15.45,
-      "delta": "-2.5%",
+      "val": 15.49,
+      "delta": "-12.5%",
       "status": "CALM",
       "label": "VIX 공포지수"
     },
     "wti": {
-      "val": 80.73,
-      "delta": "-2.0%",
-      "status": "ELEVATED",
+      "val": 99.74,
+      "delta": "-2.6%",
+      "status": "INFLATION_SHOCK",
       "label": "WTI 국제유가"
     },
     "gold": {
-      "val": 4685.6,
-      "delta": "+1.0%",
+      "val": 4414.1,
+      "delta": "+0.6%",
       "status": "STABLE",
       "label": "국제 금시세"
     }

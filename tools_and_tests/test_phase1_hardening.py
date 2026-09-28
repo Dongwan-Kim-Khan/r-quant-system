@@ -107,38 +107,42 @@ def test_atomic_json_persistence():
 
 def test_api_endpoints_integrity():
     print("\n[Test 3] Verifying API Endpoint Functionality & Contract Stability...")
+    from unittest.mock import patch
     
     async def run_api_tests():
-        # 1. Reset portfolio in test DB
-        res = await reset_portfolio()
-        assert res["status"] == "success"
-        print("  - POST /api/portfolio/reset handler: OK")
-        
-        # 2. Buy order (with custom price and fractional shares)
-        buy_payload = BuyOrder(ticker="AMZN", buy_price=258.50, quantity=1.5)
-        buy_res = await buy_stock(buy_payload)
-        pos_id = buy_res["id"]
-        assert buy_res["status"] == "success"
-        print(f"  - POST /api/portfolio/buy handler (AMZN 1.5 shares @ $258.50): Position #{pos_id} OK")
-        
-        # 3. Get portfolio
-        p_data = get_portfolio()
-        assert len(p_data["holdings"]) == 1
-        assert p_data["holdings"][0]["ticker"] == "AMZN"
-        assert p_data["holdings"][0]["quantity"] == 1.5
-        print("  - GET /api/portfolio handler: Verified 1.5 shares of AMZN")
-        
-        # 4. Sell order
-        sell_payload = SellOrder(sell_price=270.00, reason="TEST_TP")
-        sell_res = await sell_stock(position_id=pos_id, order=sell_payload)
-        assert sell_res["status"] == "success"
-        print(f"  - POST /api/portfolio/sell/{pos_id} handler: OK")
-        
-        # 5. Recommendations matrix
-        m_data = get_recommendation_matrix()
-        assert isinstance(m_data, list)
-        print("  - GET /api/recommendations/matrix handler: OK")
-        print("  -> PASSED: All REST endpoints executed with 0 runtime errors.")
+        with patch("al_sangmoo.interfaces.api.routers.portfolio.default_kis_broker.place_order", return_value={"status": "filled", "order_id": "TEST-PHASE1", "message": "OK"}), \
+             patch("al_sangmoo.interfaces.api.routers.portfolio.default_kis_broker.get_overseas_balance", return_value={"status": "success", "mode": "SIMULATED", "total_equity_usd": 100_000.0, "holdings": []}), \
+             patch("al_sangmoo.domain.risk.order_guardrail.load_feed_snapshot", return_value={"macro": {"msi_score": 50.0, "macro_climate": {"msi_score": 50.0, "macro_stance": "NEUTRAL"}, "is_bull_regime": True}}):
+            # 1. Reset portfolio in test DB
+            res = await reset_portfolio()
+            assert res["status"] == "success"
+            print("  - POST /api/portfolio/reset handler: OK")
+            
+            # 2. Buy order (with custom price and fractional shares)
+            buy_payload = BuyOrder(ticker="AMZN", buy_price=258.50, quantity=1.5)
+            buy_res = await buy_stock(buy_payload)
+            pos_id = buy_res["id"]
+            assert buy_res["status"] == "success"
+            print(f"  - POST /api/portfolio/buy handler (AMZN 1.5 shares @ $258.50): Position #{pos_id} OK")
+            
+            # 3. Get portfolio
+            p_data = get_portfolio()
+            assert len(p_data["holdings"]) == 1
+            assert p_data["holdings"][0]["ticker"] == "AMZN"
+            assert p_data["holdings"][0]["quantity"] == 1.5
+            print("  - GET /api/portfolio handler: Verified 1.5 shares of AMZN")
+            
+            # 4. Sell order
+            sell_payload = SellOrder(sell_price=270.00, reason="TEST_TP")
+            sell_res = await sell_stock(position_id=pos_id, order=sell_payload)
+            assert sell_res["status"] == "success"
+            print(f"  - POST /api/portfolio/sell/{pos_id} handler: OK")
+            
+            # 5. Recommendations matrix
+            m_data = get_recommendation_matrix()
+            assert isinstance(m_data, list)
+            print("  - GET /api/recommendations/matrix handler: OK")
+            print("  -> PASSED: All REST endpoints executed with 0 runtime errors.")
 
     asyncio.run(run_api_tests())
 

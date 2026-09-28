@@ -6,6 +6,7 @@ import asyncio
 from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -21,6 +22,7 @@ from al_sangmoo.infrastructure.persistence import (
 from al_sangmoo.infrastructure.brokers.kis_broker import default_kis_broker
 from al_sangmoo.domain.risk import exit_cooldown
 from al_sangmoo.domain.risk.cash_proxy import is_proxy_ticker
+from al_sangmoo.domain.risk.exchange_router import resolve_order_exchange
 from al_sangmoo.domain.risk.order_guardrail import validate_pre_trade_guardrail, ORDER_MUTEX
 from al_sangmoo.domain.reconciliation import check_sync
 from al_sangmoo.infrastructure.idempotent_order import is_broker_order_ack
@@ -39,7 +41,7 @@ class BuyOrder(BaseModel):
     qty: Optional[float] = Field(default=1.0, gt=0, le=1_000_000.0)
     quantity: Optional[float] = Field(default=None, gt=0, le=1_000_000.0)
     buy_date: Optional[str] = Field(default=None)
-    exchange: Optional[str] = Field(default="NASD")
+    exchange: Optional[str] = Field(default=None)
     slot_rank: Optional[int] = Field(default=None, ge=1, le=5)
     max_single_asset_pct: Optional[float] = Field(default=None, gt=0.0, le=2.0)
 
@@ -65,7 +67,7 @@ class SellOrder(BaseModel):
     sell_price: float = Field(..., gt=0, le=10_000_000.0)
     sell_date: Optional[str] = Field(default=None)
     reason: str = Field(default="MANUAL_SELL", max_length=100)
-    exchange: Optional[str] = Field(default="NASD")
+    exchange: Optional[str] = Field(default=None)
 
     @field_validator("sell_date")
     @classmethod
@@ -88,12 +90,30 @@ class SellOrder(BaseModel):
 @router.get("")
 def get_portfolio(reconcile: bool = False):
     """Returns active portfolio holdings and total account equity directly from SQLite SSOT (CQRS Pure Read)."""
-    if reconcile and default_kis_broker.is_configured():
-        try:
-            check_sync(auto_calibrate=True)
-        except Exception as e:
-            logger.warning(f"Reconciliation during get_portfolio failed: {e}")
-    return get_live_portfolio()
+    if not reconcile:
+        return get_live_portfolio()
+
+    if not default_kis_broker.is_configured():
+        port = get_live_portfolio()
+        port["reconcile"] = {"status": "skipped", "message": "브로커 미설정"}
+        return port
+
+    rec_status = "success"
+    rec_msg = "대조 완료"
+    try:
+        report = check_sync(auto_calibrate=True)
+        if isinstance(report, dict) and report.get("status") != "success":
+            rec_status = "error"
+            rec_msg = report.get("message", "대조 실패")
+            logger.warning("Reconciliation during get_portfolio reported error: %s", rec_msg)
+    except Exception as e:
+        logger.exception("Reconciliation during get_portfolio raised exception: %s", e)
+        rec_status = "error"
+        rec_msg = "대조 중 오류"
+
+    port = get_live_portfolio()
+    port["reconcile"] = {"status": rec_status, "message": rec_msg}
+    return port
 
 @router.post("/sync", dependencies=[Depends(require_mutating_auth)])
 async def sync_portfolio_with_broker(auto_calibrate: bool = True):
@@ -104,6 +124,19 @@ async def sync_portfolio_with_broker(auto_calibrate: bool = True):
     audit_report = check_sync(auto_calibrate=auto_calibrate)
     p_data = get_live_portfolio()
     await hub.broadcast("portfolio_update", p_data)
+
+    if not isinstance(audit_report, dict) or audit_report.get("status") != "success":
+        err_msg = (audit_report.get("message") if isinstance(audit_report, dict) else None) or "대조 실패"
+        logger.warning("Portfolio sync failed: %s", err_msg)
+        return JSONResponse(
+            status_code=502,
+            content={
+                "detail": err_msg,
+                "report": audit_report,
+                "portfolio": p_data
+            }
+        )
+
     return {
         "status": "success",
         "report": audit_report,
@@ -161,6 +194,10 @@ async def buy_stock(order: BuyOrder):
             raise HTTPException(status_code=400, detail=f"사전 리스크 한도 초과: {eval_res['reason']}")
 
         # 2. If KIS Broker is configured, submit real/paper order to broker
+        target_exchange = (order.exchange or "").strip().upper()
+        if target_exchange not in ("NASD", "NYSE", "AMEX"):
+            target_exchange = resolve_order_exchange(ticker_clean)
+
         if default_kis_broker.is_configured():
             # Submit order to KIS
             broker_res = await asyncio.to_thread(
@@ -170,7 +207,7 @@ async def buy_stock(order: BuyOrder):
                 qty=int(qty) if qty >= 1 else 1,
                 price=price,
                 order_type="00",
-                exchange=order.exchange or "NASD"
+                exchange=target_exchange
             )
             if not is_broker_order_ack(broker_res.get("status")):
                 reason = broker_res.get("reason", "증권사 주문 전송 실패")
@@ -249,6 +286,14 @@ async def sell_stock(position_id: int, order: SellOrder):
         broker_msg = None
 
         # 2. If KIS Broker is configured, submit sell order to broker
+        target_exchange = (order.exchange or "").strip().upper()
+        if target_exchange not in ("NASD", "NYSE", "AMEX"):
+            holding_ex = str(holding_to_sell.get("exchange") or holding_to_sell.get("ovrs_excg_cd") or "").strip().upper()
+            if holding_ex in ("NASD", "NYSE", "AMEX"):
+                target_exchange = holding_ex
+            else:
+                target_exchange = resolve_order_exchange(ticker_clean)
+
         if default_kis_broker.is_configured():
             broker_res = await asyncio.to_thread(
                 default_kis_broker.place_order,
@@ -257,7 +302,7 @@ async def sell_stock(position_id: int, order: SellOrder):
                 qty=qty,
                 price=price,
                 order_type="00",
-                exchange=order.exchange or "NASD"
+                exchange=target_exchange
             )
             if not is_broker_order_ack(broker_res.get("status")):
                 reason = broker_res.get("reason", "증권사 매도 주문 전송 실패")
@@ -345,7 +390,7 @@ async def buy_top_pick():
         quantity=float(sizing["shares"]),
         buy_date=datetime.now().strftime("%Y-%m-%d"),
         slot_rank=int(sizing.get("slot_rank", 1)),
-        max_single_asset_pct=0.55
+        max_single_asset_pct=0.39,
     )
     return await buy_stock(order)
 
@@ -355,6 +400,7 @@ async def buy_top_pick():
 async def reset_portfolio():
     """Resets simulated portfolio holdings."""
     reset_all_holdings()
+    exit_cooldown.clear()
     p_data = get_live_portfolio()
     await hub.broadcast("portfolio_update", p_data)
     return {"status": "success", "message": "포트폴리오 계좌가 성공적으로 초기화(비우기)되었습니다."}

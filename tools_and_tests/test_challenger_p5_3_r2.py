@@ -8,6 +8,7 @@ import threading
 import unittest
 from unittest.mock import patch
 
+import tempfile
 import numpy as np
 import pandas as pd
 
@@ -150,7 +151,8 @@ class TestChallengerEmpiricalVerification(unittest.TestCase):
         def run_dashboard_task(thread_id):
             try:
                 with patch('yfinance.download', side_effect=mock_download):
-                    res = generate_dashboard_feed.build_dashboard_data()
+                    tmp_out = os.path.join(tempfile.gettempdir(), f"test_dash_{thread_id}.json")
+                    res = generate_dashboard_feed.build_dashboard_data(output_file=tmp_out)
                     with lock:
                         payloads.append((thread_id, res))
             except Exception as e:
@@ -304,8 +306,8 @@ class TestChallengerEmpiricalVerification(unittest.TestCase):
             
             for item in dual_1 + s1_1 + s2_1:
                 price = item['price']
-                expected_target = round(price * 1.15, 2)
-                expected_stop = round(price * 0.95, 2)
+                expected_target = round(price * 1.18, 2)
+                expected_stop = round(price * 0.93, 2)
                 self.assertAlmostEqual(item['target_price'], expected_target, places=2)
                 self.assertAlmostEqual(item['stop_price'], expected_stop, places=2)
 

@@ -2,25 +2,30 @@
 .env
 *.env
 .env.*
+!.env.example
 
 # Python caches
 __pycache__/
 *.pyc
 *.pyo
 
-# Local Database
+# Local Database & Scratch DBs
 *.db-journal
 *.db-wal
 *.db-shm
 test_*.db*
 backups/*.db
+data/*.db
+*.pkl
+
+# Agentic / Superpowers local workspaces
+.superpowers/
+
+# Data Caches & Tokens
 *.vtt
 node_modules/
-# KIS OAuth Tokens & Data Caches
 .kis_token_*.json
 data/.kis_token_*.json
 data/charts/*.json
 data/charts/
 *.log
-
-

@@ -13,27 +13,30 @@ const { chromium } = require('d:/코딩/R/.agents/skills/playwright-skill/node_m
     const fourHoldings = {
         total_equity_usd: 10000,
         holdings: [
-            { ticker: 'DELL', current_price: 540, buy_price: 530, quantity: 5, pnl_pct: 1.89 },
-            { ticker: 'CVX', current_price: 215, buy_price: 200, quantity: 10, pnl_pct: 7.5 },
-            { ticker: 'NVDA', current_price: 130, buy_price: 125, quantity: 15, pnl_pct: 4.0 },
-            { ticker: 'QLD', current_price: 90, buy_price: 90, quantity: 20, pnl_pct: 0.0 }
+            { ticker: 'DELL', current_price: 540, buy_price: 530, quantity: 5, pnl_pct: 1.89, id: 1 },
+            { ticker: 'CVX', current_price: 215, buy_price: 200, quantity: 10, pnl_pct: 7.5, id: 2 },
+            { ticker: 'NVDA', current_price: 130, buy_price: 125, quantity: 15, pnl_pct: 4.0, id: 3 },
+            { ticker: 'QLD', current_price: 90, buy_price: 90, quantity: 20, pnl_pct: 0.0, id: 4 }
         ]
     };
     await page.evaluate((port) => {
+        window.TerminalUI.renderPortfolio(port);
         window.TerminalUI.renderSlotVisualizer(port, true, null, null);
     }, fourHoldings);
     await page.waitForTimeout(200);
 
-    const slotCards4 = await page.$$eval('#slotVisualizerGrid .slot-card', els => els.map(e => {
-        const strong = e.querySelector('strong');
-        return strong ? strong.textContent.trim() : null;
-    }));
-    console.log('[EDGE TEST] 4 Holdings rendered cards:', slotCards4);
-    if (slotCards4.length !== 4 || !slotCards4.includes('QLD') || !slotCards4.includes('NVDA')) {
-        console.error('[FAIL] 4th holding was dropped!', slotCards4);
+    const tableTickers4 = await page.$$eval('#portfolioTableBody tr td strong.ticker-pill', els => els.map(e => e.textContent.trim()));
+    const slotCards4 = await page.$$eval('#slotVisualizerGrid .slot-card', els => els.length);
+    console.log('[EDGE TEST] 4 Holdings table:', tableTickers4, 'slot cards:', slotCards4);
+    if (tableTickers4.length !== 4 || !tableTickers4.includes('QLD') || !tableTickers4.includes('NVDA')) {
+        console.error('[FAIL] 4th holding was dropped!', tableTickers4);
         process.exit(1);
     }
-    console.log('[PASS] All 4 holdings (including QLD and 3rd satellite) rendered without dropping!');
+    if (slotCards4 !== 0) {
+        console.error('[FAIL] Slot cards must not duplicate the holdings table, got', slotCards4);
+        process.exit(1);
+    }
+    console.log('[PASS] All 4 holdings live in the table only (QLD included, no slot-card clone)!');
 
     const summary4 = await page.$eval('#slotSummaryText', el => el.textContent.trim());
     console.log('[EDGE TEST] 4 Holdings slot summary:', summary4);
@@ -50,13 +53,14 @@ const { chromium } = require('d:/코딩/R/.agents/skills/playwright-skill/node_m
         free_cash_usd: 2000,
         cash_ratio_pct: 20,
         holdings: [
-            { ticker: 'NVDA', current_price: 130, buy_price: 125, quantity: 15, pnl_pct: 4.0 },
-            { ticker: 'AMZN', current_price: 180, buy_price: 170, quantity: 10, pnl_pct: 5.9 },
-            { ticker: 'QQQ', current_price: 480, buy_price: 480, quantity: 4, pnl_pct: 0.0 }
+            { ticker: 'NVDA', current_price: 130, buy_price: 125, quantity: 15, pnl_pct: 4.0, id: 11 },
+            { ticker: 'AMZN', current_price: 180, buy_price: 170, quantity: 10, pnl_pct: 5.9, id: 12 },
+            { ticker: 'QQQ', current_price: 480, buy_price: 480, quantity: 4, pnl_pct: 0.0, id: 13 }
         ]
     };
     await page.evaluate((port) => {
         window.TerminalUI.latestPortfolioData = port;
+        window.TerminalUI.renderPortfolio(port);
         window.TerminalUI.renderSlotVisualizer(port, true, null, null);
         window.TerminalUI.renderKPIs(null, port, true);
     }, twoSatsPlusQqq);
@@ -73,42 +77,39 @@ const { chromium } = require('d:/코딩/R/.agents/skills/playwright-skill/node_m
         console.error('[FAIL] KPI available slots should ignore QQQ. Expected 1 SLOT READY, got:', kpiSlots);
         process.exit(1);
     }
-    const cards2p = await page.$$eval('#slotVisualizerGrid .slot-card', els => els.map(e => {
-        const strong = e.querySelector('strong');
-        const badge = e.querySelector('span[style*="border-radius"]');
-        return { ticker: strong ? strong.textContent.trim() : null, badge: badge ? badge.textContent.trim() : null };
-    }));
-    if (!cards2p.some(c => c.ticker === 'QQQ' && c.badge === '[CASH PROXY]')) {
-        console.error('[FAIL] QQQ cash proxy card missing from grid!', cards2p);
+    const table2p = await page.$$eval('#portfolioTableBody tr', els => els.map(e => ({
+        ticker: (e.querySelector('strong.ticker-pill') || {}).textContent || '',
+        proxy: e.textContent.includes('PROXY'),
+    })));
+    if (!table2p.some(c => c.ticker.trim() === 'QQQ' && c.proxy)) {
+        console.error('[FAIL] QQQ cash proxy missing from holdings table!', table2p);
         process.exit(1);
     }
-    console.log('[PASS] 2 sats + QQQ → 2 / 3 SLOTS and 1 SLOT READY; QQQ still rendered as [CASH PROXY]!');
+    console.log('[PASS] 2 sats + QQQ → 2 / 3 SLOTS and 1 SLOT READY; QQQ marked PROXY in the table!');
 
     // Test Scenario 2: Bear Regime with 3 holdings (2 sats + 1 proxy)
     console.log('[EDGE TEST] Evaluating Bear Regime scenario (25/25 slots + QQQ)...');
     const bearHoldings = {
         total_equity_usd: 8000,
         holdings: [
-            { ticker: 'DELL', current_price: 540, buy_price: 530, quantity: 3, pnl_pct: 1.89 },
-            { ticker: 'CVX', current_price: 215, buy_price: 200, quantity: 5, pnl_pct: 7.5 },
-            { ticker: 'QQQ', current_price: 480, buy_price: 480, quantity: 8, pnl_pct: 0.0 }
+            { ticker: 'DELL', current_price: 540, buy_price: 530, quantity: 3, pnl_pct: 1.89, id: 21 },
+            { ticker: 'CVX', current_price: 215, buy_price: 200, quantity: 5, pnl_pct: 7.5, id: 22 },
+            { ticker: 'QQQ', current_price: 480, buy_price: 480, quantity: 8, pnl_pct: 0.0, id: 23 }
         ]
     };
     await page.evaluate((port) => {
+        window.TerminalUI.renderPortfolio(port);
         window.TerminalUI.renderSlotVisualizer(port, false, null, null);
     }, bearHoldings);
     await page.waitForTimeout(200);
 
-    const slotCardsBear = await page.$$eval('#slotVisualizerGrid .slot-card', els => els.map(e => {
-        const strong = e.querySelector('strong');
-        return strong ? strong.textContent.trim() : null;
-    }));
-    console.log('[EDGE TEST] Bear Regime rendered cards:', slotCardsBear);
-    if (!slotCardsBear.includes('QQQ')) {
-        console.error('[FAIL] QQQ Cash Proxy was dropped in Bear Regime!', slotCardsBear);
+    const tableBear = await page.$$eval('#portfolioTableBody tr td strong.ticker-pill', els => els.map(e => e.textContent.trim()));
+    console.log('[EDGE TEST] Bear Regime table:', tableBear);
+    if (!tableBear.includes('QQQ')) {
+        console.error('[FAIL] QQQ Cash Proxy was dropped in Bear Regime!', tableBear);
         process.exit(1);
     }
-    console.log('[PASS] QQQ Cash Proxy correctly rendered in Bear Regime!');
+    console.log('[PASS] QQQ Cash Proxy correctly rendered in Bear Regime table!');
 
     const summaryBear = await page.$eval('#slotSummaryText', el => el.textContent.trim());
     console.log('[EDGE TEST] Bear Regime slot summary:', summaryBear);
@@ -122,17 +123,23 @@ const { chromium } = require('d:/코딩/R/.agents/skills/playwright-skill/node_m
     console.log('[EDGE TEST] Evaluating Empty Portfolio (0 holdings)...');
     const emptyPort = { total_equity_usd: 7500, holdings: [] };
     await page.evaluate((port) => {
+        window.TerminalUI.renderPortfolio(port);
         window.TerminalUI.renderSlotVisualizer(port, true, null, null);
     }, emptyPort);
     await page.waitForTimeout(200);
 
-    const emptySlots = await page.$$eval('#slotVisualizerGrid .slot-card.empty', els => els.length);
-    console.log('[EDGE TEST] Empty slots rendered:', emptySlots);
-    if (emptySlots !== 3) {
-        console.error('[FAIL] Expected 3 empty slots, got ' + emptySlots);
+    const emptySlots = await page.$$eval('#slotVisualizerGrid .slot-card', els => els.length);
+    const emptyTable = await page.$eval('#portfolioTableBody', el => el.textContent);
+    console.log('[EDGE TEST] Empty slot cards:', emptySlots);
+    if (emptySlots !== 0) {
+        console.error('[FAIL] Empty portfolio must not spawn slot-card clones, got ' + emptySlots);
         process.exit(1);
     }
-    console.log('[PASS] 3 empty slots rendered correctly for empty portfolio!');
+    if (!/No active holdings/i.test(emptyTable)) {
+        console.error('[FAIL] Empty portfolio table should say no holdings, got:', emptyTable);
+        process.exit(1);
+    }
+    console.log('[PASS] Empty portfolio is one table empty-state, no slot-card clones!');
 
     const summaryEmpty = await page.$eval('#slotSummaryText', el => el.textContent.trim());
     if (!summaryEmpty.startsWith('0 / 3 SLOTS')) {

@@ -491,11 +491,11 @@ class TestAdversarialQuantScoringAndClassification(unittest.TestCase):
             self.assertTrue(set(t1_tickers).isdisjoint(set(t2_tickers)))
             self.assertTrue(set(t1_tickers).isdisjoint(set(t3_tickers)))
 
-            # Assert strict -5% stop and +15% target invariants on all picks
+            # Assert strict -7% stop and +18% target invariants on all picks
             for pick in t1 + t2 + t3:
                 price = pick["price"]
-                self.assertAlmostEqual(pick["stop_price"], round(price * 0.95, 2), places=2)
-                self.assertAlmostEqual(pick["target_price"], round(price * 1.15, 2), places=2)
+                self.assertAlmostEqual(pick["stop_price"], round(price * 0.93, 2), places=2)
+                self.assertAlmostEqual(pick["target_price"], round(price * 1.18, 2), places=2)
 
         print("  -> PASSED: 50 iterations verified 100% deterministic, disjoint 3-Tier partitions.")
 

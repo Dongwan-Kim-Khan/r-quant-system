@@ -111,20 +111,87 @@ def session_date_for_ticker(ticker_sym: str, now: Optional[datetime] = None) -> 
     return us_equity_session_date(now)
 
 
+def is_us_half_day(dt: Optional[date | datetime] = None) -> bool:
+    """
+    Returns True if dt is a recognized US equity half-day session (early close at 13:00 ET).
+    Standard NYSE/Nasdaq scheduled early-close days:
+      1. Day after Thanksgiving (Black Friday, 4th Friday of November).
+      2. Christmas Eve (Dec 24) when falling on Monday-Thursday.
+      3. July 3rd when falling on a weekday preceding July 4th holiday (Tuesday-Friday).
+    """
+    if dt is None:
+        d = now_us_eastern().date()
+    elif isinstance(dt, datetime):
+        d = now_us_eastern(dt).date()
+    else:
+        d = dt
+
+    if d.weekday() >= 5:
+        return False
+
+    year = d.year
+    # 1. Day after Thanksgiving (4th Friday of November)
+    thanksgiving = _nth_weekday(year, 11, 3, 4)  # 4th Thursday (weekday=3)
+    black_friday = thanksgiving + timedelta(days=1)
+    if d == black_friday:
+        return True
+
+    # 2. Christmas Eve (Dec 24) when Mon-Thu
+    if d.month == 12 and d.day == 24 and d.weekday() < 4:
+        return True
+
+    # 3. July 3rd when Mon-Thu and July 4 is Tue-Fri
+    if d.month == 7 and d.day == 3 and d.weekday() < 4:
+        july4_weekday = date(year, 7, 4).weekday()
+        if 1 <= july4_weekday <= 4:
+            return True
+
+    return False
+
+
+def get_us_market_close_minute(now: Optional[datetime] = None) -> int:
+    """Returns market close minute of the day in ET (780 for 13:00, 960 for 16:00)."""
+    now_ny = now_us_eastern(now)
+    return (13 * 60) if is_us_half_day(now_ny.date()) else (16 * 60)
+
+
 def is_us_regular_hours(now: Optional[datetime] = None) -> bool:
     now_ny = now_us_eastern(now)
     if now_ny.weekday() >= 5:
         return False
-    mins = now_ny.hour * 60 + now_ny.minute
-    return (9 * 60 + 30) <= mins <= (16 * 60)
+    secs = (now_ny.hour * 60 + now_ny.minute) * 60 + now_ny.second
+    close_secs = get_us_market_close_minute(now_ny) * 60
+    open_secs = (9 * 60 + 30) * 60
+    return open_secs <= secs <= close_secs
+
+
+def is_us_eod_window(now: Optional[datetime] = None, window_minutes: int = 10) -> bool:
+    """
+    Returns True if current US Eastern time is within the final session window before close.
+    - Regular close is 16:00 ET -> window is 15:50 ~ 16:00 ET (for 10 min) or 15:45 ~ 16:00 (for 15 min).
+    - Half-day close is 13:00 ET -> window is 12:50 ~ 13:00 ET.
+    - Inclusive through 16:00:00 ET, exclusive after (16:00:05 ET is post-close).
+    Automatically DST-aware via America/New_York:
+      EDT (summer): 04:50 ~ 05:00 KST
+      EST (winter): 05:50 ~ 06:00 KST
+    """
+    now_ny = now_us_eastern(now)
+    if now_ny.weekday() >= 5:
+        return False
+    secs = (now_ny.hour * 60 + now_ny.minute) * 60 + now_ny.second
+    close_secs = get_us_market_close_minute(now_ny) * 60
+    start_secs = close_secs - max(1, int(window_minutes)) * 60
+    return start_secs <= secs <= close_secs
 
 
 def is_kr_regular_hours(now: Optional[datetime] = None) -> bool:
     now_kr = now_kst(now)
     if now_kr.weekday() >= 5:
         return False
-    mins = now_kr.hour * 60 + now_kr.minute
-    return (9 * 60) <= mins <= (15 * 60 + 30)
+    secs = (now_kr.hour * 60 + now_kr.minute) * 60 + now_kr.second
+    open_secs = (9 * 60) * 60
+    close_secs = (15 * 60 + 30) * 60
+    return open_secs <= secs <= close_secs
 
 
 def is_regular_hours_for_ticker(ticker_sym: str, now: Optional[datetime] = None) -> bool:
@@ -132,3 +199,18 @@ def is_regular_hours_for_ticker(ticker_sym: str, now: Optional[datetime] = None)
     if sym.endswith(".KS") or sym.endswith(".KQ"):
         return is_kr_regular_hours(now)
     return is_us_regular_hours(now)
+
+
+def is_eod_window_for_ticker(ticker_sym: str, now: Optional[datetime] = None, window_minutes: int = 10) -> bool:
+    """Returns True if the asset's primary exchange is within its final closing window."""
+    sym = str(ticker_sym or "").upper()
+    if sym.endswith(".KS") or sym.endswith(".KQ"):
+        now_kr = now_kst(now)
+        if now_kr.weekday() >= 5:
+            return False
+        secs = (now_kr.hour * 60 + now_kr.minute) * 60 + now_kr.second
+        close_secs = (15 * 60 + 30) * 60
+        start_secs = close_secs - max(1, int(window_minutes)) * 60
+        return start_secs <= secs <= close_secs
+    return is_us_eod_window(now, window_minutes)
+

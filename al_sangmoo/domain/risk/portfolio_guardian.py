@@ -1,13 +1,15 @@
 """
 AL-SANGMOO QUANT TERMINAL: PORTFOLIO GUARDIAN DAEMON
-Background auto-execution of C1-M2 exits:
-  1. -5.0% hard stop (full exit)
-  2. 26-day kijun close breakdown (full exit)
-  3. Uncapped trailing after +15% peak gain: max(Kijun-26, peak - 2.5*ATR(14))
-  4. On satellite exit: redeploy proceeds into QQQ cash-proxy (+ QLD if 1.5x regime)
-  5. QQQ/QLD cash-proxy sleeve is NOT subject to satellite exits (−5%/kijun/trailing);
-     sleeve alignment (park / delever QLD→QQQ) runs via Cash Proxy overlay, not Guardian exits.
-No 50% partial take-profit.
+Background auto-execution of C-2 exits (Dual-Clock Architecture):
+  1. Intraday RTH: Emergency Stop (-10.0%) only.
+  2. EOD Closing Window (15:50-16:00 ET): EOD Hard Stop (-7.0% close/last).
+  3. Uncapped trailing after +18% peak gain: max(Kijun-26, peak - 3.0*ATR(14)).
+  4. Standalone kijun breakdown exit: permanently disabled.
+  5. On satellite exit: redeploy proceeds into QQQ cash-proxy (+ QLD if 1.5x regime).
+  6. QQQ/QLD cash-proxy sleeve is NOT subject to satellite exits (-7%/-10%/trailing);
+     sleeve alignment runs via Cash Proxy overlay, not Guardian exits.
+  7. Atomic order execution serialized via ORDER_MUTEX and 3.5 TPS limiter.
+No partial take-profit.
 """
 
 import asyncio
@@ -16,7 +18,13 @@ import time
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 
-from al_sangmoo.core.market_time import is_regular_hours_for_ticker
+logger = logging.getLogger(__name__)
+
+from al_sangmoo.core.market_time import (
+    is_regular_hours_for_ticker,
+    is_eod_window_for_ticker,
+)
+from al_sangmoo.domain.risk.order_guardrail import ORDER_MUTEX
 from al_sangmoo.infrastructure.persistence import (
     claim_satellite_order_intent,
     claim_proxy_order_intent,
@@ -26,6 +34,7 @@ from al_sangmoo.infrastructure.persistence import (
     get_live_portfolio,
     mark_proxy_order_submitted,
     mark_satellite_order_submitted,
+    record_execution_log,
     record_portfolio_sell,
     record_portfolio_ticker_sell_quantity,
     add_portfolio_buy,
@@ -38,11 +47,20 @@ from al_sangmoo.infrastructure.idempotent_order import (
 )
 from al_sangmoo.core.constants import (
     CASH_PROXY_TICKER,
+    EOD_HARD_STOP_PCT,
+    EMERGENCY_STOP_PCT,
+    HARD_STOP_PCT,
+    MAX_SLOTS_BEAR,
+    MAX_SLOTS_BULL,
+    TRAILING_ACTIVATE_PCT,
+    derive_eod_stop_price,
+    derive_emergency_stop_price,
     derive_stop_price,
     derive_target_price,
     derive_partial_tp_price,
 )
 from al_sangmoo.domain.risk import cash_proxy, exit_cooldown
+from al_sangmoo.domain.risk.exchange_router import resolve_order_exchange
 from al_sangmoo.domain.risk.trailing_stop import (
     ATR_TRAIL_MULT,
     HARD_STOP_PCT,
@@ -62,6 +80,31 @@ from al_sangmoo.domain.risk.macro_guardrail import evaluate_dynamic_leverage
 logger = logging.getLogger(__name__)
 
 
+def annotate_guardian_alert(act: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Drop duplicate PENDING noise; mark only broker/local fills as filled."""
+    if not isinstance(act, dict):
+        return None
+    action = str(act.get("action") or "").upper()
+    status = str(act.get("broker_status") or act.get("status") or "").upper()
+    if "PENDING" in action or "PERSISTENT_ORDER_PENDING" in status:
+        return None
+    submitted = (
+        "SUBMITTED" in action
+        or "AWAITING" in status
+        or status == "SUBMITTED"
+    )
+    payload = dict(act)
+    payload["filled"] = not submitted
+    if not payload.get("side"):
+        blob = f"{action} {status}"
+        payload["side"] = "BUY" if "BUY" in blob else "SELL"
+    if payload.get("shares") is None:
+        payload["shares"] = payload.get("qty") or payload.get("sold_quantity") or 0
+    if payload.get("price") is None:
+        payload["price"] = payload.get("sell_price") or payload.get("buy_price") or 0
+    return payload
+
+
 def is_market_open_for_orders(ticker_sym: str) -> bool:
     """
     Checks if regular financial market is currently OPEN to accept automated orders.
@@ -74,11 +117,14 @@ def is_market_open_for_orders(ticker_sym: str) -> bool:
 class PortfolioGuardian:
     """
     Autonomous background guardian monitoring active positions.
-    Enforces C1-M2 exits without user intervention:
-      1. -5% hard stop or 26D kijun close breakdown: 100% exit.
-      2. After +15% peak gain: uncapped trailing floor max(kijun, peak - 2.5*ATR).
-      3. Satellite exit proceeds immediately repark into QQQ cash proxy.
-      4. Cash-proxy ETFs (QQQ/QLD) skip satellite exit rules; sleeve rebalance is separate.
+    Enforces C-2 dual-clock exits without user intervention:
+      1. Intraday RTH loop: Emergency Stop (-10.0%) only.
+      2. EOD closing window (15:50-16:00 ET): EOD Hard Stop (-7.0% close/last).
+      3. After +18% peak gain: uncapped trailing floor max(kijun, peak - 3.0*ATR).
+      4. Standalone kijun breakdown exit: permanently disabled.
+      5. Satellite exit proceeds immediately repark into QQQ cash proxy.
+      6. Cash-proxy ETFs (QQQ/QLD) skip satellite exit rules; sleeve rebalance is separate.
+      7. All order execution synchronized via ORDER_MUTEX.
     """
 
     def __init__(self, check_interval_seconds: int = 10):
@@ -123,13 +169,16 @@ class PortfolioGuardian:
             "recent_actions": self.last_actions[-10:],
             "rules": {
                 "stop_loss_pct": -HARD_STOP_PCT,
+                "eod_stop_loss_pct": -EOD_HARD_STOP_PCT,
+                "emergency_stop_pct": -EMERGENCY_STOP_PCT,
+                "emergency_stop_loss_pct": -EMERGENCY_STOP_PCT,
                 "trailing_activate_pct": TRAILING_ACTIVATE_PCT,
                 "atr_multiplier": ATR_TRAIL_MULT,
                 "partial_tp_ratio": 0.0,
                 "uncapped_trailing": True,
-                "kijun_break_check": True,
+                "kijun_break_check": False,
                 "cash_proxy": CASH_PROXY_TICKER,
-                "engine": "C1-M2",
+                "engine": "C-2",
             }
         }
 
@@ -161,21 +210,27 @@ class PortfolioGuardian:
     async def check_and_execute_guardian_rules(self) -> Dict[str, Any]:
         """
         Scans active SQLite positions, updates prices, and executes KIS full-exit
-        orders for hard stop, kijun breakdown, or uncapped trailing TP.
+        orders under C-2 dual-clock rules (Intraday Emergency -10%, EOD Hard -7%, Trailing TP).
+        Execution is atomic and serialized via ORDER_MUTEX.
         """
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.last_check_time = now_str
 
-        res = await asyncio.to_thread(self._sync_check_and_execute_guardian_rules)
+        async with ORDER_MUTEX:
+            res = await asyncio.to_thread(self._sync_check_and_execute_guardian_rules)
 
         for act in res.get("actions", []):
             try:
-                await hub.broadcast(EventType.GUARDIAN_ALERT, act)
-                await hub.broadcast_delta(EventType.POSITION_DELTA, {
-                    "ticker": act.get("ticker"),
-                    "action": act.get("action") or "EXIT",
-                    "holding": None,
-                })
+                payload = annotate_guardian_alert(act)
+                if not payload:
+                    continue
+                await hub.broadcast(EventType.GUARDIAN_ALERT, payload)
+                if payload.get("filled"):
+                    await hub.broadcast_delta(EventType.POSITION_DELTA, {
+                        "ticker": payload.get("ticker"),
+                        "action": payload.get("action") or "EXIT",
+                        "holding": None,
+                    })
             except Exception:
                 pass
 
@@ -217,11 +272,23 @@ class PortfolioGuardian:
             cur_price = float(fallback or 0.0)
         return float(cur_price or 0.0)
 
-    def _persist_mark(self, holding_id: int, cur_price: float, total_qty: float, buy_price: float, decision: Dict[str, Any]) -> None:
+    def _persist_mark(
+        self,
+        holding_id: int,
+        cur_price: float,
+        total_qty: float,
+        buy_price: float,
+        decision: Dict[str, Any],
+        existing_stop_price: Optional[float] = None,
+    ) -> None:
         pnl_pct = float(decision.get("pnl_pct") or 0.0)
         pnl_amt = (cur_price - buy_price) * total_qty
         cur_val = cur_price * total_qty
-        hard_stop_price = float(decision.get("hard_stop_price") or derive_stop_price(buy_price))
+        # Migration Rule: do NOT rewrite stop_loss_price on existing open positions
+        if existing_stop_price is not None and float(existing_stop_price) > 0:
+            hard_stop_price = float(existing_stop_price)
+        else:
+            hard_stop_price = float(decision.get("hard_stop_price") or derive_stop_price(buy_price))
         advice = format_holding_advice(decision, buy_price)
         try:
             with get_connection() as conn:
@@ -251,7 +318,7 @@ class PortfolioGuardian:
         """
         1. Query DB for active holdings.
         2. Sync live quote via KIS / yfinance.
-        3. Load 26D kijun + ATR(14) and enforce v2 full-exit rules.
+        3. Load 26D kijun + ATR(14) and enforce C-2 dual-clock exit rules.
         """
         now_ts = time.time()
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -317,6 +384,8 @@ class PortfolioGuardian:
                 float(snap.get("peak_from_hist") or 0.0),
                 float(snap.get("last_high") or 0.0),
             )
+            existing_stop = float(h.get("stop_loss_price") or 0.0)
+            is_eod = is_eod_window_for_ticker(ticker)
             decision = evaluate_guardian_exit(
                 buy_price=buy_price,
                 current_price=cur_price,
@@ -324,10 +393,19 @@ class PortfolioGuardian:
                 atr_14=float(snap.get("atr_14") or h.get("atr_14") or 0.0),
                 peak_high=peak_seed,
                 max_gain_pct=float(h.get("max_gain_pct") or 0.0),
+                is_eod_window=is_eod,
+                stop_loss_price=existing_stop,
             )
             pnl_pct = float(decision["pnl_pct"])
             # Always mark-to-market so the dashboard/DB show the latest price & PnL.
-            self._persist_mark(holding_id, cur_price, total_qty, buy_price, decision)
+            self._persist_mark(
+                holding_id,
+                cur_price,
+                total_qty,
+                buy_price,
+                decision,
+                existing_stop_price=existing_stop,
+            )
 
             # Cash proxy (QLD/QQQ): keep it marked, but the Guardian must NEVER
             # force-exit it. Dumping the parked proxy on a stop/kijun signal is the
@@ -354,7 +432,8 @@ class PortfolioGuardian:
                         continue
 
                     marketable_sell_price = round(cur_price * 0.995, 2)
-                    ex_cd = "NYSE" if ticker in ["CVX", "DELL", "JNJ", "XOM", "UNH", "PG", "JPM", "V", "MA", "LLY"] else "NASD"
+                    holding_ex = str(h.get("exchange") or h.get("ovrs_excg_cd") or "").strip().upper()
+                    ex_cd = holding_ex if holding_ex in ("NASD", "NYSE", "AMEX") else resolve_order_exchange(ticker)
                     client_order_id = make_client_order_id()
                     if not claim_satellite_order_intent(
                         ticker=ticker,
@@ -410,16 +489,40 @@ class PortfolioGuardian:
                                 str(order_id or ""),
                                 str(broker_res.get("client_order_id") or ""),
                             )
+                            try:
+                                record_execution_log(
+                                    ticker=ticker,
+                                    side="SELL",
+                                    quantity=float(sell_qty),
+                                    price=float(cur_price),
+                                    order_type="GUARDIAN_FORCED_EXIT",
+                                    status="SUBMITTED",
+                                    message=(
+                                        f"Guardian {action_type} submitted, awaiting fill: "
+                                        f"{action_reason}"
+                                    ),
+                                    order_id=str(order_id or ""),
+                                    timestamp=now_str,
+                                )
+                            except Exception as audit_err:
+                                logger.warning(
+                                    f"[Portfolio Guardian] SUBMITTED audit failed for {ticker}: {audit_err}"
+                                )
                             triggered_actions.append({
                                 "timestamp": now_str,
                                 "holding_id": holding_id,
                                 "ticker": ticker,
                                 "action": f"{action_type}_SUBMITTED",
+                                "side": "SELL",
+                                "qty": sell_qty,
                                 "sold_quantity": 0.0,
                                 "remaining_quantity": total_qty,
+                                "price": cur_price,
+                                "sell_price": cur_price,
                                 "order_id": order_id,
                                 "broker_status": broker_status,
                                 "reason": action_reason,
+                                "filled": False,
                             })
                             self.last_actions.append(triggered_actions[-1])
                             continue
@@ -489,6 +592,8 @@ class PortfolioGuardian:
                 "order_id": order_id,
                 "broker_status": broker_status,
                 "reason": action_reason,
+                "side": "SELL",
+                "filled": True,
             }
             triggered_actions.append(action_record)
             self.last_actions.append(action_record)
@@ -571,7 +676,15 @@ class PortfolioGuardian:
 
         leverage_on = self._current_leverage_mode()
         qqq_px = self._fetch_etf_price(CASH_PROXY_TICKER)
-        qld_px = self._fetch_etf_price("QLD")  # always needed for possible QLD sells
+        qld_px = self._fetch_etf_price("QLD")
+        is_bull = True
+        try:
+            spy_info = fetch_spy_trend_regime()
+            is_bull = bool(spy_info.get("is_bull_regime", True))
+        except Exception:
+            is_bull = True
+        max_slots = MAX_SLOTS_BULL if is_bull else MAX_SLOTS_BEAR
+
         plan = build_cash_proxy_plan(
             total_equity_usd=equity,
             holdings=holdings,
@@ -579,6 +692,8 @@ class PortfolioGuardian:
             leverage_mode=leverage_on,
             qqq_price=qqq_px,
             qld_price=qld_px,
+            is_bull=is_bull,
+            max_slots=max_slots,
         )
         actions = list(plan.get("actions") or [])
         if not actions:
@@ -596,6 +711,7 @@ class PortfolioGuardian:
         ]
         executed: List[Dict[str, Any]] = []
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        remaining_cash = max(0.0, float(cash))
 
         for act in ordered:
             ticker = str(act.get("ticker") or "").upper()
@@ -604,6 +720,27 @@ class PortfolioGuardian:
             px = qqq_px if ticker == CASH_PROXY_TICKER else qld_px
             if not ticker or side not in {"BUY", "SELL"} or qty <= 0 or px <= 0:
                 continue
+
+            # Hard budget guard for BUY orders: do not exceed available cash
+            if side == "BUY":
+                limit_est = round(px * 1.005, 2)
+                needed_cost = qty * limit_est
+                if needed_cost > remaining_cash:
+                    max_affordable = int(remaining_cash // limit_est)
+                    if max_affordable < qty:
+                        logger.warning(
+                            f"[GUARDIAN_ALIGN_GUARD] Cash budget constraint: {ticker} BUY {qty} shares "
+                            f"costs ${needed_cost:.2f} but available cash is ${remaining_cash:.2f}. "
+                            f"Clamping qty {qty} -> {max_affordable}"
+                        )
+                        qty = max_affordable
+                    if qty <= 0:
+                        logger.warning(
+                            f"[GUARDIAN_ALIGN_GUARD] Skipping {ticker} BUY: "
+                            f"available cash ${remaining_cash:.2f} < share price ${limit_est:.2f}"
+                        )
+                        continue
+                remaining_cash = max(0.0, remaining_cash - (qty * limit_est))
 
             pending_key = f"{side}:{ticker}"
             pending_at = self._pending_broker_orders.get(pending_key, 0.0)
@@ -626,7 +763,7 @@ class PortfolioGuardian:
                 quantity=float(qty),
                 price=px,
                 owner="GUARDIAN_ALIGN",
-                exchange="AMEX" if ticker == "QLD" else "NASD",
+                exchange=resolve_order_exchange(ticker),
                 client_order_id=client_order_id,
                 baseline_quantity=sum(
                     float(h.get("quantity") or 0.0)
@@ -643,6 +780,7 @@ class PortfolioGuardian:
                     "price": px,
                     "broker_status": "PERSISTENT_ORDER_PENDING",
                     "reason": act.get("reason"),
+                    "filled": False,
                 })
                 if side == "SELL":
                     break
@@ -656,7 +794,7 @@ class PortfolioGuardian:
                         qty=qty,
                         price=limit,
                         order_type="00",
-                        exchange="AMEX" if ticker == "QLD" else "NASD",
+                        exchange=resolve_order_exchange(ticker),
                         client_order_id=client_order_id,
                     )
                     broker_status = broker_res.get("status", "error")
@@ -691,6 +829,25 @@ class PortfolioGuardian:
                                 or client_order_id
                             ),
                         )
+                        try:
+                            record_execution_log(
+                                ticker=ticker,
+                                side=side,
+                                quantity=float(qty),
+                                price=float(px),
+                                order_type="GUARDIAN_CASH_PROXY_REBALANCE",
+                                status="SUBMITTED",
+                                message=(
+                                    f"Guardian cash-proxy sleeve submitted, awaiting fill: "
+                                    f"{act.get('reason')}"
+                                ),
+                                order_id=str(order_id or ""),
+                                timestamp=now_str,
+                            )
+                        except Exception as audit_err:
+                            logger.warning(
+                                f"[Guardian CashProxy] SUBMITTED audit failed for {ticker}: {audit_err}"
+                            )
                         executed.append({
                             "timestamp": now_str,
                             "ticker": ticker,
@@ -701,6 +858,7 @@ class PortfolioGuardian:
                             "order_id": order_id,
                             "broker_status": broker_status,
                             "reason": act.get("reason"),
+                            "filled": False,
                         })
                         if side == "SELL":
                             break
@@ -759,6 +917,7 @@ class PortfolioGuardian:
                 "order_id": order_id,
                 "broker_status": broker_status,
                 "reason": act.get("reason"),
+                "filled": True,
             }
             executed.append(rec)
             logger.info(
@@ -812,7 +971,7 @@ class PortfolioGuardian:
                 quantity=float(qty),
                 price=px,
                 owner="GUARDIAN_REPARK",
-                exchange="AMEX" if ticker == "QLD" else "NASD",
+                exchange=resolve_order_exchange(ticker),
                 client_order_id=client_order_id,
                 baseline_quantity=sum(
                     float(h.get("quantity") or 0.0)
@@ -835,7 +994,7 @@ class PortfolioGuardian:
                         qty=qty,
                         price=round(px * 1.005, 2),
                         order_type="00",
-                        exchange="AMEX" if ticker == "QLD" else "NASD",
+                        exchange=resolve_order_exchange(ticker),
                         client_order_id=client_order_id,
                     )
                     broker_status = broker_res.get("status", "error")
@@ -871,6 +1030,24 @@ class PortfolioGuardian:
                             "order_id": order_id,
                             "fill_price": None,
                         })
+                        try:
+                            record_execution_log(
+                                ticker=ticker,
+                                side="BUY",
+                                quantity=float(qty),
+                                price=float(px),
+                                order_type="GUARDIAN_EXIT_PROCEEDS_PARK",
+                                status="SUBMITTED",
+                                message=(
+                                    f"Guardian exit proceeds repark submitted, awaiting fill: "
+                                    f"{act.get('reason')}"
+                                ),
+                                order_id=str(order_id or ""),
+                            )
+                        except Exception as audit_err:
+                            logger.warning(
+                                f"[Guardian Repark] SUBMITTED audit failed for {ticker}: {audit_err}"
+                            )
                         continue
                 except Exception as e:
                     logger.error(f"[Guardian CashProxy Buy Error] {e}")

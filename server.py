@@ -6,12 +6,18 @@ High-performance, CQRS-compliant trading server mounting modular APIRouters and 
 import os
 import sys
 import json
+import time
+import asyncio
+import logging
+from urllib.parse import urlparse
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
+
+logger = logging.getLogger(__name__)
 
 from contextlib import asynccontextmanager
 import pandas as pd
@@ -183,7 +189,7 @@ async def lifespan(app: FastAPI):
             from al_sangmoo.interfaces.api.routers.scanner import _run_background_scan_pipeline
             asyncio.create_task(_run_background_scan_pipeline())
     except Exception as exc:
-        pass
+        logger.exception("Lifespan startup scan pipeline failed: %s", exc)
 
     yield
     default_guardian.stop()
@@ -214,9 +220,10 @@ app.add_middleware(
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     if isinstance(exc, HTTPException):
+        detail_val = exc.detail if isinstance(exc.detail, str) else str(exc.detail)
         return JSONResponse(
             status_code=exc.status_code,
-            content={"detail": exc.detail},
+            content={"detail": detail_val},
             headers=getattr(exc, "headers", None)
         )
     if isinstance(exc, RequestValidationError):
@@ -224,10 +231,20 @@ async def global_exception_handler(request: Request, exc: Exception):
             status_code=422,
             content={"detail": exc.errors()}
         )
-    print(f"[ERROR 500] Unhandled exception on {request.method} {request.url.path}: {exc}", file=sys.stderr)
+    print(f"[ERROR 500] Unhandled {type(exc).__name__} on {request.method} {request.url.path}: {exc}", file=sys.stderr)
+    logger.exception(
+        "[ERROR 500] Unhandled %s exception on %s %s",
+        type(exc).__name__,
+        request.method,
+        request.url.path
+    )
     return JSONResponse(
         status_code=500,
-        content={"status": "error", "message": "An internal server error occurred"}
+        content={
+            "status": "error",
+            "detail": "내부 오류가 발생했습니다.",
+            "message": "내부 오류가 발생했습니다."
+        }
     )
 
 @app.middleware("http")
@@ -289,28 +306,38 @@ async def serve_dashboard():
 @app.get("/docs/prospectus", response_class=HTMLResponse)
 @app.get("/docs/prospectus-ko", response_class=HTMLResponse)
 async def serve_prospectus_ko():
-    """C1-M2 Korean investment prospectus (PPM/KIID HTML)."""
-    path = os.path.join(FRONTEND_DIR, "INVESTMENT_PROSPECTUS_C1_M2_KO.html")
+    """C-2 Production Korean investment prospectus (PPM/KIID HTML)."""
+    path = os.path.join(FRONTEND_DIR, "INVESTMENT_PROSPECTUS_C2_KO.html")
     if os.path.exists(path):
         return FileResponse(path, media_type="text/html")
-    return RedirectResponse(url="/static/INVESTMENT_PROSPECTUS_C1_M2_KO.html", status_code=307)
+    legacy_path = os.path.join(FRONTEND_DIR, "INVESTMENT_PROSPECTUS_C1_M2_KO.html")
+    if os.path.exists(legacy_path):
+        return FileResponse(legacy_path, media_type="text/html")
+    return RedirectResponse(url="/static/INVESTMENT_PROSPECTUS_C2_KO.html", status_code=307)
 
 
 @app.get("/docs/prospectus-en", response_class=HTMLResponse)
 async def serve_prospectus_en():
-    """C1-M2 English investment prospectus (PPM/KIID HTML)."""
-    path = os.path.join(FRONTEND_DIR, "INVESTMENT_PROSPECTUS_C1_M2.html")
+    """C-2 Production English investment prospectus (PPM/KIID HTML)."""
+    path = os.path.join(FRONTEND_DIR, "INVESTMENT_PROSPECTUS_C2.html")
     if os.path.exists(path):
         return FileResponse(path, media_type="text/html")
-    return RedirectResponse(url="/static/INVESTMENT_PROSPECTUS_C1_M2.html", status_code=307)
+    legacy_path = os.path.join(FRONTEND_DIR, "INVESTMENT_PROSPECTUS_C1_M2.html")
+    if os.path.exists(legacy_path):
+        return FileResponse(legacy_path, media_type="text/html")
+    return RedirectResponse(url="/static/INVESTMENT_PROSPECTUS_C2.html", status_code=307)
 
 
 @app.get("/docs/prospectus.md")
 async def serve_prospectus_markdown(lang: str = "ko"):
-    """Raw markdown prospectus for archival download / review."""
-    name = "INVESTMENT_PROSPECTUS_C1_M2_KO.md" if str(lang).lower().startswith("ko") else "INVESTMENT_PROSPECTUS_C1_M2.md"
+    """Raw C-2 markdown prospectus for archival download / review."""
+    name = "INVESTMENT_PROSPECTUS_C2_KO.md" if str(lang).lower().startswith("ko") else "INVESTMENT_PROSPECTUS_C2.md"
     path = os.path.join(BASE_DIR, name)
     if not os.path.exists(path):
+        legacy_name = "INVESTMENT_PROSPECTUS_C1_M2_KO.md" if str(lang).lower().startswith("ko") else "INVESTMENT_PROSPECTUS_C1_M2.md"
+        legacy_path = os.path.join(BASE_DIR, legacy_name)
+        if os.path.exists(legacy_path):
+            return FileResponse(legacy_path, media_type="text/markdown; charset=utf-8", filename=legacy_name)
         raise HTTPException(status_code=404, detail="Prospectus markdown not found")
     return FileResponse(path, media_type="text/markdown; charset=utf-8", filename=name)
 
@@ -331,7 +358,16 @@ async def serve_legacy_dashboard():
 async def websocket_live_hub(websocket: WebSocket):
     """Real-time WebSocket connection to broadcast hub with CSWSH protection."""
     origin = websocket.headers.get("origin")
-    if not origin or origin not in ALLOWED_ORIGINS:
+    host = websocket.headers.get("host")
+    is_allowed = False
+    if origin:
+        if origin in ALLOWED_ORIGINS:
+            is_allowed = True
+        else:
+            parsed = urlparse(origin)
+            if parsed.netloc and host and parsed.netloc.lower() == host.lower():
+                is_allowed = True
+    if not is_allowed:
         await websocket.close(code=1008, reason="Forbidden Origin")
         return
         

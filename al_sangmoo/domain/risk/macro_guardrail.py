@@ -1,6 +1,6 @@
 """
 Automated Macro Circuit Breaker, Defensive Trailing Guardrail,
-and C1-M2 Dynamic Leverage Overlay (QQQ / QLD).
+and C-2 Dynamic Leverage Overlay (QQQ / QLD).
 """
 from typing import Any, Dict, List, Optional
 
@@ -72,7 +72,7 @@ def evaluate_macro_circuit_breaker(
                 ),
             })
         directive = (
-            f"거시 환경 안정적. C1-M2 표준 목표가(+{TRAILING_ACTIVATE_PCT:.0f}%) "
+            f"거시 환경 안정적. C-2 표준 목표가(+{TRAILING_ACTIVATE_PCT:.0f}%) "
             f"및 손절선(-{HARD_STOP_PCT:.1f}%) 유지."
         )
 
@@ -91,7 +91,7 @@ def evaluate_dynamic_leverage(
     vix: Optional[float] = None,
 ) -> Dict[str, Any]:
     """
-    C1-M2 leverage module:
+    C-2 leverage module:
       SPY >= SMA200 AND VIX < 20 → 1.5x (QLD mix allowed)
       else → immediate return to 1.0x QQQ core
     """

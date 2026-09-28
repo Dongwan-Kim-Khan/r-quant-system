@@ -17,6 +17,7 @@ from al_sangmoo.infrastructure.persistence import (
     save_macro_history_record,
     save_recommendation_matrix_record,
 )
+from al_sangmoo.core.constants import DEFAULT_BASE_ACCOUNT_USD
 
 # Windows cp949 terminal encoding fix
 if sys.platform.startswith('win'):
@@ -435,7 +436,7 @@ def generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_e
     
     # 1. Financial & Portfolio Metrics
     holdings = portfolio.get("holdings", [])
-    tot_equity_usd = float(portfolio.get("total_equity_usd", 7500.0))
+    tot_equity_usd = float(portfolio.get("total_equity_usd", DEFAULT_BASE_ACCOUNT_USD))
     tot_equity_krw = int(portfolio.get("total_equity_krw", 10_000_000))
     tot_invested = float(portfolio.get("total_invested", 0.0))
     overall_pnl_pct = float(portfolio.get("overall_pnl_pct", 0.0) or portfolio.get("unrealized_pnl_pct", 0.0))
@@ -459,12 +460,12 @@ def generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_e
         is_bull = bool(resolve_capital_regime(msi_score=msi_score, fetch_spy=False)["is_bull_regime"])
     max_slots = 3 if is_bull else 2
     regime_title = "BULL REGIME (강세 국면)" if is_bull else "BEAR REGIME (약세 방어 국면)"
-    regime_desc = "3-Slot 50/30/20 + QQQ Cash Proxy / 1.5x 레버리지 조건부" if is_bull else "2-Slot 25/25 + QQQ 코어 (레버리지 OFF)"
+    regime_desc = "3-Slot 34/33/33 + QQQ Cash Proxy / 1.5x 레버리지 조건부" if is_bull else "2-Slot 25/25 + QQQ 코어 (레버리지 OFF)"
     regime_badge_color = "#10b981" if is_bull else "#ef4444"
     regime_badge_bg = "rgba(16, 185, 129, 0.15)" if is_bull else "rgba(239, 68, 68, 0.15)"
     
     macro_headline = macro_climate.get("macro_headline", f"[{regime_title}: MSI {msi_score:.1f}pt - {regime_desc}]")
-    macro_directive = macro_climate.get("macro_action_directive", "C1-M2 3-Slot 컨빅션 + QQQ Cash Proxy 자동 자금 관리 가동 중")
+    macro_directive = macro_climate.get("macro_action_directive", "C-2 3-Slot 컨빅션 + QQQ Cash Proxy 자동 자금 관리 가동 중")
     tailwind_sectors = ", ".join(macro_info.get("tailwind_sectors", ["에너지", "반도체"]))
     
     vix = macro_gauges.get("vix", {"val": 15.8, "status": "NORMAL"})
@@ -480,7 +481,7 @@ def generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_e
     if not top_pick and dual_consensus:
         d = dual_consensus[0]
         p_val = float(d.get("price", 100.0))
-        eq = float(portfolio.get("total_equity_usd") or portfolio.get("total_value") or 7500.0)
+        eq = float(portfolio.get("total_equity_usd") or portfolio.get("total_value") or DEFAULT_BASE_ACCOUNT_USD)
         sz1 = calculate_target_shares(eq, p_val, slot_rank=1, is_bull=is_bull)
         top_pick = {
             "ticker": d["ticker"], "name": d.get("name", d["ticker"]),
@@ -490,17 +491,17 @@ def generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_e
             "sizing": {
                 "shares": sz1["shares"],
                 "allocated_usd": sz1["allocated_usd"],
-                "weight_pct": round(float(sz1.get("slot_weight") or 0.5) * 100, 1),
+                "weight_pct": round(float(sz1.get("slot_weight") or 0.34) * 100, 1),
                 "slot_weight": sz1.get("slot_weight"),
                 "eligible": sz1.get("eligible", True),
                 "is_bull_regime": is_bull,
             },
-            "rationale": "26일 기준선 생명선 지지 및 기관 스마트머니 잠행 매집(OBV) 확인. 최우선 집중 진입 대상 (C1-M2 Slot#1 50%)."
+            "rationale": "26일 기준선 생명선 지지 및 기관 스마트머니 잠행 매집(OBV) 확인. 최우선 집중 진입 대상 (C-2 Slot#1 34%)."
         }
     if not runner_up and len(dual_consensus) > 1:
         d2 = dual_consensus[1]
         p_val2 = float(d2.get("price", 100.0))
-        eq = float(portfolio.get("total_equity_usd") or portfolio.get("total_value") or 7500.0)
+        eq = float(portfolio.get("total_equity_usd") or portfolio.get("total_value") or DEFAULT_BASE_ACCOUNT_USD)
         sz2 = calculate_target_shares(eq, p_val2, slot_rank=2, is_bull=is_bull)
         runner_up = {
             "ticker": d2["ticker"], "name": d2.get("name", d2["ticker"]),
@@ -510,12 +511,12 @@ def generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_e
             "sizing": {
                 "shares": sz2["shares"],
                 "allocated_usd": sz2["allocated_usd"],
-                "weight_pct": round(float(sz2.get("slot_weight") or 0.3) * 100, 1),
+                "weight_pct": round(float(sz2.get("slot_weight") or 0.33) * 100, 1),
                 "slot_weight": sz2.get("slot_weight"),
                 "eligible": sz2.get("eligible", True),
                 "is_bull_regime": is_bull,
             },
-            "rationale": "주봉 대세 상승 안착 및 주도 섹터 모멘텀 후속 주자 (C1-M2 Slot#2 30%)."
+            "rationale": "주봉 대세 상승 안착 및 주도 섹터 모멘텀 후속 주자 (C-2 Slot#2 33%)."
         }
 
     # Build HTML
@@ -623,8 +624,8 @@ def generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_e
                             <th style="text-align:right;">BUY</th>
                             <th style="text-align:right;">CURRENT</th>
                             <th style="text-align:right;">PNL %</th>
-                            <th style="text-align:right;">STOP (-5%)</th>
-                            <th style="text-align:right;">TARGET (+15%)</th>
+                            <th style="text-align:right;">STOP (-7%/-10%)</th>
+                            <th style="text-align:right;">TARGET (+18%)</th>
                             <th>GUARDIAN ACTION</th>
                         </tr>
                     </thead>
@@ -730,7 +731,7 @@ def generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_e
         tp_sec = top_pick.get("sector", "LEADER")
         tp_size = top_pick.get("sizing", {})
         tp_shares = tp_size.get("shares", calculate_target_shares(
-            float(portfolio.get("total_equity_usd") or 7500.0), max(1.0, tp_p), slot_rank=1, is_bull=is_bull
+            float(portfolio.get("total_equity_usd") or DEFAULT_BASE_ACCOUNT_USD), max(1.0, tp_p), slot_rank=1, is_bull=is_bull
         ).get("shares", 1))
         tp_usd = tp_size.get("allocated_usd", round(tp_p * tp_shares, 2))
         tp_rat = top_pick.get("rationale", "일목균형표 26일 기준선 지지 및 기관 잠행 매집 확인 완료.")
@@ -768,7 +769,7 @@ def generate_email_content(today_str, dual_consensus, strat1_exclusive, strat2_e
         ru_sec = runner_up.get("sector", "RUNNER")
         ru_size = runner_up.get("sizing", {})
         ru_shares = ru_size.get("shares", calculate_target_shares(
-            float(portfolio.get("total_equity_usd") or 7500.0), max(1.0, ru_p), slot_rank=2, is_bull=is_bull
+            float(portfolio.get("total_equity_usd") or DEFAULT_BASE_ACCOUNT_USD), max(1.0, ru_p), slot_rank=2, is_bull=is_bull
         ).get("shares", 1))
         ru_usd = ru_size.get("allocated_usd", round(ru_p * ru_shares, 2))
         ru_rat = runner_up.get("rationale", "주봉 대세 상승 안착 및 주도 섹터 2위 모멘텀 후보.")

@@ -70,6 +70,15 @@ async def _run_background_scan_pipeline():
 
         today_str, data, macro_climate = await asyncio.to_thread(_sync_worker)
         
+        # Ensure broadcast payload contains live macro gauges
+        try:
+            from al_sangmoo.interfaces.api.routers.dashboard import get_live_macro_gauges
+            live_g = get_live_macro_gauges()
+            if live_g and isinstance(data.get("macro"), dict):
+                data["macro"]["macro_gauges"] = live_g
+        except Exception:
+            pass
+
         await hub.broadcast("live_feed_update", data)
         await hub.broadcast("scan_status", {
             "status": "completed",

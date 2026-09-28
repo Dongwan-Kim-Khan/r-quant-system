@@ -73,29 +73,29 @@ def _forced_entry_then_wick(wick_pct: float) -> pd.DataFrame:
 
 class TestBacktestStopSsot(unittest.TestCase):
     def test_constants_match_constitution(self):
-        self.assertEqual(STOP_LOSS_PCT, -0.05)
-        self.assertEqual(TAKE_PROFIT_PCT, 0.15)
+        self.assertEqual(STOP_LOSS_PCT, -0.07)
+        self.assertEqual(TAKE_PROFIT_PCT, 0.18)
 
     def test_engine_defaults_are_constitution(self):
         params = inspect.signature(run_backtest_simulation).parameters
         self.assertEqual(params["stop_loss_pct"].default, STOP_LOSS_PCT)
         self.assertEqual(params["take_profit_pct"].default, TAKE_PROFIT_PCT)
-        self.assertEqual(params["stop_loss_pct"].default, -0.05)
+        self.assertEqual(params["stop_loss_pct"].default, -0.07)
 
     def test_report_records_minus_four_rule(self):
         df = _synthetic_path()
         res = run_backtest_simulation(data=df, initial_capital=100000.0)
         self.assertEqual(res["status"], "success")
-        self.assertEqual(res["friction_modeled"]["stop_loss_rule"], "-5.0% Strict Execution")
+        self.assertEqual(res["friction_modeled"]["stop_loss_rule"], "-7.0% Strict Execution")
         for trade in res["trades"]:
             if trade["reason"].startswith("STOP_LOSS"):
-                self.assertIn("-5%", trade["reason"])
+                self.assertIn("-7%", trade["reason"])
                 self.assertNotIn("-3%", trade["reason"])
 
     def test_minus_four_half_wick_does_not_hard_stop(self):
-        df = _forced_entry_then_wick(-0.035)
+        df = _forced_entry_then_wick(-0.05)
         res_legacy = run_backtest_simulation(data=df, stop_loss_pct=-0.03, timeout_bars=5)
-        res_live = run_backtest_simulation(data=df, stop_loss_pct=-0.05, timeout_bars=5)
+        res_live = run_backtest_simulation(data=df, stop_loss_pct=-0.07, timeout_bars=5)
         self.assertGreaterEqual(res_legacy["total_trades"], 1)
         self.assertGreaterEqual(res_live["total_trades"], 1)
 
@@ -103,31 +103,31 @@ class TestBacktestStopSsot(unittest.TestCase):
         live_reasons = [t["reason"] for t in res_live["trades"]]
         self.assertTrue(
             any("STOP_LOSS" in r for r in legacy_reasons),
-            f"legacy -3% should stop on a -3.5% wick: {legacy_reasons}",
+            f"legacy -3% should stop on a -5.0% wick: {legacy_reasons}",
         )
         self.assertFalse(
             any("STOP_LOSS" in r for r in live_reasons),
-            f"live -5% must hold a -3.5% wick: {live_reasons}",
+            f"live -7% must hold a -5.0% wick: {live_reasons}",
         )
 
     def test_minus_five_one_wick_does_hard_stop(self):
-        df = _forced_entry_then_wick(-0.051)
+        df = _forced_entry_then_wick(-0.071)
         res = run_backtest_simulation(data=df, timeout_bars=5)
         reasons = [t["reason"] for t in res["trades"]]
         self.assertTrue(
             any("STOP_LOSS" in r for r in reasons),
-            f"live -5% must stop on a -5.1% wick: {reasons}",
+            f"live -7% must stop on a -7.1% wick: {reasons}",
         )
 
     def test_minus_five_vs_minus_three_recompute_delta(self):
         df = _synthetic_path()
         legacy = run_backtest_simulation(data=df, stop_loss_pct=-0.03)
-        live = run_backtest_simulation(data=df, stop_loss_pct=-0.05)
+        live = run_backtest_simulation(data=df, stop_loss_pct=-0.07)
         self.assertEqual(legacy["status"], "success")
         self.assertEqual(live["status"], "success")
-        self.assertEqual(live["friction_modeled"]["stop_loss_rule"], "-5.0% Strict Execution")
+        self.assertEqual(live["friction_modeled"]["stop_loss_rule"], "-7.0% Strict Execution")
         self.assertEqual(legacy["friction_modeled"]["stop_loss_rule"], "-3.0% Strict Execution")
-        # Wider -5% stop cannot produce a strictly earlier hard-stop than -3% on the same path.
+        # Wider -7% stop cannot produce a strictly earlier hard-stop than -3% on the same path.
         self.assertGreaterEqual(live["max_drawdown_pct"], 0.0)
 
 

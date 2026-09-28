@@ -3,9 +3,12 @@ import json
 import re
 import time
 import asyncio
+import logging
 from fastapi import APIRouter, HTTPException
 from al_sangmoo.domain.quant.ticker_resolver import resolve_ticker
 from generate_dashboard_feed import compute_all_indicators, atomic_save_json
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Charts"])
 
@@ -92,8 +95,8 @@ def _enrich_chart_with_realtime_price(data: dict, ticker: str) -> dict:
                 if val > 0:
                     live_price = val
                     break
-    except Exception:
-        pass
+    except Exception as e:
+        logger.exception("Failed to query live portfolio price for chart %s: %s", ticker, e)
 
     # Do not call KIS on this request path — 3 exchanges × 2 TRs × 3s stalls the chart.
 
@@ -331,7 +334,8 @@ async def get_chart_data(ticker: str):
                     if ohlcv is None:
                         return None
                     return compute_all_indicators(sym, df=ohlcv)
-                except Exception:
+                except Exception as e:
+                    logger.exception("KIS chart fallback failed for %s: %s", sym, e)
                     return None
             data = await asyncio.to_thread(_kis_chart, ticker_clean)
             if not data and ticker_resolved != ticker_clean:
@@ -350,8 +354,8 @@ async def get_chart_data(ticker: str):
             if new_n >= MIN_DAILY_BARS and new_n >= old_n:
                 try:
                     atomic_save_json(chart_file, data)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.exception("Failed to atomic_save_json chart for %s: %s", ticker_clean, e)
             elif old_n >= MIN_DAILY_BARS and new_n < old_n and old_payload:
                 data = old_payload
 
@@ -361,8 +365,8 @@ async def get_chart_data(ticker: str):
     # 4. Enrich with official real-time price from KIS OpenAPI (off the event loop)
     try:
         data = await asyncio.to_thread(_enrich_chart_with_realtime_price, data, ticker_clean)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.exception("Failed to enrich chart with realtime price for %s: %s", ticker_clean, e)
 
     # LRU eviction (max 150 items)
     if len(CHART_CACHE) > 150:

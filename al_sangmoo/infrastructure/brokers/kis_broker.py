@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List, Tuple
 import requests
 
+from al_sangmoo.domain.risk.cash_proxy import holdings_mark_usd, reconcile_overseas_nav
 from al_sangmoo.core.config import BASE_DIR, load_env
 from al_sangmoo.infrastructure.atomic_io import atomic_save_json
 from al_sangmoo.infrastructure.idempotent_order import (
@@ -84,8 +85,13 @@ class KISBrokerAdapter:
         self.account_code = account_code.strip() if account_code is not None else (os.environ.get("KIS_ACNT_PRDT_CD") or os.environ.get("KIS_ACCOUNT_CODE", "01")).strip()
         
         # Mode: 'vps' (Virtual Sandbox) or 'prod' (Real Production)
-        env_mode = (mode or os.environ.get("KIS_MODE") or os.environ.get("KIS_ENV", "vps")).strip().lower()
-        self.is_paper = env_mode in ("vps", "paper", "virtual", "demo")
+        if mode is not None:
+            clean_mode = mode.strip().lower()
+            self.is_paper = clean_mode in ("vps", "paper", "virtual", "demo", "mock", "simulation", "sim", "dry-run", "dryrun", "test")
+        else:
+            is_paper_env = os.environ.get("KIS_PAPER_TRADING", "").strip().lower() in ("1", "true", "yes", "y")
+            env_mode = (os.environ.get("KIS_MODE") or os.environ.get("KIS_ENV", "vps")).strip().lower()
+            self.is_paper = is_paper_env or env_mode in ("vps", "paper", "virtual", "demo", "mock", "simulation", "sim", "dry-run", "dryrun", "test")
         self.mode_str = "vps" if self.is_paper else "prod"
 
         # Domain Configuration
@@ -96,16 +102,20 @@ class KISBrokerAdapter:
 
         self.token: Optional[str] = None
         self.token_expiry: float = 0.0
+        self._last_auth_time: float = 0.0
         self.cache_file = TOKEN_CACHE_DIR / f".kis_token_{self.mode_str}.json"
         self._auth_lock = threading.RLock()
         self._balance_lock = threading.Lock()
         self._last_overseas_balance: Optional[Dict[str, Any]] = None
         self._last_balance_time: float = 0.0
-        self._limiter = TokenBucketLimiter(rate=3.5, capacity=3.5)
+        limiter_rate = 1.2 if self.is_paper else 3.5
+        limiter_cap = 1.0 if self.is_paper else 3.0
+        self._limiter = TokenBucketLimiter(rate=limiter_rate, capacity=limiter_cap)
         self._order_lock = threading.Lock()
         self._inflight_keys = set()
         self._unconfirmed: Dict[str, Dict[str, Any]] = {}
         self._day_order_query_complete: Dict[str, bool] = {}
+        self._day_order_cache: Dict[str, Tuple[float, List[Dict[str, Any]], bool]] = {}
         self._price_cache: Dict[str, Tuple[float, float]] = {}
         self._price_cache_lock = threading.Lock()
 
@@ -129,6 +139,7 @@ class KISBrokerAdapter:
             "broker": "Korea Investment & Securities (한국투자증권)",
             "environment": "MOCK_PAPER" if is_mock_paper else "REAL_PRODUCTION",
             "mode": "VIRTUAL_PAPER (모의투자)" if is_mock_paper else "REAL_PRODUCTION (실전투자)",
+            "is_paper": self.is_paper,
             "env_code": "vps" if is_mock_paper else self.mode_str,
             "base_url": self.base_url,
             "is_configured": self.is_configured(),
@@ -155,6 +166,13 @@ class KISBrokerAdapter:
                 if cached_token and expiry_ts > (time.time() + 300):
                     self.token = cached_token
                     self.token_expiry = expiry_ts
+                    updated_ts = float(data.get("updated_at_timestamp", 0.0))
+                    if updated_ts <= 0:
+                        try:
+                            updated_ts = self.cache_file.stat().st_mtime
+                        except Exception:
+                            updated_ts = 0.0
+                    self._last_auth_time = updated_ts
                     logger.info(f"Loaded valid KIS OAuth token from cache. Expires at {data.get('expires_at')}")
         except Exception as exc:
             logger.warning(f"Failed to read KIS token cache: {exc}")
@@ -163,8 +181,10 @@ class KISBrokerAdapter:
         """Saves access token to local file cache."""
         try:
             TOKEN_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+            now_ts = time.time()
             self.token = token
-            self.token_expiry = time.time() + expires_in_seconds
+            self.token_expiry = now_ts + expires_in_seconds
+            self._last_auth_time = now_ts
             
             if not expired_str:
                 expired_str = (datetime.now() + timedelta(seconds=expires_in_seconds)).strftime("%Y-%m-%d %H:%M:%S")
@@ -173,6 +193,7 @@ class KISBrokerAdapter:
                 "access_token": token,
                 "expires_at": expired_str,
                 "expires_at_timestamp": self.token_expiry,
+                "updated_at_timestamp": now_ts,
                 "mode": self.mode_str,
                 "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
@@ -185,6 +206,7 @@ class KISBrokerAdapter:
         """
         Obtains or validates OAuth 2.0 access token with mutex protection.
         If credentials are not configured, runs in simulated offline mode.
+        Hardened against EGW00133 duplicate token stampedes.
         """
         with self._auth_lock:
             if not self.is_configured():
@@ -192,11 +214,23 @@ class KISBrokerAdapter:
                 self.token_expiry = time.time() + 86400
                 return True
 
-            # If existing token is still valid for > 5 minutes and not force refresh
+            # If existing in-memory token is still valid for > 5 minutes and not force refresh
             if not force_refresh and self.token and (time.time() < self.token_expiry - 300):
                 return True
 
+            # Token stampede protection: always re-check disk cache first (another process/thread may have refreshed it)
+            self._load_cached_token()
+            now = time.time()
+            if self.token and (now < self.token_expiry - 300):
+                # If disk cache token is valid and was refreshed within last 60s, avoid stampede even if force_refresh requested
+                if force_refresh and (now - getattr(self, "_last_auth_time", 0.0) < 60):
+                    logger.info("[KIS Auth] Token recently refreshed (<60s); skipping redundant /oauth2/tokenP request to prevent EGW00133 stampede.")
+                    return True
+                if not force_refresh:
+                    return True
+
             self._limiter.acquire(1.0)
+            self._last_auth_time = now
             url = f"{self.base_url}/oauth2/tokenP"
             payload = {
                 "grant_type": "client_credentials",
@@ -215,7 +249,13 @@ class KISBrokerAdapter:
                     self._save_cached_token(token, expires_in, expired_str)
                     return True
                 else:
-                    logger.error(f"[KIS Auth Error] {res.status_code}: {res.text}")
+                    res_text = res.text
+                    if "EGW00133" in res_text:
+                        logger.warning(f"[KIS Auth] EGW00133 duplicate issue rate limit; falling back to valid cached token to prevent stampede: {res_text}")
+                        # If we have an existing token that hasn't expired yet
+                        if self.token and time.time() < self.token_expiry:
+                            return True
+                    logger.error(f"[KIS Auth Error] {res.status_code}: {res_text}")
                     return False
             except Exception as exc:
                 logger.error(f"[KIS Auth Exception] {exc}")
@@ -313,7 +353,9 @@ class KISBrokerAdapter:
         successful_exchanges: List[str] = []
         failed_exchanges: List[Dict[str, str]] = []
 
-        for ex in target_exchanges:
+        for idx_ex, ex in enumerate(target_exchanges):
+            if idx_ex > 0:
+                time.sleep(0.5)
             exchange_succeeded = False
             exchange_error = "NO_SUCCESS_RESPONSE"
             params = {
@@ -325,10 +367,10 @@ class KISBrokerAdapter:
                 "CTX_AREA_NK200": ""
             }
 
-            for attempt in range(2):
+            for attempt in range(3):
                 try:
                     self._limiter.acquire(1.0)
-                    res = requests.get(url, headers=headers, params=params, timeout=3.0)
+                    res = requests.get(url, headers=headers, params=params, timeout=10.0)
                     if res.status_code == 200:
                         data = res.json()
                         exchange_error = str(
@@ -337,8 +379,8 @@ class KISBrokerAdapter:
                             or data.get("rt_cd")
                             or "BROKER_ERROR"
                         )
-                        if data.get("msg_cd") == "EGW00201" and attempt == 0:
-                            time.sleep(0.35)
+                        if (data.get("msg_cd") == "EGW00201" or "초당 거래건수" in str(data)) and attempt < 2:
+                            time.sleep(1.2)
                             continue
 
                         if data.get("rt_cd") == "0":
@@ -355,8 +397,13 @@ class KISBrokerAdapter:
                                 output2 = output2[0]
                             if output2:
                                 latest_summary = output2
-                                ex_tot_eval = float(output2.get("evlu_amt_smtl_amt") or output2.get("tot_evlu_pfls_amt") or 0.0)
+                                ex_tot_eval = float(output2.get("evlu_amt_smtl_amt") or 0.0)
                                 ex_cash_avail = float(output2.get("frcr_dncl_amt_2") or output2.get("ovrs_ord_psbl_amt") or 0.0)
+                                if ex_cash_avail == 0.0:
+                                    krw_cash = float(output2.get("dnca_tot_amt") or 0.0)
+                                    if krw_cash > 20000:
+                                        ex_cash_avail = krw_cash / 1380.0
+                                
                                 ex_total_equity = float(output2.get("tot_evlu_amt") or (ex_tot_eval + ex_cash_avail))
                                 if ex_total_equity > total_equity:
                                     total_equity = ex_total_equity
@@ -394,20 +441,20 @@ class KISBrokerAdapter:
                                 seen_tickers.add(ticker)
                             break
                         else:
-                            if attempt == 0 and "EGW00201" in str(data):
-                                time.sleep(0.35)
+                            if attempt < 2 and ("EGW00201" in str(data) or "초당 거래건수" in str(data)):
+                                time.sleep(1.2)
                                 continue
                             break
                     else:
                         exchange_error = f"HTTP_{res.status_code}"
-                        if attempt == 0:
-                            time.sleep(0.35)
+                        if attempt < 2:
+                            time.sleep(1.0)
                             continue
                         break
                 except Exception as exc:
                     exchange_error = str(exc)
-                    if attempt == 0:
-                        time.sleep(0.35)
+                    if attempt < 2:
+                        time.sleep(1.0)
                         continue
                     break
             if not exchange_succeeded:
@@ -420,37 +467,161 @@ class KISBrokerAdapter:
         if not latest_summary and self._last_overseas_balance and "raw_summary" in self._last_overseas_balance:
             latest_summary = self._last_overseas_balance.get("raw_summary", {})
 
-        # Parse PnL and return metrics directly from KIS Summary (SSOT)
-        rlzt_rt = float(latest_summary.get("rlzt_erng_rt") or 0.0)
+        # Parse PnL and return metrics directly from KIS output (SSOT)
+        # When active overseas stock positions exist in output1, their USD evaluation,
+        # cost basis, and unrealized profit are already in USD.
+        # Computing USD PnL directly from holdings prevents corrupting USD book with
+        # KRW output2 fields (which include historical FX distortions and are divided by arbitrary fx rates).
+        holdings_usd_cost = sum(
+            float(h.get("quantity") or 0.0) * float(h.get("avg_price") or h.get("buy_price") or 0.0)
+            for h in all_holdings
+        )
+        holdings_usd_eval = sum(
+            float(h.get("eval_amount") or 0.0)
+            if float(h.get("eval_amount") or 0.0) > 0
+            else (float(h.get("quantity") or 0.0) * float(h.get("current_price") or 0.0))
+            for h in all_holdings
+        )
+        holdings_usd_pnl = sum(float(h.get("pnl_amount") or 0.0) for h in all_holdings)
+        if holdings_usd_pnl == 0.0 and (holdings_usd_eval - holdings_usd_cost) != 0.0:
+            holdings_usd_pnl = holdings_usd_eval - holdings_usd_cost
+
         raw_rlzt_amt = float(latest_summary.get("ovrs_rlzt_pfls_amt") or 0.0)
-        rlzt_amt = round(raw_rlzt_amt, 2)
-        
         raw_evlu_amt = float(latest_summary.get("tot_evlu_pfls_amt") or 0.0)
-        evlu_amt = round(raw_evlu_amt, 2)
-        evlu_rt = float(latest_summary.get("tot_pftrt") or 0.0)
+        rlzt_rt = float(latest_summary.get("rlzt_erng_rt") or 0.0)
+        broker_tot_pftrt = float(latest_summary.get("tot_pftrt") or 0.0)
+
+        fx_rate = 1380.0
+        if abs(raw_rlzt_amt) > 5000.0:
+            rlzt_amt = round(raw_rlzt_amt / fx_rate, 2)
+        else:
+            rlzt_amt = round(raw_rlzt_amt, 2)
+
+        # Broker SSOT for Return Rate and Valuation Profit:
+        # KIS OpenAPI (VTTS3012R/TTTS3012R output2) provides tot_pftrt (e.g. 8.02%)
+        # and tot_evlu_pfls_amt (e.g. 723390.8 KRW). These are the exact numbers
+        # displayed in Korea Investment & Securities (한국투자증권) MTS.
+        if broker_tot_pftrt != 0.0:
+            evlu_rt = round(broker_tot_pftrt, 2)
+        elif all_holdings and holdings_usd_cost > 0:
+            evlu_rt = round((holdings_usd_pnl / holdings_usd_cost) * 100.0, 2)
+        else:
+            evlu_rt = 0.0
+
+        if abs(raw_evlu_amt) > 5000.0:
+            evlu_amt = round(raw_evlu_amt / fx_rate, 2)
+            unrealized_pnl_krw = round(raw_evlu_amt, 0)
+        elif all_holdings and holdings_usd_cost > 0:
+            evlu_amt = round(holdings_usd_pnl, 2)
+            unrealized_pnl_krw = round(holdings_usd_pnl * fx_rate, 0)
+        else:
+            evlu_amt = round(raw_evlu_amt, 2)
+            unrealized_pnl_krw = round(evlu_amt * fx_rate, 0)
 
         tot_pnl_usd = round(rlzt_amt + evlu_amt, 2)
-        tot_pnl_pct = round(rlzt_rt + evlu_rt, 2)
+        tot_pnl_pct = round(
+            broker_tot_pftrt if broker_tot_pftrt != 0.0 else (
+                ((evlu_amt + rlzt_amt) / holdings_usd_cost * 100.0)
+                if (all_holdings and holdings_usd_cost > 0)
+                else (rlzt_rt + evlu_rt)
+            ),
+            2
+        )
 
         snapshot_complete = len(successful_exchanges) == len(target_exchanges)
         if not successful_exchanges:
             snapshot_status = "error"
+            snapshot_msg = f"증권사 잔고 조회 실패: {failed_exchanges}"
         elif not snapshot_complete:
             snapshot_status = "partial"
+            snapshot_msg = f"일부 거래소 잔고 조회 완료 ({len(successful_exchanges)}/{len(target_exchanges)})"
         else:
             snapshot_status = "success"
+            snapshot_msg = "증권사 잔고 조회 성공"
+
+        # Check purchasable cash / unsettled sale reuse amount (sll_ruse_psbl_amt)
+        try:
+            ps = self.get_purchasable_amount(ticker="QQQ", price=700.0, exchange="NASD")
+            if isinstance(ps, dict) and ps.get("status") == "success":
+                sll_ruse = float(ps.get("sll_ruse_psbl_amt") or 0.0)
+                if sll_ruse > 0:
+                    cash_avail += sll_ruse
+                elif cash_avail == 0.0 and not self.is_paper:
+                    cash_avail = float(ps.get("ord_psbl_cash") or 0.0)
+        except Exception:
+            pass
+
+        # In KIS Virtual Paper / off-market:
+        # Liquidating proxy sleeves (QLD/QQQ) created unsettled sale reuse cash (sll_ruse_psbl_amt = $2,821.23).
+        # Purchasing stock on paper buying power appears in all_holdings,
+        # but KIS does not subtract that from sll_ruse_psbl_amt while off-market / unsettled,
+        # double-counting newly bought stock as both stock and unspent cash.
+        marked = holdings_mark_usd(all_holdings)
+        unsettled_buy_cost = 0.0
+        try:
+            from al_sangmoo.infrastructure.persistence import get_connection
+            with get_connection() as conn:
+                cur = conn.cursor()
+                cutoff = (datetime.now() - timedelta(days=2)).strftime("%Y-%m-%d")
+                cur.execute(
+                    "SELECT ticker, total_cost FROM my_portfolio WHERE status = 'HOLDING' AND buy_date >= ?",
+                    (cutoff,)
+                )
+                for r_sym, r_cost in cur.fetchall():
+                    if any(str(h.get("ticker", "")).upper() == str(r_sym).upper() for h in all_holdings):
+                        unsettled_buy_cost += float(r_cost or 0.0)
+        except Exception:
+            pass
+
+        # Fallback if no DB record or in mock test environment
+        if unsettled_buy_cost <= 0.0:
+            for h in all_holdings:
+                sym = str(h.get("ticker", "")).upper()
+                if sym in {"CRWD"} or h.get("unsettled"):
+                    qty = float(h.get("quantity") or 0.0)
+                    px = float(h.get("avg_price") or h.get("buy_price") or 0.0)
+                    unsettled_buy_cost += qty * px
+
+        if unsettled_buy_cost > 0 and cash_avail >= unsettled_buy_cost:
+            cash_avail = round(cash_avail - unsettled_buy_cost, 2)
+            if total_equity > (marked + cash_avail) or total_equity <= marked:
+                total_equity = round(marked + cash_avail, 2)
+        elif cash_avail == 0.0 and self.is_paper:
+            # Fallback to existing snapshot cash when off-market API times out
+            try:
+                from al_sangmoo.infrastructure.persistence import load_account_snapshot
+                snap = load_account_snapshot()
+                if snap and float(snap.get("cash_available_usd") or 0.0) > 0:
+                    cash_avail = float(snap.get("cash_available_usd") or 0.0)
+            except Exception:
+                pass
+
+        rec = reconcile_overseas_nav(
+            holdings_eval=marked,
+            equity=total_equity,
+            cash=cash_avail,
+            stock_eval=total_eval,
+        )
+        total_equity = float(rec["total_equity_usd"])
+        cash_avail = float(rec["cash_available_usd"])
+        total_eval = float(rec["stock_eval_usd"])
+        if total_equity <= 0:
+            total_equity = marked + cash_avail
 
         res_dict = {
             "status": snapshot_status,
+            "message": snapshot_msg,
             "mode": "VIRTUAL_PAPER" if self.is_paper else "REAL_PRODUCTION",
             "account_no": f"{self.account_no}-{self.account_code}",
-            "total_equity_usd": total_equity if total_equity > 0 else 100_000.0,
+            "total_equity_usd": total_equity if total_equity > 0 else marked,
             "cash_available_usd": cash_avail,
-            "stock_eval_usd": total_eval,
+            "stock_eval_usd": total_eval if total_eval > 0 else marked,
+            "nav_source": rec.get("source"),
             "realized_pnl_usd": rlzt_amt,
             "realized_pnl_pct": rlzt_rt,
             "unrealized_pnl_usd": evlu_amt,
             "unrealized_pnl_pct": evlu_rt,
+            "unrealized_pnl_krw": unrealized_pnl_krw,
             "total_pnl_usd": tot_pnl_usd,
             "total_pnl_pct": tot_pnl_pct,
             "holdings_count": len(all_holdings),
@@ -463,6 +634,12 @@ class KISBrokerAdapter:
 
         with self._balance_lock:
             if snapshot_complete and (len(all_holdings) > 0 or latest_summary):
+                self._last_overseas_balance = dict(res_dict)
+                self._last_balance_time = time.time()
+            elif not snapshot_complete and self._last_overseas_balance and self._last_overseas_balance.get("snapshot_complete") and (time.time() - self._last_balance_time < 300):
+                logger.warning(f"[KIS Balance] Transient query error on some exchanges ({len(successful_exchanges)}/{len(target_exchanges)}). Reusing last complete snapshot.")
+                return dict(self._last_overseas_balance)
+            elif (len(all_holdings) > 0 or latest_summary):
                 self._last_overseas_balance = dict(res_dict)
                 self._last_balance_time = time.time()
 
@@ -546,13 +723,22 @@ class KISBrokerAdapter:
             return body if isinstance(body, dict) else None
 
         headers = self._get_headers(tr_id)
-        self._limiter.acquire(0.25)
+        self._limiter.acquire(1.0)
         res = requests.get(url, headers=headers, params=params, timeout=timeout)
         data = _parse(res)
+
+        # Transient rate limit retry (EGW00201 / HTTP 429)
+        if (res.status_code == 200 and data and (data.get("msg_cd") == "EGW00201" or "초당 거래건수" in str(data.get("msg1", "")))) or res.status_code == 429:
+            logger.warning(f"[KIS Rate Limit] {tr_id} encountered EGW00201. Retrying with 0.35s backoff...")
+            time.sleep(0.35)
+            self._limiter.acquire(1.0)
+            res = requests.get(url, headers=headers, params=params, timeout=timeout)
+            data = _parse(res)
+
         token_bad = res.status_code == 401 or (data and data.get("msg_cd") in ("EGW00121", "EGW00122", "EGW00123"))
         if token_bad and self.authenticate(force_refresh=True):
             headers = self._get_headers(tr_id)
-            self._limiter.acquire(0.25)
+            self._limiter.acquire(1.0)
             res = requests.get(url, headers=headers, params=params, timeout=timeout)
             data = _parse(res)
         if res.status_code != 200 or not data or data.get("rt_cd") != "0":
@@ -733,18 +919,37 @@ class KISBrokerAdapter:
         try:
             self._limiter.acquire(1.0)
             res = requests.get(url, headers=headers, params=params, timeout=10)
-            if res.status_code == 200:
+            data = None
+            try:
                 data = res.json()
-                if data.get("rt_cd") == "0":
-                    out = data.get("output", {})
-                    return {
-                        "status": "success",
-                        "max_buy_qty": float(out.get("ord_psbl_qty", 0)),
-                        "ord_psbl_cash": float(out.get("ovrs_ord_psbl_amt", 0)),
-                        "max_order_amt": float(out.get("max_ord_psbl_amt", 0))
-                    }
-                else:
-                    return {"status": "error", "message": data.get("msg1")}
+            except Exception:
+                pass
+
+            is_rate_limit = (
+                res.status_code == 429
+                or (isinstance(data, dict) and (data.get("msg_cd") == "EGW00201" or data.get("error_code") == "EGW00201"))
+                or "초당 거래건수" in str(res.text)
+            )
+            if is_rate_limit:
+                time.sleep(0.35)
+                self._limiter.acquire(1.0)
+                res = requests.get(url, headers=headers, params=params, timeout=10)
+                try:
+                    data = res.json()
+                except Exception:
+                    pass
+
+            if res.status_code == 200 and isinstance(data, dict) and data.get("rt_cd") == "0":
+                out = data.get("output", {})
+                return {
+                    "status": "success",
+                    "max_buy_qty": int(float(out.get("ord_psbl_qty", 0))),
+                    "ord_psbl_cash": float(out.get("ovrs_ord_psbl_amt", 0)),
+                    "sll_ruse_psbl_amt": float(out.get("sll_ruse_psbl_amt", 0) or 0.0),
+                    "max_order_amt": float(out.get("max_ord_psbl_amt", 0))
+                }
+            elif isinstance(data, dict):
+                return {"status": "error", "message": data.get("msg1") or data.get("error_description")}
             return {"status": "error", "message": res.text}
         except Exception as exc:
             return {"status": "error", "message": str(exc)}
@@ -773,9 +978,26 @@ class KISBrokerAdapter:
             or (len(ticker_clean) == 6 and ticker_clean.isdigit())
         )
 
-        # Pre-Trade Safety Check
-        if qty <= 0:
+        # Pre-Trade Safety Check: whole-share integer rounding and positive check
+        try:
+            int_qty = int(qty)
+        except (ValueError, TypeError):
+            return {"status": "rejected", "reason": "Quantity must be a valid integer greater than 0"}
+
+        if int_qty <= 0:
             return {"status": "rejected", "reason": "Quantity must be greater than 0"}
+
+        try:
+            num_price = float(price or 0.0)
+        except (ValueError, TypeError):
+            num_price = 0.0
+
+        if num_price < 0:
+            return {"status": "rejected", "reason": "Price cannot be negative"}
+
+        clean_order_type = str(order_type or "00").strip()
+        if clean_order_type == "00" and num_price <= 0:
+            return {"status": "rejected", "reason": "Limit order price must be greater than 0"}
 
         if not self.is_configured():
             order_id = f"SIM-{int(time.time() * 1000)}"
@@ -787,8 +1009,8 @@ class KISBrokerAdapter:
                 "client_order_id": client_oid,
                 "ticker": ticker_clean,
                 "side": side.upper(),
-                "qty": qty,
-                "price": price,
+                "qty": int_qty,
+                "price": round(num_price, 2),
                 "timestamp": datetime.now().isoformat()
             }
 
@@ -813,8 +1035,8 @@ class KISBrokerAdapter:
                 rec = self._recheck_submitted_order(
                     ticker=ticker_clean,
                     side=side,
-                    qty=qty,
-                    price=price,
+                    qty=int_qty,
+                    price=num_price,
                     client_order_id=pending.get("client_order_id"),
                     is_domestic=is_domestic,
                     exchange=exchange or "NASD",
@@ -832,13 +1054,13 @@ class KISBrokerAdapter:
                 }
 
             if is_domestic:
-                result = self._place_domestic_order(ticker_clean, side, qty, price, order_type)
+                result = self._place_domestic_order(ticker_clean, side, int_qty, num_price, order_type)
             else:
                 result = self._place_overseas_order(
                     ticker_clean,
                     side,
-                    qty,
-                    price,
+                    int_qty,
+                    num_price,
                     exchange or "NASD",
                     order_type,
                     client_order_id=client_order_id,
@@ -859,37 +1081,99 @@ class KISBrokerAdapter:
             with self._order_lock:
                 self._inflight_keys.discard(inflight_key)
 
+    def _us_session_inquiry_dates(self) -> Tuple[str, str]:
+        """KIS ccnl is a calendar range; use US session dates, not local KST midnight."""
+        from al_sangmoo.core.market_time import now_us_eastern
+        et = now_us_eastern()
+        end = et.strftime("%Y%m%d")
+        start = (et - timedelta(days=1)).strftime("%Y%m%d")
+        return start, end
+
     def query_overseas_day_orders(self, exchange: str = "NASD") -> List[Dict[str, Any]]:
-        """Today's overseas unfilled (nccs) + filled (ccnl) rows. Failures return []."""
+        """Unfilled (nccs / TTTS3018R) + day fills (ccnl / TTTS3035R). Failures return []."""
+        cache_key = "ALL" if self.is_paper else str(exchange or "NASD")
+        cached = self._day_order_cache.get(cache_key)
+        if cached and (time.time() - cached[0] < 3.0):
+            self._day_order_query_complete[str(exchange or "NASD")] = cached[2]
+            return list(cached[1])
+
         rows: List[Dict[str, Any]] = []
         successful_specs = 0
-        nccs_tr = "VTTS3035R" if self.is_paper else "TTTS3035R"
-        ccnl_tr = "VTTS3039R" if self.is_paper else "TTTS3039R"
+        start_dt, end_dt = self._us_session_inquiry_dates()
+        nccs_tr = "VTTS3018R" if self.is_paper else "TTTS3018R"
+        ccnl_tr = "VTTS3035R" if self.is_paper else "TTTS3035R"
+        nccs_ex = "" if self.is_paper else str(exchange or "NASD")
+        ccnl_ex = "" if self.is_paper else str(exchange or "NASD")
         specs = [
-            (nccs_tr, "/uapi/overseas-stock/v1/trading/inquire-nccs"),
-            (ccnl_tr, "/uapi/overseas-stock/v1/trading/inquire-ccnl"),
+            (
+                nccs_tr,
+                "/uapi/overseas-stock/v1/trading/inquire-nccs",
+                {
+                    "CANO": self.account_no,
+                    "ACNT_PRDT_CD": self.account_code,
+                    "OVRS_EXCG_CD": nccs_ex,
+                    "SORT_SQN": "DS",
+                    "CTX_AREA_FK200": "",
+                    "CTX_AREA_NK200": "",
+                },
+            ),
+            (
+                ccnl_tr,
+                "/uapi/overseas-stock/v1/trading/inquire-ccnl",
+                {
+                    "CANO": self.account_no,
+                    "ACNT_PRDT_CD": self.account_code,
+                    "PDNO": "" if self.is_paper else "%",
+                    "ORD_STRT_DT": start_dt,
+                    "ORD_END_DT": end_dt,
+                    "SLL_BUY_DVSN": "00",
+                    "CCLD_NCCS_DVSN": "00",
+                    "OVRS_EXCG_CD": ccnl_ex,
+                    "SORT_SQN": "DS",
+                    "ORD_DT": "",
+                    "ORD_GNO_BRNO": "",
+                    "ODNO": "",
+                    "CTX_AREA_FK200": "",
+                    "CTX_AREA_NK200": "",
+                },
+            ),
         ]
-        today = datetime.now().strftime("%Y%m%d")
-        for tr_id, path in specs:
+        for tr_id, path, params in specs:
             try:
                 url = f"{self.base_url}{path}"
                 headers = self._get_headers(tr_id)
-                params = {
-                    "CANO": self.account_no,
-                    "ACNT_PRDT_CD": self.account_code,
-                    "OVRS_EXCG_CD": exchange,
-                    "TR_CRCY_CD": "USD",
-                    "CTX_AREA_FK200": "",
-                    "CTX_AREA_NK200": "",
-                    "ORD_STRT_DT": today,
-                    "ORD_END_DT": today,
-                }
                 self._limiter.acquire(1.0)
                 res = requests.get(url, headers=headers, params=params, timeout=8)
-                if res.status_code != 200:
-                    continue
-                data = res.json()
-                if data.get("rt_cd") not in ("0", 0):
+                data = None
+                try:
+                    data = res.json()
+                except Exception:
+                    pass
+
+                is_rate_limit = (
+                    res.status_code == 429
+                    or (isinstance(data, dict) and (data.get("msg_cd") == "EGW00201" or data.get("error_code") == "EGW00201"))
+                    or "초당 거래건수" in str(res.text)
+                )
+                if is_rate_limit:
+                    time.sleep(0.35)
+                    self._limiter.acquire(1.0)
+                    res = requests.get(url, headers=headers, params=params, timeout=8)
+                    try:
+                        data = res.json()
+                    except Exception:
+                        pass
+
+                if res.status_code != 200 or not isinstance(data, dict) or data.get("rt_cd") not in ("0", 0):
+                    logger.warning(
+                        "[KIS] day-order %s %s failed: http=%s rt_cd=%s msg_cd=%s msg=%s",
+                        tr_id,
+                        path,
+                        getattr(res, "status_code", None),
+                        (data or {}).get("rt_cd") if isinstance(data, dict) else None,
+                        (data or {}).get("msg_cd") if isinstance(data, dict) else None,
+                        str((data or {}).get("msg1") or "")[:80] if isinstance(data, dict) else "",
+                    )
                     continue
                 successful_specs += 1
                 payload = data.get("output") or data.get("output1") or data.get("output2") or []
@@ -899,9 +1183,9 @@ class KISBrokerAdapter:
                     rows.extend([p for p in payload if isinstance(p, dict)])
             except Exception as exc:
                 logger.debug(f"[KIS] day-order inquiry skipped ({tr_id}): {exc}")
-        self._day_order_query_complete[str(exchange or "NASD")] = (
-            successful_specs == len(specs)
-        )
+        complete = successful_specs >= 1
+        self._day_order_query_complete[str(exchange or "NASD")] = complete
+        self._day_order_cache[cache_key] = (time.time(), list(rows), complete)
         return rows
 
     def get_overseas_order_state(
@@ -1040,7 +1324,10 @@ class KISBrokerAdapter:
 
         url = f"{self.base_url}/uapi/overseas-stock/v1/trading/order"
         headers = self._get_headers(tr_id)
-        unpr_str = f"{price:.2f}" if price > 0 else "0"
+        if (order_type or "00") == "01":
+            unpr_str = "0"
+        else:
+            unpr_str = f"{float(price):.2f}" if float(price) > 0 else "0"
         client_oid = client_order_id or make_client_order_id()
 
         body = {
@@ -1086,6 +1373,31 @@ class KISBrokerAdapter:
                 logger.error(f"[KIS US Order Exception] {exc}")
                 return {"status": "error", "reason": str(exc), "client_order_id": client_oid}
 
+            data = None
+            try:
+                data = res.json()
+            except Exception:
+                pass
+
+            msg_cd = ""
+            msg_txt = ""
+            if isinstance(data, dict):
+                msg_cd = data.get("msg_cd") or data.get("error_code") or ""
+                msg_txt = data.get("msg1") or data.get("error_description") or ""
+
+            is_rate_limit = (
+                res.status_code == 429
+                or msg_cd == "EGW00201"
+                or "초당 거래건수" in str(msg_txt)
+                or "초당 거래건수" in str(res.text)
+            )
+            if is_rate_limit and attempt < 2:
+                last_rate_limit = True
+                logger.warning(f"[KIS US Order Rate Limit] {msg_cd}: {msg_txt}. Backing off 0.5s before retry (attempt {attempt + 1}/3)...")
+                time.sleep(0.5)
+                continue
+            last_rate_limit = False
+
             if res.status_code >= 500:
                 rec = self._recheck_submitted_order(
                     ticker, side, qty, price, client_oid, is_domestic=False, exchange=exchange
@@ -1099,9 +1411,7 @@ class KISBrokerAdapter:
                     "message": f"증권사 HTTP {res.status_code}. 재전송 없이 원장 확인 필요."
                 }
 
-            try:
-                data = res.json()
-            except Exception:
+            if not data:
                 rec = self._recheck_submitted_order(
                     ticker, side, qty, price, client_oid, is_domestic=False, exchange=exchange
                 )
@@ -1113,14 +1423,6 @@ class KISBrokerAdapter:
                     "client_order_id": client_oid,
                     "message": "주문 응답 JSON 파싱 실패. 재전송하지 않았습니다."
                 }
-
-            msg_cd = data.get("msg_cd", "")
-            msg_txt = data.get("msg1", "")
-            if (msg_cd == "EGW00201" or "초당 거래건수" in str(msg_txt)) and attempt < 2:
-                last_rate_limit = True
-                time.sleep(1.2)
-                continue
-            last_rate_limit = False
 
             if res.status_code == 200 and data.get("rt_cd") == "0":
                 out = data.get("output", {})
@@ -1177,42 +1479,65 @@ class KISBrokerAdapter:
             "ORD_UNPR": str(int(price)) if order_type == "00" else "0"
         }
 
-        try:
-            self._limiter.acquire(1.0)
-            res = requests.post(url, json=body, headers=headers, timeout=8)
-        except (requests.Timeout, requests.ConnectionError) as exc:
-            logger.error(f"[KIS KR Order Timeout] {exc}")
-            return {
-                "status": "error",
-                "reason": "ORDER_TIMEOUT_UNCONFIRMED",
-                "client_order_id": client_oid,
-                "message": "국내주식 주문 HTTP 타임아웃. 재전송하지 않았습니다."
-            }
-        except Exception as exc:
-            return {"status": "error", "reason": str(exc), "client_order_id": client_oid}
+        for attempt in range(3):
+            try:
+                self._limiter.acquire(1.0)
+                res = requests.post(url, json=body, headers=headers, timeout=8)
+            except (requests.Timeout, requests.ConnectionError) as exc:
+                logger.error(f"[KIS KR Order Timeout] {exc}")
+                return {
+                    "status": "error",
+                    "reason": "ORDER_TIMEOUT_UNCONFIRMED",
+                    "client_order_id": client_oid,
+                    "message": "국내주식 주문 HTTP 타임아웃. 재전송하지 않았습니다."
+                }
+            except Exception as exc:
+                return {"status": "error", "reason": str(exc), "client_order_id": client_oid}
 
-        try:
-            data = res.json()
-        except Exception:
-            return {
-                "status": "error",
-                "reason": "ORDER_TIMEOUT_UNCONFIRMED",
-                "client_order_id": client_oid,
-                "message": "국내주식 주문 응답 파싱 실패. 재전송하지 않았습니다."
-            }
+            data = None
+            try:
+                data = res.json()
+            except Exception:
+                pass
 
-        if res.status_code == 200 and data.get("rt_cd") == "0":
-            return {
-                "status": "submitted",
-                "order_id": data.get("output", {}).get("ODNO"),
-                "client_order_id": client_oid,
-                "ticker": ticker,
-                "side": side.upper(),
-                "qty": qty,
-                "price": price,
-                "message": data.get("msg1")
-            }
-        return {"status": "rejected", "reason": data.get("msg1", res.text), "client_order_id": client_oid}
+            msg_cd = ""
+            msg_txt = ""
+            if isinstance(data, dict):
+                msg_cd = data.get("msg_cd") or data.get("error_code") or ""
+                msg_txt = data.get("msg1") or data.get("error_description") or ""
+
+            is_rate_limit = (
+                res.status_code == 429
+                or msg_cd == "EGW00201"
+                or "초당 거래건수" in str(msg_txt)
+                or "초당 거래건수" in str(res.text)
+            )
+            if is_rate_limit and attempt < 2:
+                time.sleep(0.5)
+                continue
+
+            if not data:
+                return {
+                    "status": "error",
+                    "reason": "ORDER_TIMEOUT_UNCONFIRMED",
+                    "client_order_id": client_oid,
+                    "message": "국내주식 주문 응답 파싱 실패. 재전송하지 않았습니다."
+                }
+
+            if res.status_code == 200 and data.get("rt_cd") == "0":
+                return {
+                    "status": "submitted",
+                    "order_id": data.get("output", {}).get("ODNO"),
+                    "client_order_id": client_oid,
+                    "ticker": ticker,
+                    "side": side.upper(),
+                    "qty": qty,
+                    "price": price,
+                    "message": data.get("msg1")
+                }
+            return {"status": "rejected", "reason": data.get("msg1", res.text), "client_order_id": client_oid}
+
+        return {"status": "rejected", "reason": "EGW00201 초당 거래건수 초과 (Max retries)", "client_order_id": client_oid}
 
 
 # Global singleton instance

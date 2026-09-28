@@ -1,7 +1,11 @@
 import os
 import json
+import logging
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import JSONResponse
 from al_sangmoo.core.constants import derive_stop_price, derive_target_price, is_market_ticker
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Dashboard"])
 
@@ -26,8 +30,8 @@ def get_live_macro_gauges():
             CACHED_MACRO_GAUGES = gauges
             LAST_MACRO_TIME = now
             return CACHED_MACRO_GAUGES
-    except Exception:
-        pass
+    except Exception as e:
+        logger.exception("Failed to fetch realtime macro gauges: %s", e)
     return CACHED_MACRO_GAUGES
 
 def get_feed_cache():
@@ -39,8 +43,8 @@ def get_feed_cache():
                 with open(DASHBOARD_JSON, "r", encoding="utf-8") as f:
                     FEED_CACHE = json.load(f)
                 LAST_FEED_MTIME = mtime
-        except Exception:
-            pass
+        except Exception as e:
+            logger.exception("Failed to read or parse dashboard_data.json: %s", e)
     return FEED_CACHE
 
 def load_feed_cache():
@@ -52,7 +56,7 @@ async def get_dashboard_execution_logs(limit: int = 50):
     """Lightweight real-time audit feed used while WebSocket mode is active."""
     from al_sangmoo.infrastructure.persistence import get_execution_logs
 
-    safe_limit = max(1, min(int(limit), 200))
+    safe_limit = max(1, min(int(limit), 300))
     return {"execution_logs": get_execution_logs(limit=safe_limit)}
 
 
@@ -65,7 +69,8 @@ async def get_dashboard_data():
             try:
                 with open(DASHBOARD_JSON, "r", encoding="utf-8") as f:
                     feed = json.load(f)
-            except Exception:
+            except Exception as e:
+                logger.exception("Failed to load dashboard_data.json fallback: %s", e)
                 feed = None
     if not feed:
         raise HTTPException(status_code=503, detail="대시보드 피드 데이터가 아직 생성되지 않았습니다.")
@@ -80,17 +85,42 @@ async def get_dashboard_data():
             feed_out["universe_sectors"] = live_sectors
         else:
             feed_out.setdefault("universe_sectors", [])
-    except Exception:
-        feed_out.setdefault("universe_sectors", [])
+    except Exception as e:
+        logger.exception("Failed to load universe sectors: %s", e)
+        feed_out["universe_sectors_error"] = "섹터 데이터를 불러오지 못했습니다"
+        feed_out.pop("universe_sectors", None)
     
-    # Inject real-time macro gauges (30s TTL cache)
+    # Inject real-time macro gauges & dynamically re-evaluate macro climate (30s TTL cache)
     try:
         live_gauges = get_live_macro_gauges()
-        if live_gauges and isinstance(feed_out.get("macro"), dict):
-            feed_out["macro"] = dict(feed_out["macro"])
-            feed_out["macro"]["macro_gauges"] = live_gauges
-    except Exception:
-        pass
+        if live_gauges and isinstance(live_gauges, dict):
+            macro_obj = dict(feed_out["macro"]) if isinstance(feed_out.get("macro"), dict) else {}
+            macro_obj["macro_gauges"] = live_gauges
+
+            # Dynamically re-evaluate live MSI score & headline using real-time market gauges
+            from al_sangmoo.domain.quant.macro import evaluate_macro_stance
+            current_climate = macro_obj.get("macro_climate") or {}
+            breakdown = current_climate.get("msi_breakdown") or {}
+            if breakdown:
+                live_climate = evaluate_macro_stance(
+                    gauges=live_gauges,
+                    defense_count=int(breakdown.get("def_count", 0)),
+                    buy_count=int(breakdown.get("buy_count", 0)),
+                    matched_shocks=current_climate.get("external_shocks") or ["금리 경로 및 통화정책 영향권"],
+                    title=macro_obj.get("title", "")
+                )
+                if live_climate and isinstance(live_climate, dict):
+                    macro_obj["macro_climate"] = live_climate
+                    macro_obj["msi_score"] = live_climate.get("msi_score")
+                    macro_obj["msi_stance"] = live_climate.get("macro_stance")
+
+            feed_out["macro"] = macro_obj
+            feed_out.pop("macro_error", None)
+        else:
+            feed_out["macro_error"] = "매크로 게이지를 불러오지 못했습니다"
+    except Exception as e:
+        logger.exception("Failed to evaluate live macro gauges: %s", e)
+        feed_out["macro_error"] = "매크로 게이지 분석 실패"
 
     # Inject real-time live portfolio from SQLite SSOT (pure CQRS fast read < 0.5ms)
     try:
@@ -172,14 +202,23 @@ async def get_dashboard_data():
             slot_sum["is_bull_regime"] = bool(regime["is_bull_regime"])
         feed_out["slot_allocation_summary"] = slot_sum
 
-        # 4. Inject Execution Audit Logs
-        try:
-            feed_out["execution_logs"] = get_execution_logs(limit=50)
-        except Exception:
-            feed_out["execution_logs"] = []
+        feed_out["portfolio_source"] = "sqlite"
+        feed_out.pop("portfolio_error", None)
     except Exception as e:
-        # Fallback gracefully to feed cached portfolio if DB query fails
-        pass
+        logger.exception("Failed to inject live portfolio: %s", e)
+        feed_out["portfolio_source"] = "feed_cache"
+        feed_out["portfolio_error"] = "실시간 원장을 읽지 못했습니다"
+
+    # 4. Inject Execution Audit Logs
+    try:
+        from al_sangmoo.infrastructure.persistence import get_execution_logs
+        feed_out["execution_logs"] = get_execution_logs(limit=300)
+        feed_out.pop("execution_logs_error", None)
+    except Exception as e:
+        logger.exception("Failed to load execution logs for dashboard: %s", e)
+        feed_out["execution_logs_error"] = True
+        feed_out.pop("execution_logs", None)
+
     return feed_out
 
 @router.get("/api/summary")
@@ -196,4 +235,39 @@ async def get_dashboard_summary():
 @router.get("/api/health")
 async def health_check():
     """System health check endpoint."""
-    return {"status": "ok", "service": "al_sangmoo_quant_terminal", "version": "2.6"}
+    feed_ok = False
+    db_ok = False
+
+    try:
+        if os.path.exists(DASHBOARD_JSON):
+            with open(DASHBOARD_JSON, "r", encoding="utf-8") as f:
+                json.load(f)
+            feed_ok = True
+    except Exception as e:
+        logger.exception("Health check: dashboard feed file corrupt or unreadable: %s", e)
+
+    try:
+        from al_sangmoo.infrastructure.persistence import get_live_portfolio
+        get_live_portfolio()
+        db_ok = True
+    except Exception as e:
+        logger.exception("Health check: database query failed: %s", e)
+
+    if not (feed_ok and db_ok):
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "error",
+                "detail": "시스템 상태가 비정상입니다.",
+                "feed": "ok" if feed_ok else "error",
+                "database": "ok" if db_ok else "error",
+            }
+        )
+
+    from al_sangmoo.infrastructure.brokers.kis_broker import default_kis_broker
+    return {
+        "status": "ok",
+        "feed": "ok",
+        "database": "ok",
+        "broker_configured": bool(default_kis_broker.is_configured())
+    }

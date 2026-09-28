@@ -4,8 +4,9 @@ SQLite Persistence Repository Layer with WAL Mode, Atomic Transactions & CQRS De
 import os
 import re
 import sqlite3
+import threading
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor
 import yfinance as yf
 from al_sangmoo.core.config import DB_FILE, CHARTS_DIR
@@ -15,9 +16,11 @@ from al_sangmoo.core.constants import (
     derive_partial_tp_price,
     derive_stop_price,
     derive_target_price,
+    DEFAULT_BASE_ACCOUNT_USD,
 )
 
 REASON_REGEX = re.compile(r'^[A-Za-z0-9_\-\s\(\)가-힣.,%]{1,100}$')
+DEFAULT_USD_KRW_RATE = 1380.0
 
 class ManagedConnection(sqlite3.Connection):
     """
@@ -37,6 +40,10 @@ class ManagedConnection(sqlite3.Connection):
 def get_connection(timeout: float = 30.0, db_path: str = None) -> sqlite3.Connection:
     """Returns an isolated SQLite connection configured with WAL mode, pragmas, and auto-closing factory."""
     target_db = db_path or os.environ.get("AL_SANGMOO_DB_PATH") or str(DB_FILE)
+    if str(target_db) != ":memory:":
+        parent_dir = os.path.dirname(os.path.abspath(str(target_db)))
+        if parent_dir:
+            os.makedirs(parent_dir, exist_ok=True)
     conn = sqlite3.connect(str(target_db), timeout=timeout, factory=ManagedConnection)
     conn.row_factory = sqlite3.Row
     try:
@@ -47,9 +54,22 @@ def get_connection(timeout: float = 30.0, db_path: str = None) -> sqlite3.Connec
         pass
     return conn
 
-def init_database() -> None:
+_INITIALIZED_DBS = set()
+_INIT_LOCK = threading.Lock()
+
+def init_database(force: bool = False) -> None:
     """Ensures all required tables exist."""
-    with get_connection() as conn:
+    target_db = os.environ.get("AL_SANGMOO_DB_PATH") or str(DB_FILE)
+    if not force and target_db in _INITIALIZED_DBS and (target_db == ":memory:" or os.path.exists(target_db)):
+        return
+    with _INIT_LOCK:
+        if not force and target_db in _INITIALIZED_DBS and (target_db == ":memory:" or os.path.exists(target_db)):
+            return
+        _do_init_database(target_db)
+        _INITIALIZED_DBS.add(target_db)
+
+def _do_init_database(target_db: str) -> None:
+    with get_connection(db_path=target_db) as conn:
         cursor = conn.cursor()
         
         cursor.execute("""
@@ -222,6 +242,24 @@ def init_database() -> None:
             PRIMARY KEY (ticker, side)
         )
         """)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS account_snapshot (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            total_equity_usd REAL NOT NULL,
+            cash_available_usd REAL NOT NULL,
+            stock_eval_usd REAL NOT NULL,
+            realized_pnl_usd REAL DEFAULT 0,
+            unrealized_pnl_usd REAL DEFAULT 0,
+            unrealized_pnl_pct REAL DEFAULT NULL,
+            unrealized_pnl_krw REAL DEFAULT NULL,
+            total_pnl_usd REAL DEFAULT NULL,
+            total_pnl_pct REAL DEFAULT NULL,
+            usd_krw_rate REAL DEFAULT 1380,
+            source TEXT,
+            mode TEXT,
+            updated_at TEXT NOT NULL
+        )
+        """)
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_execution_logs_ts ON execution_logs(timestamp DESC);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_trade_history_ticker ON trade_history(ticker);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_exit_cooldowns_until ON exit_cooldowns(lock_until);")
@@ -234,6 +272,10 @@ def init_database() -> None:
         except Exception:
             pass
         for col_sql in (
+            "ALTER TABLE account_snapshot ADD COLUMN unrealized_pnl_pct REAL DEFAULT NULL",
+            "ALTER TABLE account_snapshot ADD COLUMN unrealized_pnl_krw REAL DEFAULT NULL",
+            "ALTER TABLE account_snapshot ADD COLUMN total_pnl_usd REAL DEFAULT NULL",
+            "ALTER TABLE account_snapshot ADD COLUMN total_pnl_pct REAL DEFAULT NULL",
             "ALTER TABLE my_portfolio ADD COLUMN max_gain_pct REAL DEFAULT 0",
             "ALTER TABLE my_portfolio ADD COLUMN peak_high REAL DEFAULT 0",
             "ALTER TABLE my_portfolio ADD COLUMN kijun_26 REAL DEFAULT 0",
@@ -252,6 +294,120 @@ def init_database() -> None:
             except Exception:
                 pass
         conn.commit()
+    _INITIALIZED_DBS.add(target_db)
+
+
+def save_account_snapshot(snapshot: dict) -> None:
+    """Persist last successful broker NAV/cash snapshot for live portfolio SSOT."""
+    if not isinstance(snapshot, dict):
+        return
+    equity = float(snapshot.get("total_equity_usd") or 0.0)
+    cash = float(snapshot.get("cash_available_usd") or 0.0)
+    stock = float(snapshot.get("stock_eval_usd") or 0.0)
+    if equity <= 0:
+        return
+    realized_val = float(snapshot.get("realized_pnl_usd") or 0.0)
+    unrealized_val = float(snapshot.get("unrealized_pnl_usd") or 0.0)
+    unrealized_pct = snapshot.get("unrealized_pnl_pct")
+    if unrealized_pct is not None:
+        try:
+            unrealized_pct = round(float(unrealized_pct), 2)
+        except Exception:
+            unrealized_pct = None
+    unrealized_krw = snapshot.get("unrealized_pnl_krw")
+    if unrealized_krw is not None:
+        try:
+            unrealized_krw = round(float(unrealized_krw), 0)
+        except Exception:
+            unrealized_krw = None
+    total_pnl_val = snapshot.get("total_pnl_usd")
+    if total_pnl_val is not None:
+        try:
+            total_pnl_val = round(float(total_pnl_val), 2)
+        except Exception:
+            total_pnl_val = None
+    total_pnl_pct = snapshot.get("total_pnl_pct")
+    if total_pnl_pct is not None:
+        try:
+            total_pnl_pct = round(float(total_pnl_pct), 2)
+        except Exception:
+            total_pnl_pct = None
+
+    fx_rate = float(snapshot.get("usd_krw_rate") or DEFAULT_USD_KRW_RATE) or DEFAULT_USD_KRW_RATE
+    if abs(realized_val) > 5000.0:
+        realized_val = round(realized_val / fx_rate, 2)
+    if abs(unrealized_val) > 5000.0:
+        unrealized_val = round(unrealized_val / fx_rate, 2)
+    if total_pnl_val is not None and abs(total_pnl_val) > 5000.0:
+        total_pnl_val = round(total_pnl_val / fx_rate, 2)
+    init_database()
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with get_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO account_snapshot (
+                id, total_equity_usd, cash_available_usd, stock_eval_usd,
+                realized_pnl_usd, unrealized_pnl_usd, unrealized_pnl_pct, unrealized_pnl_krw,
+                total_pnl_usd, total_pnl_pct,
+                usd_krw_rate, source, mode, updated_at
+            ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                total_equity_usd = excluded.total_equity_usd,
+                cash_available_usd = excluded.cash_available_usd,
+                stock_eval_usd = excluded.stock_eval_usd,
+                realized_pnl_usd = excluded.realized_pnl_usd,
+                unrealized_pnl_usd = excluded.unrealized_pnl_usd,
+                unrealized_pnl_pct = excluded.unrealized_pnl_pct,
+                unrealized_pnl_krw = excluded.unrealized_pnl_krw,
+                total_pnl_usd = excluded.total_pnl_usd,
+                total_pnl_pct = excluded.total_pnl_pct,
+                usd_krw_rate = excluded.usd_krw_rate,
+                source = excluded.source,
+                mode = excluded.mode,
+                updated_at = excluded.updated_at
+            """,
+            (
+                equity,
+                cash,
+                stock,
+                realized_val,
+                unrealized_val,
+                unrealized_pct,
+                unrealized_krw,
+                total_pnl_val,
+                total_pnl_pct,
+                fx_rate,
+                str(snapshot.get("source") or "KIS"),
+                str(snapshot.get("mode") or ""),
+                str(snapshot.get("updated_at") or now_str),
+            ),
+        )
+        conn.commit()
+
+
+def load_account_snapshot() -> dict:
+    init_database()
+    with get_connection() as conn:
+        row = conn.execute("SELECT * FROM account_snapshot WHERE id = 1").fetchone()
+        if not row:
+            return {}
+        d = dict(row)
+        fx_rate = float(d.get("usd_krw_rate") or DEFAULT_USD_KRW_RATE) or DEFAULT_USD_KRW_RATE
+        if abs(float(d.get("realized_pnl_usd") or 0.0)) > 5000.0:
+            d["realized_pnl_usd"] = round(float(d["realized_pnl_usd"]) / fx_rate, 2)
+        if abs(float(d.get("unrealized_pnl_usd") or 0.0)) > 5000.0:
+            d["unrealized_pnl_usd"] = round(float(d["unrealized_pnl_usd"]) / fx_rate, 2)
+        if d.get("total_pnl_usd") is not None and abs(float(d.get("total_pnl_usd") or 0.0)) > 5000.0:
+            d["total_pnl_usd"] = round(float(d["total_pnl_usd"]) / fx_rate, 2)
+        return d
+
+
+def clear_account_snapshot() -> None:
+    init_database()
+    with get_connection() as conn:
+        conn.execute("DELETE FROM account_snapshot WHERE id = 1")
+        conn.commit()
+
 
 def save_macro_history_record(date_str: str, macro_climate: dict, macro_gauges: dict) -> None:
     init_database()
@@ -582,7 +738,7 @@ def get_live_portfolio() -> dict:
         h['quantity'] = quantity
         h['total_cost'] = total_cost
         h['current_price'] = cur_price
-        # C1-M2 Hard Stop (-5%) and uncapped trailing floor (SSOT)
+        # C-2 Hard Stop (-7% EOD / -10% Emergency) and uncapped trailing floor (SSOT)
         stop_p = float(h.get('stop_loss_price') or derive_stop_price(buy_price))
         h['stop_loss_price'] = stop_p
 
@@ -616,26 +772,133 @@ def get_live_portfolio() -> dict:
     unrealized_pnl_usd = total_eval - total_invested
     unrealized_pnl_pct = ((unrealized_pnl_usd) / total_invested * 100) if total_invested > 0 else 0.0
 
-    # Financial Cash & Equity Accounting (Base: $7,500 / 10,000,000 KRW account)
-    base_account_usd = 7500.0
-    usd_krw_rate = 1380.0
+    # Financial Cash & Equity Accounting
+    # KIS output2 tot_evlu_amt is sometimes KRW / whole-account. Never treat it
+    # as USD book, and never fall back to the $7,500 local ledger while live
+    # lots exist — weights must be lot / (lots + broker cash).
+    from al_sangmoo.domain.risk.cash_proxy import holdings_mark_usd, reconcile_overseas_nav
 
-    # 1. Fetch realized PnL from the sell ledger (includes partial proxy sells).
+    usd_krw_rate = DEFAULT_USD_KRW_RATE
+    holdings_eval = holdings_mark_usd(holdings) if holdings else total_eval
+    if holdings_eval > 0:
+        total_eval = holdings_eval
+        unrealized_pnl_usd = total_eval - total_invested
+        unrealized_pnl_pct = ((unrealized_pnl_usd) / total_invested * 100) if total_invested > 0 else 0.0
+
+    snap = load_account_snapshot()
+    broker_synced_at = str(snap.get("updated_at") or "") if snap else ""
+    rec = reconcile_overseas_nav(
+        holdings_eval=total_eval,
+        equity=float(snap.get("total_equity_usd") or 0.0) if snap else 0.0,
+        cash=float(snap.get("cash_available_usd") or 0.0) if snap else 0.0,
+        stock_eval=float(snap.get("stock_eval_usd") or 0.0) if snap else 0.0,
+        usd_krw_rate=usd_krw_rate,
+    )
+
+    rec_equity = float(rec.get("total_equity_usd") or 0.0)
+    rec_source = str(rec.get("source") or "")
+    use_rec = False
+    equity_source = "LOCAL"
+    if snap and rec_equity > 0 and rec.get("sane"):
+        use_rec = True
+        equity_source = "BROKER"
+    elif snap and rec_equity > 0 and rec_source == "HOLDINGS" and holdings_eval > 1:
+        use_rec = True
+        equity_source = "HOLDINGS"
+        if snap and not rec.get("sane"):
+            try:
+                now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                save_account_snapshot({
+                    "total_equity_usd": rec["total_equity_usd"],
+                    "cash_available_usd": rec["cash_available_usd"],
+                    "stock_eval_usd": rec["stock_eval_usd"],
+                    "realized_pnl_usd": float(snap.get("realized_pnl_usd") or 0.0),
+                    "unrealized_pnl_usd": unrealized_pnl_usd,
+                    "source": "HOLDINGS",
+                    "mode": str(snap.get("mode") or "VIRTUAL_PAPER"),
+                    "updated_at": now_str,
+                })
+                broker_synced_at = now_str
+            except Exception:
+                pass
+
+    if snap and not use_rec:
+        try:
+            clear_account_snapshot()
+        except Exception:
+            pass
+        broker_synced_at = ""
+
     realized_pnl_usd = 0.0
-    realized_pnl_pct = 0.0
     with get_connection() as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT SUM(pnl_amount) FROM trade_history")
         row = cursor.fetchone()
         if row and row[0] is not None:
             realized_pnl_usd = float(row[0])
-            realized_pnl_pct = (realized_pnl_usd / base_account_usd) * 100.0
 
     total_pnl_usd = realized_pnl_usd + unrealized_pnl_usd
-    total_equity_usd = max(0.0, base_account_usd + total_pnl_usd)
-    free_cash_usd = max(0.0, total_equity_usd - total_eval)
-    
-    total_cumulative_pnl_pct = ((total_equity_usd - base_account_usd) / base_account_usd * 100.0)
+    unrealized_pnl_krw = 0.0
+    base_account_usd = DEFAULT_BASE_ACCOUNT_USD
+    # Sleeve Ledger Cash (Canonical SSOT for $7,500.00 / 10,000,000 KRW account):
+    # Free cash = Initial Capital - Total Cost Basis of active lots + Cumulative Realized PnL
+    sleeve_cash_usd = max(0.0, round(base_account_usd - total_invested + realized_pnl_usd, 2))
+
+    if use_rec:
+        if float(rec.get("stock_eval_usd") or 0.0) > 0:
+            total_eval = float(rec["stock_eval_usd"])
+        if snap and snap.get("unrealized_pnl_pct") is not None and float(snap.get("unrealized_pnl_pct") or 0.0) != 0.0:
+            unrealized_pnl_pct = float(snap["unrealized_pnl_pct"])
+            if snap.get("unrealized_pnl_usd") is not None and float(snap.get("unrealized_pnl_usd") or 0.0) != 0.0:
+                unrealized_pnl_usd = float(snap["unrealized_pnl_usd"])
+        else:
+            unrealized_pnl_usd = total_eval - total_invested
+            unrealized_pnl_pct = ((unrealized_pnl_usd) / total_invested * 100.0) if total_invested > 0 else 0.0
+
+        if snap and snap.get("unrealized_pnl_krw") is not None and float(snap.get("unrealized_pnl_krw") or 0.0) != 0.0:
+            unrealized_pnl_krw = float(snap["unrealized_pnl_krw"])
+        else:
+            unrealized_pnl_krw = unrealized_pnl_usd * usd_krw_rate
+
+        # Broker/HOLDINGS snapshot is the cash + NAV SSOT. Sleeve ledger is
+        # only the LOCAL fallback when the broker book is unavailable.
+        free_cash_usd = max(0.0, float(rec.get("cash_available_usd") or 0.0))
+        rec_eq = float(rec.get("total_equity_usd") or 0.0)
+        if rec_eq > 0:
+            total_equity_usd = rec_eq
+        else:
+            total_equity_usd = round(total_eval + free_cash_usd, 2)
+        total_pnl_usd = realized_pnl_usd + unrealized_pnl_usd
+    else:
+        equity_source = "LOCAL"
+        free_cash_usd = sleeve_cash_usd
+        total_equity_usd = round(total_eval + free_cash_usd, 2)
+        total_pnl_usd = realized_pnl_usd + unrealized_pnl_usd
+        unrealized_pnl_krw = unrealized_pnl_usd * usd_krw_rate
+
+    if equity_source == "BROKER" and snap:
+        lot_pnl = round(float(total_eval) - float(total_invested), 2)
+        # KIS MTS tot_pftrt / tot_evlu_pfls is persisted as total_pnl_* when
+        # available, otherwise as unrealized_pnl_* from the broker adapter.
+        cumulative_pnl_usd = float(
+            snap.get("total_pnl_usd")
+            or snap.get("unrealized_pnl_usd")
+            or lot_pnl
+        )
+        total_cumulative_pnl_pct = float(
+            snap.get("total_pnl_pct")
+            or snap.get("unrealized_pnl_pct")
+            or unrealized_pnl_pct
+            or 0.0
+        )
+        base_account_usd = round(float(total_equity_usd) - cumulative_pnl_usd, 2)
+    else:
+        cumulative_pnl_usd = round(total_equity_usd - base_account_usd, 2)
+        total_cumulative_pnl_pct = (
+            (cumulative_pnl_usd / base_account_usd * 100.0)
+            if base_account_usd > 0 else 0.0
+        )
+    realized_pnl_pct = (realized_pnl_usd / base_account_usd * 100.0) if base_account_usd > 0 else 0.0
     free_cash_krw = int(free_cash_usd * usd_krw_rate)
     total_equity_krw = int(total_equity_usd * usd_krw_rate)
     cash_ratio_pct = (free_cash_usd / total_equity_usd * 100.0) if total_equity_usd > 0 else 100.0
@@ -646,16 +909,21 @@ def get_live_portfolio() -> dict:
         "total_eval": round(total_eval, 2),
         "unrealized_pnl_pct": round(unrealized_pnl_pct, 2),
         "unrealized_pnl_amount": round(unrealized_pnl_usd, 2),
+        "unrealized_pnl_krw": int(round(unrealized_pnl_krw)),
         "realized_pnl_pct": round(realized_pnl_pct, 2),
         "realized_pnl_amount": round(realized_pnl_usd, 2),
         "overall_pnl_pct": round(total_cumulative_pnl_pct, 2),
-        "overall_pnl_amount": round(total_pnl_usd, 2),
+        "overall_pnl_amount": round(cumulative_pnl_usd, 2),
         "total_equity_usd": round(total_equity_usd, 2),
         "total_equity_krw": total_equity_krw,
         "free_cash_usd": round(free_cash_usd, 2),
         "free_cash_krw": free_cash_krw,
         "cash_ratio_pct": round(cash_ratio_pct, 1),
         "usd_krw_rate": usd_krw_rate,
+        "initial_capital_usd": round(base_account_usd, 2),
+        "base_account_usd": round(base_account_usd, 2),
+        "equity_source": equity_source,
+        "broker_synced_at": broker_synced_at or None,
         "active_slot_count": len(holdings),
         "available_slots": max(0, 3 - len(holdings))
     }
@@ -1015,8 +1283,8 @@ def record_execution_log(
         conn.commit()
         return inserted_id
 
-def get_execution_logs(limit: int = 50) -> list:
-    """Returns the most recent execution logs in chronological order (latest first)."""
+def get_execution_logs(limit: int = 300) -> list:
+    """Returns the most recent execution logs, newest first."""
     init_database()
     with get_connection() as conn:
         cursor = conn.cursor()
@@ -1085,8 +1353,22 @@ def claim_proxy_order_intent(
     if not sym or direction not in {"BUY", "SELL"}:
         return False
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cutoff_12h = (datetime.now() - timedelta(hours=12)).strftime("%Y-%m-%d %H:%M:%S")
+    cutoff_300s = (datetime.now() - timedelta(seconds=300)).strftime("%Y-%m-%d %H:%M:%S")
     with get_connection() as conn:
         cursor = conn.cursor()
+        cursor.execute(
+            """
+            DELETE FROM proxy_order_intents
+            WHERE ticker = ?
+              AND (
+                created_at <= ?
+                OR status IN ('CANCELLED', 'REJECTED', 'NOT_FOUND', 'FILLED')
+                OR (status = 'CLAIMED' AND (order_id IS NULL OR order_id = '') AND created_at <= ?)
+              )
+            """,
+            (sym, cutoff_12h, cutoff_300s),
+        )
         cursor.execute(
             """
             INSERT OR IGNORE INTO proxy_order_intents (
@@ -1216,8 +1498,22 @@ def claim_satellite_order_intent(
     if not sym or direction not in {"BUY", "SELL"}:
         return False
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cutoff_12h = (datetime.now() - timedelta(hours=12)).strftime("%Y-%m-%d %H:%M:%S")
+    cutoff_300s = (datetime.now() - timedelta(seconds=300)).strftime("%Y-%m-%d %H:%M:%S")
     with get_connection() as conn:
         cursor = conn.cursor()
+        cursor.execute(
+            """
+            DELETE FROM satellite_order_intents
+            WHERE ticker = ? AND side = ?
+              AND (
+                created_at <= ?
+                OR status IN ('CANCELLED', 'REJECTED', 'NOT_FOUND', 'FILLED')
+                OR (status = 'CLAIMED' AND (order_id IS NULL OR order_id = '') AND created_at <= ?)
+              )
+            """,
+            (sym, direction, cutoff_12h, cutoff_300s),
+        )
         cursor.execute(
             """
             INSERT OR IGNORE INTO satellite_order_intents (

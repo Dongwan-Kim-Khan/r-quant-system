@@ -16,7 +16,7 @@ import json
 import asyncio
 import tempfile
 import hashlib
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -472,6 +472,76 @@ class TestPersistentProxyOrderAuthority(TempRiskDbMixin, unittest.TestCase):
             )
         )
 
+    def test_stale_proxy_intent_is_auto_evicted_after_12_hours(self):
+        old_time = (datetime.now() - timedelta(hours=13)).strftime("%Y-%m-%d %H:%M:%S")
+        with persistence.get_connection() as conn:
+            conn.cursor().execute(
+                """
+                INSERT INTO proxy_order_intents (
+                    ticker, side, quantity, price, owner, status, order_id, created_at, updated_at
+                ) VALUES ('QQQ', 'BUY', 1.0, 700.0, 'AUTOPILOT', 'SUBMITTED', 'OLD-ORDER', ?, ?)
+                """,
+                (old_time, old_time),
+            )
+            conn.commit()
+
+        # Older than 12h: claiming QQQ must succeed by evicting the stale row
+        self.assertTrue(
+            persistence.claim_proxy_order_intent(
+                "QQQ", "SELL", 1.0, 700.0, "AUTOPILOT"
+            )
+        )
+        intents = persistence.get_proxy_order_intents()
+        self.assertEqual(len(intents), 1)
+        self.assertEqual(intents[0]["ticker"], "QQQ")
+        self.assertEqual(intents[0]["side"], "SELL")
+        self.assertEqual(intents[0]["status"], "CLAIMED")
+
+    def test_abandoned_claimed_proxy_intent_is_auto_evicted_after_300s(self):
+        old_time = (datetime.now() - timedelta(seconds=360)).strftime("%Y-%m-%d %H:%M:%S")
+        with persistence.get_connection() as conn:
+            conn.cursor().execute(
+                """
+                INSERT INTO proxy_order_intents (
+                    ticker, side, quantity, price, owner, status, order_id, created_at, updated_at
+                ) VALUES ('QLD', 'BUY', 5.0, 85.0, 'AUTOPILOT', 'CLAIMED', '', ?, ?)
+                """,
+                (old_time, old_time),
+            )
+            conn.commit()
+
+        # Orphaned CLAIMED without order_id older than 300s must be auto-evicted
+        self.assertTrue(
+            persistence.claim_proxy_order_intent(
+                "QLD", "BUY", 5.0, 85.0, "GUARDIAN"
+            )
+        )
+        intents = persistence.get_proxy_order_intents()
+        self.assertEqual(len(intents), 1)
+        self.assertEqual(intents[0]["owner"], "GUARDIAN")
+
+    def test_stale_satellite_intent_is_auto_evicted_after_12_hours(self):
+        old_time = (datetime.now() - timedelta(hours=13)).strftime("%Y-%m-%d %H:%M:%S")
+        with persistence.get_connection() as conn:
+            conn.cursor().execute(
+                """
+                INSERT INTO satellite_order_intents (
+                    ticker, side, quantity, price, owner, status, order_id, created_at, updated_at
+                ) VALUES ('NVDA', 'BUY', 2.0, 120.0, 'AUTOPILOT', 'SUBMITTED', 'OLD-ORDER', ?, ?)
+                """,
+                (old_time, old_time),
+            )
+            conn.commit()
+
+        self.assertTrue(
+            persistence.claim_satellite_order_intent(
+                "NVDA", "BUY", 2.0, 120.0, "AUTOPILOT"
+            )
+        )
+        intents = persistence.get_satellite_order_intents()
+        self.assertEqual(len(intents), 1)
+        self.assertEqual(intents[0]["status"], "CLAIMED")
+
 
 class TestAutomaticExecutionAudit(TempRiskDbMixin, unittest.TestCase):
     def setUp(self):
@@ -493,6 +563,9 @@ class TestAutomaticExecutionAudit(TempRiskDbMixin, unittest.TestCase):
         with patch(
             "al_sangmoo.domain.risk.autopilot_trader.default_kis_broker.is_configured",
             return_value=False,
+        ), patch(
+            "al_sangmoo.domain.risk.autopilot_trader.validate_pre_trade_guardrail",
+            return_value={"allowed": True, "reason": "OK"},
         ), patch(
             "al_sangmoo.domain.risk.autopilot_trader.get_live_portfolio",
             return_value=portfolio,
@@ -1392,16 +1465,525 @@ class TestReconciliationCurrentPriceSync(unittest.TestCase):
             reconciliation.check_sync(auto_calibrate=True)
         self.assertEqual(persistence.get_proxy_order_intents(), [])
 
+    def test_stale_intent_older_than_12h_clears_even_with_unknown_broker_state(self):
+        from al_sangmoo.domain import reconciliation
+        old_time = (datetime.now() - timedelta(hours=14)).strftime("%Y-%m-%d %H:%M:%S")
+        with persistence.get_connection() as conn:
+            conn.cursor().execute(
+                """
+                INSERT INTO proxy_order_intents (
+                    ticker, side, quantity, price, owner, status, order_id, created_at, updated_at
+                ) VALUES ('QQQ', 'BUY', 1.0, 700.0, 'AUTOPILOT', 'UNKNOWN', '0000034179', ?, ?)
+                """,
+                (old_time, old_time),
+            )
+            conn.commit()
+
+        balance = {
+            "status": "success",
+            "mode": "LIVE_API",
+            "snapshot_complete": True,
+            "total_equity_usd": 1000.0,
+            "cash_available_usd": 400.0,
+            "holdings": [{
+                "ticker": "QQQ",
+                "quantity": 1.0,
+                "avg_price": 700.0,
+                "current_price": 700.0,
+            }],
+        }
+        with patch.object(
+            reconciliation.default_kis_broker,
+            "get_overseas_balance",
+            return_value=balance,
+        ), patch.object(
+            reconciliation.default_kis_broker,
+            "get_overseas_order_state",
+            return_value={
+                "status": "UNKNOWN",
+                "terminal": False,
+                "query_complete": False,
+            },
+        ):
+            reconciliation.check_sync(auto_calibrate=True)
+        self.assertEqual(persistence.get_proxy_order_intents(), [])
+
+    def test_abandoned_unsubmitted_intent_clears_after_300s(self):
+        from al_sangmoo.domain import reconciliation
+        old_time = (datetime.now() - timedelta(seconds=360)).strftime("%Y-%m-%d %H:%M:%S")
+        with persistence.get_connection() as conn:
+            conn.cursor().execute(
+                """
+                INSERT INTO proxy_order_intents (
+                    ticker, side, quantity, price, owner, status, order_id, created_at, updated_at
+                ) VALUES ('QLD', 'BUY', 2.0, 85.0, 'AUTOPILOT', 'CLAIMED', '', ?, ?)
+                """,
+                (old_time, old_time),
+            )
+            conn.commit()
+
+        balance = {
+            "status": "success",
+            "mode": "LIVE_API",
+            "snapshot_complete": True,
+            "total_equity_usd": 1000.0,
+            "cash_available_usd": 400.0,
+            "holdings": [],
+        }
+        with patch.object(
+            reconciliation.default_kis_broker,
+            "get_overseas_balance",
+            return_value=balance,
+        ), patch.object(
+            reconciliation.default_kis_broker,
+            "get_overseas_order_state",
+            return_value={
+                "status": "UNKNOWN",
+                "terminal": False,
+                "query_complete": False,
+            },
+        ):
+            reconciliation.check_sync(auto_calibrate=True)
+        self.assertEqual(persistence.get_proxy_order_intents(), [])
+
+    def test_proxy_buy_intent_clears_when_qty_confirms_fill_with_unknown_day_book(self):
+        from al_sangmoo.domain import reconciliation
+
+        persistence.add_portfolio_buy("QLD", 89.45, 8.0, "2026-09-18")
+        self.assertTrue(
+            persistence.claim_proxy_order_intent(
+                "QLD",
+                "BUY",
+                1.0,
+                89.82,
+                "GUARDIAN_ALIGN",
+                "AMEX",
+                baseline_quantity=7.0,
+            )
+        )
+        persistence.mark_proxy_order_submitted("QLD", "0000027591", "F47C95ECBEA2")
+        broker_balance = {
+            "status": "success",
+            "mode": "LIVE_API",
+            "snapshot_complete": True,
+            "cash_available_usd": 0.0,
+            "holdings": [{
+                "ticker": "QLD",
+                "quantity": 8.0,
+                "avg_price": 89.45,
+                "current_price": 91.0,
+            }],
+        }
+        with patch.object(
+            reconciliation.default_kis_broker,
+            "get_overseas_balance",
+            return_value=broker_balance,
+        ), patch.object(
+            reconciliation.default_kis_broker,
+            "get_overseas_order_state",
+            return_value={
+                "status": "UNKNOWN",
+                "terminal": False,
+                "query_complete": False,
+                "filled_quantity": 0.0,
+            },
+        ):
+            reconciliation.check_sync(auto_calibrate=True)
+        self.assertEqual(persistence.get_proxy_order_intents(), [])
+        self.assertTrue(
+            persistence.claim_proxy_order_intent(
+                "QLD",
+                "SELL",
+                1.0,
+                90.42,
+                "GUARDIAN_ALIGN",
+                "AMEX",
+                baseline_quantity=8.0,
+            )
+        )
+
+
+class TestCashProxyBudgetGuard(unittest.TestCase):
+    def test_proxy_plan_clamps_buy_actions_to_available_cash(self):
+        """
+        Operator disaster prevention:
+        If remaining cash is $782.77, target shares would require QQQ (1 share @ $716.61)
+        and QLD (1 share @ $89.82) totaling $806.43 ($23.66 deficit).
+        The budget guard MUST clamp/suppress buy actions so total cost <= cash_usd.
+        """
+        holdings = [
+            {"ticker": "AMD", "quantity": 4, "current_price": 548.0},
+            {"ticker": "CVX", "quantity": 9, "current_price": 210.0},
+            {"ticker": "DELL", "quantity": 4, "current_price": 584.0},
+            {"ticker": "QLD", "quantity": 7, "current_price": 89.82},
+        ]
+        cash = 782.77
+        plan = cash_proxy.build_cash_proxy_plan(
+            total_equity_usd=7870.0,
+            holdings=holdings,
+            cash_usd=cash,
+            leverage_mode=True,
+            qqq_price=716.61,
+            qld_price=89.82,
+        )
+        actions = plan.get("actions", [])
+        buy_actions = [a for a in actions if a.get("side") == "BUY"]
+        
+        # Calculate total buy commitment including 0.5% slippage buffer
+        total_cost = sum(
+            a["qty"] * (716.61 if a["ticker"] == "QQQ" else 89.82) * 1.005
+            for a in buy_actions
+        )
+        self.assertLessEqual(total_cost, cash)
+        # Verify QQQ (core 1 share) is kept, but secondary QLD (+1) is skipped due to budget limit
+        self.assertEqual(len(buy_actions), 1)
+        self.assertEqual(buy_actions[0]["ticker"], "QQQ")
+        self.assertEqual(buy_actions[0]["qty"], 1)
+
+    def test_proxy_plan_zero_cash_suppresses_buys(self):
+        """Zero available cash must never generate BUY actions."""
+        holdings = [
+            {"ticker": "AMD", "quantity": 4, "current_price": 548.0},
+            {"ticker": "CVX", "quantity": 9, "current_price": 210.0},
+            {"ticker": "DELL", "quantity": 4, "current_price": 584.0},
+            {"ticker": "QLD", "quantity": 7, "current_price": 89.82},
+        ]
+        plan = cash_proxy.build_cash_proxy_plan(
+            total_equity_usd=7870.0,
+            holdings=holdings,
+            cash_usd=0.0,
+            leverage_mode=True,
+            qqq_price=716.61,
+            qld_price=89.82,
+        )
+        buys = [a for a in plan.get("actions", []) if a.get("side") == "BUY"]
+        self.assertEqual(buys, [])
+
+    def test_small_cash_funds_qld_when_qqq_unaffordable(self):
+        """$300 cannot buy QQQ (~$717) but must still park into whole QLD shares."""
+        holdings = [
+            {"ticker": "AMD", "quantity": 4, "current_price": 548.0},
+            {"ticker": "QLD", "quantity": 7, "current_price": 89.82},
+        ]
+        cash = 300.0
+        qqq_px, qld_px = 716.61, 89.82
+        plan = cash_proxy.build_cash_proxy_plan(
+            total_equity_usd=7870.0,
+            holdings=holdings,
+            cash_usd=cash,
+            leverage_mode=True,
+            qqq_price=qqq_px,
+            qld_price=qld_px,
+        )
+        buys = [a for a in plan.get("actions", []) if a.get("side") == "BUY"]
+        self.assertEqual(len(buys), 1)
+        self.assertEqual(buys[0]["ticker"], "QLD")
+        self.assertGreaterEqual(int(buys[0]["qty"]), 1)
+        unit = round(qld_px * 1.005, 2)
+        self.assertLessEqual(int(buys[0]["qty"]) * unit, cash)
+        self.assertEqual(int(buys[0]["qty"]), int(cash // unit))
+
+    def test_plan_buffer_matches_executor_rounded_limit(self):
+        """Plan clamp must use round(px*1.005, 2) like guardian/autopilot limit prices."""
+        px = 89.45
+        self.assertEqual(
+            round(px * 1.005, 2),
+            89.90,
+        )
+        holdings = [{"ticker": "AMD", "quantity": 4, "current_price": 548.0}]
+        cash = 719.20
+        plan = cash_proxy.build_cash_proxy_plan(
+            total_equity_usd=8000.0,
+            holdings=holdings,
+            cash_usd=cash,
+            leverage_mode=True,
+            qqq_price=900.0,
+            qld_price=px,
+        )
+        buys = [a for a in plan.get("actions", []) if a.get("side") == "BUY" and a.get("ticker") == "QLD"]
+        if buys:
+            exec_cost = int(buys[0]["qty"]) * round(px * 1.005, 2)
+            self.assertLessEqual(exec_cost, cash)
+
 
 # --------------------------------------------------------------------------- #
-# 작업 3: DELL quotes NYSE first (fixes empty-NASDAQ-query delay)
+# 2026-09-23/24: slots-full freeze + deadband (no 1-share QQQ/QLD ping-pong)
 # --------------------------------------------------------------------------- #
-class TestKISDellExchangeOrder(unittest.TestCase):
-    def test_dell_quotes_nyse_first(self):
-        adapter = KISBrokerAdapter(app_key="", app_secret="", account_no="")
-        order = adapter._quote_exchanges("DELL")
-        self.assertEqual(order[0], "NYS")
+class TestCashProxySlotsFullFreeze(unittest.TestCase):
+    """
+    Constitution: when satellite slots are full, already-parked QQQ/QLD stay
+    frozen until a slot frees. raise_cash_from_proxy is the only seller.
+    """
+
+    QQQ_PX = 600.0
+    QLD_PX = 90.0
+
+    def _full_book(self, cash=400.0):
+        # AMD 800 + DELL 520 + CRWD 800 = 2,120 satellites (3/3).
+        # QLD 15 * 90 = 1,350; QQQ 1 * 600 = 600; leftover cash.
+        holdings = [
+            {"ticker": "AMD", "quantity": 5, "current_price": 160.0},
+            {"ticker": "DELL", "quantity": 4, "current_price": 130.0},
+            {"ticker": "CRWD", "quantity": 2, "current_price": 400.0},
+            {"ticker": "QLD", "quantity": 15, "current_price": self.QLD_PX},
+            {"ticker": "QQQ", "quantity": 1, "current_price": self.QQQ_PX},
+        ]
+        sat = 5 * 160.0 + 4 * 130.0 + 2 * 400.0
+        equity = sat + 15 * self.QLD_PX + 1 * self.QQQ_PX + cash
+        return holdings, equity, cash
+
+    def test_slots_full_freezes_qld15_qqq1_no_orders(self):
+        """3/3 satellites + QLD 15 + QQQ 1 must emit zero sleeve orders."""
+        holdings, equity, cash = self._full_book()
+        plan = cash_proxy.build_cash_proxy_plan(
+            total_equity_usd=equity,
+            holdings=holdings,
+            cash_usd=cash,
+            leverage_mode=True,
+            qqq_price=self.QQQ_PX,
+            qld_price=self.QLD_PX,
+            is_bull=True,
+            max_slots=3,
+        )
+        self.assertEqual(plan["actions"], [])
+        self.assertFalse(
+            any(a.get("reason") == "LIQUIDATE_PROXY_SLEEVE" for a in plan["actions"])
+        )
+
+    def test_slots_full_leftover_cash_does_not_buy_one_share(self):
+        """Slots full + leftover cash must not park another 1-share QQQ/QLD."""
+        holdings, equity, cash = self._full_book(cash=700.0)
+        plan = cash_proxy.build_cash_proxy_plan(
+            total_equity_usd=equity,
+            holdings=holdings,
+            cash_usd=cash,
+            leverage_mode=True,
+            qqq_price=self.QQQ_PX,
+            qld_price=self.QLD_PX,
+            is_bull=True,
+            max_slots=3,
+        )
+        self.assertEqual(plan["actions"], [])
+
+    def test_bear_slots_full_also_freezes(self):
+        """Bear book is full at 2 satellites — same hold, no liquidate."""
+        holdings = [
+            {"ticker": "AMD", "quantity": 5, "current_price": 160.0},
+            {"ticker": "DELL", "quantity": 4, "current_price": 130.0},
+            {"ticker": "QLD", "quantity": 8, "current_price": self.QLD_PX},
+        ]
+        cash = 250.0
+        equity = 5 * 160.0 + 4 * 130.0 + 8 * self.QLD_PX + cash
+        plan = cash_proxy.build_cash_proxy_plan(
+            total_equity_usd=equity,
+            holdings=holdings,
+            cash_usd=cash,
+            leverage_mode=False,
+            qqq_price=self.QQQ_PX,
+            qld_price=self.QLD_PX,
+            is_bull=False,
+            max_slots=2,
+        )
+        self.assertEqual(plan["actions"], [])
+
+    def test_open_slot_parks_material_idle_above_deadband(self):
+        """2/3 slots + $4,000 idle must park QQQ/QLD (passes 3-share / $300)."""
+        holdings = [
+            {"ticker": "AMD", "quantity": 5, "current_price": 160.0},
+            {"ticker": "DELL", "quantity": 4, "current_price": 130.0},
+        ]
+        cash = 4000.0
+        equity = 5 * 160.0 + 4 * 130.0 + cash
+        plan = cash_proxy.build_cash_proxy_plan(
+            total_equity_usd=equity,
+            holdings=holdings,
+            cash_usd=cash,
+            leverage_mode=True,
+            qqq_price=self.QQQ_PX,
+            qld_price=self.QLD_PX,
+            is_bull=True,
+            max_slots=3,
+        )
+        buys = [a for a in plan["actions"] if a.get("side") == "BUY"]
+        self.assertGreaterEqual(len(buys), 1)
+        for a in buys:
+            notional = int(a["qty"]) * (
+                self.QQQ_PX if a["ticker"] == "QQQ" else self.QLD_PX
+            )
+            self.assertGreaterEqual(int(a["qty"]), cash_proxy.REBALANCE_DEADBAND_SHARES)
+            self.assertGreaterEqual(notional, cash_proxy.REBALANCE_DEADBAND_USD)
+
+    def test_open_slot_one_share_qld_drift_is_ignored(self):
+        """2/3 slots: QLD 15 vs target 14 is noise — no TRIM / BOOST."""
+        # idle = 2,550 → 50/50 = 1,275; 1275//90 = 14 QLD, 1275//600 = 2 QQQ.
+        # Held QLD 15 / QQQ 1 → 1-share drift on both legs.
+        holdings = [
+            {"ticker": "AMD", "quantity": 5, "current_price": 160.0},
+            {"ticker": "DELL", "quantity": 4, "current_price": 130.0},
+            {"ticker": "QLD", "quantity": 15, "current_price": self.QLD_PX},
+            {"ticker": "QQQ", "quantity": 1, "current_price": self.QQQ_PX},
+        ]
+        cash = 600.0
+        equity = 5 * 160.0 + 4 * 130.0 + 15 * self.QLD_PX + 1 * self.QQQ_PX + cash
+        plan = cash_proxy.build_cash_proxy_plan(
+            total_equity_usd=equity,
+            holdings=holdings,
+            cash_usd=cash,
+            leverage_mode=True,
+            qqq_price=self.QQQ_PX,
+            qld_price=self.QLD_PX,
+            is_bull=True,
+            max_slots=3,
+        )
+        self.assertEqual(plan["qqq_shares"], 2)
+        self.assertEqual(plan["qld_shares"], 14)
+        self.assertEqual(plan["actions"], [])
+
+    def test_open_slot_target_zero_does_not_dump_one_qqq(self):
+        """2/3 slots: target 0 vs 1 QQQ must not force-sell (deadband)."""
+        holdings = [
+            {"ticker": "AMD", "quantity": 5, "current_price": 160.0},
+            {"ticker": "DELL", "quantity": 4, "current_price": 130.0},
+            {"ticker": "QQQ", "quantity": 1, "current_price": self.QQQ_PX},
+        ]
+        cash = 50.0
+        # idle ≈ 650; 1.0x target = 650//600 = 1. Use a tiny idle so target floors to 0.
+        # equity - sat = 50 cash + 600 QQQ = 650 → qqq_shares = 1. Shrink cash to 0
+        # and mark a stale high sat so idle < 1 QQQ.
+        equity = 5 * 160.0 + 4 * 130.0 + 50.0  # ignore QQQ mark so idle < $600
+        plan = cash_proxy.build_cash_proxy_plan(
+            total_equity_usd=equity,
+            holdings=holdings,
+            cash_usd=cash,
+            leverage_mode=False,
+            qqq_price=self.QQQ_PX,
+            qld_price=self.QLD_PX,
+            is_bull=True,
+            max_slots=3,
+        )
+        self.assertEqual(plan["qqq_shares"], 0)
+        sells = [a for a in plan["actions"] if a.get("side") == "SELL"]
+        self.assertEqual(sells, [])
+
+    def test_raise_cash_from_proxy_still_sells_when_slot_needs_funds(self):
+        """A freed slot that needs cash may sell QLD/QQQ via raise_cash_from_proxy."""
+        holdings, _, _ = self._full_book()
+        actions = cash_proxy.raise_cash_from_proxy(
+            needed_usd=500.0,
+            holdings=holdings,
+            qqq_price=self.QQQ_PX,
+            qld_price=self.QLD_PX,
+        )
+        self.assertGreaterEqual(len(actions), 1)
+        self.assertEqual(actions[0]["ticker"], "QLD")
+        self.assertEqual(actions[0]["side"], "SELL")
+        self.assertEqual(actions[0]["reason"], "FREE_CASH_FOR_LEADERSHIP_ENTRY")
+
+
+class TestSlotsFullFreezeDaemons(TempRiskDbMixin, unittest.TestCase):
+    """Guardian align and Autopilot park must both honor the freeze SSOT."""
+
+    def setUp(self):
+        super().setUp()
+        self.holdings = [
+            {"ticker": "AMD", "quantity": 5, "current_price": 160.0},
+            {"ticker": "DELL", "quantity": 4, "current_price": 130.0},
+            {"ticker": "CRWD", "quantity": 2, "current_price": 400.0},
+            {"ticker": "QLD", "quantity": 15, "current_price": 90.0},
+            {"ticker": "QQQ", "quantity": 1, "current_price": 600.0},
+        ]
+        self.portfolio = {
+            "holdings": self.holdings,
+            "total_equity_usd": 4470.0,
+            "cash_usd": 400.0,
+            "free_cash_usd": 400.0,
+        }
+
+    def test_guardian_align_executes_nothing_when_slots_full(self):
+        guardian = PortfolioGuardian()
+        guardian.is_enabled = True
+        guardian.last_sleeve_align_time = 0.0
+        with patch(
+            "al_sangmoo.domain.risk.portfolio_guardian.get_live_portfolio",
+            return_value=self.portfolio,
+        ), patch.object(
+            guardian, "_current_leverage_mode", return_value=True
+        ), patch.object(
+            guardian, "_fetch_etf_price", side_effect=lambda t: 600.0 if t == "QQQ" else 90.0
+        ), patch(
+            "al_sangmoo.domain.risk.portfolio_guardian.fetch_spy_trend_regime",
+            return_value={"is_bull_regime": True},
+        ), patch(
+            "al_sangmoo.domain.risk.portfolio_guardian.default_kis_broker.is_configured",
+            return_value=False,
+        ), patch(
+            "al_sangmoo.domain.risk.portfolio_guardian.claim_proxy_order_intent",
+        ) as claim:
+            result = guardian._align_cash_proxy_sleeve()
+        self.assertEqual(result, [])
+        claim.assert_not_called()
+
+    def test_autopilot_park_executes_nothing_when_slots_full(self):
+        pilot = AutoPilotTrader()
+        pilot.is_enabled = True
+        with patch(
+            "al_sangmoo.domain.risk.autopilot_trader.get_live_portfolio",
+            return_value=self.portfolio,
+        ), patch.object(
+            pilot, "_leverage_mode_now", return_value=True
+        ), patch.object(
+            pilot, "_etf_price", side_effect=lambda t: 600.0 if t == "QQQ" else 90.0
+        ), patch(
+            "al_sangmoo.domain.risk.autopilot_trader.fetch_spy_trend_regime",
+            return_value={"is_bull_regime": True},
+        ), patch(
+            "al_sangmoo.domain.risk.autopilot_trader.default_kis_broker.is_configured",
+            return_value=False,
+        ), patch(
+            "al_sangmoo.domain.risk.autopilot_trader.claim_proxy_order_intent",
+        ) as claim:
+            result = pilot._ensure_cash_proxy_parked()
+        self.assertEqual(result.get("actions") or [], [])
+        self.assertEqual(result.get("executed") or [], [])
+        claim.assert_not_called()
+
+
+class TestGuardianAlertFillSemantics(unittest.TestCase):
+    def test_pending_qld_sell_is_not_broadcast(self):
+        from al_sangmoo.domain.risk.portfolio_guardian import annotate_guardian_alert
+        self.assertIsNone(annotate_guardian_alert({
+            "ticker": "QLD",
+            "action": "CASH_PROXY_SELL_PENDING",
+            "side": "SELL",
+            "broker_status": "PERSISTENT_ORDER_PENDING",
+            "price": 89.97,
+        }))
+
+    def test_submitted_qld_sell_is_not_a_fill(self):
+        from al_sangmoo.domain.risk.portfolio_guardian import annotate_guardian_alert
+        payload = annotate_guardian_alert({
+            "ticker": "QLD",
+            "action": "CASH_PROXY_SELL_SUBMITTED",
+            "side": "SELL",
+            "qty": 8,
+            "price": 89.97,
+            "broker_status": "submitted",
+        })
+        self.assertIsNotNone(payload)
+        self.assertFalse(payload["filled"])
+        self.assertEqual(payload["side"], "SELL")
+
+    def test_filled_qld_sell_is_a_fill(self):
+        from al_sangmoo.domain.risk.portfolio_guardian import annotate_guardian_alert
+        payload = annotate_guardian_alert({
+            "ticker": "QLD",
+            "action": "CASH_PROXY_SELL",
+            "side": "SELL",
+            "broker_status": "filled",
+        })
+        self.assertTrue(payload["filled"])
 
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+

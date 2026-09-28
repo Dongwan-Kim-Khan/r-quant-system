@@ -20,11 +20,16 @@ from al_sangmoo.infrastructure.persistence import (
     get_proxy_order_intents,
     get_satellite_order_intents,
     record_execution_log,
+    save_account_snapshot,
     update_proxy_order_intent_state,
     update_satellite_order_intent_state,
 )
 from al_sangmoo.domain.risk import exit_cooldown
-from al_sangmoo.domain.risk.cash_proxy import is_proxy_ticker
+from al_sangmoo.domain.risk.cash_proxy import (
+    holdings_mark_usd,
+    is_proxy_ticker,
+    reconcile_overseas_nav,
+)
 
 logger = logging.getLogger(__name__)
 _RECONCILE_LOCK = threading.Lock()
@@ -256,6 +261,51 @@ def _confirmed_fill_price(
     return prices[0] if len(prices) == 1 else 0.0
 
 
+def _persist_broker_account_snapshot(broker_balance: Dict[str, Any]) -> None:
+    """Store reconciled overseas NAV. Persist lot+cash when output2 is insane; never persist 372k-style output2."""
+    if not isinstance(broker_balance, dict):
+        return
+    mode = str(broker_balance.get("mode") or "").upper()
+    if mode in {"", "SIMULATED", "SIMULATOR"}:
+        return
+    holdings = broker_balance.get("holdings") or []
+    marked = holdings_mark_usd(holdings)
+
+    cash_val = float(broker_balance.get("cash_available_usd") or 0.0)
+    equity_val = float(broker_balance.get("total_equity_usd") or 0.0)
+    stock_eval_val = float(broker_balance.get("stock_eval_usd") or 0.0)
+
+    rec = reconcile_overseas_nav(
+        holdings_eval=marked,
+        equity=equity_val,
+        cash=cash_val,
+        stock_eval=stock_eval_val,
+    )
+    rec_equity = float(rec.get("total_equity_usd") or 0.0)
+    if rec_equity <= 0:
+        return
+    if rec.get("sane"):
+        persist_source = rec.get("source") or "KIS"
+    elif rec.get("source") == "HOLDINGS" and marked > 0:
+        persist_source = "HOLDINGS"
+    else:
+        return
+    save_account_snapshot({
+        "total_equity_usd": rec["total_equity_usd"],
+        "cash_available_usd": rec["cash_available_usd"],
+        "stock_eval_usd": rec["stock_eval_usd"],
+        "realized_pnl_usd": float(broker_balance.get("realized_pnl_usd") or 0.0),
+        "unrealized_pnl_usd": float(broker_balance.get("unrealized_pnl_usd") or 0.0),
+        "unrealized_pnl_pct": float(broker_balance.get("unrealized_pnl_pct") or 0.0),
+        "unrealized_pnl_krw": float(broker_balance.get("unrealized_pnl_krw") or 0.0),
+        "total_pnl_usd": float(broker_balance.get("total_pnl_usd") or 0.0),
+        "total_pnl_pct": float(broker_balance.get("total_pnl_pct") or 0.0),
+        "source": persist_source,
+        "mode": mode,
+        "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    })
+
+
 @exit_cooldown.serialized_satellite_transition
 def check_sync(auto_calibrate: bool = True) -> Dict[str, Any]:
     """Serialize broker-to-SQLite calibration to prevent duplicate imports."""
@@ -279,7 +329,7 @@ def _check_sync_unlocked(auto_calibrate: bool = True) -> Dict[str, Any]:
     
     # 1. Fetch live broker holdings (Single TR call)
     broker_balance = default_kis_broker.get_overseas_balance()
-    if broker_balance.get("status") != "success":
+    if broker_balance.get("status") not in ("success", "partial"):
         return {
             "status": "error",
             "timestamp": now_str,
@@ -857,20 +907,28 @@ def _check_sync_unlocked(auto_calibrate: bool = True) -> Dict[str, Any]:
                         "SELL",
                         l_qty,
                     )
-                    if confirmed_fill > 0:
+                    fill_price = (
+                        confirmed_fill if confirmed_fill > 0 else inferred_sell_price
+                    )
+                    if fill_price > 0:
                         for sold_lot in sold_lots:
                             buy_price = float(sold_lot["buy_price"])
                             sold_qty = float(sold_lot["quantity"])
                             pnl_pct = (
-                                (confirmed_fill - buy_price)
+                                (fill_price - buy_price)
                                 / buy_price
                                 * 100.0
                                 if buy_price > 0
                                 else 0.0
                             )
                             pnl_amount = (
-                                confirmed_fill - buy_price
+                                fill_price - buy_price
                             ) * sold_qty
+                            fill_reason = (
+                                "RECONCILED_CONFIRMED_SELL_FILL"
+                                if confirmed_fill > 0
+                                else "RECONCILED_ESTIMATED_SELL_FILL"
+                            )
                             cursor.execute("""
                             INSERT INTO trade_history (
                                 holding_id, ticker, buy_date, sell_date,
@@ -883,11 +941,11 @@ def _check_sync_unlocked(auto_calibrate: bool = True) -> Dict[str, Any]:
                                 sold_lot["buy_date"],
                                 datetime.now().strftime("%Y-%m-%d"),
                                 buy_price,
-                                confirmed_fill,
+                                fill_price,
                                 sold_qty,
                                 pnl_pct,
                                 pnl_amount,
-                                "RECONCILED_CONFIRMED_SELL_FILL",
+                                fill_reason,
                                 now_str,
                             ))
                             cursor.execute("""
@@ -895,7 +953,7 @@ def _check_sync_unlocked(auto_calibrate: bool = True) -> Dict[str, Any]:
                             SET sell_price = ?, pnl_pct = ?, pnl_amount = ?
                             WHERE id = ? AND status = 'SOLD'
                             """, (
-                                confirmed_fill,
+                                fill_price,
                                 pnl_pct,
                                 pnl_amount,
                                 sold_lot["id"],
@@ -1005,6 +1063,12 @@ def _check_sync_unlocked(auto_calibrate: bool = True) -> Dict[str, Any]:
                 ).total_seconds()
             except (TypeError, ValueError):
                 intent_age_seconds = 0.0
+            is_stale_expired = intent_age_seconds >= 43_200.0
+            is_abandoned_claimed = (
+                str(intent.get("status") or "").upper() == "CLAIMED"
+                and not str(intent.get("order_id") or "").strip()
+                and intent_age_seconds >= 300.0
+            )
             not_found_terminal = (
                 state_name == "NOT_FOUND"
                 and bool(state.get("query_complete"))
@@ -1016,6 +1080,11 @@ def _check_sync_unlocked(auto_calibrate: bool = True) -> Dict[str, Any]:
                     or intent_age_seconds >= 43_200.0
                 )
             )
+            holdings_confirmed_complete = (
+                requested_quantity > 0
+                and applied_quantity + 1e-9 >= requested_quantity
+                and state_name in {"UNKNOWN", "NOT_FOUND"}
+            )
             should_clear = terminal and (
                 state_name in {"CANCELLED", "REJECTED"}
                 or (
@@ -1023,7 +1092,13 @@ def _check_sync_unlocked(auto_calibrate: bool = True) -> Dict[str, Any]:
                     and applied_quantity + 1e-9 >= expected_applied
                 )
             )
-            should_clear = should_clear or not_found_terminal
+            should_clear = (
+                should_clear
+                or not_found_terminal
+                or is_stale_expired
+                or is_abandoned_claimed
+                or holdings_confirmed_complete
+            )
             if item["kind"] == "PROXY":
                 if should_clear:
                     clear_proxy_order_intent(ticker, connection=conn)
@@ -1056,6 +1131,8 @@ def _check_sync_unlocked(auto_calibrate: bool = True) -> Dict[str, Any]:
                         connection=conn,
                     )
         conn.commit()
+
+    _persist_broker_account_snapshot(broker_balance)
         
     return {
         "status": "success",

@@ -1,6 +1,6 @@
 """
-AL-SANGMOO QUANT TERMINAL: C1-M2 CONVICTION ENGINE
-Cross-sectional Composite-RS dual-momentum ranking + NAV 50/30/20 slot sizing.
+AL-SANGMOO QUANT TERMINAL: CONVICTION ALPHA ENGINE
+Cross-sectional Composite-RS dual-momentum ranking + NAV 34/33/33 slot sizing.
 """
 
 from typing import Any, Dict, List, Optional
@@ -83,7 +83,7 @@ def rank_and_select_top_picks(
     qqq_composite_rs: Optional[float] = None,
 ) -> Dict[str, Any]:
     """
-    Rank candidates by conviction; size Slot#1/#2/#3 at 50/30/20 (or bear 25/25).
+    Rank candidates by conviction; size Slot#1/#2/#3 at 34/33/33 (or bear 25/25).
     Dual-momentum: when `qqq_composite_rs` is provided, only names with
     Composite RS strictly above QQQ remain satellite-eligible.
     """
@@ -218,10 +218,16 @@ def rank_and_select_top_picks(
     top_pick = scored_items[0] if scored_items else None
     runner_up = scored_items[1] if len(scored_items) > 1 else None
 
+    w1_pct = int(round(weights[0] * 100)) if len(weights) > 0 else 34
+    w2_pct = int(round(weights[1] * 100)) if len(weights) > 1 else 33
+    w3_pct = int(round(weights[2] * 100)) if len(weights) > 2 else 33
+
     if top_pick:
-        top_pick["badge_label"] = "RANK #1 TOP CONVICTION (50%)"
+        top_pick["badge_label"] = f"RANK #1 TOP CONVICTION ({w1_pct}%)"
     if runner_up:
-        runner_up["badge_label"] = "RANK #2 RUNNER UP (30%)"
+        runner_up["badge_label"] = f"RANK #2 RUNNER UP ({w2_pct}%)"
+    if len(scored_items) > 2:
+        scored_items[2]["badge_label"] = f"RANK #3 PICK ({w3_pct}%)"
 
     return {
         "top_pick": top_pick,

@@ -54,14 +54,14 @@ def test_pre_trade_guardrails():
     assert val_ok["allowed"] is True
     print(f"  - Valid Order ($2,500 AMZN): PASSED ({val_ok['reason']})")
 
-    # 2. Oversized order (Exceeds 25% single-asset cap)
+    # 2. Oversized order (Exceeds C-2 single-asset cap of 38%)
     val_oversized = validate_pre_trade_guardrail(
-        ticker="AMZN", price=250.0, quantity=150.0, # $37,500 > 25%
+        ticker="AMZN", price=250.0, quantity=160.0, # $40,000 > 38%
         total_equity=total_equity, active_holdings=mock_holdings, msi_score=45.0
     )
     assert val_oversized["allowed"] is False
     assert "초과" in val_oversized["reason"]
-    print(f"  - Oversized Order ($37,500 > 25% Cap): REJECTED as expected ({val_oversized['reason']})")
+    print(f"  - Oversized Order ($40,000 > 38% Cap): REJECTED as expected ({val_oversized['reason']})")
 
     # 3. CASH_EXIT Macro Regime (MSI >= 75)
     val_cash_exit = validate_pre_trade_guardrail(

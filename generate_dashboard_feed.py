@@ -32,7 +32,10 @@ CHARTS_DIR = os.path.join(BASE_DIR, "data", "charts")
 
 from concurrent.futures import ThreadPoolExecutor
 from al_sangmoo.core.constants import (
+    ATR_MULTIPLIER,
     CASH_PROXY_TICKER,
+    EMERGENCY_STOP_LOSS_PCT,
+    EOD_STOP_LOSS_PCT,
     HARD_STOP_PCT,
     SLOT_WEIGHTS_BEAR,
     SLOT_WEIGHTS_BULL,
@@ -42,6 +45,7 @@ from al_sangmoo.core.constants import (
     WATCHLIST,
     STOCK_DICT,
     TICKER_SECTORS,
+    DEFAULT_BASE_ACCOUNT_USD,
     get_active_watchlist,
     get_macro_tailwind_sectors,
 )
@@ -186,7 +190,11 @@ def compute_all_indicators(ticker, df=None):
             elif 'Close' in df.columns.get_level_values(1):
                 df.columns = df.columns.get_level_values(1)
             
-        df = df.dropna(subset=['Close', 'High', 'Low', 'Volume']).copy()
+        required_cols = {'Close', 'High', 'Low', 'Volume'}
+        if df is not None and not df.empty and required_cols.issubset(set(df.columns)):
+            df = df.dropna(subset=['Close', 'High', 'Low', 'Volume']).copy()
+        else:
+            df = None
         if df is None or len(df) < 60:
             try:
                 from al_sangmoo.infrastructure.brokers.kis_broker import default_kis_broker
@@ -423,6 +431,39 @@ def build_dashboard_data(output_file=None, charts_dir=None):
         "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
     
+    # Refresh live macro gauges from live market data (avoid stale stream snapshot)
+    live_gauges = None
+    try:
+        from al_sangmoo.interfaces.api.routers.dashboard import get_live_macro_gauges
+        live_gauges = get_live_macro_gauges()
+    except Exception:
+        try:
+            from youtube_stream_scanner import fetch_realtime_macro_gauges
+            live_gauges = fetch_realtime_macro_gauges()
+        except Exception:
+            live_gauges = None
+
+    if live_gauges and isinstance(live_gauges, dict):
+        macro_info["macro_gauges"] = live_gauges
+        try:
+            from al_sangmoo.domain.quant.macro import evaluate_macro_stance
+            current_climate = macro_info.get("macro_climate") or {}
+            breakdown = current_climate.get("msi_breakdown") or {}
+            if breakdown:
+                live_climate = evaluate_macro_stance(
+                    gauges=live_gauges,
+                    defense_count=int(breakdown.get("def_count", 0)),
+                    buy_count=int(breakdown.get("buy_count", 0)),
+                    matched_shocks=current_climate.get("external_shocks") or ["금리 경로 및 통화정책 영향권"],
+                    title=macro_info.get("title", "")
+                )
+                if live_climate and isinstance(live_climate, dict):
+                    macro_info["macro_climate"] = live_climate
+                    macro_info["msi_score"] = live_climate.get("msi_score")
+                    macro_info["msi_stance"] = live_climate.get("macro_stance")
+        except Exception:
+            pass
+
     # Calculate Macro Tailwind Sectors from Gate-0 Climate
     macro_climate = macro_info.get("macro_climate", {}) if isinstance(macro_info, dict) else {}
     macro_gauges = macro_info.get("macro_gauges", {}) if isinstance(macro_info, dict) else {}
@@ -505,7 +546,7 @@ def build_dashboard_data(output_file=None, charts_dir=None):
     # 2. Build lightweight executive summary payload (under 50KB)
     daily_history = get_daily_recommendation_history()
     
-    # Goldman Sachs-Style Conviction Alpha Ranking & C1-M2 Slot Allocator (50/30/20)
+    # Goldman Sachs-Style Conviction Alpha Ranking & C-2 Slot Allocator (34/33/33)
     all_candidates = dual_consensus_picks + strat1_exclusive + strat2_exclusive
     msi_val = extract_msi_score(macro_info, default=50.0)
     capital = resolve_capital_regime(msi_score=msi_val, fetch_spy=True)
@@ -541,26 +582,53 @@ def build_dashboard_data(output_file=None, charts_dir=None):
     )
     macro_info["leverage"] = leverage
 
-    # QQQ Composite RS dual-momentum benchmark
+    # QQQ Composite RS dual-momentum benchmark & 20MA Trend Gate
     qqq_crs = None
+    qqq_close = None
+    qqq_sma20 = None
+    qqq_trend_pass = True
     try:
         qqq_df = yf.download("QQQ", period="1y", interval="1d", progress=False)
         if qqq_df is not None and not qqq_df.empty:
             if isinstance(qqq_df.columns, pd.MultiIndex):
                 qqq_df.columns = qqq_df.columns.get_level_values(0)
-            qqq_crs = latest_composite_rs(qqq_df["Close"].values)
+            close_series = qqq_df["Close"].dropna()
+            if len(close_series) >= 20:
+                qqq_close = round(float(close_series.iloc[-1]), 2)
+                qqq_sma20 = round(float(close_series.rolling(window=20).mean().iloc[-1]), 2)
+                qqq_trend_pass = bool(qqq_close >= qqq_sma20)
+            qqq_crs = latest_composite_rs(close_series.values)
     except Exception:
         qqq_crs = None
 
+    if qqq_close is None or qqq_sma20 is None:
+        try:
+            from al_sangmoo.domain.quant.macro import fetch_qqq_trend_regime
+            q_snap = fetch_qqq_trend_regime()
+            qqq_close = qqq_close or q_snap.get("qqq_close")
+            qqq_sma20 = qqq_sma20 or q_snap.get("qqq_sma20")
+            if qqq_close is not None and qqq_sma20 is not None:
+                qqq_trend_pass = bool(float(qqq_close) >= float(qqq_sma20))
+        except Exception:
+            pass
+
+    macro_info["qqq_close"] = qqq_close
+    macro_info["qqq_sma20"] = qqq_sma20
+    macro_info["qqq_trend_gate_pass"] = qqq_trend_pass
+    macro_info["qqq_composite_rs"] = qqq_crs
+
     conviction_res = rank_and_select_top_picks(
         candidates=all_candidates,
-        portfolio_equity_usd=float(portfolio.get("total_equity_usd", 7500.0)),
+        portfolio_equity_usd=float(portfolio.get("total_equity_usd", DEFAULT_BASE_ACCOUNT_USD)),
         msi_score=msi_val,
         is_bull_regime=is_bull_regime,
         qqq_composite_rs=qqq_crs,
     )
     slot_summary = conviction_res.get("slot_summary", {})
     slot_summary["qqq_composite_rs"] = qqq_crs
+    slot_summary["qqq_close"] = qqq_close
+    slot_summary["qqq_sma20"] = qqq_sma20
+    slot_summary["qqq_trend_gate_pass"] = qqq_trend_pass
     slot_summary["leverage"] = leverage
     slot_summary["cash_proxy_ticker"] = CASH_PROXY_TICKER
     slot_summary["satellite_count"] = len(satellite_holdings(portfolio.get("holdings") or []))
@@ -577,7 +645,7 @@ def build_dashboard_data(output_file=None, charts_dir=None):
     )
 
     payload = {
-        "engine": "C1-M2",
+        "engine": "C-2",
         # Autopilot accepts this feed only on a later US session, preventing a
         # partially formed intraday daily candle from driving entries.
         "signal_session_date": signal_provenance["session_date"],
@@ -587,10 +655,14 @@ def build_dashboard_data(output_file=None, charts_dir=None):
         "signal_source_rows": signal_provenance["source_rows"],
         "signal_generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "risk_constitution": {
+            "engine": "C-2",
             "stop_loss_pct": STOP_LOSS_PCT,
             "hard_stop_pct": -HARD_STOP_PCT,
+            "emergency_stop_pct": round(EMERGENCY_STOP_LOSS_PCT * 100.0, 1),
+            "eod_stop_pct": round(EOD_STOP_LOSS_PCT * 100.0, 1),
             "take_profit_activate_pct": TRAILING_ACTIVATE_PCT,
             "take_profit_pct": TAKE_PROFIT_PCT,
+            "atr_multiplier": ATR_MULTIPLIER,
             "slot_weights_bull": list(SLOT_WEIGHTS_BULL),
             "slot_weights_bear": list(SLOT_WEIGHTS_BEAR),
             "cash_proxy": CASH_PROXY_TICKER,

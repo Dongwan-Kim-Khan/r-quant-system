@@ -1,7 +1,7 @@
 // R QUANT TERMINAL: WebSocket hub, heartbeat, and TerminalApp controller.
-import { ApiClient } from './api.js?v=4.3.3';
-import { UI } from './ui.js?v=4.3.3';
-import { ChartEngine } from './chart.js?v=4.3.3';
+import { ApiClient } from './api.js?v=4.4.8';
+import { UI } from './ui.js?v=4.4.8';
+import { ChartEngine } from './chart.js?v=4.4.8';
 
 export const ConnectionState = { DISCONNECTED: "DISCONNECTED", CONNECTING: "CONNECTING", CONNECTED: "CONNECTED", REAUTHENTICATING: "REAUTHENTICATING", ERROR: "ERROR" };
 
@@ -11,11 +11,16 @@ export const WebSocketClient = {
     maxReconnectDelay: 10000,
     reconnectTimeoutId: null,
     pollingInterval: null,
+    currentPollingMs: 0,
     executionLogInterval: null,
     heartbeatInterval: null,
     lastPongReceived: Date.now(),
     isSocketConnected: false,
     connectionState: "DISCONNECTED",
+    _scanTimeoutId: null,
+    _consecutivePollFailures: 0,
+    _isOriginBlocked: false,
+    _isWsLimit: false,
 
     init() {
         this._setupLifecycleListeners();
@@ -47,24 +52,40 @@ export const WebSocketClient = {
         setInterval(() => { if (document.visibilityState === "visible") wake(); }, 10000);
     },
 
-    checkAndReconnect() {
+    checkAndReconnect(resetAttempts = true) {
+        if (this._isOriginBlocked) {
+            this._hydrateFromHttp();
+            this._startHttpPolling();
+            return;
+        }
         const wsOpen = this.socket && this.socket.readyState === WebSocket.OPEN;
         const isStale = (Date.now() - this.lastPongReceived) > 30000;
-        if (wsOpen && !isStale && this.connectionState === ConnectionState.CONNECTED) {
+        if (wsOpen && isStale) {
+            console.warn("[WS] Socket is OPEN but pong > 30s. Closing before reconnect.");
+            try { this.socket.close(); } catch (e) {}
+            this.socket = null;
+        } else if (wsOpen && !isStale && this.connectionState === ConnectionState.CONNECTED) {
             this._stopHttpPolling();
             return;
         }
         if (this.socket && this.socket.readyState === WebSocket.CONNECTING) {
             return;
         }
-        this._setConnectionState(ConnectionState.REAUTHENTICATING);
+        if (!this._isWsLimit) {
+            this._setConnectionState(ConnectionState.REAUTHENTICATING);
+        }
         this._hydrateFromHttp();
         this._startHttpPolling();
-        this.reconnectAttempts = 0;
+        if (resetAttempts && !this._isWsLimit) {
+            this.reconnectAttempts = 0;
+        }
         this.connect();
     },
 
     connect() {
+        if (this._isOriginBlocked) {
+            return;
+        }
         if (this.socket && (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING)) {
             return; // Socket is already open or connecting
         }
@@ -105,6 +126,8 @@ export const WebSocketClient = {
                 console.log("[WS] Connected to live broadcast hub:", wsUrl);
                 this.isSocketConnected = true;
                 this.reconnectAttempts = 0;
+                this._isWsLimit = false;
+                this._isOriginBlocked = false;
                 if (this.reconnectTimeoutId) {
                     clearTimeout(this.reconnectTimeoutId);
                     this.reconnectTimeoutId = null;
@@ -135,6 +158,22 @@ export const WebSocketClient = {
                 console.warn("[WS] Connection closed. Code:", e.code, "Reason:", e.reason);
                 this.isSocketConnected = false;
                 this._stopHeartbeat();
+                const reasonStr = String(e.reason || "");
+                if (e.code === 1008 && reasonStr.toLowerCase().includes("limit")) {
+                    this._isWsLimit = true;
+                    this._setStatus("WS LIMIT", "#ef4444");
+                    this._setConnectionState(ConnectionState.ERROR, false);
+                    this._startHttpPolling();
+                    this._scheduleReconnect();
+                    return;
+                }
+                if (e.code === 1008 && (reasonStr.includes("Origin") || reasonStr.includes("Forbidden Origin"))) {
+                    this._isOriginBlocked = true;
+                    this._setStatus("ORIGIN BLOCKED", "#ef4444");
+                    this._setConnectionState(ConnectionState.ERROR, false);
+                    this._startHttpPolling();
+                    return; // Do not reconnect on forbidden origin
+                }
                 this._setConnectionState(ConnectionState.REAUTHENTICATING);
                 this._startHttpPolling();
                 this._scheduleReconnect();
@@ -189,6 +228,8 @@ export const WebSocketClient = {
         if (!eventType) return;
 
         if (eventType === "live_feed_update" && msg.data) {
+            const livePort = UI.preferLivePortfolio(msg.data.portfolio);
+            if (livePort) msg.data.portfolio = livePort;
             UI.renderDashboard(msg.data);
         } else if (eventType === "POSITION_DELTA" && msg.data) {
             this._applyPositionDelta(msg.data);
@@ -214,23 +255,50 @@ export const WebSocketClient = {
             UI.renderPortfolio(msg.data.portfolio);
             UI.renderKPIs(null, msg.data.portfolio, null);
         } else if (eventType === "autopilot_buy_alert" && msg.data) {
-            const tr = msg.data;
+            const tr = { ...msg.data, side: msg.data.side || "BUY", filled: UI.isConfirmedFill({ ...msg.data, side: "BUY" }) };
             UI.toast(`[AUTOPILOT] ${tr.ticker} ${tr.shares} SH @ $${Number(tr.buy_price).toFixed(2)}`, "success");
+            try { UI.addMediaWallTradeAlert(tr); } catch (e) {}
         } else if (eventType === "guardian_alert" && msg.data) {
             const act = msg.data;
-            UI.toast(`[GUARDIAN] ${act.ticker} ${act.pnl_pct}% @ $${Number(act.sell_price || 0).toFixed(2)} — ${act.reason || "exit"}`, "warn");
+            if (!UI.shouldShowTradeAlert(act)) return;
+            const filled = UI.isConfirmedFill(act);
+            const px = Number(act.sell_price || act.buy_price || act.price || 0);
+            const side = String(act.side || act.action || "EXIT").toUpperCase();
+            UI.toast(
+                filled
+                    ? `[GUARDIAN] ${act.ticker} ${side} FILLED @ $${px.toFixed(2)} — ${act.reason || "exit"}`
+                    : `[GUARDIAN] ${act.ticker} ${side} 접수(미체결) @ $${px.toFixed(2)} — ${act.reason || "submitted"}`,
+                filled ? "warn" : "info"
+            );
+            try { UI.addMediaWallTradeAlert(act); } catch (e) {}
         } else if (eventType === "scan_status") {
-            const btnScan = document.getElementById("btnScanNow");
+            const btnScan = document.getElementById("btnSyncAll");
             const dataStatus = (msg.data && msg.data.status) ? msg.data.status : msg.status;
+            const scanMsg = (msg.data && msg.data.message) || msg.message || "";
             if (dataStatus === "completed") {
+                if (this._scanTimeoutId) {
+                    clearTimeout(this._scanTimeoutId);
+                    this._scanTimeoutId = null;
+                }
                 if (btnScan) {
                     btnScan.disabled = false;
-                    btnScan.textContent = "RUN SCAN";
+                    btnScan.textContent = "SYNC / REFRESH";
                 }
+                UI.toast(scanMsg || "스캔 완료", "success");
+            } else if (dataStatus === "error") {
+                if (this._scanTimeoutId) {
+                    clearTimeout(this._scanTimeoutId);
+                    this._scanTimeoutId = null;
+                }
+                if (btnScan) {
+                    btnScan.disabled = false;
+                    btnScan.textContent = "SYNC / REFRESH";
+                }
+                UI.toast(scanMsg || "스캔 실패", "error");
             } else if (dataStatus === "started") {
                 if (btnScan) {
                     btnScan.disabled = true;
-                    btnScan.textContent = "SCANNING...";
+                    btnScan.textContent = "SYNCING...";
                 }
             }
         }
@@ -255,23 +323,74 @@ export const WebSocketClient = {
     },
 
     _startHttpPolling() {
+        const desiredMs = (this.connectionState === ConnectionState.CONNECTED) ? 15000 : 5000;
+        if (this.currentPollingMs === desiredMs && this.pollingInterval) return;
+        this.currentPollingMs = desiredMs;
+        if (this.pollingInterval) {
+            clearInterval(this.pollingInterval);
+            this.pollingInterval = null;
+        }
+        this.pollingInterval = setInterval(async () => {
+            await this._pollHttpFeed();
+        }, desiredMs);
+    },
+
+    _stopHttpPolling() {
         if (this.connectionState === ConnectionState.CONNECTED) {
-            this._stopHttpPolling();
+            // Keep 15s slow polling even when connected to recover missed broadcasts
+            this._startHttpPolling();
             return;
         }
-        if (this.pollingInterval) return;
-        this.pollingInterval = setInterval(async () => {
-            if (this.connectionState === ConnectionState.CONNECTED) {
-                this._stopHttpPolling();
-                return;
+        if (this.pollingInterval) {
+            clearInterval(this.pollingInterval);
+            this.pollingInterval = null;
+            this.currentPollingMs = 0;
+        }
+    },
+
+    async _pollHttpFeed() {
+        try {
+            const fresh = await ApiClient.getDashboardData();
+            if (fresh) {
+                if (fresh.last_updated !== UI.latestDashboardData?.last_updated) {
+                    UI.renderDashboard(fresh);
+                }
             }
-            try {
-                const fresh = await ApiClient.getDashboardData();
-                if (fresh) UI.renderDashboard(fresh);
-                const freshPort = await ApiClient.getPortfolioData();
-                if (freshPort) UI.renderPortfolio(freshPort);
-            } catch (e) {}
-        }, 5000);
+            const freshPort = await ApiClient.getPortfolioData(false);
+            if (freshPort) {
+                UI.renderPortfolio(freshPort);
+            }
+            if (this._consecutivePollFailures >= 2) {
+                this._restoreConnectionStatus();
+            }
+            this._consecutivePollFailures = 0;
+        } catch (err) {
+            this._consecutivePollFailures = (this._consecutivePollFailures || 0) + 1;
+            console.warn(`[HTTP Poll] Feed poll failed (failures=${this._consecutivePollFailures}):`, err);
+            if (this._consecutivePollFailures >= 2) {
+                this._setStatus("FEED STALE", "#f59e0b");
+            }
+        }
+    },
+
+    _restoreConnectionStatus() {
+        if (this._isOriginBlocked) {
+            this._setStatus("ORIGIN BLOCKED", "#ef4444");
+            return;
+        }
+        if (this._isWsLimit) {
+            this._setStatus("WS LIMIT", "#ef4444");
+            return;
+        }
+        const labels = {
+            DISCONNECTED: ["OFFLINE", "#ef4444"],
+            CONNECTING: ["CONNECTING", "#f59e0b"],
+            CONNECTED: ["LIVE HUB", "#10b981"],
+            REAUTHENTICATING: ["REAUTH", "#f59e0b"],
+            ERROR: ["ERROR", "#ef4444"],
+        };
+        const pair = labels[this.connectionState];
+        if (pair) this._setStatus(pair[0], pair[1]);
     },
 
     _startExecutionLogPolling() {
@@ -279,30 +398,37 @@ export const WebSocketClient = {
         const refresh = async () => {
             if (document.visibilityState !== "visible") return;
             try {
-                const payload = await ApiClient.getExecutionLogs(50);
+                const payload = await ApiClient.getExecutionLogs(300);
                 if (payload && Array.isArray(payload.execution_logs)) {
                     UI.renderTradeLogs(payload.execution_logs);
+                    const dash = UI.latestDashboardData || {};
+                    const isBull = (dash.slot_allocation_summary && dash.slot_allocation_summary.is_bull_regime !== undefined)
+                        ? dash.slot_allocation_summary.is_bull_regime : true;
+                    try { UI.renderMediaWall(dash.macro, payload.execution_logs, isBull, dash.slot_allocation_summary); } catch (e) {}
                 }
-            } catch (e) {}
+            } catch (e) {
+                console.warn("[HTTP Poll] Execution logs poll error:", e);
+            }
         };
         refresh();
         this.executionLogInterval = setInterval(refresh, 3000);
     },
 
-    _stopHttpPolling() {
-        if (this.pollingInterval) {
-            clearInterval(this.pollingInterval);
-            this.pollingInterval = null;
-        }
-    },
-
     _hydrateFromHttp() {
         ApiClient.getDashboardData().then(fresh => {
             if (fresh) UI.renderDashboard(fresh);
-            return ApiClient.getPortfolioData();
+            return ApiClient.getPortfolioData(false);
         }).then(freshPort => {
             if (freshPort) UI.renderPortfolio(freshPort);
-        }).catch(() => {});
+            if (this._consecutivePollFailures >= 2) this._restoreConnectionStatus();
+            this._consecutivePollFailures = 0;
+        }).catch(err => {
+            this._consecutivePollFailures = (this._consecutivePollFailures || 0) + 1;
+            console.warn("[HTTP Hydrate] Hydration failed:", err);
+            if (this._consecutivePollFailures >= 2) {
+                this._setStatus("FEED STALE", "#f59e0b");
+            }
+        });
     },
 
     _applyPositionDelta(delta) {
@@ -329,16 +455,10 @@ export const WebSocketClient = {
             }
         }
         UI.renderPortfolio(dash.portfolio);
-        UI.renderSlotVisualizer(
-            dash.portfolio,
-            dash.slot_allocation_summary && dash.slot_allocation_summary.is_bull_regime,
-            dash.top_conviction_pick,
-            dash.slot_allocation_summary
-        );
         UI.renderEngineOverlay(dash.slot_allocation_summary, dash.macro, dash.portfolio, dash.risk_constitution);
     },
 
-    _setConnectionState(state) {
+    _setConnectionState(state, updateLabel = true) {
         this.connectionState = state;
         const labels = {
             DISCONNECTED: ["OFFLINE", "#ef4444"],
@@ -348,8 +468,8 @@ export const WebSocketClient = {
             ERROR: ["ERROR", "#ef4444"],
         };
         const pair = labels[state];
-        if (pair) this._setStatus(pair[0], pair[1]);
-        if (state === ConnectionState.CONNECTED) this._stopHttpPolling();
+        if (pair && updateLabel) this._setStatus(pair[0], pair[1]);
+        try { UI.updateSystemHealth({ ws: state }); } catch (e) {}
     },
 
     _setStatus(text, color) {
@@ -374,15 +494,25 @@ export const TerminalApp = {
 
         // 2. Initial Broker Status Check in parallel (non-blocking)
         ApiClient.getBrokerStatus().then(brokerSt => {
-            const isLive = Boolean(brokerSt && brokerSt.is_configured);
+            if (!brokerSt || typeof brokerSt !== 'object') {
+                throw new Error("Invalid broker status response");
+            }
+            const isLive = Boolean(brokerSt.is_configured);
             const kisText = document.getElementById("kisStatusText"), kisDot = document.getElementById("kisStatusDot"), kisBox = document.getElementById("kisBrokerStatusBox");
             if (kisText) kisText.textContent = isLive ? "KIS API: CONNECTED" : "KIS API: SIMULATION";
             if (kisDot) { kisDot.style.background = isLive ? "#34d399" : "#f59e0b"; kisDot.style.boxShadow = `0 0 6px ${isLive ? '#34d399' : '#f59e0b'}`; }
             if (kisBox) kisBox.style.background = isLive ? "#064e3b" : "#1e293b";
-        }).catch(() => {});
+            try { UI.updateSystemHealth({ kis: isLive ? "live" : "simulation" }); } catch (e) {}
+        }).catch(err => {
+            console.warn("[TerminalApp] Broker status check failed:", err);
+            const kisText = document.getElementById("kisStatusText"), kisDot = document.getElementById("kisStatusDot"), kisBox = document.getElementById("kisBrokerStatusBox");
+            if (kisText) kisText.textContent = "KIS API: UNREACHABLE";
+            if (kisDot) { kisDot.style.background = "#ef4444"; kisDot.style.boxShadow = "0 0 6px #ef4444"; }
+            if (kisBox) kisBox.style.background = "#450a0a";
+            try { UI.updateSystemHealth({ kis: "unreachable" }); } catch (e) {}
+        });
 
         // 3. Fetch dashboard and broker-reconciled portfolio concurrently.
-        // Render the feed immediately; then replace its portfolio with broker SSOT.
         try {
             const portfolioPromise = ApiClient.getPortfolioData(true);
             const data = await ApiClient.getDashboardData();
@@ -391,10 +521,26 @@ export const TerminalApp = {
                 const pick = UI.defaultChartTarget(data);
                 if (pick) UI.selectStock(pick.ticker, pick.price);
             }
-            const freshPort = await portfolioPromise;
-            if (freshPort) UI.renderPortfolio(freshPort);
+            try {
+                const freshPort = await portfolioPromise;
+                if (freshPort) {
+                    UI.renderPortfolio(freshPort);
+                    if (freshPort.reconcile?.status === "error") {
+                        UI.toast(freshPort.reconcile.message || "대조 실패", "error");
+                    }
+                }
+            } catch (portErr) {
+                console.warn("[TerminalApp] Initial portfolio fetch error:", portErr);
+                if (portErr.data && portErr.data.portfolio) {
+                    UI.renderPortfolio(portErr.data.portfolio);
+                }
+                UI.toast(portErr.message || "포트폴리오 대조 실패", "error");
+            }
         } catch (err) {
             console.error("[TerminalApp] Initial dashboard fetch failed:", err);
+            const lastUpEl = document.getElementById("lastUpdated");
+            if (lastUpEl) lastUpEl.textContent = "대시보드 로드 실패";
+            UI.toast(`대시보드를 불러오지 못했습니다: ${err.message || "오류"}`, "error");
         }
     },
 
@@ -402,40 +548,73 @@ export const TerminalApp = {
         try {
             const data = await ApiClient.getDashboardData();
             if (data) UI.renderDashboard(data);
-            const freshPort = await ApiClient.getPortfolioData(true);
-            if (freshPort) UI.renderPortfolio(freshPort);
         } catch (e) {
-            console.warn("[TerminalApp] Refresh error:", e);
+            console.warn("[TerminalApp] Refresh dashboard error:", e);
+        }
+
+        try {
+            const freshPort = await ApiClient.getPortfolioData(true);
+            if (freshPort) {
+                UI.renderPortfolio(freshPort);
+                if (freshPort.reconcile?.status === "error") {
+                    UI.toast(freshPort.reconcile.message || "대조 실패", "error");
+                }
+            }
+        } catch (e) {
+            console.warn("[TerminalApp] Refresh portfolio error:", e);
+            if (e.data && e.data.portfolio) {
+                UI.renderPortfolio(e.data.portfolio);
+            }
+            UI.toast(e.message || "포트폴리오 대조 실패", "error");
         }
     },
 
     _setupEventListeners() {
-        // Run Live Scan
-        const btnScan = document.getElementById("btnScanNow");
-        if (btnScan) {
-            btnScan.onclick = async () => {
-                btnScan.disabled = true; btnScan.textContent = "SCANNING...";
+        const btnSyncAll = document.getElementById("btnSyncAll");
+        if (btnSyncAll) {
+            btnSyncAll.onclick = async () => {
+                if (WebSocketClient._scanTimeoutId) {
+                    clearTimeout(WebSocketClient._scanTimeoutId);
+                    WebSocketClient._scanTimeoutId = null;
+                }
+                btnSyncAll.disabled = true; 
+                btnSyncAll.textContent = "SYNCING...";
                 try {
-                    await ApiClient.triggerScan();
-                    const fresh = await ApiClient.getDashboardData();
-                    if (fresh) UI.renderDashboard(fresh);
-                } catch (e) { UI.toast("Scan error: " + e.message, "error"); }
-                finally { btnScan.disabled = false; btnScan.textContent = "RUN SCAN"; }
-            };
-        }
+                    const scanRes = await ApiClient.triggerScan();
+                    UI.toast(scanRes.message || "스캔 요청 접수", "info");
 
-        // Refresh Button
-        const btnRefresh = document.getElementById("btnRefresh");
-        if (btnRefresh) btnRefresh.onclick = () => this.refreshData();
+                    if (scanRes.status === "already_scanning") {
+                        btnSyncAll.disabled = false;
+                        btnSyncAll.textContent = "SYNC / REFRESH";
+                    } else if (scanRes.status === "scanning_started") {
+                        WebSocketClient._scanTimeoutId = setTimeout(() => {
+                            if (btnSyncAll.disabled) {
+                                btnSyncAll.disabled = false;
+                                btnSyncAll.textContent = "SYNC / REFRESH";
+                                UI.toast("스캔 결과를 받지 못했습니다", "warn");
+                            }
+                        }, 120000);
+                    }
 
-        // Daily Sync
-        const btnSync = document.getElementById("btnSyncBroker");
-        if (btnSync) {
-            btnSync.onclick = async () => {
-                btnSync.disabled = true; btnSync.textContent = "SYNCING...";
-                try { await ApiClient.syncBroker(); this.refreshData(); }
-                catch (e) { UI.toast("Sync error: " + e.message, "error"); }
-                finally { btnSync.disabled = false; btnSync.textContent = "SYNC"; }
+                    // Run reconciliation
+                    try {
+                        const recRes = await ApiClient.syncBroker();
+                        const rReport = recRes?.report || recRes;
+                        if (rReport?.status === "success" || rReport?.status === "skipped") {
+                            UI.toast("대조 완료", "success");
+                        } else {
+                            UI.toast(recRes?.detail || "대조 실패", "error");
+                        }
+                    } catch (recErr) {
+                        UI.toast("대조 실패: " + recErr.message, "error");
+                    }
+
+                    await this.refreshData();
+                } catch (e) {
+                    UI.toast("Sync error: " + e.message, "error");
+                    btnSyncAll.disabled = false; 
+                    btnSyncAll.textContent = "SYNC / REFRESH";
+                }
             };
         }
 
@@ -444,40 +623,11 @@ export const TerminalApp = {
         if (btnReset) {
             btnReset.onclick = async () => {
                 if (!confirm("Reset entire portfolio?")) return;
-                try { await ApiClient.resetPortfolio(); this.refreshData(); }
-                catch (e) { UI.toast("Reset error: " + e.message, "error"); }
-            };
-        }
-
-        // Quick Buy Button
-        const btnExecBuy = document.getElementById("btnExecuteBuy");
-        if (btnExecBuy) {
-            btnExecBuy.onclick = async () => {
-                if (btnExecBuy.disabled) return;
-                const ticker = (UI.currentSelectedTicker || ChartEngine.currentTicker || document.getElementById("qbTicker")?.textContent || "").trim();
-                if (!ticker || ticker === "---") {
-                    UI.toast("Please select a stock first.", "warn");
-                    return;
-                }
-                const price = parseFloat(document.getElementById("qbBuyPrice")?.value || 0);
-                const qty = parseFloat(document.getElementById("qbQty")?.value || 1);
-                if (price <= 0 || qty <= 0) {
-                    UI.toast("Please enter valid price and quantity.", "warn");
-                    return;
-                }
-                btnExecBuy.disabled = true;
-                btnExecBuy.textContent = "BUYING...";
-                try {
-                    await ApiClient.buyStock(ticker, price, qty);
-                    console.log(`[ORDER COMPLETED] ${ticker} ${qty} SH`);
-                    this.refreshData();
-                } catch (e) {
-                    UI.toast("Buy Failed: " + e.message, "error");
-                } finally {
-                    setTimeout(() => {
-                        btnExecBuy.disabled = false;
-                        btnExecBuy.textContent = "BUY SLOT";
-                    }, 2000);
+                try { 
+                    await ApiClient.resetPortfolio(); 
+                    await this.refreshData(); 
+                } catch (e) { 
+                    UI.toast("Reset error: " + e.message, "error"); 
                 }
             };
         }
@@ -498,25 +648,66 @@ export const TerminalApp = {
 
             let isToggling = false;
 
-            const setBadgeState = (enabled) => {
-                badge.className = enabled ? `status-pill-chip ${activeClass}` : "status-pill-chip disabled";
-                badge.innerHTML = `<span class="badge-dot"></span><span>${enabled ? `${labelPrefix}: ${activeSuffix}` : `${labelPrefix}: OFF`}</span>`;
+            const setBadgeState = (state) => {
+                // state: "active" | "standby" | "unknown"
+                if (state === "active") {
+                    badge.className = "popover-toggle-btn active";
+                    badge.textContent = "ACTIVE";
+                } else if (state === "standby") {
+                    badge.className = "popover-toggle-btn disabled";
+                    badge.textContent = "STANDBY";
+                } else {
+                    badge.className = "popover-toggle-btn disabled";
+                    badge.textContent = "UNKNOWN";
+                }
+                if (labelPrefix === "GUARDIAN") {
+                    try { UI.updateSystemHealth({ guardian: state }); } catch (e) {}
+                }
+                if (labelPrefix === "AUTOPILOT") {
+                    try { UI.updateSystemHealth({ autopilot: state }); } catch (e) {}
+                }
             };
-            getFn().then((st) => setBadgeState(Boolean(st && (st.is_enabled !== undefined ? st.is_enabled : st.enabled))))
-                   .catch((e) => console.warn(`[${labelPrefix}] Init status failed:`, e));
+
+            // Initial state: UNKNOWN
+            badge.textContent = "UNKNOWN";
+            badge.className = "popover-toggle-btn disabled";
+
+            getFn().then((st) => {
+                if (!st || typeof st !== 'object') {
+                    setBadgeState("unreachable");
+                    return;
+                }
+                const enabled = Boolean(st.is_enabled !== undefined ? st.is_enabled : st.enabled);
+                setBadgeState(enabled ? "active" : "standby");
+            }).catch((e) => {
+                console.warn(`[${labelPrefix}] Init status failed:`, e);
+                setBadgeState("unreachable");
+            });
+
             badge.onclick = async () => {
                 if (isToggling) return;
                 isToggling = true;
                 badge.style.opacity = "0.6";
                 badge.style.pointerEvents = "none";
                 try {
-                    const st = await getFn();
-                    const next = !Boolean(st && (st.is_enabled !== undefined ? st.is_enabled : st.enabled));
+                    let st;
+                    try {
+                        st = await getFn();
+                    } catch (e) {
+                        UI.toast(`[${labelPrefix}] 상태 조회 실패로 변경할 수 없습니다.`, "error");
+                        return;
+                    }
+                    if (!st || typeof st !== 'object') {
+                        UI.toast(`[${labelPrefix}] 상태 조회 실패로 변경할 수 없습니다.`, "error");
+                        return;
+                    }
+                    const currentEnabled = Boolean(st.is_enabled !== undefined ? st.is_enabled : st.enabled);
+                    const next = !currentEnabled;
                     const res = await toggleFn(next);
-                    const finalState = res && (res.is_enabled !== undefined ? res.is_enabled : res.enabled) !== undefined
+                    const finalEnabled = res && (res.is_enabled !== undefined ? res.is_enabled : res.enabled) !== undefined
                         ? Boolean(res.is_enabled !== undefined ? res.is_enabled : res.enabled) : next;
-                    setBadgeState(finalState);
-                    UI.toast(`[${labelPrefix}] ${finalState ? 'ACTIVE' : 'DISABLED'}`, finalState ? "success" : "warn");
+                    setBadgeState(finalEnabled ? "active" : "standby");
+                    UI.toast(`[${labelPrefix}] ${finalEnabled ? 'ACTIVE' : 'DISABLED'}`, finalEnabled ? "success" : "warn");
                 } catch (e) {
                     console.error(`[${labelPrefix}] Toggle error:`, e);
                     UI.toast(`[${labelPrefix}] Toggle failed: ${e.message}`, "error");
@@ -527,8 +718,8 @@ export const TerminalApp = {
                 }
             };
         };
-        setupToggleBadge("guardianBadge", () => ApiClient.getGuardianStatus(), (n) => ApiClient.toggleGuardian(n), "GUARDIAN", "active-violet", "-5% / TP");
-        setupToggleBadge("autopilotBadge", () => ApiClient.getAutoPilotStatus(), (n) => ApiClient.toggleAutoPilot(n), "AUTOPILOT", "active-green", "C1-M2");
+        setupToggleBadge("guardianBadge", () => ApiClient.getGuardianStatus(), (n) => ApiClient.toggleGuardian(n), "GUARDIAN", "active-violet", "-7% / TP");
+        setupToggleBadge("autopilotBadge", () => ApiClient.getAutoPilotStatus(), (n) => ApiClient.toggleAutoPilot(n), "AUTOPILOT", "active-green", "C-2");
 
         // Indicator Toggles
         const attachToggle = (id, fn) => {
@@ -540,7 +731,33 @@ export const TerminalApp = {
         attachToggle("btnSpan", (v) => ChartEngine.toggleSeries("span", v));
         attachToggle("btnSma", (v) => ChartEngine.toggleSeries("sma", v));
 
-        // Setup stock search input
+        // Setup Unified System Status Popover
+        const statusSign = document.getElementById("systemStatusSign");
+        const statusPopover = document.getElementById("systemStatusPopover");
+        const btnClosePopover = document.getElementById("btnCloseStatusPopover");
+        if (statusSign && statusPopover) {
+            statusSign.onclick = (e) => {
+                e.stopPropagation();
+                const isShown = statusPopover.style.display === "block";
+                statusPopover.style.display = isShown ? "none" : "block";
+                statusSign.setAttribute("aria-expanded", String(!isShown));
+            };
+            if (btnClosePopover) {
+                btnClosePopover.onclick = (e) => {
+                    e.stopPropagation();
+                    statusPopover.style.display = "none";
+                    statusSign.setAttribute("aria-expanded", "false");
+                };
+            }
+            document.addEventListener("click", (e) => {
+                if (!statusPopover.contains(e.target) && !statusSign.contains(e.target)) {
+                    statusPopover.style.display = "none";
+                    statusSign.setAttribute("aria-expanded", "false");
+                }
+            });
+        }
+
+        // Setup stock search input (safely no-op if removed from DOM)
         this._setupSearchInput();
     },
 
@@ -581,6 +798,8 @@ export const TerminalApp = {
                     dropdown.style.display = "block";
                 } catch (e) {
                     if (spinner) spinner.style.display = "none";
+                    dropdown.innerHTML = `<div style="padding:10px;color:#ef4444;font-size:11px;text-align:center;">SEARCH FAILED</div>`;
+                    dropdown.style.display = "block";
                 }
             }, 250);
         });

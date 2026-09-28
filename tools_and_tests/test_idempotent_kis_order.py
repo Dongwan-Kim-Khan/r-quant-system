@@ -16,7 +16,20 @@ if PROJECT_ROOT not in sys.path:
 
 # Isolate ALL persistence writes from production quant_trades.db before broker import.
 _TEST_DB_DIR = tempfile.mkdtemp(prefix="kis_idempotent_")
+_PREV_DB_PATH = os.environ.get("AL_SANGMOO_DB_PATH")
 os.environ["AL_SANGMOO_DB_PATH"] = os.path.join(_TEST_DB_DIR, "quant_trades.db")
+
+
+def tearDownModule():
+    import shutil
+    try:
+        shutil.rmtree(_TEST_DB_DIR, ignore_errors=True)
+    except Exception:
+        pass
+    if _PREV_DB_PATH is None:
+        os.environ.pop("AL_SANGMOO_DB_PATH", None)
+    else:
+        os.environ["AL_SANGMOO_DB_PATH"] = _PREV_DB_PATH
 
 from al_sangmoo.infrastructure.idempotent_order import (
     is_broker_order_ack,
@@ -247,6 +260,58 @@ class TestBalanceSnapshotSafety(unittest.TestCase):
             {item["exchange"] for item in result["failed_exchanges"]},
             {"NYSE", "AMEX"},
         )
+
+
+class TestOverseasDayOrderInquiry(unittest.TestCase):
+    def test_paper_uses_nccs_3018_and_ccnl_3035(self):
+        adapter = _adapter()
+        captured = []
+
+        def fake_get(url, headers=None, params=None, timeout=None):
+            captured.append({
+                "url": url,
+                "tr_id": (headers or {}).get("tr_id"),
+                "params": dict(params or {}),
+            })
+            resp = MagicMock(status_code=200)
+            resp.json.return_value = {"rt_cd": "0", "output": []}
+            resp.text = ""
+            return resp
+
+        with patch("al_sangmoo.infrastructure.brokers.kis_broker.requests.get", side_effect=fake_get):
+            rows = adapter.query_overseas_day_orders("AMEX")
+
+        self.assertEqual(rows, [])
+        trs = [c["tr_id"] for c in captured]
+        self.assertEqual(trs, ["VTTS3018R", "VTTS3035R"])
+        nccs = captured[0]
+        ccnl = captured[1]
+        self.assertTrue(nccs["url"].endswith("/inquire-nccs"))
+        self.assertTrue(ccnl["url"].endswith("/inquire-ccnl"))
+        self.assertNotIn("ORD_STRT_DT", nccs["params"])
+        self.assertIn("ORD_STRT_DT", ccnl["params"])
+        self.assertEqual(ccnl["params"]["PDNO"], "")
+        self.assertTrue(adapter._day_order_query_complete["AMEX"])
+
+    def test_live_uses_real_nccs_and_ccnl_tr_ids(self):
+        adapter = KISBrokerAdapter(
+            app_key="key", app_secret="secret", account_no="12345678", mode="prod"
+        )
+        adapter.token = "tok"
+        adapter.token_expiry = time.time() + 86_400
+        adapter._limiter.acquire = lambda *args, **kwargs: None
+        captured = []
+
+        def fake_get(url, headers=None, params=None, timeout=None):
+            captured.append((headers or {}).get("tr_id"))
+            resp = MagicMock(status_code=200)
+            resp.json.return_value = {"rt_cd": "0", "output": []}
+            resp.text = ""
+            return resp
+
+        with patch("al_sangmoo.infrastructure.brokers.kis_broker.requests.get", side_effect=fake_get):
+            adapter.query_overseas_day_orders("NASD")
+        self.assertEqual(captured, ["TTTS3018R", "TTTS3035R"])
 
 
 if __name__ == "__main__":

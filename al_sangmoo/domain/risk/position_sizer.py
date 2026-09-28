@@ -1,5 +1,5 @@
 """
-C1-M2 Dynamic Position Sizer — NAV-based 50/30/20 (bull) and 25/25 (bear).
+C-2 Dynamic Position Sizer — NAV-based 34/33/33 (bull) and 25/25 (bear).
 """
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ def calculate_atr(df: pd.DataFrame, window: int = 14) -> float:
 
 
 def get_slot_weights(is_bull: bool = True) -> List[float]:
-    """Return C1-M2 slot weight vector for the active regime."""
+    """Return C-2 slot weight vector for the active regime."""
     return list(SLOT_WEIGHTS_BULL if is_bull else SLOT_WEIGHTS_BEAR)
 
 
@@ -58,9 +58,9 @@ def calculate_target_shares(
     slot_weights: Optional[Sequence[float]] = None,
 ) -> Dict[str, Any]:
     """
-    C1-M2 NAV-based share calculator.
+    C-2 NAV-based share calculator.
 
-    Bull: rank1=50%, rank2=30%, rank3=20%.
+    Bull: rank1=34%, rank2=33%, rank3=33%.
     Bear (`is_bull=False`): max 2 slots at 25% / 25%.
     """
     nav = float(portfolio_nav or 0.0)
@@ -156,11 +156,11 @@ def calculate_dynamic_position_size(
     atr_14: float,
     msi_score: float = 50.0,
     target_risk_fraction: float = 0.015,
-    max_position_fraction: float = 0.50,
+    max_position_fraction: float = 0.39,
 ) -> Dict[str, Any]:
     """
     Volatility-targeted dynamic position sizing adjusted for MSI macro climate.
-    Cap defaults to C1-M2 Slot-1 max (50%).
+    Cap defaults to C-2 Slot-1 max (39% with buffer).
     """
     if current_price <= 0 or portfolio_equity <= 0:
         return {
@@ -219,9 +219,9 @@ def calculate_slot_position_size(
     slot_rank: int = 1,
 ) -> Dict[str, Any]:
     """
-    C1-M2 integer share sizing.
+    C-2 integer share sizing.
 
-    Prefer rank-based weights (50/30/20 or 25/25). Optional `slot_fraction`
+    Prefer rank-based weights (34/33/33 or 25/25). Optional `slot_fraction`
     overrides the rank weight for legacy callers.
     """
     del msi_score  # retained for API compatibility; MSI gates live in macro overlay

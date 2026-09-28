@@ -2,8 +2,8 @@
  * R QUANT TERMINAL v2: INTERACTIVE CHART ENGINE MODULE
  * Encapsulates TradingView Lightweight Charts, Series, Timeframe Switcher, and +26D Cloud Renderer.
  */
-import { ApiClient } from './api.js?v=4.3.3';
-import { QuantDecoder } from './decoder.js?v=4.3.3';
+import { ApiClient } from './api.js?v=4.4.8';
+import { QuantDecoder } from './decoder.js?v=4.4.8';
 
 export const ChartEngine = {
     mainChart: null,
@@ -221,9 +221,41 @@ export const ChartEngine = {
             const reqTicker = cleanTicker;
             const chartData = await ApiClient.getChartData(reqTicker);
             if (requestSeq !== this._requestSeq || this.currentTicker !== reqTicker) return;
+
+            if (chartData?.aborted) {
+                if (chartData.reason === 'superseded') {
+                    // Previous request aborted due to ticker switch; wait for newer request
+                    return;
+                }
+                if (chartData.reason === 'timeout') {
+                    this._clearSeries();
+                    if (curPriceEl) curPriceEl.textContent = "TIMEOUT";
+                    if (window.TerminalUI?.toast) {
+                        window.TerminalUI.toast("차트 응답이 지연되었습니다.", "warn");
+                    }
+                    return;
+                }
+                return;
+            }
+
+            if (chartData?.notFound || (chartData && chartData.status === 404)) {
+                this.renderNotFound(this.currentTicker);
+                return;
+            }
+
+            if (chartData?.error) {
+                this._clearSeries();
+                if (curPriceEl) curPriceEl.textContent = "LOAD FAILED";
+                if (window.TerminalUI?.toast) {
+                    window.TerminalUI.toast(chartData.detail || "차트 로드 실패", "error");
+                }
+                return;
+            }
+
             const payloadTk = this._payloadTicker(chartData);
             if (payloadTk && payloadTk !== reqTicker) return;
-            if (chartData && !chartData.aborted) {
+
+            if (chartData) {
                 const latestPrice = (livePriceHint > 0) 
                     ? livePriceHint 
                     : (chartData.latest_close || (chartData.candles && chartData.candles.length > 0 ? chartData.candles[chartData.candles.length - 1].close : 0));
@@ -241,13 +273,17 @@ export const ChartEngine = {
 
                 const dashData = window.TerminalUI ? window.TerminalUI.latestDashboardData : null;
                 QuantDecoder.update(this.currentTicker, chartData, dashData);
-            } else if (!chartData || !chartData.aborted) {
+            } else {
                 this.renderNotFound(this.currentTicker);
             }
         } catch (err) {
             if (requestSeq !== this._requestSeq || this.currentTicker !== ticker.toUpperCase()) return;
             console.error(`[ChartEngine] Error loading chart for ${this.currentTicker}:`, err);
-            this.renderNotFound(this.currentTicker);
+            this._clearSeries();
+            if (curPriceEl) curPriceEl.textContent = "LOAD FAILED";
+            if (window.TerminalUI?.toast) {
+                window.TerminalUI.toast(err.message || "차트 로드 실패", "error");
+            }
         } finally {
             if (requestSeq === this._requestSeq) {
                 this._inflightTicker = "";

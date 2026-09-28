@@ -2,13 +2,13 @@
 chcp 65001 > nul
 set PYTHONUTF8=1
 set PYTHONIOENCODING=utf-8
-title [알상무 퀀트 터미널 v2.0 - C1-M2 Engine (50/30/20 + QQQ Proxy + 1.5x Leveraged)]
+title [알상무 퀀트 터미널 v3.0 - C-2 Production Engine (34/33/33 + QQQ Proxy + Dual Stop -7%% EOD / -10%% Emerg)]
 
 cd /d "%~dp0"
 
 echo ======================================================================
-echo   알상무 퀀트 터미널 v2.0 - C1-M2 Engine
-echo   [50/30/20 + QQQ Proxy + 1.5x Leveraged / Hard Stop -5.0%%]
+echo   알상무 퀀트 터미널 v3.0 - C-2 Production Engine
+echo   [34/33/33 Equal Sizing + QQQ Proxy / Dual Stop -7.0%% EOD, -10.0%% Emerg]
 echo ======================================================================
 echo  [1] 백엔드 포트(8000) 잔여 프로세스 점검 및 정리 중...
 for /f "tokens=5" %%a in ('netstat -aon ^| findstr :8000 ^| findstr LISTENING') do (
@@ -21,11 +21,11 @@ set BOOT_ID=%RANDOM%%RANDOM%
 echo  [2] 서버가 8000 포트를 열면 최신 대시보드를 엽니다 (캐시 우회)...
 start /b "" cmd /c "for /L %%i in (1,1,45) do (netstat -ano | findstr :8000 | findstr LISTENING >nul && (start "" http://localhost:8000/?boot=%BOOT_ID% & exit /b) & ping 127.0.0.1 -n 2 >nul)"
 
-echo  [3] KIS 증권사 API 게이트웨이 및 C1-M2 퀀트 엔진 기동 중...
+echo  [3] KIS 증권사 API 게이트웨이 및 C-2 퀀트 엔진 기동 중...
 echo ======================================================================
 echo  * 대시보드 주소: http://localhost:8000  (frontend/index.html)
-echo  * 투자설명서:   http://localhost:8000/static/INVESTMENT_PROSPECTUS_C1_M2_KO.html
-echo  * 엔진 스펙:    Hard Stop -5.0%% / Trailing +15%%→ATR2.5 / QQQ Cash Proxy
+echo  * 엔진 스펙:    Dual Stop: EOD -7.0%% / Emerg -10.0%% / Trail +18%% (ATR 3.0)
+echo  * 슬롯 비중:    강세장 34%% / 33%% / 33%% (약세장 25%% / 25%%)
 echo  * 기존 탭이 열려 있어도 ?boot= 주소로 새 화면이 로드됩니다
 echo  * 터미널 종료 방법: 이 창에서 [Ctrl + C] 누르기 또는 창 닫기
 echo ======================================================================

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-C1-M2 live allocation diagnostic.
+C-2 live allocation diagnostic.
 
-Prints satellite vs QQQ/QLD proxy occupancy, empty-slot targets (50/30/20 or 25/25),
+Prints satellite vs QQQ/QLD proxy occupancy, empty-slot targets (34/33/33 or 25/25),
 unheld ranked candidates with target shares, and idle-NAV proxy gap.
 """
 from __future__ import annotations
@@ -118,13 +118,13 @@ def main() -> int:
     empty_slots = max(0, max_slots - len(sats))
 
     print("=" * 72)
-    print("C1-M2 LIVE ALLOCATION DIAGNOSTIC")
+    print("C-2 LIVE ALLOCATION DIAGNOSTIC")
     print("=" * 72)
     print(f"Equity NAV     : ${equity:,.2f}")
     print(f"Cash (ledger)  : ${cash:,.2f}")
     print(
         f"Regime         : "
-        f"{'1.5x Bull 50/30/20' if is_bull and lev_on else ('1.0x Bull 50/30/20' if is_bull else '1.0x Bear 25/25')}"
+        f"{'1.5x Bull 34/33/33' if is_bull and lev_on else ('1.0x Bull 34/33/33' if is_bull else '1.0x Bear 25/25')}"
         f"  (bull={is_bull}, leverage_mode={lev_on})"
     )
     print(f"Max slots      : {max_slots}  | occupied={len(sats)}  | empty={empty_slots}")
@@ -194,7 +194,7 @@ def main() -> int:
     if planned == 0:
         print("  (no unheld deployable candidates for empty slots)")
 
-    idle = idle_nav_usd(equity, holdings)
+    idle = idle_nav_usd(equity, holdings, is_bull=is_bull, max_slots=max_slots)
     qqq_px = float(
         next(
             (
@@ -228,6 +228,8 @@ def main() -> int:
         leverage_mode=lev_on,
         qqq_price=qqq_px or 400.0,
         qld_price=qld_px or 80.0,
+        is_bull=is_bull,
+        max_slots=max_slots,
     )
     cur_qqq = int(_qty(holdings, CASH_PROXY_TICKER))
     cur_qld = int(_qty(holdings, LEVERAGE_TICKER))
@@ -247,7 +249,7 @@ def main() -> int:
         for act in actions:
             print(f"    - {act.get('side')} {act.get('ticker')} x{act.get('qty')} ({act.get('reason')})")
     else:
-        print("  rebalance actions: (none — proxy already at target)")
+        print("  rebalance actions: (none -- proxy already at target)")
 
     print("=" * 72)
     return 0

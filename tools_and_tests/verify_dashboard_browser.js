@@ -22,22 +22,17 @@ const { chromium } = require('d:/코딩/R/.agents/skills/playwright-skill/node_m
     // Wait for hydration and data population
     await page.waitForTimeout(2000);
 
-    // 1. Verify Active Portfolio vs Slot Allocator
+    // 1. Verify unified PORTFOLIO table (no cloned slot-card holdings)
     const portTickers = await page.$$eval('#portfolioTableBody tr td strong.ticker-pill', els => els.map(e => e.textContent.trim()));
-    console.log("[TEST] Active Portfolio table tickers:", portTickers);
+    console.log("[TEST] Portfolio table tickers:", portTickers);
 
-    const slotCards = await page.$$eval('#slotVisualizerGrid .slot-card', els => els.map(e => {
-        const strong = e.querySelector('strong');
-        const badge = e.querySelector('span[style*="border-radius"]');
-        const emptyText = e.querySelector('div[style*="EMPTY"]');
-        return {
-            ticker: strong ? strong.textContent.trim() : null,
-            badge: badge ? badge.textContent.trim() : null,
-            empty: emptyText ? emptyText.textContent.trim() : null,
-            className: e.className
-        };
-    }));
-    console.log("[TEST] Slot Allocator cards:", slotCards);
+    const slotCards = await page.$$eval('#slotVisualizerGrid .slot-card', els => els.length);
+    const slotHidden = await page.$eval('#slotVisualizerGrid', el => el.hasAttribute('hidden'));
+    console.log("[TEST] Slot card clones:", slotCards, "hidden:", slotHidden);
+    if (!slotHidden || slotCards !== 0) {
+        console.error("[FAIL] Slot occupancy cards are still a second holdings view");
+        process.exit(1);
+    }
 
     const slotSummaryText = await page.$eval('#slotSummaryText', el => el.textContent.trim());
     console.log("[TEST] Slot summary text:", slotSummaryText);
@@ -60,17 +55,23 @@ const { chromium } = require('d:/코딩/R/.agents/skills/playwright-skill/node_m
         process.exit(1);
     }
 
-    // Verify all active portfolio tickers appear in the slot cards
-    const slotTickers = slotCards.filter(c => c.ticker).map(c => c.ticker);
-    console.log("[TEST] Slot tickers:", slotTickers);
-
-    for (const pt of portTickers) {
-        if (!slotTickers.includes(pt)) {
-            console.error(`[FAIL] Active portfolio ticker ${pt} is NOT in Slot Allocator!`);
+    const weights = await page.$$eval('#portfolioTableBody td.holding-weight', els => els.map(e => e.textContent.trim()));
+    console.log("[TEST] Holding weights:", weights);
+    for (const w of weights) {
+        const pct = Number(String(w).replace('%', ''));
+        if (!(pct >= 1)) {
+            console.error(`[FAIL] holding weight collapsed under inflated NAV: ${weights}`);
             process.exit(1);
         }
     }
-    console.log("[PASS] All Active Portfolio tickers are unified in C1-M2 Slot Allocator!");
+    const equityText = await page.$eval('#kpiTotalEquityUsd', el => el.textContent.trim());
+    const equityUsd = Number(String(equityText).replace(/[^0-9.]/g, ''));
+    console.log("[TEST] Equity:", equityText);
+    if (!(equityUsd > 0) || equityUsd > 50000) {
+        console.error("[FAIL] TOTAL EQUITY looks like poisoned KIS output2, got:", equityText);
+        process.exit(1);
+    }
+    console.log("[PASS] Live holdings occupy a single PORTFOLIO table with sane weights!");
 
     // 2. Verify Guardian badge styling and click behavior
     const gBadge = await page.$('#guardianBadge');

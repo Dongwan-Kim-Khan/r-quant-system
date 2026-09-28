@@ -3,9 +3,12 @@ WebSocket Broadcast Gateway & Real-Time Event Hub.
 """
 import asyncio
 import time
+import logging
 from enum import Enum
 from typing import List, Dict, Any, Union
 from fastapi import WebSocket, WebSocketDisconnect
+
+logger = logging.getLogger(__name__)
 
 MAX_CONNECTIONS = 50
 
@@ -33,6 +36,7 @@ class WebSocketBroadcastHub:
     async def connect(self, websocket: WebSocket) -> bool:
         async with self._lock:
             if len(self.active_connections) >= self.max_connections:
+                logger.warning("[WebSocket Hub] Connection limit (%d) reached. Rejecting client.", self.max_connections)
                 if hasattr(websocket, "close"):
                     try:
                         await websocket.close(code=1008, reason="Connection limit exceeded")
@@ -43,24 +47,25 @@ class WebSocketBroadcastHub:
             if hasattr(websocket, "accept"):
                 try:
                     await websocket.accept()
-                except Exception:
+                except Exception as e:
+                    logger.warning("[WebSocket Hub] Failed to accept websocket: %s", e)
                     return False
             self.active_connections.append(websocket)
-            print(f"[WebSocket Hub] Client connected. Active clients: {len(self.active_connections)}")
+            logger.info("[WebSocket Hub] Client connected. Active clients: %d", len(self.active_connections))
             return True
 
     async def disconnect(self, websocket: WebSocket) -> None:
         async with self._lock:
             if websocket in self.active_connections:
                 self.active_connections.remove(websocket)
-        print(f"[WebSocket Hub] Client disconnected. Active clients: {len(self.active_connections)}")
+        logger.info("[WebSocket Hub] Client disconnected. Active clients: %d", len(self.active_connections))
 
     async def _safe_close(self, ws: WebSocket, code: int = 1000, reason: str = "") -> None:
         if hasattr(ws, "close"):
             try:
                 await ws.close(code=code, reason=reason)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("[WebSocket Hub] Error closing dead websocket: %s", e)
 
     def _normalize_event(self, event_type: Union[EventType, str]) -> str:
         if isinstance(event_type, EventType):
@@ -93,7 +98,8 @@ class WebSocketBroadcastHub:
             try:
                 await asyncio.wait_for(ws.send_json(message), timeout=2.0)
                 return True
-            except Exception:
+            except Exception as e:
+                logger.debug("[WebSocket Hub] send_json to client failed for event '%s': %s", event_name, e)
                 return False
 
         results = await asyncio.gather(*(send_to_client(ws) for ws in sockets), return_exceptions=True)

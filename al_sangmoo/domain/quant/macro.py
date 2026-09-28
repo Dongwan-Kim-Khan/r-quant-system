@@ -87,18 +87,62 @@ def fetch_spy_trend_regime() -> Dict[str, Any]:
         close = raw["Close"].dropna()
         if len(close) < 30:
             return {}
-        sma200 = close.rolling(window=200, min_periods=30).mean().iloc[-1]
+        sma_series = close.rolling(window=200, min_periods=30).mean()
+        sma200 = sma_series.iloc[-1]
         last = float(close.iloc[-1])
         sma = float(sma200) if sma200 == sma200 else 0.0
         if last <= 0 or sma <= 0:
             return {}
+        history = []
+        for dt, c, s in zip(close.index[-60:], close.values[-60:], sma_series.values[-60:]):
+            d_str = dt.strftime("%Y-%m-%d") if hasattr(dt, "strftime") else str(dt)[:10]
+            history.append({"date": d_str, "close": round(float(c), 2), "sma200": round(float(s), 2) if s == s else None})
         data = {
             "spy_close": round(last, 4),
             "spy_sma200": round(sma, 4),
             "is_bull_regime": last >= sma,
+            "spy_history": history,
             "source": "yahoo",
         }
         _SPY_REGIME_CACHE["SPY"] = {"ts": now, "data": data}
+        return dict(data)
+    except Exception:
+        return {}
+
+
+_QQQ_REGIME_CACHE: Dict[str, Any] = {}
+_QQQ_REGIME_TTL_SEC = 3600.0
+
+
+def fetch_qqq_trend_regime() -> Dict[str, Any]:
+    """Cached QQQ vs SMA20 snapshot for C-2 trend gate. Network failure returns {}."""
+    now = time.time()
+    cached = _QQQ_REGIME_CACHE.get("QQQ")
+    if cached and (now - cached.get("ts", 0)) < _QQQ_REGIME_TTL_SEC:
+        return dict(cached.get("data") or {})
+    try:
+        import pandas as pd
+        import yfinance as yf
+        raw = yf.download("QQQ", period="6mo", interval="1d", progress=False, auto_adjust=False)
+        if raw is None or raw.empty:
+            return {}
+        if isinstance(raw.columns, pd.MultiIndex):
+            raw.columns = raw.columns.get_level_values(0)
+        close = raw["Close"].dropna()
+        if len(close) < 20:
+            return {}
+        sma20 = close.rolling(window=20, min_periods=20).mean().iloc[-1]
+        last = float(close.iloc[-1])
+        sma = float(sma20) if sma20 == sma20 else 0.0
+        if last <= 0 or sma <= 0:
+            return {}
+        data = {
+            "qqq_close": round(last, 4),
+            "qqq_sma20": round(sma, 4),
+            "qqq_trend_pass": last >= sma,
+            "source": "yahoo",
+        }
+        _QQQ_REGIME_CACHE["QQQ"] = {"ts": now, "data": data}
         return dict(data)
     except Exception:
         return {}

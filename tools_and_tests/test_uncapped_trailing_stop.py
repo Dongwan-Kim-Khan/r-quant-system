@@ -26,11 +26,12 @@ import numpy as np
 
 class TestTrailingFloorMath(unittest.TestCase):
     def test_floor_takes_max_of_kijun_and_atr_channel(self):
-        # kijun=100, peak=120, ATR=4 → atr_leg=120-10=110 → max(100, 110)=110
-        self.assertEqual(compute_trailing_floor(100.0, 120.0, 4.0), 110.0)
+        # C-2 ATR multiplier = 3.0
+        # kijun=100, peak=120, ATR=4 → atr_leg=120-12=108 → max(100, 108)=108
+        self.assertEqual(compute_trailing_floor(100.0, 120.0, 4.0), 108.0)
 
     def test_floor_uses_kijun_when_atr_channel_is_tighter(self):
-        # kijun=115, peak=120, ATR=10 → atr_leg=95 → max(115, 95)=115
+        # kijun=115, peak=120, ATR=10 → atr_leg=90 → max(115, 90)=115
         self.assertEqual(compute_trailing_floor(115.0, 120.0, 10.0), 115.0)
 
     def test_floor_zero_when_inputs_missing(self):
@@ -39,32 +40,33 @@ class TestTrailingFloorMath(unittest.TestCase):
 
 
 class TestLatchAndEvaluate(unittest.TestCase):
-    def test_hard_stop_at_minus_five(self):
-        res = evaluate_guardian_exit(buy_price=100.0, current_price=95.0)
+    def test_hard_stop_at_minus_seven(self):
+        res = evaluate_guardian_exit(buy_price=100.0, current_price=93.0, is_eod_window=True)
         self.assertEqual(res["action"], "AUTO_STOP_LOSS")
-        self.assertEqual(res["hard_stop_price"], 95.0)
+        self.assertEqual(res["hard_stop_price"], 93.0)
         self.assertTrue(res["is_full_exit"])
 
     def test_hard_stop_beats_kijun(self):
         res = evaluate_guardian_exit(
-            buy_price=100.0, current_price=95.0, kijun_26=90.0, atr_14=2.0
+            buy_price=100.0, current_price=93.0, kijun_26=90.0, atr_14=2.0, is_eod_window=True
         )
         self.assertEqual(res["action"], "AUTO_STOP_LOSS")
 
-    def test_kijun_breakdown_before_trailing_arm(self):
+    def test_kijun_breakdown_disabled_before_trailing_arm(self):
+        # C-2: standalone kijun exit permanently disabled
         res = evaluate_guardian_exit(
             buy_price=100.0, current_price=102.0, kijun_26=103.0, atr_14=2.0
         )
-        self.assertEqual(res["action"], "AUTO_KIJUN_EXIT")
+        self.assertIsNone(res["action"])
         self.assertFalse(res["trailing_active"])
 
-    def test_plus_fifteen_does_not_force_exit(self):
+    def test_plus_eighteen_does_not_force_exit(self):
         res = evaluate_guardian_exit(
-            buy_price=100.0, current_price=116.0, kijun_26=105.0, atr_14=2.0, peak_high=116.0
+            buy_price=100.0, current_price=119.0, kijun_26=105.0, atr_14=2.0, peak_high=119.0
         )
         self.assertTrue(res["trailing_active"])
-        self.assertEqual(res["action"], None)
-        self.assertEqual(res["trailing_floor"], 111.0)  # max(105, 116-5)=111
+        self.assertIsNone(res["action"])
+        self.assertEqual(res["trailing_floor"], 113.0)  # max(105, 119 - 3*2) = 113
 
     def test_trailing_exit_when_price_breaks_floor(self):
         res = evaluate_guardian_exit(
@@ -76,19 +78,19 @@ class TestLatchAndEvaluate(unittest.TestCase):
             max_gain_pct=20.0,
         )
         self.assertTrue(res["trailing_active"])
-        self.assertEqual(res["trailing_floor"], 115.0)  # max(105, 120-5)=115
+        self.assertEqual(res["trailing_floor"], 114.0)  # max(105, 120 - 3*2) = 114
         self.assertEqual(res["action"], "AUTO_TRAILING_TP")
 
     def test_trailing_stays_armed_after_pullback(self):
-        latched = latch_peak_gain(100.0, 112.0, peak_high=118.0, max_gain_pct=18.0)
+        latched = latch_peak_gain(100.0, 112.0, peak_high=120.0, max_gain_pct=20.0)
         self.assertTrue(latched["trailing_active"])
-        self.assertGreaterEqual(latched["peak_high"], 118.0)
+        self.assertGreaterEqual(latched["peak_high"], 120.0)
         res = evaluate_guardian_exit(
             buy_price=100.0, current_price=112.0, kijun_26=100.0, atr_14=2.0,
-            peak_high=118.0, max_gain_pct=18.0
+            peak_high=120.0, max_gain_pct=20.0
         )
         self.assertTrue(res["trailing_active"])
-        self.assertEqual(res["trailing_floor"], 113.0)  # max(100, 118-5)
+        self.assertEqual(res["trailing_floor"], 114.0)  # max(100, 120 - 3*2) = 114
         self.assertEqual(res["action"], "AUTO_TRAILING_TP")
 
     def test_no_partial_language_in_advice(self):
@@ -97,7 +99,7 @@ class TestLatchAndEvaluate(unittest.TestCase):
         self.assertNotIn("50%", text)
         self.assertNotIn("분할", text)
         trail = evaluate_guardian_exit(
-            buy_price=100.0, current_price=116.0, kijun_26=105.0, atr_14=2.0, peak_high=116.0
+            buy_price=100.0, current_price=119.0, kijun_26=105.0, atr_14=2.0, peak_high=119.0
         )
         text2 = format_holding_advice(trail, 100.0)
         self.assertIn("트레일링", text2)
@@ -131,7 +133,7 @@ class TestGuardianUsesSSot(unittest.TestCase):
         self.assertEqual(rules["partial_tp_ratio"], 0.0)
         self.assertTrue(rules["uncapped_trailing"])
         self.assertEqual(g.interval, 10)
-        self.assertEqual(rules["atr_multiplier"], 2.5)
+        self.assertEqual(rules["atr_multiplier"], 3.0)
 
     def test_guardian_full_exit_on_trailing_without_partial_branch(self):
         from al_sangmoo.domain.risk.portfolio_guardian import PortfolioGuardian

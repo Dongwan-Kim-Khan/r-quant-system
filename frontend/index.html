@@ -6,12 +6,14 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>R QUANT TERMINAL | C1-M2 Production Engine</title>
+    <title>R</title>
+    <meta name="application-name" content="R QUANT TERMINAL">
+    <meta name="strategy-trailing" content="기준선/3.0×ATR">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%2338bdf8'/><path d='M25 70 L40 45 L55 60 L75 30' stroke='%23ffffff' stroke-width='10' stroke-linecap='round' stroke-linejoin='round' fill='none'/></svg>">
     <!-- TradingView Lightweight Charts v4 (Local First with Zero Network Lag) -->
     <script src="/static/js/lightweight-charts.standalone.production.js"></script>
     <!-- Modular CSS -->
-    <link rel="stylesheet" href="/static/css/terminal.css?v=4.3.3">
+    <link rel="stylesheet" href="/static/css/terminal.css?v=4.4.8">
     <!-- Non-Blocking Google Fonts with Instant System Fallback -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,120 +21,159 @@
 </head>
 <body>
 
-    <!-- 1. Header Navigation & Control Bar (Revolut Minimalist Style) -->
+    <!-- 0. Top Financial Exchange Media Wall Ticker (Continuous Horizontal Marquee with Real-Time Trade Alerts) -->
+    <div class="macro-media-wall" id="macroMediaWall" role="region" aria-label="Financial Exchange Media Wall">
+        <div class="marquee-wrapper">
+            <div class="marquee-track" id="mediaWallTrack">
+                <span class="media-wall-item">Loading Exchange Feed...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 1. Header Navigation & Control Bar (Clean Revolut Minimalist Style) -->
     <header>
         <div class="brand">
-            <h1>R QUANT TERMINAL</h1>
-            <span class="live-pill"><span class="live-dot"></span> LIVE</span>
-            <span id="engineBadge" class="status-pill-chip active-green" title="C1-M2: 50/30/20 · QQQ Cash Proxy · −5% Hard Stop · 1.5x Conditional">[C1-M2 Production Engine]</span>
-        </div>
+            <h1>R</h1>
+            
+            <!-- Unified System Status Sign (Single indicator: Green=All Normal, Yellow=Partial/Warn, Red=Severe Error) -->
+            <div class="system-status-container">
+                <button type="button" id="systemStatusSign" class="system-status-sign status-yellow" title="클릭하여 세부 연결 및 API 상태 확인" aria-haspopup="true" aria-expanded="false">
+                    <span class="status-dot"></span>
+                    <span id="systemStatusLabel">CONNECTING</span>
+                </button>
 
-        <!-- Universal Stock Search Bar ({rounded.md} — 12px) -->
-        <div class="search-wrapper">
-            <div style="position:relative; display:flex; align-items:center;">
-                <input type="text" id="stockSearchInput" 
-                       class="search-input"
-                       placeholder="티커 또는 종목명 [/]" 
-                       autocomplete="off" />
-                <span id="searchShortcutKey" style="position:absolute; right:12px; font-size:11px; color:var(--text-muted); background:var(--surface-card); border:1px solid var(--hairline-dark); padding:2px 6px; border-radius:6px; pointer-events:none; font-family:'JetBrains Mono';">/</span>
-                <div id="searchSpinner" style="display:none; position:absolute; right:36px; width:14px; height:14px; border:2px solid var(--primary-bright); border-top-color:transparent; border-radius:50%; animation:spin 0.8s linear infinite;"></div>
+                <!-- Detailed Health Popover Modal Window -->
+                <div id="systemStatusPopover" class="system-status-popover" style="display:none;" role="dialog" aria-label="시스템 상세 상태">
+                    <div class="popover-header">
+                        <span style="font-size:12px; font-weight:800; color:#ffffff;">SYSTEM STATUS</span>
+                        <span id="popoverOverallTag" class="popover-tag tag-yellow">확인 중</span>
+                    </div>
+                    <div class="popover-body">
+                        <div class="popover-item">
+                            <div class="popover-item-label">
+                                <span class="popover-dot dot-yellow" id="popDotWs"></span>
+                                <span>WebSocket Hub</span>
+                            </div>
+                            <span class="popover-item-val" id="popValWs">CONNECTING</span>
+                        </div>
+                        <div class="popover-item">
+                            <div class="popover-item-label">
+                                <span class="popover-dot dot-yellow" id="popDotKis"></span>
+                                <span>KIS OpenAPI</span>
+                            </div>
+                            <span class="popover-item-val" id="popValKis">확인 중</span>
+                        </div>
+                        <div class="popover-item">
+                            <div class="popover-item-label">
+                                <span class="popover-dot dot-yellow" id="popDotGuardian"></span>
+                                <span>Guardian Risk</span>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                <span class="popover-item-val" id="popValGuardian">확인 중</span>
+                                <button type="button" id="guardianBadge" class="popover-toggle-btn disabled" title="Guardian 상태 토글">UNKNOWN</button>
+                            </div>
+                        </div>
+                        <div class="popover-item">
+                            <div class="popover-item-label">
+                                <span class="popover-dot dot-yellow" id="popDotAutopilot"></span>
+                                <span>Autopilot</span>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                <span class="popover-item-val" id="popValAutopilot">확인 중</span>
+                                <button type="button" id="autopilotBadge" class="popover-toggle-btn disabled" title="Autopilot 상태 토글">UNKNOWN</button>
+                            </div>
+                        </div>
+                        <div class="popover-item">
+                            <div class="popover-item-label">
+                                <span class="popover-dot dot-green" id="popDotLeverage"></span>
+                                <span>Leverage</span>
+                            </div>
+                            <span class="popover-item-val" id="popValLeverage">1.5x (QLD Boost)</span>
+                        </div>
+                    </div>
+                    <div class="popover-footer">
+                        <span style="font-size:10px; color:var(--text-muted); font-family:'JetBrains Mono';" id="popoverHeartbeatText">HEARTBEAT: &lt;10ms · PING OK</span>
+                        <button type="button" id="btnCloseStatusPopover" class="btn-popover-close">닫기</button>
+                    </div>
+                </div>
             </div>
-            <div id="searchDropdown" style="display:none; position:absolute; top:100%; left:0; right:0; background:var(--surface-elevated); border:1px solid var(--hairline-strong); border-radius:14px; margin-top:6px; max-height:280px; overflow-y:auto; z-index:9999; box-shadow:0 12px 32px rgba(0,0,0,0.8);"></div>
         </div>
 
         <div class="header-actions">
-            <!-- KIS Broker Live Gateway Status Box -->
-            <div id="kisBrokerStatusBox" class="status-pill-chip active-green" title="한국투자증권(KIS) OpenAPI 실시간 연결 상태">
-                <div id="kisStatusDot" style="width:6px; height:6px; background:#34d399; border-radius:9999px; box-shadow:0 0 6px #34d399;"></div>
-                <span style="font-weight:700;" id="kisStatusText">KIS API: LIVE</span>
-            </div>
-
-            <!-- Daemon Toggles (Revolut Pill Chips) -->
-            <span id="guardianBadge" class="status-pill-chip active-violet" title="가디언 자동 칼손절(-5%) 및 무제한 트레일링 익절 (+15%→ATR 2.5/기준선)"><span class="badge-dot"></span><span>GUARDIAN: -5% / TP</span></span>
-            <span id="autopilotBadge" class="status-pill-chip active-green" title="전자동 매수 C1-M2 50/30/20 + QQQ Proxy"><span class="badge-dot"></span><span>AUTOPILOT: C1-M2</span></span>
-            <span id="leverageBadge" class="status-pill-chip" title="SPY≥SMA200 & VIX&lt;20 → 1.5x QLD Boost">LEV: --</span>
-
-            <div class="status-pill-chip" id="serverStatus">
-                <div class="server-dot" id="serverDot" style="width:6px; height:6px; border-radius:9999px; background:#34d399;"></div>
-                <span id="serverStatusText">LIVE</span>
-            </div>
-            <a class="btn-outline-pill" id="btnProspectus" href="/static/INVESTMENT_PROSPECTUS_C1_M2_KO.html" target="_blank" rel="noopener" title="C1-M2 투자설명서 (PPM/KIID)">투자설명서 (PPM)</a>
-            <button class="btn-primary-pill" id="btnScanNow">SCAN</button>
-            <button class="btn-outline-pill" id="btnRefresh">REFRESH</button>
+            <a class="btn-outline-pill" id="btnProspectus" href="/static/INVESTMENT_PROSPECTUS_C2_KO.html" target="_blank" rel="noopener" title="C-2 투자설명서 (PPM/KIID)">투자설명서 (C-2)</a>
+            <button class="btn-primary-pill" id="btnSyncAll">SYNC / REFRESH</button>
         </div>
     </header>
 
 
-    <!-- 2. Slim 1-Line Macro Climate & Financial Gauges Strip -->
-    <div class="macro-strip-banner">
-        <!-- Left: Macro Stance & Directive -->
-        <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:320px;">
-            <span id="macroStanceBadge" style="background:rgba(52,211,153,0.12); color:#34d399; font-weight:800; padding:3px 10px; border-radius:9999px; border:1px solid rgba(52,211,153,0.25);">[BULL]</span>
-            <span style="color:#fbbf24; font-weight:700;" id="macroHeadline">[MACRO: 주도주 순환매 &amp; 상대강도 집중]</span>
-            <span style="color:var(--text-muted); font-size:11px;" id="lastUpdated">UPDATED: --</span>
-        </div>
-
-        <!-- Right: 4-Core Gauges Compact Strip -->
-        <div style="display:flex; align-items:center; gap:18px; font-family:'JetBrains Mono', monospace;">
-            <div><span style="color:var(--text-muted);">US10Y:</span> <strong style="color:#f87171;" id="gaugeUs10yVal">--</strong></div>
-            <div><span style="color:var(--text-muted);">DXY:</span> <strong style="color:#38bdf8;" id="gaugeDxyVal">--</strong></div>
-            <div><span style="color:var(--text-muted);">VIX:</span> <strong style="color:#34d399;" id="gaugeVixVal">--</strong></div>
-            <div><span style="color:var(--text-muted);">WTI:</span> <strong style="color:#f87171;" id="gaugeWtiVal">--</strong></div>
-            <div><span style="color:var(--text-muted);">GOLD:</span> <strong style="color:#fbbf24;" id="gaugeGoldVal">--</strong></div>
-        </div>
-    </div>
 
 
-    <!-- 3. Top 4-Card Financial KPI Cockpit -->
-    <div class="kpi-container">
-        
-        <!-- Card 1: Total Account Equity -->
-        <div class="kpi-card">
-            <div class="kpi-title" style="display:flex; justify-content:space-between; align-items:center;">
-                <span>TOTAL EQUITY</span>
-                <span style="color:var(--primary-bright); font-size:10px; font-weight:700;">ASSETS</span>
+
+    <!-- A. PORTFOLIO: one live holdings table (equity/cash/weight live in this panel) -->
+    <div class="panel kpi-container-regime" id="portfolioPanel" style="margin: 18px 28px 10px 28px; border-radius: 18px;">
+        <div class="panel-header">
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <span>PORTFOLIO</span>
+                <span id="equitySourceTag" style="font-size:10px; font-weight:700; color:var(--text-muted); font-family:'JetBrains Mono';">LOCAL LEDGER</span>
+                <span id="slotSummaryText" style="font-size:11px; color:var(--primary-bright); font-weight:700; font-family:'JetBrains Mono';">-- / -- SLOTS</span>
             </div>
-            <div class="kpi-val" id="kpiTotalEquityUsd" style="color:#ffffff; font-size:22px; margin:4px 0;">---</div>
-            <div style="font-size:11px; color:var(--text-muted);" id="kpiTotalEquityKrw">KRW: --- (FX: 1,380)</div>
-        </div>
-
-        <!-- Card 2: Free Available Cash -->
-        <div class="kpi-card">
-            <div class="kpi-title" style="display:flex; justify-content:space-between; align-items:center;">
-                <span>AVAILABLE CASH</span>
-                <span style="color:var(--accent-green); font-size:10px; font-weight:700;">CASH</span>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <button class="btn-outline-pill" id="btnResetPortfolio" style="padding:5px 14px; font-size:11px; font-weight:600;">CLEAR</button>
             </div>
-            <div class="kpi-val" id="kpiFreeCashUsd" style="color:var(--accent-green); font-size:22px; margin:4px 0;">---</div>
-            <div style="font-size:11px; color:var(--accent-green);" id="kpiCashRatioText">RATIO: ---</div>
         </div>
 
-        <!-- Card 3: Active Holdings Value -->
-        <div class="kpi-card">
-            <div class="kpi-title" style="display:flex; justify-content:space-between; align-items:center;">
-                <span>HOLDINGS EVAL</span>
-                <span style="color:var(--accent-yellow); font-size:10px; font-weight:700;">STOCKS</span>
+        <div class="portfolio-body">
+            <aside class="portfolio-alloc" id="portfolioSummaryStrip">
+                <div class="alloc-hero">
+                    <svg id="portfolioPie" viewBox="0 0 120 120" width="132" height="132" aria-label="Portfolio allocation"></svg>
+                    <div class="alloc-hero-copy">
+                        <em>EQUITY</em>
+                        <strong id="kpiTotalEquityUsd">---</strong>
+                        <div id="kpiTotalEquityKrw" class="alloc-return">INIT: ---</div>
+                    </div>
+                </div>
+                <ul class="alloc-legend" id="portfolioPieLegend"></ul>
+                <div class="alloc-metrics">
+                    <div><em>CASH</em> <strong id="kpiFreeCashUsd" style="color:var(--accent-green);">---</strong> <small id="kpiCashRatioText">---</small></div>
+                    <div><em>HOLDINGS</em> <strong id="kpiHoldingsEvalUsd" style="color:var(--accent-yellow);">---</strong></div>
+                    <div id="kpiPnlText">---</div>
+                    <div class="alloc-overlay"><span id="qqqProxyStatus">QQQ: --</span> · <span id="leverageStatus">1.0x</span></div>
+                </div>
+            </aside>
+            <div class="portfolio-holdings">
+            <table>
+                <thead>
+                    <tr>
+                        <th>TICKER</th>
+                        <th>ENTRY</th>
+                        <th>CURRENT</th>
+                        <th>SHARES</th>
+                        <th>VALUE</th>
+                        <th>WEIGHT</th>
+                        <th>PNL (%)</th>
+                        <th style="color:#f87171;">STOP (-7%/-10%)</th>
+                        <th style="color:#fbbf24;">TRAILING</th>
+                        <th>ACTION</th>
+                    </tr>
+                </thead>
+                <tbody id="portfolioTableBody">
+                    <tr><td colspan="10" style="text-align:center; color:var(--text-muted); padding:24px;">LOADING...</td></tr>
+                </tbody>
+            </table>
             </div>
-            <div class="kpi-val" id="kpiHoldingsEvalUsd" style="color:var(--accent-yellow); font-size:22px; margin:4px 0;">---</div>
-            <div style="font-size:11px; font-weight:700; color:var(--accent-green);" id="kpiPnlText">---</div>
         </div>
-
-        <!-- Card 4: Market Regime -->
-        <div class="kpi-card">
-            <div class="kpi-title" style="display:flex; justify-content:space-between; align-items:center;">
-                <span>MARKET REGIME</span>
-                <span style="color:#c084fc; font-size:10px; font-weight:700;">MSI</span>
-            </div>
-            <div class="kpi-val" id="kpiRegimeBadge" style="color:#c084fc; font-size:20px; margin:4px 0;">[LOADING...]</div>
-            <div style="font-size:11px; color:var(--text-muted);" id="kpiRegimeDesc">INITIALIZING...</div>
-        </div>
-
+        <div id="qqqProxyDetail" hidden></div>
+        <div id="leverageDetail" hidden></div>
+        <div id="c2OverlayBar" hidden></div>
+        <div id="slotVisualizerGrid" hidden></div>
+        <div id="quickBuyBox" hidden><button id="btnExecuteBuy" hidden></button></div>
     </div>
 
 
     <!-- 4. Main 2-Column Workstation Layout -->
     <div class="main-layout">
         
-        <!-- Left Column (45%): Sectors, 3-Slot Visualizer, Top Picks, and Portfolio -->
+        <!-- Left Column: Sectors, unified PORTFOLIO, Top Picks -->
         <div class="left-pane">
 
             <div class="terminal-card panel" style="margin-top:0;">
@@ -144,119 +185,63 @@
                 </div>
             </div>
             
-            <!-- A. C1-M2 3-Slot Capital Allocator Visualizer -->
-            <div class="panel" style="padding:16px 18px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                    <span style="font-size:12px; font-weight:700; color:var(--text-primary);">C1-M2 SLOT ALLOCATOR (50/30/20)</span>
-                    <span id="slotSummaryText" style="font-size:11px; color:var(--primary-bright); font-weight:700; font-family:'JetBrains Mono';">-- / -- SLOTS</span>
-                </div>
-
-                <div id="slotVisualizerGrid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap:10px;">
-                    <!-- Populated dynamically via ui.js -->
-                </div>
-
-                <div id="c1m2OverlayBar" style="display:grid; grid-template-columns: 1.2fr 1fr; gap:10px; margin-top:12px;">
-                    <div style="background:var(--surface-deep); border:1px solid var(--hairline-dark); border-radius:12px; padding:10px 12px;">
-                        <div style="font-size:10px; font-weight:800; color:var(--text-muted); font-family:'JetBrains Mono';">QQQ CASH PROXY</div>
-                        <div id="qqqProxyStatus" style="font-size:13px; font-weight:800; color:#38bdf8; margin-top:4px; font-family:'JetBrains Mono';">PARKING: --</div>
-                        <div id="qqqProxyDetail" style="font-size:10.5px; color:var(--text-muted); margin-top:3px;">유휴 자본 QQQ 파킹 상태</div>
+            <!-- 3. Market Regime KPI (equity / cash / holdings live inside PORTFOLIO) -->
+            <div class="panel">
+                <div class="kpi-card" id="kpiRegimeCard" style="border:none; border-radius:0;">
+                    <div class="kpi-title" style="display:flex; justify-content:space-between; align-items:center;">
+                        <span>MARKET REGIME (S&amp;P 500)</span>
+                        <span id="regimeStatusTag" class="status-badge status-good">SPY ≥ SMA200</span>
                     </div>
-                    <div style="background:var(--surface-deep); border:1px solid var(--hairline-dark); border-radius:12px; padding:10px 12px;">
-                        <div style="font-size:10px; font-weight:800; color:var(--text-muted); font-family:'JetBrains Mono';">LEVERAGE OVERLAY</div>
-                        <div id="leverageStatus" style="font-size:13px; font-weight:800; color:#c084fc; margin-top:4px; font-family:'JetBrains Mono';">1.0x QQQ CORE</div>
-                        <div id="leverageDetail" style="font-size:10.5px; color:var(--text-muted); margin-top:3px;">SPY≥SMA200 &amp; VIX&lt;20 → 1.5x</div>
+                    <div style="display:flex; justify-content:space-between; align-items:baseline; margin:3px 0;">
+                        <div class="kpi-val" id="kpiRegimeBadge" style="color:var(--accent-green); font-size:18px;">[BULL REGIME]</div>
+                        <div id="spySmaDiff" style="font-size:11px; font-weight:700; font-family:'JetBrains Mono'; color:#38bdf8;">+6.6% ABOVE SMA</div>
                     </div>
-                </div>
-
-                <div class="quick-buy-box" id="quickBuyBox">
-                    <div>
-                        <div style="display:flex; align-items:baseline; gap:8px;">
-                            <span id="qbTicker" style="font-family:'JetBrains Mono'; font-weight:800;">---</span>
-                            <span id="qbPrice" style="color:var(--primary-bright); font-family:'JetBrains Mono'; font-size:12px;">$0.00</span>
+                    <div style="font-size:10.5px; color:var(--text-muted); display:flex; justify-content:space-between; align-items:center;" id="kpiRegimeDesc">
+                        <span>SPY: <strong id="spyCurrentPrice" style="color:#fff;">$760.79</strong> · SMA200: <strong id="spySma200Price" style="color:#fbbf24;">$713.42</strong></span>
+                    </div>
+                    <!-- Interactive Time-Series SVG Chart: S&P 500 Price vs SMA200 -->
+                    <div id="regimeChartContainer">
+                        <svg id="regimeSvgChart" width="100%" height="100%" viewBox="0 0 280 54" preserveAspectRatio="none">
+                            <defs>
+                                <linearGradient id="bullGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="#34d399" stop-opacity="0.35"/>
+                                    <stop offset="100%" stop-color="#34d399" stop-opacity="0.0"/>
+                                </linearGradient>
+                                <linearGradient id="bearGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="#f87171" stop-opacity="0.35"/>
+                                    <stop offset="100%" stop-color="#f87171" stop-opacity="0.0"/>
+                                </linearGradient>
+                            </defs>
+                            <path id="regimeAreaPath" d="" fill="url(#bullGrad)"/>
+                            <path id="regimeSmaPath" d="" fill="none" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="3,2"/>
+                            <path id="regimeSpyPath" d="" fill="none" stroke="#38bdf8" stroke-width="2"/>
+                            <circle id="regimeSpyDot" cx="0" cy="0" r="3" fill="#38bdf8"/>
+                        </svg>
+                        <div id="regimeChartLegend" style="position:absolute; bottom:2px; right:6px; font-size:9px; color:var(--text-muted); font-family:'JetBrains Mono'; pointer-events:none;">
+                            <span style="color:#38bdf8;">— SPY</span> <span style="color:#fbbf24; margin-left:4px;">··· SMA200</span>
                         </div>
-                        <div style="font-size:10.5px; color:var(--text-muted); margin-top:3px;">
-                            Target(+15%): <span id="qbTargetVal" style="color:#34d399; font-weight:700;">$0.00</span>
-                            &nbsp;|&nbsp; Stop(-5%): <span id="qbStopVal" style="color:#f87171; font-weight:700;">$0.00</span>
-                        </div>
-                    </div>
-                    <div class="quick-buy-controls">
-                        <label>PX <input type="number" id="qbBuyPrice" min="0.01" step="any" value="0.00" /></label>
-                        <label>QTY <input type="number" id="qbQty" min="0.0001" step="any" value="1" /></label>
-                        <button class="btn-primary-pill" id="btnExecuteBuy">BUY SLOT</button>
                     </div>
                 </div>
             </div>
 
-            <!-- B. Today's Top Conviction Picks (Rank #1 & #2) -->
-            <div class="panel">
+            <!-- B. Top conviction + live verdict (paired height with EXECUTION LOG) -->
+            <div class="panel matched-panel" id="convictionPanel">
                 <div class="panel-header">
                     <span style="font-weight:700; color:var(--text-primary);">TOP PICKS</span>
                     <span style="font-size:11px; color:var(--primary-bright); font-weight:700; font-family:'JetBrains Mono';">RANK #1 &amp; #2</span>
                 </div>
-                
-                <div id="topPicksContainer" style="padding:16px 18px; display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                <div class="verdict-banner" id="verdictBanner">
+                    <div class="verdict-title">
+                        <span id="verdictTitle" style="font-size:13px; font-weight:800;">QUANT VERDICT</span>
+                    </div>
+                    <div class="verdict-score" id="verdictScore" style="color:var(--accent-green); font-size:13px; font-weight:800;">-- / 100 PT</div>
+                </div>
+                <div id="topPicksContainer" class="conviction-picks">
                     <!-- Populated dynamically via ui.js -->
                 </div>
             </div>
 
-            <!-- C. Real Portfolio Risk & Guardian Monitor Table -->
-            <div class="panel">
-                <div class="panel-header">
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <span>ACTIVE PORTFOLIO</span>
-                    </div>
-                    <div style="display:flex; gap:8px; align-items:center;">
-                        <button class="btn-primary-pill" id="btnSyncBroker" style="padding:5px 14px; font-size:11px; font-weight:700;" title="증권사 실계좌 잔고 동기화">SYNC</button>
-                        <button class="btn-outline-pill" id="btnResetPortfolio" style="padding:5px 14px; font-size:11px; font-weight:600;">CLEAR</button>
-                    </div>
-                </div>
 
-                <div style="overflow-x: auto;">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>TICKER</th>
-                                <th>ENTRY</th>
-                                <th>CURRENT</th>
-                                <th>SHARES</th>
-                                <th>PNL (%)</th>
-                                <th style="color:#f87171;">STOP (-5%)</th>
-                                <th style="color:#fbbf24;">TRAILING</th>
-                                <th>ACTION</th>
-                            </tr>
-                        </thead>
-                        <tbody id="portfolioTableBody">
-                            <tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:24px;">LOADING...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- D. Strategy Protocol -->
-            <div class="panel" style="padding:16px 18px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid var(--hairline-dark); padding-bottom:10px;">
-                    <span style="font-size:12px; font-weight:800; color:var(--text-primary); letter-spacing:0.02em;">STRATEGY PROTOCOL</span>
-                    <span style="font-size:11px; color:var(--primary-bright); font-weight:700; font-family:'JetBrains Mono';">C1-M2</span>
-                </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; font-size:11px; line-height:1.5;">
-                    <div style="background:var(--surface-deep); border:1px solid var(--hairline-dark); border-radius:14px; padding:10px 12px;">
-                        <strong style="color:#34d399; font-weight:700;">1. 3-GATE &amp; COMPOSITE RS</strong>
-                        <div style="color:var(--text-muted); font-size:10.5px; margin-top:2px;">일목 3-Gate + 0.40×21d + 0.35×63d + 0.25×126d · QQQ CRS 상회만 위성 진입</div>
-                    </div>
-                    <div style="background:var(--surface-deep); border:1px solid var(--hairline-dark); border-radius:14px; padding:10px 12px;">
-                        <strong style="color:#fbbf24; font-weight:700;">2. 50/30/20 + QQQ PROXY</strong>
-                        <div style="color:var(--text-muted); font-size:10.5px; margin-top:2px;">강세 50/30/20 · 약세 25/25 · 유휴 자본 QQQ 파킹 · 조건 충족 시 1.5x QLD</div>
-                    </div>
-                    <div style="background:var(--surface-deep); border:1px solid var(--hairline-dark); border-radius:14px; padding:10px 12px;">
-                        <strong style="color:#f87171; font-weight:700;">3. -5.0% HARD STOP</strong>
-                        <div style="color:var(--text-muted); font-size:10.5px; margin-top:2px;">진입가 대비 -5.0% 도달 시 가디언이 즉시 전량 손절 (C1-M2)</div>
-                    </div>
-                    <div style="background:var(--surface-deep); border:1px solid var(--hairline-dark); border-radius:14px; padding:10px 12px;">
-                        <strong style="color:#c084fc; font-weight:700;">4. TRAILING TP (+15% → ATR 2.5)</strong>
-                        <div style="color:var(--text-muted); font-size:10.5px; margin-top:2px;">+15% 래치 후 <code>기준선/2.5×ATR</code> (<code>max(Kijun-26, peak−2.5×ATR)</code>) 이탈 시 전량 익절</div>
-                    </div>
-                </div>
-            </div>
 
         </div>
 
@@ -288,15 +273,38 @@
             <div id="chartContainer" style="height:360px;"></div>
             <div id="volumeContainer" style="height:90px;"></div>
 
-            <!-- Compact v2 Signal Decoder & Al-Sangmoo Verdict -->
-            <div class="decoder-card">
-                <div class="verdict-banner" id="verdictBanner">
-                    <div class="verdict-title">
-                        <span id="verdictTitle" style="font-size:13px; font-weight:800;">QUANT VERDICT</span>
+            <!-- Execution audit log occupies the old QUANT VERDICT slot; 4-gate decoder stays below -->
+            <div class="decoder-card matched-panel" id="tradeLogContainer">
+                <div class="panel-header" style="background:transparent; border-bottom:1px solid var(--hairline-dark); padding:0 0 10px 0; margin-bottom:10px;">
+                    <div style="font-size:12px; font-weight:800; color:#ffffff; font-family:'JetBrains Mono'; display:flex; align-items:center; gap:8px;">
+                        <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#34d399; box-shadow:0 0 6px #34d399;"></span>
+                        <span>EXECUTION LOG</span>
                     </div>
-                    <div class="verdict-score" id="verdictScore" style="color:var(--accent-green); font-size:13px; font-weight:800;">-- / 100 PT</div>
+                    <span style="font-size:10px; font-weight:700; color:var(--text-muted); font-family:'JetBrains Mono';" id="tradeLogCount">0 LOGS</span>
                 </div>
+                <div class="trade-log-scroll">
+                    <table class="portfolio-table" style="width:100%; border-collapse:collapse; font-size:11px;">
+                        <thead>
+                            <tr style="border-bottom:1px solid var(--hairline-dark); color:var(--text-muted); font-family:'JetBrains Mono'; text-align:left; font-size:10px; background:rgba(0,0,0,0.2);">
+                                <th style="padding:8px 12px;">DATE / TIME</th>
+                                <th style="padding:8px 12px;">SIDE</th>
+                                <th style="padding:8px 12px;">TICKER</th>
+                                <th style="padding:8px 12px; text-align:right;">QTY</th>
+                                <th style="padding:8px 12px; text-align:right;">PRICE</th>
+                                <th style="padding:8px 12px; text-align:right;">TOTAL ($)</th>
+                                <th style="padding:8px 12px; text-align:right;">PNL (%)</th>
+                                <th style="padding:8px 12px;">DIRECTIVE / REASON</th>
+                                <th style="padding:8px 12px; text-align:center;">STATUS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tradeLogTableBody">
+                            <tr><td colspan="9" style="text-align:center; padding:16px; color:var(--text-muted);">Loading execution stream...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
+            <div class="decoder-card">
                 <div class="decoder-grid">
                     <!-- 1. Kijun Line -->
                     <div class="indicator-item">
@@ -337,38 +345,6 @@
             </div>
             <!-- End Decoder Card -->
 
-            <!-- Real-Time Execution & Trade Audit Log -->
-            <div class="decoder-card" style="margin-top:14px;">
-                <div class="verdict-banner" style="background:linear-gradient(90deg, rgba(56, 189, 248, 0.12), rgba(30, 41, 59, 0.4)); border-left:3px solid var(--primary-bright); padding:10px 14px; border-radius:12px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
-                    <div style="font-size:12px; font-weight:800; color:#ffffff; font-family:'JetBrains Mono'; display:flex; align-items:center; gap:8px;">
-                        <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#34d399; box-shadow:0 0 6px #34d399;"></span>
-                        <span>EXECUTION LOG</span>
-                    </div>
-                    <span style="font-size:10px; font-weight:700; color:var(--text-muted); font-family:'JetBrains Mono';" id="tradeLogCount">0 LOGS</span>
-                </div>
-
-                <div style="max-height:190px; overflow-y:auto; border:1px solid var(--hairline-dark); border-radius:12px; background:var(--surface-deep);">
-                    <table class="portfolio-table" style="width:100%; border-collapse:collapse; font-size:11px;">
-                        <thead>
-                            <tr style="border-bottom:1px solid var(--hairline-dark); color:var(--text-muted); font-family:'JetBrains Mono'; text-align:left; font-size:10px; background:rgba(0,0,0,0.2);">
-                                <th style="padding:8px 12px;">TIME</th>
-                                <th style="padding:8px 12px;">SIDE</th>
-                                <th style="padding:8px 12px;">TICKER</th>
-                                <th style="padding:8px 12px; text-align:right;">QTY</th>
-                                <th style="padding:8px 12px; text-align:right;">PRICE</th>
-                                <th style="padding:8px 12px; text-align:right;">TOTAL ($)</th>
-                                <th style="padding:8px 12px; text-align:right;">PNL (%)</th>
-                                <th style="padding:8px 12px;">DIRECTIVE / REASON</th>
-                                <th style="padding:8px 12px; text-align:center;">STATUS</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tradeLogTableBody">
-                            <tr><td colspan="9" style="text-align:center; padding:16px; color:var(--text-muted);">Loading execution stream...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
         </div>
 
     </div>
@@ -377,10 +353,10 @@
 
     <!-- Modular App Scripts -->
     <script type="module">
-        import { TerminalApp } from '/static/js/websocket.js?v=4.3.3';
-        import { UI } from '/static/js/ui.js?v=4.3.3';
-        import { ChartEngine } from '/static/js/chart.js?v=4.3.3';
-        import { ApiClient } from '/static/js/api.js?v=4.3.3';
+        import { TerminalApp } from '/static/js/websocket.js?v=4.4.8';
+        import { UI } from '/static/js/ui.js?v=4.4.8';
+        import { ChartEngine } from '/static/js/chart.js?v=4.4.8';
+        import { ApiClient } from '/static/js/api.js?v=4.4.8';
 
         window.TerminalUI = UI;
         window.ChartEngine = ChartEngine;

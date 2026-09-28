@@ -1,14 +1,16 @@
-/** Al-Sangmoo C1-M2 risk constitution. Keep in lockstep with al_sangmoo/core/constants.py */
-export const STOP_LOSS_PCT = -0.05;
-export const TAKE_PROFIT_PCT = 0.15;
+/** Al-Sangmoo C-2 risk constitution. Keep in lockstep with al_sangmoo/core/constants.py */
+export const STOP_LOSS_PCT = -0.07;
+export const EOD_STOP_LOSS_PCT = -0.07;
+export const EMERGENCY_STOP_LOSS_PCT = -0.10;
+export const TAKE_PROFIT_PCT = 0.18;
 export const STOP_LOSS_MULT = 1 + STOP_LOSS_PCT;
 export const TAKE_PROFIT_MULT = 1 + TAKE_PROFIT_PCT;
-export const ATR_MULTIPLIER = 2.5;
-export const SLOT_WEIGHTS_BULL = [0.50, 0.30, 0.20];
+export const ATR_MULTIPLIER = 3.0;
+export const SLOT_WEIGHTS_BULL = [0.34, 0.33, 0.33];
 export const SLOT_WEIGHTS_BEAR = [0.25, 0.25];
 export const CASH_PROXY_TICKERS = new Set(["QQQ", "QLD"]);
-export const HARD_STOP_DISPLAY = "−5.0%";
-export const TRAILING_ACTIVATE_DISPLAY = "+15.0%";
+export const HARD_STOP_DISPLAY = "−7.0% (종가) / −10.0% (비상)";
+export const TRAILING_ACTIVATE_DISPLAY = "+18.0%";
 
 export function isCashProxyTicker(ticker) {
     return CASH_PROXY_TICKERS.has(String(ticker || "").trim().toUpperCase());
@@ -64,7 +66,7 @@ export function resolveQuickBuyQty(ticker, price, dashboard, portfolio) {
         ? Boolean(data.slot_allocation_summary.is_bull_regime) : true;
     const sats = (Array.isArray(port.holdings) ? port.holdings : [])
         .filter((h) => isMarketTicker(h && h.ticker) && !isCashProxyTicker(h.ticker));
-    const equity = Number(port.total_equity_usd !== undefined ? port.total_equity_usd : (port.total_equity || 7500));
+    const equity = Number(port.total_equity_usd !== undefined ? port.total_equity_usd : (port.total_equity || 0));
     const weights = isBull ? SLOT_WEIGHTS_BULL : SLOT_WEIGHTS_BEAR;
     const cap = (weights[sats.length] !== undefined)
         ? equity * weights[sats.length]
