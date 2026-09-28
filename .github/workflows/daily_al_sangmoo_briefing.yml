@@ -27,10 +27,6 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run Al-Sangmoo Daily Bot & Forward Tracker
-        env:
-          GMAIL_USER: ${{ secrets.GMAIL_USER || secrets.EMAIL_SENDER }}
-          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD || secrets.EMAIL_PASSWORD }}
-          ALERT_EMAIL_RECEIVER: ${{ secrets.ALERT_EMAIL_RECEIVER || secrets.EMAIL_RECEIVER }}
         run: |
           python al_sangmoo_daily_bot.py
 

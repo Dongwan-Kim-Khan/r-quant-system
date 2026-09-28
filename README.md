@@ -1,31 +1,70 @@
 # R-Quant System: Al-Sangmoo Institutional Quant Platform
 
+[English](README.md) | [한국어](README.ko.md)
+
 ![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green.svg)
 ![SQLite WAL](https://img.shields.io/badge/SQLite-WAL%20Mode-orange.svg)
 ![WebSocket](https://img.shields.io/badge/WebSocket-Real--Time-red.svg)
 ![KIS OpenAPI](https://img.shields.io/badge/Broker-KIS%20OpenAPI-darkblue.svg)
-![CI/CD](https://img.shields.io/badge/GitHub%20Actions-Automated%20Briefing-lightgrey.svg)
+![CI/CD](https://img.shields.io/badge/GitHub%20Actions-Daily%20Tracker-lightgrey.svg)
 
-An institutional-grade algorithmic swing-trading and risk management platform designed for US equity markets. The system implements the quantitative investment doctrine of 17-year hedge fund manager Alex Oh (알상무), engineered on an asynchronous FastAPI backend, SQLite Write-Ahead Logging (WAL) single-source-of-truth persistence layer, real-time WebSocket broadcast hub, Korea Investment & Securities (KIS) OpenAPI integration, and a low-latency web trading terminal.
-
----
-
-## 1. Executive Summary
-
-The R-Quant System combines macro regime detection, momentum scoring, and strict risk guardrails to automate swing-trading execution. The platform operates under an absolute risk-first philosophy: capital preservation is enforced through automated hard stop-losses, macro-conditioned position sizing, dynamic cash proxy allocation, and mutual-exclusion order execution.
-
-### Key Capabilities
-- **Macro Regime Filtering (MSI 2.0)**: Multi-factor risk gauge (US 10Y Yield, DXY, VIX, High Yield Spread, SPY 200 SMA) determining system stance across Active Buy, Selective Buy, Defense Hold, and Cash Exit regimes.
-- **Quantitative Stock Selection**: 3-Month Relative Strength (RS) momentum ranking combined with Ichimoku Cloud (구름대) structural breakouts and Tenkan-Kijun golden crosses.
-- **Deterministic Capital Allocation**: 3-slot integer share allocation (34% / 33% / 33% in Bull regimes; 25% / 25% in Bear regimes) with automated Cash Proxy parking (QQQ/SGOV/BIL).
-- **Asymmetric Risk Controls**: Dual Stop-Loss (-7.0% End-of-Day soft stop, -10.0% Intraday emergency hard stop) and +18.0% trailing take-profit with 3.0x ATR volatility trailing floor.
-- **Institutional Broker Gateway**: Korea Investment & Securities (KIS) OpenAPI gateway supporting live and paper trading accounts with automatic token refresh and failover safeguards.
-- **Real-Time Web Terminal**: WebSocket-driven Bloomberg/TradingView style dashboard providing live portfolio valuation, real-time order entry, universe health indicators, and interactive technical charts.
+An institutional-grade algorithmic swing-trading and risk management platform designed for US equity markets. The system digitizes the 17-year quantitative investment doctrine of former Wall Street proprietary trader and hedge fund manager Alex Oh (알상무). It is built on an asynchronous FastAPI backend, an SQLite Write-Ahead Logging (WAL) single-source-of-truth persistence layer, a real-time WebSocket broadcast hub, a Korea Investment & Securities (KIS) OpenAPI broker gateway, and a low-latency Bloomberg-style web trading terminal.
 
 ---
 
-## 2. Core Quantitative Framework
+## 1. Background & The Origin of 'Al-Sangmoo'
+
+### Who is 'Al-Sangmoo' (Alex Oh)?
+'Al-Sangmoo' is the professional pseudonym of Alex Oh, a veteran quant portfolio manager and proprietary trader with over 17 years of experience on Wall Street and global hedge funds. Throughout his career, he emphasized that retail investors consistently suffer losses due to human emotional biases, panic selling, and unstructured intuition. On his market livestreams, he advocated for a purely mechanical, rules-based trading philosophy targeting leading momentum stocks with high relative strength and structural trend support.
+
+### The Genesis: Building the 'Al-Sangmoo Digital Twin'
+Because oral insights from 50+ extensive livestream broadcasts are ephemeral and prone to being forgotten, this project was initiated to **reverse-engineer Alex Oh's entire investment philosophy into an algorithmic "Digital Twin"**. By extracting raw audio subtitles (VTT) and running NLP text analysis across his entire video corpus, his trading rules—Ichimoku Cloud breakouts, Tenkan-Kijun golden crosses, 3-Month Relative Strength (RS), Macro Stance Index (MSI), and asymmetric stop/trailing profit rules—were formalized into mathematical code that operates 24/7 without emotional hesitation.
+
+### Why 'R-Quant System'?
+- **R (Al / 알)**: Honors the core doctrine and founding vision of Al-Sangmoo.
+- **R (Relative Strength)**: Highlights the primary alpha driver—ranking the top momentum stocks that outperform the benchmark (SPY).
+- **R (Rule-based & Robustness)**: Represents the strict execution discipline enforced by mathematical guardrails.
+
+---
+
+## 2. Five-Phase Evolutionary History
+
+The platform evolved across five distinct engineering milestones, transitioning from a video knowledge distillation project into an institutional algorithmic trading platform:
+
+```
+[Phase 1: Genesis & Distillation] --> [Phase 2: Forward Tracker]  --> [Phase 3: Quant SSOT Engine]  --> [Phase 4: Full-Stack Platform] --> [Phase 5: C-2 Hardening]
+50+ Livestream VTT NLP Analysis       GitHub Actions Daily Bot        Domain Quant & Risk Library       FastAPI Backend & Web Terminal   SEC N-PORT Hedge Fund Filings
+Doctrine Reverse-Engineered (archive) Out-of-sample Testing (history) Concurrency ORDER_MUTEX & WAL     KIS OpenAPI Broker Gateway       Zero-bias PIT Backtester & 50+ E2E
+```
+
+### Phase 1: Genesis & Knowledge Distillation (`archive/`)
+- Ingested over 50 livestream audio subtitles (VTT) and market discussions from Alex Oh.
+- Extracted and codified the mathematical conditions for Ichimoku Cloud crossovers, 3-Month Relative Strength (RS) momentum, and macroeconomic risk factors.
+- Archived the entire raw corpus, NLP scripts, and distillation documents permanently in the `archive/` directory.
+
+### Phase 2: Autonomous Forward Tracking & Self-Verification (`al_sangmoo_daily_bot.py`)
+- Established an automated daily pipeline via GitHub Actions (`daily_al_sangmoo_briefing.yml`) executing after US market close.
+- Tracked post-recommendation performance dynamically (`trade_history.csv`), compiling an empirical, survivorship-bias-free track record of strategy effectiveness.
+
+### Phase 3: Domain Quant Engine & SSOT Risk Guardrails (`al_sangmoo/domain/`)
+- Decoupled quantitative logic into modular packages: `macro.py`, `scoring.py`, `conviction_engine.py`, and `position_sizer.py`.
+- Introduced the global asynchronous `ORDER_MUTEX` to prevent race conditions during rapid concurrent fill events.
+- Hardened database persistence with SQLite WAL mode and atomic transaction management.
+
+### Phase 4: Full-Stack Real-Time Platform (`server.py`, `frontend/`)
+- Built an asynchronous FastAPI REST API and WebSocket broadcast hub (`al_sangmoo/api/hub.py`) for live balance and order streaming.
+- Developed an institutional gateway for Korea Investment & Securities (KIS) OpenAPI supporting live and paper trading accounts with automated token lifecycle handling.
+- Designed and launched a zero-dependency HTML5/Canvas Bloomberg/TradingView style web terminal (`frontend/`).
+
+### Phase 5: C-2 Institutional Expansion & Hardened Verification (`research_and_backtests/`, `tools_and_tests/`)
+- Engineered an SEC Form N-PORT filing parser tracking quarterly holdings across 500 top US hedge funds.
+- Built a Point-in-Time (PIT) backtester with zero lookahead bias.
+- Established 50+ automated test suites covering security authorization, multi-threaded concurrency, order idempotency, and quantitative SSOT invariants.
+
+---
+
+## 3. Core Quantitative Framework
 
 ```
 +-------------------------------------------------------------------------------+
@@ -61,49 +100,11 @@ The R-Quant System combines macro regime detection, momentum scoring, and strict
 | :--- | :--- | :--- |
 | **Max Portfolio Slots (Bull)** | 3 Slots (34% / 33% / 33%) | Controlled concentration across top momentum leaders |
 | **Max Portfolio Slots (Bear)** | 2 Slots (25% / 25%) | Defensive exposure reduction during structural market drawdowns |
-| **End-of-Day Stop-Loss** | -7.0% | Closes position on market close confirmation |
+| **End-of-Day Stop-Loss** | -7.0% | Closes position on confirmed daily market close |
 | **Emergency Hard Stop** | -10.0% | Immediate intraday liquidation on gap-down or flash crash |
 | **Trailing Take-Profit** | +18.0% | Activates dynamic trailing exit anchored by 3.0x ATR |
 | **Cash Proxy Sleeve** | QQQ / SGOV / BIL | Eliminates cash drag while maintaining capital safety |
 | **Database Persistence** | SQLite WAL Mode | Eliminates concurrency lock contention across async daemons |
-
----
-
-## 3. Project Evolution & History
-
-The system transitioned through five distinct engineering phases, evolving from initial video knowledge extraction into a hardened institutional algorithmic trading infrastructure:
-
-```
-[Phase 1: Genesis]        [Phase 2: Bot]             [Phase 3: SSOT Engine]    [Phase 4: Platform]      [Phase 5: C-2 Hardening]
-YouTube Live Corpus  -->  GitHub Actions Daily  -->  Domain Quant Engine  -->  FastAPI Server      -->  SEC N-PORT PIT Engine
-NLP Distillation          Briefing & Tracker         Risk Guardrail Mutex      WebSocket Web Terminal   50+ Adversarial Tests
-(archive/)                (al_sangmoo_daily_bot)     (al_sangmoo/domain)       (server.py / frontend)   (research_and_backtests)
-```
-
-### Phase 1: Genesis & Knowledge Distillation (`archive/`)
-- Reverse-engineered the proprietary trading doctrine of 17-year quant hedge fund manager Alex Oh from 50+ live broadcasts.
-- Subtitle extraction (VTT), NLP text parsing, and structured investment doctrine documentation (`archive/al_sangmoo_distill/`, `archive/transcripts_and_raw_data/`).
-- Formalized mathematical definitions for the Ichimoku Cloud breakout conditions and Macro Stance Index.
-
-### Phase 2: Autonomous Morning Briefing & Forward Tracker (`al_sangmoo_daily_bot.py`)
-- Constructed an automated daily pipeline executing via GitHub Actions (`daily_al_sangmoo_briefing.yml`) on US market close.
-- Automated universe scanning across top 30 Nasdaq/S&P names, generating daily recommendation reports (`daily_reports/`).
-- Initiated live forward tracking (`trade_history.csv`) to validate model effectiveness out-of-sample with zero survivor bias.
-
-### Phase 3: Domain Quant Engine & SSOT Risk Guardrails (`al_sangmoo/domain/`)
-- Established single-source-of-truth (SSOT) modular quant libraries: `macro.py`, `scoring.py`, `conviction_engine.py`, and `position_sizer.py`.
-- Introduced asynchronous execution synchronization with `ORDER_MUTEX` to prevent race conditions during rapid multi-ticker fill events.
-- Hardened database persistence layer (`al_sangmoo/infrastructure/persistence.py`) using SQLite WAL mode and atomic transaction rollbacks.
-
-### Phase 4: Full-Stack Real-Time Platform (`server.py`, `frontend/`)
-- Developed a high-throughput FastAPI asynchronous application serving REST endpoints and WebSocket broadcast feeds (`al_sangmoo/api/hub.py`).
-- Integrated Korea Investment & Securities (KIS) OpenAPI with automated OAuth2 token caching and error retry handlers (`al_sangmoo/infrastructure/brokers/kis_broker.py`).
-- Built a native HTML5/Canvas Bloomberg-style trading terminal (`frontend/`) supporting live chart rendering, portfolio rebalancing, and audit logs.
-
-### Phase 5: C-2 Institutional Bundle & Hardened Verification (`research_and_backtests/`, `tools_and_tests/`)
-- Implemented institutional filing analysis via Point-in-Time (PIT) SEC Form N-PORT filing parser (`research_and_backtests/fetch_sec_nport_holdings.py`), tracking top 500 hedge fund holdings.
-- Built a lookahead-bias-free PIT backtesting engine (`research_and_backtests/pit_sec_nport_backtester.py`).
-- Established 50+ end-to-end and adversarial test suites validating security, concurrency, order idempotency, and quantitative guardrails.
 
 ---
 
@@ -166,14 +167,14 @@ flowchart TD
 r-quant-system/
 |-- al_sangmoo/                 # Production backend core package
 |   |-- api/                    # WebSocket connection hub and broadcaster
-|   |-- backtest/               # Legacy strategy backtesting engine
-|   |-- core/                   # Constants, market calendar, config loader
+|   |-- backtest/               # Strategy backtesting engine
+|   |-- core/                   # Constants, US market calendar, config loader
 |   |-- domain/                 # Pure quantitative models (Macro, RS, Ichimoku)
-|   |   `-- risk/               # Risk guardrails (Mutex, Guardian, Autopilot)
+|   |   `-- risk/               # Risk guardrails (Mutex, Guardian, Autopilot, Proxy)
 |   |-- infrastructure/         # SQLite persistence, atomic file I/O, KIS broker
-|   `-- interfaces/api/routers/ # FastAPI APIRouters (portfolio, charts, broker)
+|   `-- interfaces/api/routers/ # FastAPI REST API routers
 |-- frontend/                   # Real-time Bloomberg-style trading terminal
-|   |-- css/                    # Terminal styling (terminal.css)
+|   |-- css/                    # Dark terminal styling (terminal.css)
 |   `-- js/                     # Modular JavaScript (ui.js, api.js, websocket.js, chart.js)
 |-- docs/                       # Official system documentation and audit records
 |   |-- archive/                # Legacy architecture notes and design audits
@@ -196,7 +197,8 @@ r-quant-system/
 |-- 알상무_퀀트_터미널_실행.bat    # Korean console launcher with automatic port recovery
 |-- PROJECT.md                  # System architecture inventory and milestone tracking
 |-- TEST_INFRA.md               # Test infrastructure guidelines
-`-- README.md                   # Primary system documentation
+|-- README.md                   # Primary system documentation (English)
+`-- README.ko.md                # Primary system documentation (Korean)
 ```
 
 ---
@@ -209,8 +211,6 @@ r-quant-system/
 - Modern web browser (Chrome, Edge, or Firefox)
 
 ### 6.2 Installation
-Clone the repository and install the dependencies in a clean virtual environment:
-
 ```bash
 # Clone repository
 git clone https://github.com/DoDuekChill/r-quant-system.git

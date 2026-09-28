@@ -1,9 +1,5 @@
 import os
 import sys
-import json
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from datetime import datetime, timedelta
 import pandas as pd
 import yfinance as yf
@@ -45,38 +41,6 @@ def load_env_file():
             pass
 
 load_env_file()
-DEFAULT_EMAIL_RECEIVER = os.environ.get("ALERT_EMAIL_RECEIVER") or os.environ.get("EMAIL_RECEIVER") or "kdw58170425@gmail.com"
-
-def send_email_report(subject, html_body, receiver=None):
-    load_env_file()
-    if not receiver:
-        receiver = os.environ.get("ALERT_EMAIL_RECEIVER") or os.environ.get("EMAIL_RECEIVER") or DEFAULT_EMAIL_RECEIVER
-        
-    gmail_user = os.environ.get("GMAIL_USER") or os.environ.get("EMAIL_SENDER")
-    gmail_password = os.environ.get("GMAIL_APP_PASSWORD") or os.environ.get("EMAIL_PASSWORD")
-    
-    if not gmail_user or not gmail_password:
-        print(f"[Email Dispatch] GMAIL_USER / GMAIL_APP_PASSWORD not set in .env. Report saved at {REPORTS_DIR}.")
-        return False
-        
-    try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject
-        msg["From"] = f"R-Sangmoo Quant Engine <{gmail_user}>"
-        msg["To"] = receiver
-        
-        part = MIMEText(html_body, "html", "utf-8")
-        msg.attach(part)
-        
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(gmail_user, gmail_password)
-            server.sendmail(gmail_user, receiver, msg.as_string())
-            
-        print(f"[Email Dispatch] Briefing sent successfully to {receiver}.")
-        return True
-    except Exception as e:
-        print(f"[Email Dispatch Error] {e}")
-        return False
 
 from al_sangmoo.core.constants import (
     WATCHLIST, STOCK_DICT, TICKER_SECTORS, get_active_watchlist, get_macro_tailwind_sectors,
@@ -997,8 +961,7 @@ def main():
     regime_str = "BULL REGIME (강세장)" if is_bull else "BEAR REGIME (약세장)"
     top_t = conviction.get("top_pick", {}).get("ticker") if conviction.get("top_pick") else (dual_consensus[0]["ticker"] if dual_consensus else "MARKET_RADAR")
     
-    subject = f"[알상무 퀀트] {today_str} 데일리 브리핑 | 계좌 수익률 {pnl_str} | [{regime_str}] Top Pick: {top_t}"
-    send_email_report(subject, html_content)
+    print(f"[Report Archive] Daily briefing HTML archived at: {out_html_path}")
     
     # 7. Print Markdown Briefing
     print_markdown_briefing(today_str, dual_consensus, strat1_exclusive, strat2_exclusive, portfolio_alerts, health_status, stream_info, feed_data)
