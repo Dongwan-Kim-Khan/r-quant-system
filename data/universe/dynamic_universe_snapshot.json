@@ -1,21 +1,21 @@
 {
-  "session_date": "2026-09-28",
-  "created_at": "2026-09-28 21:50:26",
+  "session_date": "2026-09-29",
+  "created_at": "2026-09-29 22:01:10",
   "total_count": 60,
   "watchlist": [
     "MPC",
-    "VLO",
     "PSX",
-    "COP",
     "CVX",
+    "COP",
     "XOM",
     "OXY",
     "SLB",
-    "ETN",
     "EOG",
+    "ETN",
     "CEG",
-    "GEV",
     "DUK",
+    "AEP",
+    "SO",
     "NEE",
     "TEAM",
     "OKTA",
@@ -23,45 +23,45 @@
     "NET",
     "ZS",
     "CRWD",
-    "MDB",
     "PANW",
     "FTNT",
     "DDOG",
     "ZM",
+    "MDB",
     "IONQ",
     "MRNA",
     "TMO",
-    "REGN",
-    "PFE",
     "GILD",
+    "PFE",
+    "REGN",
+    "DHR",
     "AMGN",
     "MRK",
-    "DHR",
-    "BMY",
     "MDT",
-    "PLTR",
-    "CRM",
-    "DELL",
-    "MSFT",
-    "HPQ",
-    "NOW",
-    "META",
-    "SNOW",
-    "WBD",
+    "BMY",
     "T",
-    "SPOT",
+    "WBD",
     "DIS",
     "VZ",
-    "RBLX",
+    "SPOT",
+    "TMUS",
+    "NFLX",
+    "CMCSA",
+    "PLTR",
+    "CRM",
+    "HPQ",
+    "MSFT",
+    "NOW",
+    "DELL",
     "MSTR",
     "COIN",
     "PYPL",
     "HOOD",
     "NEM",
     "SCCO",
-    "AMD",
     "TGT",
-    "DE",
+    "NVDA",
+    "EMR",
     "BAH"
   ],
   "sector_breakdown": [
@@ -69,22 +69,22 @@
       "sector": "POWER_ENERGY",
       "etf": "XLE",
       "rank": 1,
-      "rs_3m": 16.48,
+      "rs_3m": 17.62,
       "quota": 14,
       "selected_stocks": [
         "MPC",
-        "VLO",
         "PSX",
-        "COP",
         "CVX",
+        "COP",
         "XOM",
         "OXY",
         "SLB",
-        "ETN",
         "EOG",
+        "ETN",
         "CEG",
-        "GEV",
         "DUK",
+        "AEP",
+        "SO",
         "NEE"
       ]
     },
@@ -92,7 +92,7 @@
       "sector": "CYBER_SAAS",
       "etf": "CIBR",
       "rank": 2,
-      "rs_3m": 14.07,
+      "rs_3m": 13.16,
       "quota": 12,
       "selected_stocks": [
         "TEAM",
@@ -101,11 +101,11 @@
         "NET",
         "ZS",
         "CRWD",
-        "MDB",
         "PANW",
         "FTNT",
         "DDOG",
         "ZM",
+        "MDB",
         "IONQ"
       ]
     },
@@ -113,58 +113,58 @@
       "sector": "HEALTHCARE",
       "etf": "XLV",
       "rank": 3,
-      "rs_3m": 6.6,
+      "rs_3m": 8.35,
       "quota": 10,
       "selected_stocks": [
         "MRNA",
         "TMO",
-        "REGN",
-        "PFE",
         "GILD",
+        "PFE",
+        "REGN",
+        "DHR",
         "AMGN",
         "MRK",
-        "DHR",
-        "BMY",
-        "MDT"
-      ]
-    },
-    {
-      "sector": "MEGA_TECH",
-      "etf": "XLK",
-      "rank": 4,
-      "rs_3m": 5.98,
-      "quota": 8,
-      "selected_stocks": [
-        "PLTR",
-        "CRM",
-        "DELL",
-        "MSFT",
-        "HPQ",
-        "NOW",
-        "META",
-        "SNOW"
+        "MDT",
+        "BMY"
       ]
     },
     {
       "sector": "COMMUNICATION",
       "etf": "XLC",
-      "rank": 5,
-      "rs_3m": 5.05,
-      "quota": 6,
+      "rank": 4,
+      "rs_3m": 4.12,
+      "quota": 8,
       "selected_stocks": [
-        "WBD",
         "T",
-        "SPOT",
+        "WBD",
         "DIS",
         "VZ",
-        "RBLX"
+        "SPOT",
+        "TMUS",
+        "NFLX",
+        "CMCSA"
+      ]
+    },
+    {
+      "sector": "MEGA_TECH",
+      "etf": "XLK",
+      "rank": 5,
+      "rs_3m": 2.22,
+      "quota": 6,
+      "selected_stocks": [
+        "PLTR",
+        "CRM",
+        "HPQ",
+        "MSFT",
+        "NOW",
+        "DELL"
       ]
     },
     {
       "sector": "FINANCIALS",
       "etf": "XLF",
       "rank": 6,
-      "rs_3m": 2.45,
+      "rs_3m": 1.44,
       "quota": 4,
       "selected_stocks": [
         "MSTR",
@@ -177,7 +177,7 @@
       "sector": "MATERIALS",
       "etf": "XLB",
       "rank": 7,
-      "rs_3m": -1.25,
+      "rs_3m": -2.23,
       "quota": 2,
       "selected_stocks": [
         "NEM",
@@ -185,40 +185,40 @@
       ]
     },
     {
-      "sector": "SEMICONDUCTOR",
-      "etf": "SMH",
-      "rank": 8,
-      "rs_3m": -4.02,
-      "quota": 1,
-      "selected_stocks": [
-        "AMD"
-      ]
-    },
-    {
       "sector": "CONSUMER_RETAIL",
       "etf": "XLY",
-      "rank": 9,
-      "rs_3m": -5.39,
+      "rank": 8,
+      "rs_3m": -6.86,
       "quota": 1,
       "selected_stocks": [
         "TGT"
       ]
     },
     {
+      "sector": "SEMICONDUCTOR",
+      "etf": "SMH",
+      "rank": 9,
+      "rs_3m": -8.52,
+      "quota": 1,
+      "selected_stocks": [
+        "NVDA"
+      ]
+    },
+    {
       "sector": "INDUSTRIALS",
       "etf": "XLI",
       "rank": 10,
-      "rs_3m": -6.5,
+      "rs_3m": -8.64,
       "quota": 1,
       "selected_stocks": [
-        "DE"
+        "EMR"
       ]
     },
     {
       "sector": "DEFENSE_AERO",
       "etf": "ITA",
       "rank": 11,
-      "rs_3m": -10.48,
+      "rs_3m": -13.58,
       "quota": 1,
       "selected_stocks": [
         "BAH"
