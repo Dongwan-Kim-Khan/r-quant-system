@@ -17,6 +17,7 @@ from al_sangmoo.infrastructure.persistence import (
     get_live_portfolio,
     get_trade_history_records,
     record_portfolio_sell,
+    record_portfolio_sell_quantity,
     reset_all_holdings,
 )
 from al_sangmoo.infrastructure.brokers.kis_broker import default_kis_broker
@@ -120,9 +121,11 @@ async def sync_portfolio_with_broker(auto_calibrate: bool = True):
     """
     Synchronizes and calibrates local SQLite portfolio against live/virtual KIS broker account.
     Calibrates exact fill prices (pchs_avg_pric), quantities, and splits.
+    Guaranteed atomic via ORDER_MUTEX and non-blocking via asyncio.to_thread.
     """
-    audit_report = check_sync(auto_calibrate=auto_calibrate)
-    p_data = get_live_portfolio()
+    async with ORDER_MUTEX:
+        audit_report = await asyncio.to_thread(check_sync, auto_calibrate=auto_calibrate)
+        p_data = await asyncio.to_thread(get_live_portfolio)
     await hub.broadcast("portfolio_update", p_data)
 
     if not isinstance(audit_report, dict) or audit_report.get("status") != "success":
@@ -223,7 +226,8 @@ async def buy_stock(order: BuyOrder):
                 }
 
         # 2. Record to local SQLite SSOT portfolio
-        inserted_id = add_portfolio_buy(
+        inserted_id = await asyncio.to_thread(
+            add_portfolio_buy,
             ticker=ticker_clean,
             buy_price=price,
             quantity=qty,
@@ -242,7 +246,7 @@ async def buy_stock(order: BuyOrder):
             },
         )
 
-        p_data = get_live_portfolio()
+        p_data = await asyncio.to_thread(get_live_portfolio)
         await hub.broadcast("portfolio_update", p_data)
 
         mode_label = broker_status.get("mode", "SIMULATOR") if default_kis_broker.is_configured() else "SIMULATOR"
@@ -269,7 +273,7 @@ async def sell_stock(position_id: int, order: SellOrder):
             raise HTTPException(status_code=400, detail="유효하지 않은 포지션 ID입니다.")
 
         # 1. Retrieve holding details from SQLite
-        live_port = get_live_portfolio()
+        live_port = await asyncio.to_thread(get_live_portfolio)
         holding_to_sell = None
         for h in live_port.get("holdings", []):
             if int(h["id"]) == int(position_id):
@@ -280,7 +284,8 @@ async def sell_stock(position_id: int, order: SellOrder):
             raise HTTPException(status_code=404, detail="해당 보유 포지션을 찾을 수 없습니다.")
 
         ticker_clean = holding_to_sell["ticker"].upper()
-        qty = int(holding_to_sell.get("quantity", 1))
+        local_qty = float(holding_to_sell.get("quantity", 1))
+        qty = int(local_qty) if local_qty >= 1 else 1
         price = float(order.sell_price)
         order_id = None
         broker_msg = None
@@ -295,6 +300,39 @@ async def sell_stock(position_id: int, order: SellOrder):
                 target_exchange = resolve_order_exchange(ticker_clean)
 
         if default_kis_broker.is_configured():
+            # Check live broker balance to clamp quantity against actual held shares
+            try:
+                bal = await asyncio.to_thread(default_kis_broker.get_overseas_balance)
+                if isinstance(bal, dict) and bal.get("status") in ("success", "partial"):
+                    b_holding = next(
+                        (h for h in bal.get("holdings", []) if str(h.get("ticker", "")).upper() == ticker_clean),
+                        None
+                    )
+                    b_qty = int(b_holding.get("quantity", 0)) if b_holding else 0
+                    if b_qty <= 0:
+                        # Already closed on broker outside this system (e.g. MTS). Synchronize local state.
+                        await asyncio.to_thread(
+                            record_portfolio_sell,
+                            holding_id=position_id,
+                            sell_price=price,
+                            sell_date=order.sell_date,
+                            reason=f"MTS_EXT_CLOSED ({order.reason})",
+                        )
+                        p_data = await asyncio.to_thread(get_live_portfolio)
+                        await hub.broadcast("portfolio_update", p_data)
+                        return {
+                            "status": "success",
+                            "message": f"증권사 실계좌에서 이미 매도 완료된 종목입니다. 로컬 장부를 체결 완료로 동기화했습니다.",
+                            "broker_message": "Position already 0 on broker"
+                        }
+                    if b_qty < qty:
+                        logger.warning(
+                            f"[Sell Clamp] Local qty {qty} exceeds broker qty {b_qty} for {ticker_clean}. Clamping to {b_qty}."
+                        )
+                        qty = b_qty
+            except Exception as e:
+                logger.warning(f"[Sell Check] Failed to query broker balance prior to sell: {e}")
+
             broker_res = await asyncio.to_thread(
                 default_kis_broker.place_order,
                 ticker=ticker_clean,
@@ -318,24 +356,47 @@ async def sell_stock(position_id: int, order: SellOrder):
                 }
 
         # 3. Update SQLite portfolio to SOLD
-        success = record_portfolio_sell(
-            holding_id=position_id,
-            sell_price=price,
-            sell_date=order.sell_date,
-            reason=order.reason,
-            execution_log={
-                "order_type": "MARKETABLE_LIMIT",
-                "status": (
-                    "FILLED"
-                    if default_kis_broker.is_configured()
-                    else "SIMULATED"
-                ),
-                "message": f"Manual liquidation: {order.reason}",
-                "order_id": str(
-                    order_id or f"MANUAL-{int(datetime.now().timestamp())}"
-                ),
-            },
-        )
+        if qty < int(local_qty):
+            success = await asyncio.to_thread(
+                record_portfolio_sell_quantity,
+                holding_id=position_id,
+                sell_price=price,
+                quantity=qty,
+                sell_date=order.sell_date,
+                reason=order.reason,
+                execution_log={
+                    "order_type": "MARKETABLE_LIMIT",
+                    "status": (
+                        "FILLED"
+                        if default_kis_broker.is_configured()
+                        else "SIMULATED"
+                    ),
+                    "message": f"Manual partial liquidation: {order.reason} ({qty}/{int(local_qty)} shares)",
+                    "order_id": str(
+                        order_id or f"MANUAL-{int(datetime.now().timestamp())}"
+                    ),
+                },
+            )
+        else:
+            success = await asyncio.to_thread(
+                record_portfolio_sell,
+                holding_id=position_id,
+                sell_price=price,
+                sell_date=order.sell_date,
+                reason=order.reason,
+                execution_log={
+                    "order_type": "MARKETABLE_LIMIT",
+                    "status": (
+                        "FILLED"
+                        if default_kis_broker.is_configured()
+                        else "SIMULATED"
+                    ),
+                    "message": f"Manual liquidation: {order.reason}",
+                    "order_id": str(
+                        order_id or f"MANUAL-{int(datetime.now().timestamp())}"
+                    ),
+                },
+            )
         if not success:
             raise HTTPException(status_code=404, detail="포지션 청산 기록에 실패했습니다.")
         if not is_proxy_ticker(ticker_clean):
@@ -346,7 +407,7 @@ async def sell_stock(position_id: int, order: SellOrder):
                 order_id=str(order_id or ""),
             )
 
-        p_data = get_live_portfolio()
+        p_data = await asyncio.to_thread(get_live_portfolio)
         await hub.broadcast("portfolio_update", p_data)
 
         msg = f"포지션 #{position_id} ({ticker_clean} {qty}주) 매도 청산 완료"

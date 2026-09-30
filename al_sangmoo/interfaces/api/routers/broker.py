@@ -68,12 +68,14 @@ def get_broker_balance():
 
 
 @router.post("/reconcile", dependencies=[Depends(require_mutating_auth)])
-def run_reconciliation(auto_calibrate: bool = True):
+async def run_reconciliation(auto_calibrate: bool = True):
     """
     Executes a 1-time daily reconciliation audit between KIS Broker and local SQLite DB.
     Calibrates corporate actions (splits, dividend shares) and manual trades.
+    Guaranteed atomic via ORDER_MUTEX and non-blocking via asyncio.to_thread.
     """
-    report = check_sync(auto_calibrate=auto_calibrate)
+    async with ORDER_MUTEX:
+        report = await asyncio.to_thread(check_sync, auto_calibrate=auto_calibrate)
     if isinstance(report, dict) and report.get("status") != "success":
         return JSONResponse(
             status_code=502,
