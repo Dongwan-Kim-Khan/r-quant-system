@@ -118,6 +118,7 @@ class KISBrokerAdapter:
         self._day_order_cache: Dict[str, Tuple[float, List[Dict[str, Any]], bool]] = {}
         self._price_cache: Dict[str, Tuple[float, float]] = {}
         self._price_cache_lock = threading.Lock()
+        self._candle_cache: Dict[str, Tuple[Dict[str, float], float]] = {}
 
         # Load cached token on initialization
         self._load_cached_token()
@@ -724,7 +725,11 @@ class KISBrokerAdapter:
 
         headers = self._get_headers(tr_id)
         self._limiter.acquire(1.0)
-        res = requests.get(url, headers=headers, params=params, timeout=timeout)
+        try:
+            res = requests.get(url, headers=headers, params=params, timeout=timeout)
+        except requests.RequestException as e:
+            logger.debug("[KIS HTTP Exception] %s %s: %s", tr_id, url, e)
+            return None
         data = _parse(res)
 
         # Transient rate limit retry (EGW00201 / HTTP 429)
@@ -732,15 +737,21 @@ class KISBrokerAdapter:
             logger.warning(f"[KIS Rate Limit] {tr_id} encountered EGW00201. Retrying with 0.35s backoff...")
             time.sleep(0.35)
             self._limiter.acquire(1.0)
-            res = requests.get(url, headers=headers, params=params, timeout=timeout)
-            data = _parse(res)
+            try:
+                res = requests.get(url, headers=headers, params=params, timeout=timeout)
+                data = _parse(res)
+            except requests.RequestException:
+                return None
 
         token_bad = res.status_code == 401 or (data and data.get("msg_cd") in ("EGW00121", "EGW00122", "EGW00123"))
         if token_bad and self.authenticate(force_refresh=True):
             headers = self._get_headers(tr_id)
             self._limiter.acquire(1.0)
-            res = requests.get(url, headers=headers, params=params, timeout=timeout)
-            data = _parse(res)
+            try:
+                res = requests.get(url, headers=headers, params=params, timeout=timeout)
+                data = _parse(res)
+            except requests.RequestException:
+                return None
         if res.status_code != 200 or not data or data.get("rt_cd") != "0":
             return None
         return data
@@ -808,6 +819,93 @@ class KISBrokerAdapter:
                 pass
         except Exception:
             pass
+
+        return None
+
+    def get_realtime_candle(self, ticker: str, fallback_yahoo: bool = True) -> Optional[Dict[str, float]]:
+        """
+        Official overseas real-time daily candle:
+        {'open': float, 'high': float, 'low': float, 'close': float, 'volume': float}
+        1. Fast in-memory cache (TTL 3.0s)
+        2. KIS OpenAPI HHDFS76200200 /quotations/price-detail
+        3. Fallback: yfinance history(period="2d", interval="1d")
+        """
+        sym_clean = ticker.upper().strip()
+
+        with self._price_cache_lock:
+            cached = getattr(self, "_candle_cache", {}).get(sym_clean)
+            if cached and (time.time() - cached[1] < 3.0) and cached[0]:
+                return dict(cached[0])
+
+        candle = None
+        if self.is_configured() and self.authenticate():
+            detail_url = f"{self.base_url}/uapi/overseas-price/v1/quotations/price-detail"
+            for excd in self._quote_exchanges(sym_clean):
+                params = {"AUTH": "", "EXCD": excd, "SYMB": sym_clean}
+                try:
+                    data = self._kis_get_json(detail_url, "HHDFS76200200", params, timeout=1.5)
+                    if not data:
+                        continue
+                    out = data.get("output") or {}
+                    last_p = self._price_from_kis_output(out)
+                    open_p = self._parse_positive_price(out.get("open") or out.get("ovrs_nmix_oprc"))
+                    high_p = self._parse_positive_price(out.get("high") or out.get("ovrs_nmix_hgpr"))
+                    low_p = self._parse_positive_price(out.get("low") or out.get("ovrs_nmix_lwpr"))
+                    tvol = self._parse_positive_price(out.get("tvol")) or 0.0
+
+                    if last_p and last_p > 0:
+                        open_val = open_p if (open_p and open_p > 0) else last_p
+                        high_val = max(high_p or open_val, last_p, open_val)
+                        low_val = min(low_p or open_val, last_p, open_val)
+                        candle = {
+                            "open": round(open_val, 2),
+                            "high": round(high_val, 2),
+                            "low": round(low_val, 2),
+                            "close": round(last_p, 2),
+                            "volume": round(tvol, 0)
+                        }
+                        with self._price_cache_lock:
+                            self._price_cache[sym_clean] = (last_p, time.time())
+                            if not hasattr(self, "_candle_cache"):
+                                self._candle_cache = {}
+                            self._candle_cache[sym_clean] = (candle, time.time())
+                        return candle
+                except Exception as exc:
+                    logger.debug("[KIS Realtime Candle] %s %s failed: %s", excd, sym_clean, exc)
+
+        if not fallback_yahoo:
+            return None
+
+        # Fallback to yfinance fast bar
+        try:
+            import yfinance as yf
+            import logging as _logging
+            _logging.getLogger("yfinance").setLevel(_logging.CRITICAL)
+            t_obj = yf.Ticker(sym_clean)
+            hist = t_obj.history(period="2d", interval="1d", raise_errors=False)
+            if hist is not None and not hist.empty and len(hist) > 0:
+                row = hist.iloc[-1]
+                c = self._parse_positive_price(row.get("Close"))
+                o = self._parse_positive_price(row.get("Open")) or c
+                h = self._parse_positive_price(row.get("High")) or max(o, c)
+                l = self._parse_positive_price(row.get("Low")) or min(o, c)
+                v = self._parse_positive_price(row.get("Volume")) or 0.0
+                if c and c > 0:
+                    candle = {
+                        "open": round(o, 2),
+                        "high": round(max(h, o, c), 2),
+                        "low": round(min(l, o, c), 2),
+                        "close": round(c, 2),
+                        "volume": round(v, 0)
+                    }
+                    with self._price_cache_lock:
+                        self._price_cache[sym_clean] = (c, time.time())
+                        if not hasattr(self, "_candle_cache"):
+                            self._candle_cache = {}
+                        self._candle_cache[sym_clean] = (candle, time.time())
+                    return candle
+        except Exception as yf_err:
+            logger.debug("[Yahoo Realtime Candle] %s failed: %s", sym_clean, yf_err)
 
         return None
 

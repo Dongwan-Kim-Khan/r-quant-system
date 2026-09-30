@@ -431,12 +431,15 @@ export const ChartEngine = {
             const candles = tfData.candles || [];
             if (candles.length > 0 && this.candleSeries) {
                 const last = candles[candles.length - 1];
+                last.high = Math.max(Number(last.high) || p, p);
+                last.low = Math.min(Number(last.low) || p, p);
+                last.close = p;
                 const updated = {
                     time: last.time,
                     open: last.open,
-                    high: Math.max(last.high, p),
-                    low: Math.min(last.low, p),
-                    close: p
+                    high: last.high,
+                    low: last.low,
+                    close: last.close
                 };
                 this.candleSeries.update(updated);
 

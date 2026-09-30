@@ -76,7 +76,7 @@ def get_market_session_date(ticker_sym: str) -> str:
 
 def _enrich_chart_with_realtime_price(data: dict, ticker: str) -> dict:
     """
-    Enriches modular chart data with official real-time price from KIS OpenAPI / live portfolio SSOT.
+    Enriches modular chart data with official real-time price from KIS OpenAPI / yfinance.
     Updates latest_close, active session candle (matching market trading session date), volume, and indicators.
     """
     if not isinstance(data, dict):
@@ -84,146 +84,177 @@ def _enrich_chart_with_realtime_price(data: dict, ticker: str) -> dict:
 
     session_date_str = get_market_session_date(ticker)
 
-    live_price = None
-    # 1. Fast in-memory check from SQLite live portfolio SSOT (< 0.1ms)
+    # 1. Fetch real-time daily candle (Open, High, Low, Close, Volume)
+    from al_sangmoo.infrastructure.brokers.kis_broker import default_kis_broker
+    rt_candle = None
     try:
-        from al_sangmoo.infrastructure.persistence import get_live_portfolio
-        p = get_live_portfolio()
-        for h in p.get("holdings", []):
-            if isinstance(h, dict) and h.get("ticker", "").upper() == ticker:
-                val = float(h.get("current_price", 0))
-                if val > 0:
-                    live_price = val
-                    break
+        rt_candle = default_kis_broker.get_realtime_candle(ticker)
     except Exception as e:
-        logger.exception("Failed to query live portfolio price for chart %s: %s", ticker, e)
+        logger.debug("Failed to get realtime candle for %s: %s", ticker, e)
 
-    # Do not call KIS on this request path — 3 exchanges × 2 TRs × 3s stalls the chart.
+    live_price = None
+    open_price = None
+    high_price = None
+    low_price = None
+    volume_val = None
 
-    if (live_price is None or live_price <= 0) and isinstance(data.get("candles"), list) and data["candles"]:
+    if rt_candle and isinstance(rt_candle, dict):
+        live_price = rt_candle.get("close")
+        open_price = rt_candle.get("open")
+        high_price = rt_candle.get("high")
+        low_price = rt_candle.get("low")
+        volume_val = rt_candle.get("volume")
+
+    # 2. Fast check from SQLite live portfolio SSOT if no realtime candle close
+    if live_price is None or live_price <= 0:
         try:
-            live_price = float(data["candles"][-1].get("close") or 0)
-        except (TypeError, ValueError):
-            live_price = None
+            from al_sangmoo.infrastructure.persistence import get_live_portfolio
+            p = get_live_portfolio()
+            for h in p.get("holdings", []):
+                if isinstance(h, dict) and h.get("ticker", "").upper() == ticker:
+                    val = float(h.get("current_price", 0))
+                    if val > 0:
+                        live_price = val
+                        break
+        except Exception as e:
+            logger.debug("Failed to query live portfolio price for chart %s: %s", ticker, e)
 
-    if live_price and live_price > 0:
-        ref_close = None
-        if isinstance(data.get("candles"), list) and data["candles"]:
-            try:
-                ref_close = float(data["candles"][-1].get("close") or 0)
-            except (TypeError, ValueError):
-                ref_close = None
-        live_price = _harmonize_live_price(live_price, ref_close)
-
-    if live_price and live_price > 0:
-        live_price = round(float(live_price), 2)
-        data["latest_close"] = live_price
-
-        # Prune any mistakenly appended future candles beyond current session_date_str
-        if "candles" in data and isinstance(data["candles"], list) and len(data["candles"]) > 0:
+    # 3. If still no live price, do NOT synthesize a fake 0-height candle.
+    if live_price is None or live_price <= 0:
+        if "candles" in data and isinstance(data["candles"], list):
             data["candles"] = [c for c in data["candles"] if str(c.get("time", "")) <= session_date_str]
-            if data["candles"]:
-                last_c = dict(data["candles"][-1])
-                last_date = str(last_c.get("time", ""))
-                if last_date == session_date_str:
-                    last_c["close"] = live_price
-                    last_c["high"] = max(float(last_c.get("high", live_price)), live_price)
-                    last_c["low"] = min(float(last_c.get("low", live_price)), live_price)
-                    data["candles"][-1] = last_c
-                elif last_date < session_date_str:
-                    prev_close = float(last_c.get("close", live_price))
-                    new_candle = {
-                        "time": session_date_str,
-                        "open": prev_close,
-                        "high": max(prev_close, live_price),
-                        "low": min(prev_close, live_price),
-                        "close": live_price
-                    }
-                    data["candles"].append(new_candle)
+        return data
 
-        # Update and synchronize volume series
-        if "volume" in data and isinstance(data["volume"], list) and len(data["volume"]) > 0:
-            data["volume"] = [v for v in data["volume"] if str(v.get("time", "")) <= session_date_str]
-            if data["volume"] and len(data.get("candles", [])) > 0:
-                last_v = dict(data["volume"][-1])
-                last_c = data["candles"][-1]
-                last_v_date = str(last_v.get("time", ""))
-                if last_v_date < session_date_str and str(last_c.get("time", "")) == session_date_str:
-                    prev_open = float(last_c.get("open", live_price))
-                    data["volume"].append({
+    ref_close = None
+    if isinstance(data.get("candles"), list) and data["candles"]:
+        try:
+            ref_close = float(data["candles"][-1].get("close") or 0)
+        except (TypeError, ValueError):
+            ref_close = None
+    live_price = _harmonize_live_price(live_price, ref_close)
+
+    if not live_price or live_price <= 0:
+        return data
+
+    live_price = round(float(live_price), 2)
+    data["latest_close"] = live_price
+
+    # Fallbacks for open/high/low if only live_price was obtained (e.g. portfolio SSOT)
+    prev_close = ref_close or live_price
+    if open_price is None or open_price <= 0:
+        open_price = prev_close
+    if high_price is None or high_price <= 0:
+        high_price = max(open_price, live_price)
+    else:
+        high_price = max(high_price, open_price, live_price)
+    if low_price is None or low_price <= 0:
+        low_price = min(open_price, live_price)
+    else:
+        low_price = min(low_price, open_price, live_price)
+
+    open_price = round(float(open_price), 2)
+    high_price = round(float(high_price), 2)
+    low_price = round(float(low_price), 2)
+
+    candle_payload = {
+        "time": session_date_str,
+        "open": open_price,
+        "high": high_price,
+        "low": low_price,
+        "close": live_price
+    }
+
+    # Prune future candles & update active session candle
+    if "candles" in data and isinstance(data["candles"], list) and len(data["candles"]) > 0:
+        data["candles"] = [c for c in data["candles"] if str(c.get("time", "")) <= session_date_str]
+        if data["candles"]:
+            last_c = dict(data["candles"][-1])
+            last_date = str(last_c.get("time", ""))
+            if last_date == session_date_str:
+                last_c.update(candle_payload)
+                data["candles"][-1] = last_c
+            elif last_date < session_date_str:
+                data["candles"].append(candle_payload)
+
+    # Update and synchronize volume series
+    if "volume" in data and isinstance(data["volume"], list) and len(data["volume"]) > 0:
+        data["volume"] = [v for v in data["volume"] if str(v.get("time", "")) <= session_date_str]
+        if data["volume"] and len(data.get("candles", [])) > 0:
+            last_v = dict(data["volume"][-1])
+            last_v_date = str(last_v.get("time", ""))
+            v_val = float(volume_val) if (volume_val is not None and volume_val > 0) else float(last_v.get("value", 1000000.0))
+            vol_payload = {
+                "time": session_date_str,
+                "value": v_val,
+                "color": "#059669" if live_price >= open_price else "#dc2626"
+            }
+            if last_v_date == session_date_str:
+                data["volume"][-1] = vol_payload
+            elif last_v_date < session_date_str:
+                data["volume"].append(vol_payload)
+
+    # Update indicator lines to extend to session date (exclude forward cloud spans)
+    for line_key in ["kijun_line", "tenkan_line", "sma20", "sma60"]:
+        if line_key in data and isinstance(data[line_key], list) and len(data[line_key]) > 0:
+            data[line_key] = [pt for pt in data[line_key] if str(pt.get("time", "")) <= session_date_str]
+            if data[line_key]:
+                last_pt = dict(data[line_key][-1])
+                if str(last_pt.get("time", "")) < session_date_str:
+                    data[line_key].append({
                         "time": session_date_str,
-                        "value": float(last_v.get("value", 1000000.0)),
-                        "color": "#059669" if live_price >= prev_open else "#dc2626"
+                        "value": last_pt.get("value", 0)
                     })
 
-        # Update indicator lines to extend to session date (exclude forward cloud spans)
-        for line_key in ["kijun_line", "tenkan_line", "sma20", "sma60"]:
-            if line_key in data and isinstance(data[line_key], list) and len(data[line_key]) > 0:
-                data[line_key] = [pt for pt in data[line_key] if str(pt.get("time", "")) <= session_date_str]
-                if data[line_key]:
-                    last_pt = dict(data[line_key][-1])
-                    if str(last_pt.get("time", "")) < session_date_str:
-                        data[line_key].append({
-                            "time": session_date_str,
-                            "value": last_pt.get("value", 0)
-                        })
-
-        # Update multi-timeframe candles and volume
-        if "timeframes" in data and isinstance(data["timeframes"], dict):
-            for tf_key, tf_data in data["timeframes"].items():
-                if isinstance(tf_data, dict):
-                    if "candles" in tf_data and len(tf_data["candles"]) > 0:
-                        if tf_key == "daily":
-                            tf_data["candles"] = [c for c in tf_data["candles"] if str(c.get("time", "")) <= session_date_str]
-                            if tf_data["candles"]:
-                                last_tf = dict(tf_data["candles"][-1])
-                                last_tf_date = str(last_tf.get("time", ""))
-                                if last_tf_date == session_date_str:
-                                    last_tf["close"] = live_price
-                                    last_tf["high"] = max(float(last_tf.get("high", live_price)), live_price)
-                                    last_tf["low"] = min(float(last_tf.get("low", live_price)), live_price)
-                                    tf_data["candles"][-1] = last_tf
-                                elif last_tf_date < session_date_str:
-                                    prev_c = float(last_tf.get("close", live_price))
-                                    tf_data["candles"].append({
-                                        "time": session_date_str,
-                                        "open": prev_c,
-                                        "high": max(prev_c, live_price),
-                                        "low": min(prev_c, live_price),
-                                        "close": live_price
-                                    })
-                        else:
+    # Update multi-timeframe candles and volume
+    if "timeframes" in data and isinstance(data["timeframes"], dict):
+        for tf_key, tf_data in data["timeframes"].items():
+            if isinstance(tf_data, dict):
+                if "candles" in tf_data and len(tf_data["candles"]) > 0:
+                    if tf_key == "daily":
+                        tf_data["candles"] = [c for c in tf_data["candles"] if str(c.get("time", "")) <= session_date_str]
+                        if tf_data["candles"]:
                             last_tf = dict(tf_data["candles"][-1])
-                            last_tf["close"] = live_price
-                            last_tf["high"] = max(float(last_tf.get("high", live_price)), live_price)
-                            last_tf["low"] = min(float(last_tf.get("low", live_price)), live_price)
-                            tf_data["candles"][-1] = last_tf
+                            last_tf_date = str(last_tf.get("time", ""))
+                            if last_tf_date == session_date_str:
+                                last_tf.update(candle_payload)
+                                tf_data["candles"][-1] = last_tf
+                            elif last_tf_date < session_date_str:
+                                tf_data["candles"].append(candle_payload)
+                    else:
+                        last_tf = dict(tf_data["candles"][-1])
+                        last_tf["close"] = live_price
+                        last_tf["high"] = max(float(last_tf.get("high", live_price)), live_price)
+                        last_tf["low"] = min(float(last_tf.get("low", live_price)), live_price)
+                        tf_data["candles"][-1] = last_tf
 
-                    if "volume" in tf_data and isinstance(tf_data["volume"], list) and len(tf_data["volume"]) > 0:
-                        if tf_key == "daily":
-                            tf_data["volume"] = [v for v in tf_data["volume"] if str(v.get("time", "")) <= session_date_str]
-                            if tf_data["volume"] and len(tf_data.get("candles", [])) > 0:
-                                last_v = dict(tf_data["volume"][-1])
-                                last_c = tf_data["candles"][-1]
-                                if str(last_v.get("time", "")) < session_date_str and str(last_c.get("time", "")) == session_date_str:
-                                    prev_open = float(last_c.get("open", live_price))
-                                    tf_data["volume"].append({
-                                        "time": session_date_str,
-                                        "value": float(last_v.get("value", 1000000.0)),
-                                        "color": "#059669" if live_price >= prev_open else "#dc2626"
-                                    })
+                if "volume" in tf_data and isinstance(tf_data["volume"], list) and len(tf_data["volume"]) > 0:
+                    if tf_key == "daily":
+                        tf_data["volume"] = [v for v in tf_data["volume"] if str(v.get("time", "")) <= session_date_str]
+                        if tf_data["volume"] and len(tf_data.get("candles", [])) > 0:
+                            last_v = dict(tf_data["volume"][-1])
+                            last_v_date = str(last_v.get("time", ""))
+                            v_val = float(volume_val) if (volume_val is not None and volume_val > 0) else float(last_v.get("value", 1000000.0))
+                            vol_payload = {
+                                "time": session_date_str,
+                                "value": v_val,
+                                "color": "#059669" if live_price >= open_price else "#dc2626"
+                            }
+                            if last_v_date == session_date_str:
+                                tf_data["volume"][-1] = vol_payload
+                            elif last_v_date < session_date_str:
+                                tf_data["volume"].append(vol_payload)
 
-        # Update Kijun line gap & narrative
-        kijun_val = float(data.get("kijun", 0))
-        if kijun_val > 0:
-            gap = round(((live_price - kijun_val) / kijun_val) * 100, 2)
-            data["kijun_gap_pct"] = gap
-            if "intelligence" in data and isinstance(data["intelligence"], dict):
-                kijun_info = data["intelligence"].get("kijun")
-                if isinstance(kijun_info, dict):
-                    sign = "+" if gap >= 0 else ""
-                    kijun_info["desc"] = f"현재가 ${live_price:.2f} / 26일선 ${kijun_val:.2f} (이격 {sign}{gap:.1f}%)"
-                    kijun_info["val"] = f"${kijun_val:.2f} ({sign}{gap:.1f}%)"
+    # Update Kijun line gap & narrative
+    kijun_val = float(data.get("kijun", 0))
+    if kijun_val > 0:
+        gap = round(((live_price - kijun_val) / kijun_val) * 100, 2)
+        data["kijun_gap_pct"] = gap
+        if "intelligence" in data and isinstance(data["intelligence"], dict):
+            kijun_info = data["intelligence"].get("kijun")
+            if isinstance(kijun_info, dict):
+                sign = "+" if gap >= 0 else ""
+                kijun_info["desc"] = f"현재가 ${live_price:.2f} / 26일선 ${kijun_val:.2f} (이격 {sign}{gap:.1f}%)"
+                kijun_info["val"] = f"${kijun_val:.2f} ({sign}{gap:.1f}%)"
 
     return data
 
