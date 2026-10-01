@@ -844,28 +844,42 @@ def get_live_portfolio() -> dict:
     # Free cash = Initial Capital - Total Cost Basis of active lots + Cumulative Realized PnL
     sleeve_cash_usd = max(0.0, round(base_account_usd - total_invested + realized_pnl_usd, 2))
 
+    delta_eval = 0.0
     if use_rec:
-        if float(rec.get("stock_eval_usd") or 0.0) > 0:
-            total_eval = float(rec["stock_eval_usd"])
-        if snap and snap.get("unrealized_pnl_pct") is not None and float(snap.get("unrealized_pnl_pct") or 0.0) != 0.0:
+        free_cash_usd = max(0.0, float(rec.get("cash_available_usd") or 0.0))
+        snap_stock_eval = float(rec.get("stock_eval_usd") or 0.0)
+        snap_equity = float(rec.get("total_equity_usd") or 0.0)
+
+        # When live holdings exist and evaluate > 0, live marked prices are the SSOT.
+        # Fall back to snapshot evaluation only if live holdings are absent.
+        if holdings and holdings_eval > 0:
+            total_eval = holdings_eval
+        elif snap_stock_eval > 0:
+            total_eval = snap_stock_eval
+
+        delta_eval = round(total_eval - snap_stock_eval, 2) if snap_stock_eval > 0 else 0.0
+
+        # Exact baseline when delta_eval == 0.0 (e.g. at snapshot reconciliation time or in baseline tests);
+        # Otherwise recalculate live unrealized PnL from live evaluation.
+        if delta_eval == 0.0 and snap and snap.get("unrealized_pnl_pct") is not None and float(snap.get("unrealized_pnl_pct") or 0.0) != 0.0:
             unrealized_pnl_pct = float(snap["unrealized_pnl_pct"])
             if snap.get("unrealized_pnl_usd") is not None and float(snap.get("unrealized_pnl_usd") or 0.0) != 0.0:
                 unrealized_pnl_usd = float(snap["unrealized_pnl_usd"])
+            else:
+                unrealized_pnl_usd = round(total_eval - total_invested, 2)
         else:
-            unrealized_pnl_usd = total_eval - total_invested
-            unrealized_pnl_pct = ((unrealized_pnl_usd) / total_invested * 100.0) if total_invested > 0 else 0.0
+            unrealized_pnl_usd = round(total_eval - total_invested, 2)
+            unrealized_pnl_pct = round(((unrealized_pnl_usd) / total_invested * 100.0), 2) if total_invested > 0 else 0.0
 
-        if snap and snap.get("unrealized_pnl_krw") is not None and float(snap.get("unrealized_pnl_krw") or 0.0) != 0.0:
+        if delta_eval == 0.0 and snap and snap.get("unrealized_pnl_krw") is not None and float(snap.get("unrealized_pnl_krw") or 0.0) != 0.0:
             unrealized_pnl_krw = float(snap["unrealized_pnl_krw"])
         else:
-            unrealized_pnl_krw = unrealized_pnl_usd * usd_krw_rate
+            unrealized_pnl_krw = round(unrealized_pnl_usd * usd_krw_rate, 2)
 
-        # Broker/HOLDINGS snapshot is the cash + NAV SSOT. Sleeve ledger is
-        # only the LOCAL fallback when the broker book is unavailable.
-        free_cash_usd = max(0.0, float(rec.get("cash_available_usd") or 0.0))
-        rec_eq = float(rec.get("total_equity_usd") or 0.0)
-        if rec_eq > 0:
-            total_equity_usd = rec_eq
+        # Broker/HOLDINGS snapshot is the cash + NAV SSOT.
+        # Total equity updates dynamically with real-time stock valuation delta.
+        if snap_equity > 0:
+            total_equity_usd = round(snap_equity + delta_eval, 2)
         else:
             total_equity_usd = round(total_eval + free_cash_usd, 2)
         total_pnl_usd = realized_pnl_usd + unrealized_pnl_usd
@@ -874,24 +888,42 @@ def get_live_portfolio() -> dict:
         free_cash_usd = sleeve_cash_usd
         total_equity_usd = round(total_eval + free_cash_usd, 2)
         total_pnl_usd = realized_pnl_usd + unrealized_pnl_usd
-        unrealized_pnl_krw = unrealized_pnl_usd * usd_krw_rate
+        unrealized_pnl_krw = round(unrealized_pnl_usd * usd_krw_rate, 2)
 
     if equity_source == "BROKER" and snap:
         lot_pnl = round(float(total_eval) - float(total_invested), 2)
         # KIS MTS tot_pftrt / tot_evlu_pfls is persisted as total_pnl_* when
         # available, otherwise as unrealized_pnl_* from the broker adapter.
-        cumulative_pnl_usd = float(
-            snap.get("total_pnl_usd")
-            or snap.get("unrealized_pnl_usd")
-            or lot_pnl
-        )
-        total_cumulative_pnl_pct = float(
-            snap.get("total_pnl_pct")
-            or snap.get("unrealized_pnl_pct")
-            or unrealized_pnl_pct
-            or 0.0
-        )
-        base_account_usd = round(float(total_equity_usd) - cumulative_pnl_usd, 2)
+        snap_pnl_val = snap.get("total_pnl_usd")
+        if snap_pnl_val is not None:
+            snap_pnl = float(snap_pnl_val)
+        elif snap.get("unrealized_pnl_usd") is not None:
+            snap_pnl = float(snap["unrealized_pnl_usd"])
+        else:
+            snap_pnl = lot_pnl
+
+        snap_eq = float(snap.get("total_equity_usd") or (snap_stock_eval + free_cash_usd if snap_stock_eval > 0 else total_equity_usd))
+        base_account_usd = round(snap_eq - snap_pnl, 2)
+        if base_account_usd <= 0:
+            base_account_usd = DEFAULT_BASE_ACCOUNT_USD
+
+        snap_pct_val = snap.get("total_pnl_pct")
+        if snap_pct_val is not None:
+            snap_pct = float(snap_pct_val)
+        elif snap.get("unrealized_pnl_pct") is not None:
+            snap_pct = float(snap["unrealized_pnl_pct"])
+        elif base_account_usd > 0:
+            snap_pct = snap_pnl / base_account_usd * 100.0
+        else:
+            snap_pct = 0.0
+
+        if delta_eval == 0.0:
+            cumulative_pnl_usd = snap_pnl
+            total_cumulative_pnl_pct = snap_pct
+        else:
+            cumulative_pnl_usd = round(snap_pnl + delta_eval, 2)
+            delta_pct = (delta_eval / base_account_usd * 100.0) if base_account_usd > 0 else 0.0
+            total_cumulative_pnl_pct = round(snap_pct + delta_pct, 2)
     else:
         cumulative_pnl_usd = round(total_equity_usd - base_account_usd, 2)
         total_cumulative_pnl_pct = (

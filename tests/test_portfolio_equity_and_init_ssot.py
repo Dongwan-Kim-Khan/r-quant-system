@@ -206,6 +206,75 @@ class TestPortfolioEquityAndInitSSOT(unittest.TestCase):
         self.assertAlmostEqual(port["overall_pnl_amount"], 722.74, places=2)
         self.assertAlmostEqual(port["overall_pnl_pct"], 11.06, places=2)
 
+    def test_live_market_tick_updates_all_kpis(self):
+        """
+        Verify that when live prices change during market hours:
+        1. total_eval immediately updates to marked USD value (does NOT stay frozen at snapshot eval).
+        2. total_equity_usd increases/decreases by exact delta.
+        3. unrealized_pnl_amount and unrealized_pnl_pct update dynamically.
+        4. overall_pnl_amount and overall_pnl_pct update dynamically.
+        5. base_account_usd (INIT) remains fixed at the SSOT baseline.
+        """
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+            INSERT INTO my_portfolio (ticker, buy_date, buy_price, quantity, current_price, total_cost, current_value, pnl_pct, pnl_amount, status)
+            VALUES 
+            ('DELL', '2026-09-11', 520.775, 4.0, 549.83, 2083.10, 2199.32, 5.58, 116.22, 'HOLDING'),
+            ('AMD', '2026-09-11', 508.648, 4.0, 614.61, 2034.59, 2458.44, 20.83, 423.85, 'HOLDING'),
+            ('CRWD', '2026-09-23', 251.15, 10.0, 262.49, 2511.50, 2624.90, 4.52, 113.40, 'HOLDING')
+            """)
+            cursor.execute("""
+            INSERT INTO trade_history (ticker, buy_date, sell_date, buy_price, sell_price, quantity, pnl_pct, pnl_amount)
+            VALUES ('QLD', '2026-09-17', '2026-09-24', 94.265, 95.52, 15.0, 1.33, -18.32)
+            """)
+            conn.commit()
+
+        save_account_snapshot({
+            "total_equity_usd": 7592.39,
+            "cash_available_usd": 309.73,
+            "stock_eval_usd": 7282.66,
+            "realized_pnl_usd": -18.32,
+            "unrealized_pnl_usd": 653.47,
+            "total_pnl_usd": 722.74,
+            "total_pnl_pct": 11.06,
+            "source": "BROKER",
+            "mode": "VIRTUAL_PAPER",
+        })
+
+        port_baseline = get_live_portfolio()
+        self.assertAlmostEqual(port_baseline["total_eval"], 7282.66, places=2)
+        self.assertAlmostEqual(port_baseline["total_equity_usd"], 7592.39, places=2)
+        self.assertAlmostEqual(port_baseline["overall_pnl_amount"], 722.74, places=2)
+        self.assertAlmostEqual(port_baseline["overall_pnl_pct"], 11.06, places=2)
+
+        # Simulate market price move: AMD ticks +$10.00 (4 shares -> +$40.00 notional)
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+            UPDATE my_portfolio
+            SET current_price = 624.61, current_value = 2498.44, pnl_amount = 463.85, pnl_pct = 22.80
+            WHERE ticker = 'AMD'
+            """)
+            conn.commit()
+
+        port_live = get_live_portfolio()
+        # 1. Total eval must reflect live marked price (+40.00)
+        self.assertAlmostEqual(port_live["total_eval"], 7322.66, places=2)
+        # 2. Total equity must update dynamically (+40.00)
+        self.assertAlmostEqual(port_live["total_equity_usd"], 7632.39, places=2)
+        # 3. Cash remains unchanged
+        self.assertAlmostEqual(port_live["free_cash_usd"], 309.73, places=2)
+        # 4. Unrealized PnL updates dynamically (+40.00 -> 693.47, 10.46%)
+        self.assertAlmostEqual(port_live["unrealized_pnl_amount"], 693.47, places=2)
+        self.assertAlmostEqual(port_live["unrealized_pnl_pct"], 10.46, places=2)
+        # 5. Overall PnL updates dynamically (+40.00 -> 762.74, 11.64%)
+        self.assertAlmostEqual(port_live["overall_pnl_amount"], 762.74, places=2)
+        self.assertAlmostEqual(port_live["overall_pnl_pct"], 11.64, places=2)
+        # 6. Baseline initial capital remains constant SSOT
+        self.assertAlmostEqual(port_live["base_account_usd"], 6869.65, places=2)
+        self.assertAlmostEqual(port_live["initial_capital_usd"], 6869.65, places=2)
+
     def test_triggers_permanently_retired(self):
         """Verify that SQLite triggers are permanently dropped and not present in DB schema."""
         from tools_and_tests.setup_snapshot_guard_trigger import setup_triggers
